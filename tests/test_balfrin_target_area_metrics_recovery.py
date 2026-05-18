@@ -72,6 +72,32 @@ class BalfrinTargetAreaMetricsRecoveryTests(unittest.TestCase):
         self.assertEqual(report["rerun_comparison"]["unrecovered_metrics"], MODULE.REQUIRED_RECOVERY_METRICS)
         self.assertIn("validation_output.file_count", report["recovery"]["by_metric"])
 
+    def test_precollected_read_only_values_recover_without_collector_statuses(self) -> None:
+        evidence = {
+            "schema_version": "balfrin_preserved_run_root_remote_snapshot_v1",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/probes/target/run",
+            "run_root_status": "measured_run_root",
+            "memory_peak_mb": 200.88671875,
+            "validation_output_file_count": 123,
+            "validation_output_bytes": 34476866,
+            "hazard_output_file_count": 98,
+            "hazard_output_bytes": 273191876,
+            "recovery_metric_sources": {
+                "memory_peak_mb": "sacct.MaxRSS",
+                "validation_output.file_count": "command_plan.validation_output_paths",
+                "validation_output.bytes": "command_plan.validation_output_paths",
+                "hazard_output.file_count": "command_plan.output_dir",
+                "hazard_output.bytes": "command_plan.output_dir",
+            },
+        }
+
+        report = MODULE.build_report(access_report=self._ready_access(), evidence=evidence)
+
+        self.assertEqual(report["report_status"], "complete_gap_closed")
+        self.assertEqual(report["recovery"]["status_counts"], {"recovered": 5})
+        self.assertEqual(report["recovery"]["by_metric"]["memory_peak_mb"]["collector_source"], "sacct.MaxRSS")
+        self.assertFalse(report["rerun_comparison"]["rerun_still_necessary"])
+
     def test_access_blocked_fails_closed_without_remote_collection(self) -> None:
         report = MODULE.build_report(access_report=self._blocked_access())
 

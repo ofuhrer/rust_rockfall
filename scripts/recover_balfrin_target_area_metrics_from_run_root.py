@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -116,6 +117,27 @@ def _safe_mapping(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
+def _safe_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_present(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
 def _metric_value(evidence: dict[str, Any], metric: str) -> Any:
     if metric == "memory_peak_mb":
         return evidence.get("memory_peak_mb")
@@ -136,6 +158,12 @@ def _metric_status_entry(evidence: dict[str, Any], metric: str) -> dict[str, Any
     return _safe_mapping(mandatory_statuses.get(metric))
 
 
+def _metric_recovery_source(evidence: dict[str, Any], metric: str) -> str | None:
+    sources = _safe_mapping(evidence.get("recovery_metric_sources"))
+    value = sources.get(metric)
+    return str(value) if isinstance(value, str) and value else None
+
+
 def _classify_metric(
     evidence: dict[str, Any],
     metric: str,
@@ -144,7 +172,7 @@ def _classify_metric(
 ) -> dict[str, Any]:
     status_entry = _metric_status_entry(evidence, metric)
     value = _metric_value(evidence, metric)
-    if status_entry.get("status") == "measured" and value is not None:
+    if value is not None:
         recovery_status = RECOVERY_RECOVERED
         reason = ""
     else:
@@ -166,7 +194,7 @@ def _classify_metric(
         "status": recovery_status,
         "value": value,
         "collector_status": status_entry.get("status", "unknown"),
-        "collector_source": status_entry.get("source"),
+        "collector_source": _metric_recovery_source(evidence, metric) or status_entry.get("source"),
         "collector_reason": status_entry.get("reason", ""),
         "recovery_source": collection_mode,
         "reason": reason,
@@ -210,12 +238,18 @@ def _ssh_base_args(ssh_target: str, connect_timeout: int) -> list[str]:
     ]
 
 
-def _remote_collect_command(remote_repo_root: str, run_root: str) -> str:
-    return (
-        "cd "
-        + shlex.quote(str(PurePosixPath(remote_repo_root)))
-        + " && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root "
-        + shlex.quote(str(PurePosixPath(run_root)))
+def _run_remote_text(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    remote_command: str,
+    runner: Runner,
+) -> subprocess.CompletedProcess[str]:
+    return runner(
+        [*_ssh_base_args(ssh_target, connect_timeout), remote_command],
+        check=False,
+        capture_output=True,
+        text=True,
     )
 
 
@@ -228,6 +262,221 @@ def _trim(value: str | None, limit: int = 1200) -> str:
     return text[: limit - 3] + "..."
 
 
+def _remote_cat_json(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    path: str,
+    runner: Runner,
+) -> dict[str, Any] | None:
+    quoted = shlex.quote(str(PurePosixPath(path)))
+    result = _run_remote_text(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        remote_command=f"test -r {quoted} && cat {quoted}",
+        runner=runner,
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _posix_resolve(path_value: str, *, cwd: str, run_root: str) -> str:
+    path = PurePosixPath(path_value)
+    if path.is_absolute():
+        return str(path)
+    base = PurePosixPath(cwd)
+    if not base.is_absolute():
+        base = PurePosixPath(run_root) / base
+    return str(base / path)
+
+
+def _command_output_dir(command_plan: dict[str, Any], *, run_root: str) -> str:
+    commands = command_plan.get("commands")
+    if not isinstance(commands, list):
+        return f"{run_root}/output"
+    for entry in commands:
+        if not isinstance(entry, dict) or entry.get("name") != "build_conditional_hazard_layers":
+            continue
+        command = entry.get("command")
+        if not isinstance(command, list):
+            continue
+        cwd = str(entry.get("cwd") or run_root)
+        tokens = [str(token) for token in command]
+        for idx, token in enumerate(tokens):
+            if token == "--output-dir" and idx + 1 < len(tokens):
+                return _posix_resolve(tokens[idx + 1], cwd=cwd, run_root=run_root)
+    return f"{run_root}/output"
+
+
+def _validation_output_paths(command_plan: dict[str, Any], *, run_root: str) -> list[str]:
+    path_flags = {
+        "--diagnostics",
+        "--trajectory",
+        "--deposition",
+        "--ensemble-trajectories-dir",
+        "--ensemble-impact-events-dir",
+    }
+    commands = command_plan.get("commands")
+    if not isinstance(commands, list):
+        return []
+    paths: list[str] = []
+    for entry in commands:
+        if not isinstance(entry, dict):
+            continue
+        command = entry.get("command")
+        if not isinstance(command, list):
+            continue
+        cwd = str(entry.get("cwd") or run_root)
+        tokens = [str(token) for token in command]
+        for idx, token in enumerate(tokens):
+            if token in path_flags and idx + 1 < len(tokens):
+                paths.append(_posix_resolve(tokens[idx + 1], cwd=cwd, run_root=run_root))
+    return sorted(dict.fromkeys(paths))
+
+
+def _remote_first_matching_file(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    root: str,
+    pattern: str,
+    runner: Runner,
+) -> str | None:
+    result = _run_remote_text(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        remote_command=(
+            f"find {shlex.quote(str(PurePosixPath(root)))} -maxdepth 1 "
+            f"-type f -name {shlex.quote(pattern)} -print 2>/dev/null | sort | head -n 1"
+        ),
+        runner=runner,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _remote_paths_stats(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    paths: list[str],
+    runner: Runner,
+) -> dict[str, Any]:
+    if not paths:
+        return {"status": "missing", "paths": [], "file_count": None, "bytes": None}
+    quoted_paths = " ".join(shlex.quote(str(PurePosixPath(path))) for path in paths)
+    result = _run_remote_text(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        remote_command=(
+            f"find {quoted_paths} -type f -printf '%s\\n' 2>/dev/null | "
+            "awk '{count += 1; bytes += $1} END {printf \"%d %d\\n\", count, bytes}'"
+        ),
+        runner=runner,
+    )
+    if result.returncode != 0:
+        return {"status": "missing", "paths": paths, "file_count": None, "bytes": None}
+    parts = result.stdout.strip().split()
+    if len(parts) != 2:
+        return {"status": "missing", "paths": paths, "file_count": None, "bytes": None}
+    file_count = _safe_int(parts[0])
+    byte_count = _safe_int(parts[1])
+    return {
+        "status": "measured" if file_count is not None and file_count > 0 else "missing",
+        "paths": paths,
+        "file_count": file_count,
+        "bytes": byte_count,
+    }
+
+
+_SLURM_MEMORY_PATTERN = re.compile(r"^\s*(?P<value>[0-9.]+)\s*(?P<unit>[KMGTP]?)\s*$", re.IGNORECASE)
+
+
+def _parse_slurm_memory_to_mb(value: str) -> float | None:
+    match = _SLURM_MEMORY_PATTERN.match(value)
+    if not match:
+        return None
+    number = _safe_float(match.group("value"))
+    if number is None:
+        return None
+    unit = match.group("unit").upper() or "K"
+    multiplier = {
+        "K": 1 / 1024,
+        "M": 1,
+        "G": 1024,
+        "T": 1024 * 1024,
+        "P": 1024 * 1024 * 1024,
+    }.get(unit)
+    return None if multiplier is None else number * multiplier
+
+
+def _remote_job_id_from_logs(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    run_root: str,
+    runner: Runner,
+) -> str | None:
+    logs_root = f"{run_root}/logs"
+    result = _run_remote_text(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        remote_command=(
+            f"find {shlex.quote(str(PurePosixPath(logs_root)))} -maxdepth 1 -type f "
+            "\\( -name 'slurm-*.out' -o -name 'slurm-*.err' \\) -printf '%f\\n' 2>/dev/null | sort | head -n 1"
+        ),
+        runner=runner,
+    )
+    if result.returncode != 0:
+        return None
+    match = re.search(r"slurm-(\d+)\.", result.stdout.strip())
+    return match.group(1) if match else None
+
+
+def _remote_slurm_peak_memory_mb(
+    *,
+    ssh_target: str,
+    connect_timeout: int,
+    job_id: str | None,
+    runner: Runner,
+) -> dict[str, Any]:
+    if not job_id:
+        return {"status": "missing", "job_id": None, "memory_peak_mb": None, "source": None}
+    result = _run_remote_text(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        remote_command=(
+            "command -v sacct >/dev/null && "
+            f"sacct -j {shlex.quote(job_id)} --noheader --parsable2 --format=JobID,MaxRSS,State,Elapsed"
+        ),
+        runner=runner,
+    )
+    if result.returncode != 0:
+        return {"status": "missing", "job_id": job_id, "memory_peak_mb": None, "source": "sacct.MaxRSS"}
+    values: list[float] = []
+    for line in result.stdout.splitlines():
+        parts = line.split("|")
+        if len(parts) < 2 or not parts[1].strip():
+            continue
+        parsed = _parse_slurm_memory_to_mb(parts[1].strip())
+        if parsed is not None:
+            values.append(parsed)
+    if not values:
+        return {"status": "missing", "job_id": job_id, "memory_peak_mb": None, "source": "sacct.MaxRSS"}
+    return {
+        "status": "measured",
+        "job_id": job_id,
+        "memory_peak_mb": max(values),
+        "source": "sacct.MaxRSS",
+    }
+
+
 def _collect_remote_evidence(
     *,
     ssh_target: str,
@@ -236,41 +485,140 @@ def _collect_remote_evidence(
     connect_timeout: int,
     runner: Runner,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    remote_command = _remote_collect_command(remote_repo_root, run_root)
-    command = [*_ssh_base_args(ssh_target, connect_timeout), remote_command]
+    run_root_posix = str(PurePosixPath(run_root))
     try:
-        result = runner(command, check=False, capture_output=True, text=True)
+        command_plan = _remote_cat_json(
+            ssh_target=ssh_target,
+            connect_timeout=connect_timeout,
+            path=f"{run_root_posix}/command_plan.json",
+            runner=runner,
+        ) or {}
+        probe_summary = _remote_cat_json(
+            ssh_target=ssh_target,
+            connect_timeout=connect_timeout,
+            path=f"{run_root_posix}/balfrin_probe_metrics.json",
+            runner=runner,
+        ) or {}
     except (OSError, subprocess.TimeoutExpired) as exc:
         return None, {
             "status": STATUS_COLLECTION_FAILED,
-            "command": command,
-            "remote_command": remote_command,
+            "command": [],
+            "remote_command": "read preserved command_plan.json and balfrin_probe_metrics.json",
             "returncode": None,
             "stdout": "",
             "stderr": _trim(str(exc)),
         }
 
+    output_root = _command_output_dir(command_plan, run_root=run_root_posix)
+    validation_paths = _validation_output_paths(command_plan, run_root=run_root_posix)
+    hazard_stats = _remote_paths_stats(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        paths=[output_root],
+        runner=runner,
+    )
+    validation_stats = _remote_paths_stats(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        paths=validation_paths,
+        runner=runner,
+    )
+    manifest_path = _remote_first_matching_file(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        root=output_root,
+        pattern="*_manifest.json",
+        runner=runner,
+    )
+    manifest = (
+        _remote_cat_json(
+            ssh_target=ssh_target,
+            connect_timeout=connect_timeout,
+            path=manifest_path,
+            runner=runner,
+        )
+        if manifest_path
+        else {}
+    ) or {}
+    performance = _safe_mapping(manifest.get("performance"))
+    conditional_execution = _safe_mapping(manifest.get("conditional_execution"))
+    output_budget = _safe_mapping(conditional_execution.get("output_budget"))
+    slurm_memory = _remote_slurm_peak_memory_mb(
+        ssh_target=ssh_target,
+        connect_timeout=connect_timeout,
+        job_id=_remote_job_id_from_logs(
+            ssh_target=ssh_target,
+            connect_timeout=connect_timeout,
+            run_root=run_root_posix,
+            runner=runner,
+        ),
+        runner=runner,
+    )
+    evidence = dict(probe_summary)
+    evidence.update(
+        {
+            "schema_version": "balfrin_preserved_run_root_remote_snapshot_v1",
+            "run_root": run_root_posix,
+            "run_root_status": "measured_run_root",
+            "output_root": output_root,
+            "hazard_manifest_path": manifest_path,
+            "memory_peak_mb": _first_present(
+                probe_summary.get("memory_peak_mb"),
+                performance.get("memory_peak_mb"),
+                slurm_memory.get("memory_peak_mb") if slurm_memory.get("status") == "measured" else None,
+            ),
+            "validation_output_file_count": _first_present(
+                probe_summary.get("validation_output_file_count"),
+                performance.get("validation_output_file_count"),
+                output_budget.get("validation_output_file_count"),
+                validation_stats.get("file_count") if validation_stats.get("status") == "measured" else None,
+            ),
+            "validation_output_bytes": _first_present(
+                probe_summary.get("validation_output_bytes"),
+                performance.get("validation_output_bytes"),
+                output_budget.get("validation_output_bytes"),
+                validation_stats.get("bytes") if validation_stats.get("status") == "measured" else None,
+            ),
+            "hazard_output_file_count": _first_present(
+                probe_summary.get("hazard_output_file_count"),
+                performance.get("hazard_output_file_count"),
+                output_budget.get("hazard_output_file_count"),
+                hazard_stats.get("file_count") if hazard_stats.get("status") == "measured" else None,
+                probe_summary.get("output_file_count"),
+            ),
+            "hazard_output_bytes": _first_present(
+                probe_summary.get("hazard_output_bytes"),
+                performance.get("hazard_output_bytes"),
+                output_budget.get("hazard_output_bytes"),
+                hazard_stats.get("bytes") if hazard_stats.get("status") == "measured" else None,
+                probe_summary.get("output_bytes"),
+            ),
+            "remote_recovery_inputs": {
+                "command_plan_path": f"{run_root_posix}/command_plan.json",
+                "probe_metrics_path": f"{run_root_posix}/balfrin_probe_metrics.json",
+                "output_root": output_root,
+                "validation_output_paths": validation_paths,
+                "hazard_stats": hazard_stats,
+                "validation_stats": validation_stats,
+                "slurm_accounting_peak_memory": slurm_memory,
+            },
+            "recovery_metric_sources": {
+                "memory_peak_mb": slurm_memory.get("source") or "preserved_probe_metrics",
+                "validation_output.file_count": "command_plan.validation_output_paths",
+                "validation_output.bytes": "command_plan.validation_output_paths",
+                "hazard_output.file_count": "command_plan.output_dir",
+                "hazard_output.bytes": "command_plan.output_dir",
+            },
+        }
+    )
     diagnostic = {
-        "status": "complete" if result.returncode == 0 else STATUS_COLLECTION_FAILED,
-        "command": command,
-        "remote_command": remote_command,
-        "returncode": result.returncode,
-        "stdout": _trim(result.stdout),
-        "stderr": _trim(result.stderr),
+        "status": "complete",
+        "mode": "remote_read_only_file_scan",
+        "remote_command": "read command_plan, metrics JSON, command-plan output paths, and sacct MaxRSS",
+        "returncode": 0,
+        "stdout": "<json elided>",
+        "stderr": "",
     }
-    if result.returncode != 0:
-        return None, diagnostic
-    try:
-        evidence = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        diagnostic["status"] = STATUS_COLLECTION_FAILED
-        diagnostic["stderr"] = _trim(f"{diagnostic['stderr']}\ninvalid JSON from remote collector: {exc}")
-        return None, diagnostic
-    if not isinstance(evidence, dict):
-        diagnostic["status"] = STATUS_COLLECTION_FAILED
-        diagnostic["stderr"] = _trim(f"{diagnostic['stderr']}\nremote collector did not return a JSON object")
-        return None, diagnostic
-    diagnostic["stdout"] = "<json elided>"
     return evidence, diagnostic
 
 
