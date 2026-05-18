@@ -1139,3 +1139,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: fixture-backed handoff budget projection only; no live Balfrin job, no remote mutation, no output-default change, no scale-up or distributed-execution authorization, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-229`
+
+### TB-229: Bounded Hazard Accumulator Optimization Spike
+
+- Date: 2026-05-18
+- Commit: `2eaa49e`
+- Objective: test one bounded trajectory-accumulation optimization slice against the TB-219 hotspot evidence and report whether it should be retained.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Measured a narrow accumulator experiment that buffered per-trajectory cell maxima before committing them back to the existing grids.
+  - Re-ran the representative multi-zone scratch profile and found the patched path slower (`0.070471` s accumulation) than baseline (`0.068822` s accumulation), so the optimization was reverted.
+  - Added a no-retain note to the throughput report and removed TB-229 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb229_baseline --format json > /tmp/rust_rockfall/tb229_baseline_profile.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb229_after --format json > /tmp/rust_rockfall/tb229_after_profile.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no physics change, no hazard semantics change, no output-schema change, no operational claim, and no scale-up or distributed-execution claim.
+- Next task: `TB-230`
