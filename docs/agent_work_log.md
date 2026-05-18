@@ -1000,3 +1000,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: deterministic decision refresh only; no live Balfrin submission, no SSH access claim, no authorization grant, no new maturity label, no fabricated metrics, no scale-up, no distributed-execution claim, no annual-frequency or physical-probability claim, and no operational hazard-map claim.
 - Next task: `TB-223`
+
+### TB-223: Balfrin SSH And Remote Artifact Access Preflight
+
+- Date: 2026-05-18
+- Commit: `54a9813`
+- Objective: add a fail-closed read-only Balfrin preflight that distinguishes SSH expiry, missing remote checkout, missing non-git run root, and scheduler-query blockers before collection work.
+- Files changed: `scripts/check_balfrin_remote_access_preflight.py`, `tests/test_balfrin_probe_driver.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `scripts/check_balfrin_remote_access_preflight.py`, a one-command JSON/text helper that checks SSH `BatchMode=yes`, the canonical Balfrin checkout `/users/olifu/work/rust_rockfall`, the preserved target-area run root under `/scratch/mch/olifu/rust_rockfall/probes/.../authorized_tb168_20260517`, and read-only `squeue` reachability.
+  - The helper reports `ready_for_read_only_collection`, `blocked_ssh_unavailable`, `blocked_missing_remote_clone`, `blocked_missing_run_root`, or `blocked_scheduler_unavailable`, with exact command arrays and remote commands included in the report.
+  - Added mock-backed tests for ready, expired SSH, missing remote clone, missing run-root, and scheduler-unavailable paths, and documented the new preflight command in the Balfrin SLURM driver runbook.
+  - Removed TB-223 from the active backlog after implementation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_balfrin_remote_access_preflight.py tests/test_balfrin_probe_driver.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/balfrin_remote_access_preflight_tb223.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: read-only SSH and remote artifact preflight only; no Balfrin job launch, no remote mutation, no generated remote artifact claim, no operational claim, no scale-up or distributed-execution claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-224`
