@@ -232,6 +232,7 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
 
     missing_metrics = _safe_list(metrics.get("metrics_contract_missing_metrics"))
     next_run_required = _safe_list(metrics.get("metrics_remediation", {}).get("next_run_required_metrics"))
+    metrics_completion_source = _status(metrics.get("metrics_completion_source"), "blocked_missing_metrics")
     preservation_ready = preservation.get("gate_status") == "ready_for_demonstration_evidence"
     reducer_blocked = _bool(reducer.get("multi_zone_dry_run_blocked"))
     output_pressure = _copy_mapping(package.get("pressure_checkpoints", {}).get("output_pressure"))
@@ -245,12 +246,16 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
         "missing_target_area_metrics": {
             "status": "missing" if missing_metrics else "complete",
             "metrics_contract_status": _status(metrics.get("metrics_contract_status")),
+            "metrics_completion_source": metrics_completion_source,
             "missing_mandatory_metrics": missing_metrics,
             "next_run_required_metrics": next_run_required,
             "summary": (
                 "Target-area metrics remain incomplete and can be closed by the next measured rerun."
                 if missing_metrics
-                else "The target-area metrics contract is complete, so a rerun would not close a current gap."
+                else (
+                    "The target-area metrics contract is complete "
+                    f"from {metrics_completion_source.replace('_', ' ')}, so a rerun would not close a current gap."
+                )
             ),
         },
         "preservation_gate_readiness": {
@@ -367,12 +372,12 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     if access["hard_live_run_blocker"]:
         access_blockers.append(f"balfrin_ssh_access:{access['status']}")
 
+    metrics_source = metrics["metrics_completion_source"]
+    metrics_complete = metrics["status"] == "complete"
     metrics_blockers: list[str] = []
     if metrics["status"] == "missing":
         if preservation["status"] != "ready":
             metrics_blockers.append(f"preservation_gate:{preservation['gate_status']}")
-    else:
-        metrics_blockers.append("no_missing_target_area_metrics")
     metrics_blockers.extend(access_blockers)
 
     multi_zone_blockers: list[str] = []
@@ -423,23 +428,35 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         hazard_optimization_blockers.append(f"hazard_builder_optimization:{hazard_optimization['status']}")
 
     metrics_ready = metrics["status"] == "missing" and preservation["status"] == "ready" and not access_blockers
-    metrics_path_state = access["path_state"] if access_blockers else ("measured" if metrics_ready else "blocked")
+    metrics_closed = metrics_complete and not access_blockers
+    metrics_path_state = (
+        access["path_state"]
+        if access_blockers
+        else ("measured" if metrics_ready else "closed" if metrics_closed else "blocked")
+    )
     multi_zone_path_state = access["path_state"] if access_blockers else ("measured" if not multi_zone_blockers else "blocked")
 
     assessments = {
         OPTION_METRICS: {
-            "status": "ready" if metrics_ready else "blocked",
+            "status": "ready" if metrics_ready else "complete" if metrics_closed else "blocked",
             "path_state": metrics_path_state,
             "follow_up_task": "TB-223",
             "action_package_task": "TB-225",
             "summary": (
                 "Missing target-area metrics remain the clearest measured gap, so the metrics-completion rerun (metrics rerun) path is the next ranked action after SSH/access preflight."
                 if metrics_ready
-                else "No current target-area metrics gap is open for a rerun to close."
+                else (
+                    "Target-area metrics are already recovered from the preserved run root, so another metrics-completion rerun is no longer the next action."
+                    if metrics_source == "recovered_existing_run_root"
+                    else "Target-area metrics were already completed by an authorized rerun, so another metrics-completion rerun is no longer the next action."
+                    if metrics_source == "new_metrics_completion_rerun"
+                    else "No current target-area metrics gap is open for a rerun to close."
+                )
             ),
             "exact_evidence_blockers": metrics_blockers,
             "boundary_that_prevents_claim_upgrade": "A metrics-completion rerun would collect missing execution metrics only; it does not establish physical credibility, annual frequency, risk, or operational hazard-map status.",
             "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
+            "metrics_completion_source": metrics_source,
         },
         OPTION_MULTI_ZONE: {
             "status": "ready" if not multi_zone_blockers else "blocked",
@@ -601,11 +618,12 @@ def choose_recommendation(option_assessments: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_ranked_actions(option_assessments: dict[str, Any]) -> list[dict[str, Any]]:
-    status_score = {"ready": 100, "defer": 70, "blocked": 10}
+    status_score = {"ready": 100, "defer": 70, "blocked": 10, "complete": -40}
     path_score = {
         "measured": 30,
         "fixture_backed": 20,
         "blocked": 0,
+        "closed": -30,
         "unavailable": -10,
         "unauthorized": -20,
         "ssh_access_expired": -30,
@@ -676,7 +694,11 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
         },
         "next_follow_up_package_task": "TB-223",
         "criteria": {
-            "missing_target_area_metrics": {"status": "blocked_missing_inputs", "missing_mandatory_metrics": []},
+            "missing_target_area_metrics": {
+                "status": "blocked_missing_inputs",
+                "metrics_completion_source": "blocked_missing_metrics",
+                "missing_mandatory_metrics": [],
+            },
             "preservation_gate_readiness": {"status": "blocked_missing_inputs"},
             "reducer_pressure": {"status": "blocked_missing_inputs"},
             "multi_zone_package_readiness": {"status": "blocked_missing_inputs"},
@@ -698,6 +720,7 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
                 "exact_evidence_blockers": missing,
                 "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any claim upgrade.",
                 "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
+                "metrics_completion_source": "blocked_missing_metrics",
             },
             OPTION_MULTI_ZONE: {
                 "status": "blocked",
@@ -812,6 +835,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         entry = criteria.get(key, {}) if isinstance(criteria, dict) else {}
         lines.append(f"  - {key}: {entry.get('status', 'unknown')}")
         if key == "missing_target_area_metrics":
+            lines.append(f"    metrics_completion_source: {entry.get('metrics_completion_source', 'unknown')}")
             lines.append(f"    missing_mandatory_metrics: {entry.get('missing_mandatory_metrics', [])}")
             lines.append(f"    next_run_required_metrics: {entry.get('next_run_required_metrics', [])}")
         if key == "reducer_pressure":
@@ -845,6 +869,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"    path_state: {option.get('path_state', 'unknown')}")
         lines.append(f"    follow_up_task: {option.get('follow_up_task', 'unknown')}")
         lines.append(f"    blockers: {option.get('exact_evidence_blockers', [])}")
+        if option_key == OPTION_METRICS:
+            lines.append(f"    metrics_completion_source: {option.get('metrics_completion_source', 'unknown')}")
         lines.append(f"    boundary: {option.get('boundary_that_prevents_claim_upgrade', '')}")
         lines.append(f"    summary: {option.get('summary', '')}")
 

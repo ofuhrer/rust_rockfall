@@ -3,6 +3,7 @@
   "probe_metrics_report": {
     "report_status": "blocked_missing_inputs",
     "run_root_status": "measured_run_root",
+    "metrics_completion_source": "blocked_missing_metrics",
     "metrics_contract_status": "blocked_missing_inputs",
     "metrics_contract_missing_metrics": [
       "memory_peak_mb",

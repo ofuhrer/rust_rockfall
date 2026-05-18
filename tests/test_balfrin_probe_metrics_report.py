@@ -65,9 +65,28 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
 
         self.assertEqual(report["report_status"], "blocked_missing_run_root")
         self.assertEqual(report["run_root_status"], "missing_run_root")
+        self.assertEqual(report["metrics_completion_source"], "blocked_missing_metrics")
         self.assertEqual(report["metrics_remediation"]["status"], "blocked_missing_run_root")
         self.assertEqual(report["classification"]["next_run_required_metrics"], [])
         self.assertIn(str(run_root), report["missing_run_root_reason"])
+
+    def test_complete_run_root_is_classified_as_recovered_existing_run_root(self) -> None:
+        run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+        report = MODULE.build_report(None, run_root=run_root)
+
+        self.assertEqual(report["report_status"], "complete")
+        self.assertEqual(report["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertIn("metrics_completion_source=recovered_existing_run_root", report["summary"])
+        self.assertIn("metrics_completion_source:", MODULE.render_text_report(report))
+
+    def test_explicit_new_metrics_completion_rerun_source_is_preserved(self) -> None:
+        run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+        report = MODULE.build_report(None, run_root=run_root)
+        report["metrics_completion_source"] = "new_metrics_completion_rerun"
+
+        rebuilt = MODULE.build_report(report)
+
+        self.assertEqual(rebuilt["metrics_completion_source"], "new_metrics_completion_rerun")
 
     def test_cli_writes_json_and_text_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

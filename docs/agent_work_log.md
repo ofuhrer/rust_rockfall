@@ -1404,9 +1404,29 @@ scan thousands of lines of completed history.
   - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb241_balfrin_access_preflight.json`
   - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --balfrin-access-json /tmp/tb241_balfrin_access_preflight.json --format json --json-output /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.json --text-output /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.txt > /tmp/tb241_balfrin_target_area_metrics_completion_authorization_handoff.stdout`
   - `git diff --check`
+- `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- `scripts/git-hooks/pre-commit`
+- `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: authorization handoff only; no live submission, no remote mutation beyond read-only preflight, no scientific interpretation, no fabricated metrics, no scale-up authorization, no operational claim, and no physical-probability/risk/exposure/vulnerability claim.
+- Next task: `TB-242`
+
+### TB-242: Preservation-Checked Metrics Completion Evidence Integration
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: propagate a canonical metrics-completion source label through the Balfrin metrics report, preservation gate, evidence bundle, and next-action decision helper without collapsing recovered, rerun, and blocked branches.
+- Files changed: `scripts/summarize_balfrin_probe_metrics_report.py`, `scripts/summarize_balfrin_probe_preservation_gate.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/current_maturity_snapshot.md`, `tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json`, `tests/fixtures/balfrin_next_live_run_decision_gate/defer_bundle.json`, `tests/test_balfrin_probe_metrics_report.py`, `tests/test_balfrin_probe_preservation_gate.py`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_next_live_run_decision_gate.py`
+- Implementation summary:
+  - Added `metrics_completion_source` handling so the canonical metrics report, preservation gate, and evidence bundle can label `recovered_existing_run_root`, `new_metrics_completion_rerun`, or `blocked_missing_metrics` explicitly.
+  - Updated the next-action decision helper so completed target-area metrics are treated as closed evidence rather than the top-ranked next action, and the blocked branch remains explicit when no recovered or rerun metrics exist.
+  - Refreshed the decision fixtures and focused tests to prove the blocked branch stays blocked, the recovered branch stays recovered, and no claim-boundary upgrade is implied by the new source label.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_metrics_report tests.test_balfrin_probe_preservation_gate tests.test_balfrin_evidence_bundle tests.test_balfrin_next_live_run_decision_gate`
+  - `git diff --check`
   - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
   - `scripts/git-hooks/pre-commit`
   - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
 - Result/status: implemented_measured
-- Boundaries: authorization handoff only; no live submission, no remote mutation beyond read-only preflight, no scientific interpretation, no fabricated metrics, no scale-up authorization, no operational claim, and no physical-probability/risk/exposure/vulnerability claim.
-- Next task: `TB-242`
+- Boundaries: evidence integration only; no live submission, no physical-credibility upgrade, no annual-frequency or risk semantics, and no operational claim.
+- Next task: `TB-243`

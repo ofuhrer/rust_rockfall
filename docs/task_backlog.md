@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-242: Preservation-Checked Metrics Completion Evidence Integration
-
-Goal: Integrate a recovered or newly authorized target-area metrics-completion result into the metrics report, preservation gate, evidence bundle, and next-action decision helper.
-
-Capability gap reduced: Even after metrics are recovered or rerun, the repository needs one preservation-checked evidence path that updates downstream decision and closure helpers without mixing measured, recovered, and dry-run provenance.
-
-Why this outranks alternatives: New metrics only move the Balfrin demonstration forward if the canonical evidence and decision helpers consume them consistently.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- Evidence integration that labels the source as `recovered_existing_run_root`, `new_metrics_completion_rerun`, or `blocked_missing_metrics`.
-- Updated downstream summaries or fixtures so the next-action decision no longer ranks metrics completion first once mandatory metrics are complete.
-- A blocked branch when TB-240 produces no recovered metrics and TB-241 has not produced an authorized rerun result.
-- Focused tests proving incomplete metrics stay blocked and complete metrics update the decision branch without claim upgrades.
-
-Definition of done:
-
-- The canonical Balfrin evidence path can distinguish recovered, newly measured, unavailable, and blocked metrics while keeping the demonstration non-operational.
-
-Boundaries: Evidence integration only; no live submission, no physical-credibility upgrade, no annual-frequency or risk semantics, and no operational claim.
-
 ### TB-243: Target-Area Spatial Artifact Recovery Or Deferral
 
 Goal: Determine whether unavailable local target-area spatial-uncertainty artifacts can be recovered from the existing Balfrin run root or must remain an explicit deferred blocker.

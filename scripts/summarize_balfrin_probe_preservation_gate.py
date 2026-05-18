@@ -19,6 +19,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import collect_balfrin_probe_metrics as probe_metrics  # noqa: E402
+from scripts import summarize_balfrin_probe_metrics_report as metrics_report  # noqa: E402
 from scripts import summarize_balfrin_output_tier_audit as output_tier  # noqa: E402
 
 
@@ -106,11 +107,36 @@ def _safe_list(value: Any) -> list[str]:
     return [str(item) for item in value if isinstance(item, str) and item]
 
 
+def _safe_mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
 def _safe_int(value: Any) -> int | None:
     try:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _metrics_completion_source(evidence: dict[str, Any], *, report_status: str, metrics_contract_status: str) -> str:
+    explicit_source = evidence.get("metrics_completion_source")
+    source_paths = _safe_mapping(evidence.get("source_paths"))
+    for key in ("run_root", "output_root", "probe_manifest_path", "command_plan_path", "hazard_manifest_path"):
+        value = evidence.get(key)
+        if isinstance(value, str) and value:
+            source_paths.setdefault(key, value)
+    if isinstance(explicit_source, str) and explicit_source:
+        return metrics_report.classify_metrics_completion_source(
+            report_status=report_status,
+            metrics_contract_status=metrics_contract_status,
+            source_paths=source_paths,
+            explicit_source=explicit_source,
+        )
+    return metrics_report.classify_metrics_completion_source(
+        report_status=report_status,
+        metrics_contract_status=metrics_contract_status,
+        source_paths=source_paths,
+    )
 
 
 def _require_run_root_entries(run_root: Path) -> dict[str, Any]:
@@ -215,6 +241,11 @@ def build_report(
     spatial_artifacts = _load_declared_spatial_artifact_paths(evidence.get("hazard_manifest_path"))
     metrics_contract_status = str(evidence.get("metrics_contract_status") or "unknown")
     output_tier_status = str(output_tier_report.get("rebuildability_status") or "unknown")
+    metrics_completion_source = _metrics_completion_source(
+        evidence,
+        report_status=str(evidence.get("report_status") or "unknown"),
+        metrics_contract_status=metrics_contract_status,
+    )
     gate_status = "ready_for_demonstration_evidence"
     if not _is_complete_gate(
         run_root_status="measured_run_root",
@@ -258,6 +289,7 @@ def build_report(
         "future_live_run_would_satisfy_evidence_preservation_contract": gate_status == "ready_for_demonstration_evidence",
         "run_root_status": "measured_run_root",
         "run_root": str(run_root),
+        "metrics_completion_source": metrics_completion_source,
         "metrics_contract_status": metrics_contract_status,
         "metrics_contract_missing_metrics": metrics_contract_missing,
         "metrics_contract_ancillary_unavailable_metrics": metrics_contract_ancillary_unavailable,
@@ -344,6 +376,7 @@ def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
         "future_live_run_would_satisfy_evidence_preservation_contract": False,
         "run_root_status": "missing_run_root",
         "run_root": str(run_root),
+        "metrics_completion_source": "blocked_missing_metrics",
         "missing_run_root_reason": f"run root does not exist: {run_root}",
         "metrics_contract_status": "blocked_missing_run_root",
         "metrics_contract_missing_metrics": [],
@@ -426,7 +459,10 @@ def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
 
 def summarize_report(report: dict[str, Any]) -> str:
     if report.get("gate_status") == "blocked_missing_run_root":
-        return f"Balfrin preservation gate is blocked because the run root is missing: {report.get('run_root')}"
+        return (
+            "Balfrin preservation gate is blocked because the run root is missing: "
+            f"{report.get('run_root')} (metrics_completion_source: blocked_missing_metrics)"
+        )
 
     required_run_root = report.get("required_run_root_entries", [])
     missing_run_root = report.get("missing_run_root_entries", [])
@@ -441,7 +477,8 @@ def summarize_report(report: dict[str, Any]) -> str:
         f"{len(report.get('metrics_contract_missing_metrics', []))} missing mandatory metrics, "
         f"{len(missing_families)} missing output families, "
         f"{declared_count} declared GIS artifact paths preserved from the manifest, "
-        f"{len(required_run_root)} required run-root entries checked."
+        f"{len(required_run_root)} required run-root entries checked, "
+        f"metrics_completion_source={report.get('metrics_completion_source', 'unknown')}."
     )
 
 
@@ -452,6 +489,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"gate_status: {report.get('gate_status', 'unknown')}",
         f"run_root_status: {report.get('run_root_status', 'unknown')}",
         f"run_root: {report.get('run_root', 'unknown')}",
+        f"metrics_completion_source: {report.get('metrics_completion_source', 'unknown')}",
         f"metrics_contract_status: {report.get('metrics_contract_status', 'unknown')}",
         f"summary: {report.get('summary', '')}",
     ]

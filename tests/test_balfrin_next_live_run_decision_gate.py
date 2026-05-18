@@ -40,6 +40,7 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["option_assessments"]["physical_evidence_acquisition"]["path_state"], "blocked")
         self.assertEqual(report["option_assessments"]["hazard_builder_accumulation_optimization"]["path_state"], "fixture_backed")
         self.assertEqual(report["criteria"]["missing_target_area_metrics"]["status"], "missing")
+        self.assertEqual(report["criteria"]["missing_target_area_metrics"]["metrics_completion_source"], "blocked_missing_metrics")
         self.assertEqual(report["criteria"]["preservation_gate_readiness"]["status"], "ready")
         self.assertEqual(report["criteria"]["balfrin_access"]["status"], "not_checked_not_needed_for_decision_refresh")
         self.assertFalse(report["criteria"]["balfrin_access"]["hard_live_run_blocker"])
@@ -50,6 +51,7 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         rendered = MODULE.render_text_report(report)
         self.assertIn("Balfrin Next Live-Run Decision Gate", rendered)
         self.assertIn("metrics_completion_rerun", rendered)
+        self.assertIn("metrics_completion_source:", rendered)
         self.assertIn("smallest_bounded_multi_zone_probe", rendered)
         self.assertIn("second_site_public_context_progress", rendered)
         self.assertIn("physical_evidence_acquisition", rendered)
@@ -77,6 +79,7 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-223")
         self.assertIn("missing", report["blocked_reason"])
         self.assertEqual(report["evidence_sources"]["probe_metrics_report"], None)
+        self.assertEqual(report["criteria"]["missing_target_area_metrics"]["metrics_completion_source"], "blocked_missing_metrics")
         self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["defer_portability_or_physical_evidence"]["status"], "blocked")
@@ -112,13 +115,20 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["recommended_next_action"]["action_id"], "second_site_public_context_progress")
         self.assertEqual(report["recommended_next_action"]["classification"], "defer")
         self.assertEqual(report["recommended_next_action"]["follow_up_task"], "TB-231")
-        self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "blocked")
+        self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "complete")
+        self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["path_state"], "closed")
+        self.assertEqual(
+            report["option_assessments"]["metrics_completion_rerun"]["metrics_completion_source"],
+            "recovered_existing_run_root",
+        )
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["defer_portability_or_physical_evidence"]["status"], "defer")
         self.assertEqual(report["option_assessments"]["second_site_public_context_progress"]["status"], "defer")
         self.assertEqual(report["option_assessments"]["physical_evidence_acquisition"]["status"], "defer")
         self.assertEqual(report["criteria"]["missing_target_area_metrics"]["status"], "complete")
+        self.assertEqual(report["criteria"]["missing_target_area_metrics"]["metrics_completion_source"], "recovered_existing_run_root")
         self.assertEqual(report["criteria"]["multi_zone_package_readiness"]["status"], "blocked")
+        self.assertNotEqual(report["ranked_actions"][0]["action_id"], "metrics_completion_rerun")
         self.assertIn("second-site public-context acquisition", report["recommended_next_action"]["summary"])
 
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:

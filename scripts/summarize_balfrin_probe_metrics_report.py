@@ -23,6 +23,17 @@ from scripts import collect_balfrin_probe_metrics as probe_metrics  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_probe_metrics_report_v1"
 REPORT_BASENAME = "balfrin_probe_metrics_report_v1"
+ALLOWED_METRICS_COMPLETION_SOURCES = {
+    "recovered_existing_run_root",
+    "new_metrics_completion_rerun",
+    "blocked_missing_metrics",
+}
+METRICS_COMPLETION_RERUN_MARKERS = (
+    "metrics_completion",
+    "metrics-completion",
+    "metrics_completion_v1",
+    "metrics_completion_rerun",
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -72,6 +83,41 @@ def _safe_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if isinstance(item, str) and str(item)]
+
+
+def _safe_mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _collect_source_paths(source_paths: dict[str, Any] | None) -> list[str]:
+    if not isinstance(source_paths, dict):
+        return []
+    collected: list[str] = []
+    for value in source_paths.values():
+        if isinstance(value, str) and value:
+            collected.append(value)
+        elif isinstance(value, list):
+            collected.extend(str(item) for item in value if isinstance(item, str) and item)
+        elif isinstance(value, dict):
+            collected.extend(_collect_source_paths(value))
+    return collected
+
+
+def classify_metrics_completion_source(
+    *,
+    report_status: str,
+    metrics_contract_status: str,
+    source_paths: dict[str, Any] | None = None,
+    explicit_source: str | None = None,
+) -> str:
+    if explicit_source in ALLOWED_METRICS_COMPLETION_SOURCES:
+        return explicit_source
+    if report_status == "blocked_missing_run_root" or metrics_contract_status != "complete":
+        return "blocked_missing_metrics"
+    for source_path in _collect_source_paths(source_paths):
+        if any(marker in source_path for marker in METRICS_COMPLETION_RERUN_MARKERS):
+            return "new_metrics_completion_rerun"
+    return "recovered_existing_run_root"
 
 
 def _sorted_metrics_by_status(group_statuses: dict[str, Any], status: str) -> list[str]:
@@ -133,11 +179,29 @@ def build_report(
     metric_statuses = evidence.get("metric_statuses", {}) if isinstance(evidence, dict) else {}
     metrics_remediation = evidence.get("metrics_remediation", {}) if isinstance(evidence, dict) else {}
     classification = _classification(metric_statuses, metrics_remediation)
+    source_paths = {
+        "run_root": evidence.get("run_root"),
+        "output_root": evidence.get("output_root"),
+        "probe_manifest_path": evidence.get("probe_manifest_path"),
+        "command_plan_path": evidence.get("command_plan_path"),
+        "hazard_manifest_path": evidence.get("hazard_manifest_path"),
+    }
+    metrics_completion_source = classify_metrics_completion_source(
+        report_status=report_status,
+        metrics_contract_status=str(evidence.get("metrics_contract_status") or "unknown"),
+        source_paths=source_paths,
+        explicit_source=str(evidence.get("metrics_completion_source"))
+        if isinstance(evidence.get("metrics_completion_source"), str)
+        else None,
+    )
+    evidence_with_source = dict(evidence)
+    evidence_with_source["metrics_completion_source"] = metrics_completion_source
     report = {
         "schema_version": SCHEMA_VERSION,
         "report_status": report_status,
         "run_root_status": "measured_run_root" if run_root is None or run_root.exists() else "missing_run_root",
         "run_root": str(run_root) if run_root is not None else evidence.get("run_root"),
+        "metrics_completion_source": metrics_completion_source,
         "metrics_contract_status": evidence.get("metrics_contract_status"),
         "metrics_contract_missing_metrics": _safe_list(evidence.get("metrics_contract_missing_metrics")),
         "metrics_contract_ancillary_unavailable_metrics": _safe_list(
@@ -146,14 +210,8 @@ def build_report(
         "metric_statuses": metric_statuses,
         "metrics_remediation": metrics_remediation,
         "classification": classification,
-        "source_paths": {
-            "run_root": evidence.get("run_root"),
-            "output_root": evidence.get("output_root"),
-            "probe_manifest_path": evidence.get("probe_manifest_path"),
-            "command_plan_path": evidence.get("command_plan_path"),
-            "hazard_manifest_path": evidence.get("hazard_manifest_path"),
-        },
-        "summary": summarize_report(report_status, classification, evidence),
+        "source_paths": source_paths,
+        "summary": summarize_report(report_status, classification, evidence_with_source),
     }
     return report
 
@@ -174,6 +232,7 @@ def blocked_missing_run_root_report(run_root: Path) -> dict[str, Any]:
         "report_status": "blocked_missing_run_root",
         "run_root_status": "missing_run_root",
         "run_root": str(run_root),
+        "metrics_completion_source": "blocked_missing_metrics",
         "missing_run_root_reason": f"run root does not exist: {run_root}",
         "metrics_contract_status": "blocked_missing_run_root",
         "metrics_contract_missing_metrics": [],
@@ -206,18 +265,23 @@ def summarize_report(
     evidence: dict[str, Any],
 ) -> str:
     if report_status == "blocked_missing_run_root":
-        return f"Balfrin metrics report is blocked because the run root is missing: {evidence.get('run_root')}"
+        return (
+            "Balfrin metrics report is blocked because the run root is missing: "
+            f"{evidence.get('run_root')} (metrics_completion_source: blocked_missing_metrics)"
+        )
 
     mandatory_measured = classification.get("mandatory", {}).get("measured", [])
     mandatory_blocked = classification.get("mandatory", {}).get("blocked", [])
     ancillary_unavailable = classification.get("ancillary", {}).get("unavailable", [])
     next_run_required = classification.get("next_run_required_metrics", [])
+    metrics_completion_source = evidence.get("metrics_completion_source", "unknown")
     return (
         "Balfrin metrics completeness report for the measured run root: "
         f"{len(mandatory_measured)} mandatory metrics measured, "
         f"{len(mandatory_blocked)} mandatory metrics blocked, "
         f"{len(ancillary_unavailable)} ancillary metrics unavailable, "
-        f"{len(next_run_required)} next-run-required metrics."
+        f"{len(next_run_required)} next-run-required metrics, "
+        f"metrics_completion_source={metrics_completion_source}."
     )
 
 
@@ -233,6 +297,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"report_status: {report.get('report_status', 'unknown')}",
         f"run_root_status: {report.get('run_root_status', 'unknown')}",
         f"run_root: {report.get('run_root', 'unknown')}",
+        f"metrics_completion_source: {report.get('metrics_completion_source', 'unknown')}",
         f"metrics_contract_status: {report.get('metrics_contract_status', 'unknown')}",
         f"metrics_contract_missing_metrics: {report.get('metrics_contract_missing_metrics', [])}",
         f"metrics_contract_ancillary_unavailable_metrics: {report.get('metrics_contract_ancillary_unavailable_metrics', [])}",

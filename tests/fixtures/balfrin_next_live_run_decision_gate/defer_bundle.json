@@ -3,6 +3,7 @@
   "probe_metrics_report": {
     "report_status": "complete",
     "run_root_status": "measured_run_root",
+    "metrics_completion_source": "recovered_existing_run_root",
     "metrics_contract_status": "complete",
     "metrics_contract_missing_metrics": [],
     "metrics_contract_ancillary_unavailable_metrics": [

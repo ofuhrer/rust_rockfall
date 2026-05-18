@@ -164,10 +164,12 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
             {"measured": 6, "fixture_backed": 0, "blocked_missing_inputs": 0},
         )
         self.assertTrue(all(section["evidence_type"] == "measured" for section in report["section_provenance_profile"]))
+        self.assertEqual(report["probe_metrics"]["metrics_completion_source"], "recovered_existing_run_root")
         self.assertEqual(report["gis_cog_scope_report"]["scope_status"], "full_scope")
         self.assertEqual(report["gis_cog_scope_report"]["scope_delta_status"], "parity_match")
         self.assertIn("section_provenance_profile:", bundle.render_text_report(report))
         self.assertIn("bundle_provenance_status: measured", bundle.render_text_report(report))
+        self.assertIn("metrics_completion_source:", bundle.render_text_report(report))
         self.assertEqual(
             report["probe_metrics"]["ancillary_unavailable_metrics"],
             ["validation_output_mode", "output_write_kind_seconds", "output_write_kind_bytes"],

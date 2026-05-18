@@ -142,7 +142,10 @@ The helper materializes `balfrin_probe_metrics_report_v1.json` and
 `balfrin_probe_metrics_report_v1.txt` in that directory. Its classification
 keeps mandatory metrics, ancillary metrics, unavailable fields, and
 next-run-required metrics explicit, and it reports `blocked_missing_run_root`
-when the measured run root is absent.
+when the measured run root is absent. The report also carries a
+`metrics_completion_source` label so the preserved evidence path can say
+`recovered_existing_run_root`, `new_metrics_completion_rerun`, or
+`blocked_missing_metrics` without collapsing those cases together.
 
 For the preservation gate that must pass before a future live run is treated
 as evidence rather than only an execution attempt, use:
@@ -158,7 +161,9 @@ The helper materializes `balfrin_probe_preservation_gate_v1.json` and
 lists the required metrics, preserved run-root files, SLURM accounting fields,
 output-family summaries, and declared GIS artifact paths that must be
 preserved for the next authorized live run, and it reports
-`blocked_missing_run_root` when the mounted run root is absent.
+`blocked_missing_run_root` when the mounted run root is absent. It mirrors the
+same `metrics_completion_source` label so preserved, rerun, and blocked
+metrics stay traceable through the gate.
 
 For a dry-run rerun package that closes only the missing target-area
 peak-memory and split validation/hazard output metrics, use
@@ -216,7 +221,9 @@ bundle does not retain the run-root `output_root.scaling_summary` tree.
 The probe-metrics section also exposes `metrics_remediation`, a deterministic
 next-run checklist that enumerates the remaining missing mandatory metrics and
 the high-value ancillary fields that must be preserved in the next measured
-run.
+run. It now also exposes `metrics_completion_source` so recovered existing run
+roots, new metrics-completion reruns, and blocked-missing-metrics branches stay
+distinct in the canonical bundle.
 The preservation gate helper above is the deterministic evidence-preservation
 check that combines that metrics contract with the preserved run-root files,
 output-family counts, and declared GIS paths. Treat a run as evidence only
@@ -337,6 +344,10 @@ scenario-table stress evidence for manifest and scheduler bottleneck labels.
 - Memory band: `367.018` / `409.22` / `411.058` MB
 - Interpretation: the measured target-area evidence supports a bounded local
   next step, but it does not authorize Swiss-wide scale-up.
+
+The next-action decision helper now uses the metrics completion source label so
+recovered or rerun-complete metrics do not stay ranked as the next action once
+the mandatory metrics gap is closed.
 
 ## Limitations
 

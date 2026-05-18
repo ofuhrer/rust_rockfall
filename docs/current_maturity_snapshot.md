@@ -49,7 +49,9 @@ target-area evidence bundle, metrics report, GIS/COG scope audit, scaling
 envelope, management package, evidence-gated closure package, metrics
 completion rerun package, metrics-completion authorization preflight, remote
 Balfrin access preflight, post-run collector rehearsal, and physical-evidence
-acquisition pack. The multi-zone follow-up path now has a
+acquisition pack. Those reports now preserve a metrics-completion source label
+that distinguishes `recovered_existing_run_root`, `new_metrics_completion_rerun`,
+and `blocked_missing_metrics` without implying a stronger claim. The multi-zone follow-up path now has a
 reviewed-package/authorization submission gate, smallest-probe authorization
 preflight, scalable command-plan output-profile enforcement, reducer
 manifest/file-family budget regression coverage, handoff-derived output budget

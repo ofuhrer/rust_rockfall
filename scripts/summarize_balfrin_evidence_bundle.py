@@ -33,6 +33,17 @@ CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
 FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
+ALLOWED_METRICS_COMPLETION_SOURCES = {
+    "recovered_existing_run_root",
+    "new_metrics_completion_rerun",
+    "blocked_missing_metrics",
+}
+METRICS_COMPLETION_RERUN_MARKERS = (
+    "metrics_completion",
+    "metrics-completion",
+    "metrics_completion_v1",
+    "metrics_completion_rerun",
+)
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -87,6 +98,32 @@ def load_evidence_override(path: Path | None) -> dict[str, Any] | None:
     if not isinstance(data, dict):
         raise BalfrinEvidenceBundleError("evidence override must be a JSON object")
     return data
+
+
+def _metrics_completion_source(single_job_summary: dict[str, Any], probe_metrics_status: str) -> str:
+    explicit_source = single_job_summary.get("metrics_completion_source")
+    if isinstance(explicit_source, str) and explicit_source in ALLOWED_METRICS_COMPLETION_SOURCES:
+        return explicit_source
+    if probe_metrics_status != "complete":
+        return "blocked_missing_metrics"
+    source_paths = _flatten_source_paths(single_job_summary.get("record_paths", {}))
+    source_paths.extend(_flatten_source_paths(single_job_summary.get("source_paths", {})))
+    if any(marker in path for path in source_paths for marker in METRICS_COMPLETION_RERUN_MARKERS):
+        return "new_metrics_completion_rerun"
+    return "recovered_existing_run_root"
+
+
+def _flatten_source_paths(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        collected: list[str] = []
+        for item in value.values():
+            collected.extend(_flatten_source_paths(item))
+        return collected
+    if isinstance(value, list):
+        return [str(item) for item in value if isinstance(item, str) and item]
+    if isinstance(value, str) and value:
+        return [value]
+    return []
 
 
 def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -322,6 +359,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  single_job_sufficient_for_next_step: {report['single_job_execution_summary'].get('single_job_sufficient_for_next_step', False)}",
             "probe_metrics:",
             f"  status: {report['probe_metrics'].get('status', 'unknown')}",
+            f"  metrics_completion_source: {report['probe_metrics'].get('metrics_completion_source', 'unknown')}",
             f"  wall_time_seconds: {report['probe_metrics'].get('wall_time_seconds', 'unknown')}",
             f"  memory_peak_mb: {report['probe_metrics'].get('memory_peak_mb', 'unknown')}",
             f"  reduced_output_family_counts: {report['probe_metrics'].get('reduced_output_family_counts', {})}",
@@ -838,8 +876,13 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
     metrics_remediation = metrics.get("metrics_remediation")
     if not isinstance(metrics_remediation, dict):
         metrics_remediation = _build_metrics_remediation(metric_statuses)
+    metrics_completion_source = _metrics_completion_source(
+        single_job_summary,
+        str(metrics.get("status") or "blocked_missing_inputs"),
+    )
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
+        "metrics_completion_source": metrics_completion_source,
         "wall_time_seconds": wall_time.get("value"),
         "memory_peak_mb": memory_peak.get("value"),
         "validation_output": {
