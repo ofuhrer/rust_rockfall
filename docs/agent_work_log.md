@@ -571,3 +571,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no scale-up authorization, no distributed execution, no operational claim, and no fabricated metrics.
 - Next task: `TB-204`
+
+### TB-204: Enforce Multi-Zone Output And Reducer Constraints In Handoff
+
+- Date: 2026-05-18
+- Commit: `5b53baf`
+- Objective: thread measured multi-zone reducer-pressure constraints into the Balfrin multi-release-zone handoff generator so oversized or unsafe dry-run packages fail closed.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a measured multi-zone pressure source to the handoff generator so the scratch probe root, probe document, measurement command, manifest size, file counts, and per-family byte totals are recorded as the constraint source.
+  - Threaded a deterministic constraint gate through the package report, command plan, and SBATCH notes, with fail-closed `acceptable` / `warning` / `blocked` classifications for requested release-zone batch size, reducer chunk count, and reducer worker count.
+  - Added focused regressions for the measured constraint source, the acceptable/warning/blocked classification cases, and the blocked CLI path that exits non-zero for oversized requests without submitting any job.
+  - Extended the probe summary with an explicit measured-constraint bundle, then removed TB-204 from the active backlog once the implementation and focused tests were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_reducer_pressure.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_multi_zone_reducer_pressure.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_multi_zone_reducer_pressure tests.test_balfrin_multi_release_zone_demo_handoff`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin job, no distributed reducer, no MPI/GPU, no physics change, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-205`
