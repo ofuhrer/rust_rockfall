@@ -67,6 +67,16 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 4)
             self.assertGreater(len(first_report["largest_output_families_by_bytes"]), 0)
             self.assertIn("kind", first_report["largest_output_families_by_bytes"][0])
+            self.assertEqual(
+                first_report["measured_reducer_constraints"]["constraint_source"]["source_document"],
+                "docs/multi_zone_reducer_pressure_probe.md",
+            )
+            self.assertEqual(
+                first_report["measured_reducer_constraints"]["simultaneous_release_zone_batch_max"],
+                8,
+            )
+            self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 4)
+            self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
 
     def test_cli_materialize_root_uses_requested_release_zone_count(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

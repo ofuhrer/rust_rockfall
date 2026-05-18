@@ -19,7 +19,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
-    def test_package_report_is_deterministic_and_writes_scratch_outputs(self) -> None:
+    def test_package_report_is_deterministic_and_records_measured_constraints(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
 
@@ -29,9 +29,10 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             command_plan = json.loads(Path(first["command_plan_path"]).read_text(encoding="utf-8"))
             package = json.loads(Path(first["package_json_path"]).read_text(encoding="utf-8"))
             sbatch_script = Path(first["sbatch_script_path"]).read_text(encoding="utf-8")
-            target_area_bundle_path = (
-                Path(first["target_area_output_root"]) / "tschamut_public_balfrin_target_area_demo_bundle_report.json"
+            pressure_report_path = Path(first["multi_zone_pressure"]["pressure_artifact_dir"]) / (
+                "multi_zone_reducer_pressure_probe_v1.json"
             )
+            pressure_report = json.loads(pressure_report_path.read_text(encoding="utf-8"))
 
             self.assertTrue((artifact_dir / "logs").exists())
             self.assertTrue(Path(first["command_plan_path"]).exists())
@@ -40,11 +41,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             self.assertTrue(Path(first["package_md_path"]).exists())
             self.assertTrue(Path(first["candidate_output_root"]).exists())
             self.assertTrue(Path(first["target_area_output_root"]).exists())
-            self.assertFalse(target_area_bundle_path.exists())
+            self.assertTrue(Path(first["multi_zone_pressure"]["pressure_artifact_dir"]).exists())
+            self.assertTrue(pressure_report_path.exists())
+            self.assertEqual(pressure_report["probe_status"], "measured_scratch_root")
 
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "balfrin_multi_release_zone_demo_package_v1")
         self.assertEqual(first["package_status"], "mixed_provenance")
+        self.assertEqual(first["package_constraint_status"], "warning")
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertTrue(first["live_execution_requires_new_human_authorization"])
         self.assertEqual(first["candidate_release_candidates"]["status"], "ready")
@@ -62,31 +66,119 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["pressure_checkpoints"]["output_pressure"]["validation_output_blocker_status"], "blocker_retained")
         self.assertTrue(first["pressure_checkpoints"]["restartability"]["single_job_sufficient_for_next_step"])
         self.assertEqual(first["pressure_checkpoints"]["reducer_chunk_pressure"]["status"], "measured_existing_artifacts")
+        self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["simultaneous_release_zone_batch_max"], 8)
+        self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_chunk_count_max"], 4)
+        self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
+        self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"], 20101)
+        self.assertEqual(first["constraint_pressure"]["status"], "warning")
+        self.assertEqual(first["constraint_pressure"]["constraint_checks"][0]["status"], "acceptable")
+        self.assertEqual(first["constraint_pressure"]["constraint_checks"][1]["status"], "acceptable")
+        self.assertEqual(first["constraint_pressure"]["constraint_checks"][2]["status"], "warning")
+        self.assertEqual(
+            first["constraint_pressure"]["constraint_source"]["source_document"],
+            "docs/multi_zone_reducer_pressure_probe.md",
+        )
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         self.assertEqual(first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["release_zone_count"], 2)
         self.assertIn("candidate_stability_sweep", [command["id"] for command in command_plan["commands"]])
         self.assertIn("target_area_handoff_bundle", [command["id"] for command in command_plan["commands"]])
+        self.assertIn("multi_zone_reducer_pressure_summary", [command["id"] for command in command_plan["commands"]])
         self.assertIn("scientific_delta_report", [command["id"] for command in command_plan["commands"]])
         self.assertIn("package_materialization", [command["id"] for command in command_plan["commands"]])
         self.assertIn("generate_balfrin_multi_release_zone_demo_handoff.py", command_plan["commands"][-1]["command"])
         self.assertIn("Live execution requires new human authorization", sbatch_script)
+        self.assertIn("Deterministic merge order: sorted_chunk_id", sbatch_script)
+        self.assertIn("Restart/replay checkpoints:", sbatch_script)
+        self.assertIn("summarize_multi_zone_reducer_pressure.py", sbatch_script)
         self.assertIn("Balfrin Multi-Release-Zone Demo Package", MODULE.render_text_report(package))
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
+        self.assertEqual(package["constraint_pressure"]["status"], "warning")
         self.assertEqual(package["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["trajectory_workers"], 2)
         self.assertEqual(package["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["reducer_workers"], 2)
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
 
-    def test_json_cli_emits_a_valid_package_report(self) -> None:
+    def test_constraint_pressure_classification_covers_acceptable_warning_and_blocked_cases(self) -> None:
+        pressure_report = {
+            "status": "measured_scratch_root",
+            "constraint_source": {
+                "source_document": "docs/multi_zone_reducer_pressure_probe.md",
+                "source_script": "scripts/summarize_multi_zone_reducer_pressure.py",
+            },
+            "measured_reducer_constraints": {
+                "simultaneous_release_zone_batch_max": 8,
+                "reducer_chunk_count_max": 4,
+                "reducer_worker_count_max": 2,
+                "manifest_size_bytes_max": 20101,
+                "root_file_count_max": 66,
+                "output_file_count_max": 62,
+            },
+        }
+
+        acceptable = MODULE.build_constraint_pressure_report(
+            pressure_report=pressure_report,
+            requested_release_zone_batch_size=2,
+            requested_reducer_chunk_count=2,
+            requested_reducer_worker_count=1,
+        )
+        warning = MODULE.build_constraint_pressure_report(
+            pressure_report=pressure_report,
+            requested_release_zone_batch_size=8,
+            requested_reducer_chunk_count=2,
+            requested_reducer_worker_count=1,
+        )
+        blocked = MODULE.build_constraint_pressure_report(
+            pressure_report=pressure_report,
+            requested_release_zone_batch_size=9,
+            requested_reducer_chunk_count=5,
+            requested_reducer_worker_count=3,
+        )
+
+        self.assertEqual(acceptable["status"], "acceptable")
+        self.assertEqual(acceptable["constraint_checks"][0]["status"], "acceptable")
+        self.assertEqual(acceptable["constraint_checks"][1]["status"], "acceptable")
+        self.assertEqual(acceptable["constraint_checks"][2]["status"], "acceptable")
+        self.assertIn("stay below measured reducer constraints", acceptable["summary"])
+
+        self.assertEqual(warning["status"], "warning")
+        self.assertEqual(warning["constraint_checks"][0]["status"], "warning")
+        self.assertEqual(warning["constraint_checks"][1]["status"], "acceptable")
+        self.assertEqual(warning["constraint_checks"][2]["status"], "acceptable")
+        self.assertIn("warning:", warning["summary"])
+
+        self.assertEqual(blocked["status"], "blocked")
+        self.assertEqual(blocked["constraint_checks"][0]["status"], "blocked")
+        self.assertEqual(blocked["constraint_checks"][1]["status"], "blocked")
+        self.assertEqual(blocked["constraint_checks"][2]["status"], "blocked")
+        self.assertIn("blocked:", blocked["summary"])
+
+    def test_json_cli_emits_a_blocked_package_for_oversized_requests(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                exit_code = MODULE.main(["--artifact-dir", str(artifact_dir), "--format", "json"])
+                exit_code = MODULE.main(
+                    [
+                        "--artifact-dir",
+                        str(artifact_dir),
+                        "--requested-release-zone-batch-size",
+                        "9",
+                        "--requested-reducer-chunk-count",
+                        "5",
+                        "--requested-reducer-worker-count",
+                        "3",
+                        "--format",
+                        "json",
+                    ]
+                )
 
-        self.assertEqual(exit_code, 0)
-        json.loads(buffer.getvalue())
+        self.assertEqual(exit_code, 2)
+        report = json.loads(buffer.getvalue())
+        self.assertEqual(report["package_constraint_status"], "blocked")
+        self.assertEqual(report["constraint_pressure"]["status"], "blocked")
+        self.assertTrue(any(check["status"] == "blocked" for check in report["constraint_pressure"]["constraint_checks"]))
+        self.assertEqual(report["submission_classification"], "blocked_pending_new_human_authorization")
 
 
 if __name__ == "__main__":

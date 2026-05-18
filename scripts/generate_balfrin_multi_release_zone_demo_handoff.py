@@ -35,6 +35,8 @@ DEFAULT_OUTPUT_PROFILE_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "output_profile"
 DEFAULT_REDUCER_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "reducer_pressure"
 DEFAULT_RESTARTABILITY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "restartability"
 DEFAULT_UNCERTAINTY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "uncertainty"
+DEFAULT_PRESSURE_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "multi_zone_pressure"
+DEFAULT_PRESSURE_PROBE_ROOT = Path("/tmp/rust_rockfall/tb187_multi_zone_probe")
 DEFAULT_PACKAGE_JSON = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.json"
 DEFAULT_PACKAGE_MD = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
 DEFAULT_COMMAND_PLAN_JSON = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_command_plan_v1.json"
@@ -69,6 +71,12 @@ SINGLE_JOB = _load_module(
     "balfrin_multi_release_zone_single_job",
     "summarize_balfrin_single_job_execution.py",
 )
+MULTI_ZONE_PRESSURE = _load_module(
+    "balfrin_multi_release_zone_pressure",
+    "summarize_multi_zone_reducer_pressure.py",
+)
+
+
 class BalfrinMultiReleaseZoneDemoHandoffError(ValueError):
     """User-facing multi-zone dry-run handoff error."""
 
@@ -78,6 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--artifact-dir", type=Path, default=DEFAULT_ARTIFACT_DIR)
     parser.add_argument("--candidate-output-root", type=Path, default=None)
     parser.add_argument("--target-area-output-root", type=Path, default=None)
+    parser.add_argument("--pressure-probe-root", type=Path, default=DEFAULT_PRESSURE_PROBE_ROOT)
+    parser.add_argument("--requested-release-zone-batch-size", type=int, default=2)
+    parser.add_argument("--requested-reducer-chunk-count", type=int, default=2)
+    parser.add_argument("--requested-reducer-worker-count", type=int, default=2)
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--text-output", type=Path, default=None)
@@ -88,6 +100,10 @@ def main(argv: list[str] | None = None) -> int:
             artifact_dir=args.artifact_dir,
             candidate_output_root=args.candidate_output_root,
             target_area_output_root=args.target_area_output_root,
+            pressure_probe_root=args.pressure_probe_root,
+            requested_release_zone_batch_size=args.requested_release_zone_batch_size,
+            requested_reducer_chunk_count=args.requested_reducer_chunk_count,
+            requested_reducer_worker_count=args.requested_reducer_worker_count,
         )
     except BalfrinMultiReleaseZoneDemoHandoffError as exc:
         print(f"balfrin multi-release-zone demo handoff error: {exc}", file=sys.stderr)
@@ -99,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
     else:
         print(render_text_report(report))
-    return 0 if report["package_status"] != "blocked_missing_inputs" else 2
+    return 0 if report["package_status"] != "blocked_missing_inputs" and report["package_constraint_status"] not in {"blocked", "blocked_missing_inputs"} else 2
 
 
 def build_report(
@@ -107,12 +123,21 @@ def build_report(
     artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
     candidate_output_root: Path | None = None,
     target_area_output_root: Path | None = None,
+    pressure_probe_root: Path = DEFAULT_PRESSURE_PROBE_ROOT,
+    requested_release_zone_batch_size: int = 2,
+    requested_reducer_chunk_count: int = 2,
+    requested_reducer_worker_count: int = 2,
 ) -> dict[str, Any]:
     artifact_dir = resolve_output_root(artifact_dir)
     if not is_allowed_output_root(artifact_dir):
         raise BalfrinMultiReleaseZoneDemoHandoffError(
             f"artifact-dir must stay under /tmp or validation/private: {artifact_dir}"
         )
+    requested_release_zone_batch_size = positive_int(
+        requested_release_zone_batch_size, "requested_release_zone_batch_size"
+    )
+    requested_reducer_chunk_count = positive_int(requested_reducer_chunk_count, "requested_reducer_chunk_count")
+    requested_reducer_worker_count = positive_int(requested_reducer_worker_count, "requested_reducer_worker_count")
 
     candidate_output_root = resolve_output_root(candidate_output_root or (artifact_dir / "candidate_outputs"))
     target_area_output_root = resolve_output_root(target_area_output_root or (artifact_dir / "target_area_handoff"))
@@ -125,6 +150,8 @@ def build_report(
         artifact_dir=artifact_dir,
         candidate_output_root=candidate_output_root,
         target_area_output_root=target_area_output_root,
+        pressure_probe_root=pressure_probe_root,
+        pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
     )
     candidate_report = safe_build(
         "candidate_stability",
@@ -141,12 +168,26 @@ def build_report(
         lambda: REDUCER_SCALING.build_report(REDUCER_SCALING.DEFAULT_ARTIFACTS),
     )
     single_job_report = safe_build("single_job", SINGLE_JOB.build_summary)
+    pressure_report = safe_build(
+        "multi_zone_pressure",
+        lambda: build_multi_zone_pressure_report(
+            pressure_probe_root=pressure_probe_root,
+            pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
+        ),
+    )
+    constraint_pressure_report = build_constraint_pressure_report(
+        pressure_report=pressure_report,
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
+        requested_reducer_chunk_count=requested_reducer_chunk_count,
+        requested_reducer_worker_count=requested_reducer_worker_count,
+    )
 
     package_status = classify_package_status(
         candidate_report=candidate_report,
         output_profile_report=output_profile_report,
         reducer_scaling_report=reducer_scaling_report,
         single_job_report=single_job_report,
+        pressure_report=pressure_report,
     )
     section_provenance_profile = build_section_provenance_profile(
         candidate_report=candidate_report,
@@ -154,6 +195,7 @@ def build_report(
         output_profile_report=output_profile_report,
         reducer_scaling_report=reducer_scaling_report,
         single_job_report=single_job_report,
+        pressure_report=pressure_report,
         command_plan=command_plan,
     )
 
@@ -169,11 +211,14 @@ def build_report(
         "package_provenance_status": package_status,
         "submission_classification": "blocked_pending_new_human_authorization",
         "live_execution_requires_new_human_authorization": True,
+        "package_constraint_status": constraint_pressure_report["status"],
+        "package_constraint_summary": constraint_pressure_report,
         "package_summary": {
             "status": package_status,
             "summary": (
                 "The multi-release-zone Balfrin dry-run package is ready for review; live execution remains blocked "
-                "until new human authorization is granted."
+                "until new human authorization is granted. "
+                f"Constraint gate status: {constraint_pressure_report['status']}."
             ),
             "section_counts": section_provenance_counts(section_provenance_profile),
         },
@@ -207,6 +252,8 @@ def build_report(
             reducer_scaling_report=reducer_scaling_report,
             single_job_report=single_job_report,
         ),
+        "multi_zone_pressure": pressure_report,
+        "constraint_pressure": constraint_pressure_report,
         "uncertainty_post_processing": build_uncertainty_post_processing(
             single_job_report=single_job_report,
             target_area_contract=target_area_contract,
@@ -219,6 +266,8 @@ def build_report(
             str(candidate_output_root),
             str(target_area_output_root),
             str(artifact_dir),
+            str(pressure_report.get("pressure_artifact_dir", artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name)),
+            str(pressure_report.get("pressure_probe_root", pressure_probe_root)),
         ],
         "generated_output_roots": [
             str(artifact_dir),
@@ -246,11 +295,14 @@ def build_command_plan(
     artifact_dir: Path,
     candidate_output_root: Path,
     target_area_output_root: Path,
+    pressure_probe_root: Path,
+    pressure_artifact_dir: Path,
 ) -> dict[str, Any]:
     scientific_delta_dir = artifact_dir / "scientific_delta"
     restartability_dir = artifact_dir / DEFAULT_RESTARTABILITY_ARTIFACT_DIR.name
     output_profile_dir = artifact_dir / DEFAULT_OUTPUT_PROFILE_ARTIFACT_DIR.name
     reducer_dir = artifact_dir / DEFAULT_REDUCER_ARTIFACT_DIR.name
+    pressure_dir = pressure_artifact_dir
 
     commands = [
         command_entry(
@@ -324,6 +376,39 @@ def build_command_plan(
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[str(target_area_output_root)],
+        ),
+        command_entry(
+            command_id="multi_zone_reducer_pressure_summary",
+            group="pressure_checks",
+            description="Materialize the measured multi-zone reducer-pressure probe and record the fail-closed constraint source.",
+            command=command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "summarize_multi_zone_reducer_pressure.py"),
+                    "--materialize-root",
+                    str(pressure_probe_root),
+                    "--format",
+                    "json",
+                    "--json-output",
+                    str(pressure_dir / "multi_zone_reducer_pressure_probe_v1.json"),
+                    "--markdown-output",
+                    str(pressure_dir / "multi_zone_reducer_pressure_probe_v1.md"),
+                ]
+            ),
+            expected_inputs=[
+                "docs/multi_zone_reducer_pressure_probe.md",
+                "scripts/summarize_multi_zone_reducer_pressure.py",
+            ],
+            expected_outputs=[
+                str(pressure_dir / "multi_zone_reducer_pressure_probe_v1.json"),
+                str(pressure_dir / "multi_zone_reducer_pressure_probe_v1.md"),
+            ],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=[str(pressure_dir), str(pressure_probe_root)],
         ),
         command_entry(
             command_id="bounded_validation_output_profile_summary",
@@ -531,7 +616,7 @@ def build_command_plan(
             },
             {
                 "id": "pressure_checks",
-                "description": "Record output pressure, reducer/chunk pressure, and restartability checkpoints.",
+                "description": "Record multi-zone reducer pressure, output pressure, reducer/chunk pressure, and restartability checkpoints.",
                 "status": "ready",
             },
             {
@@ -810,6 +895,146 @@ def build_pressure_checkpoints(
     }
 
 
+def build_multi_zone_pressure_report(
+    *,
+    pressure_probe_root: Path,
+    pressure_artifact_dir: Path,
+) -> dict[str, Any]:
+    pressure_probe_root = resolve_output_root(pressure_probe_root)
+    pressure_artifact_dir = resolve_output_root(pressure_artifact_dir)
+    if not is_allowed_output_root(pressure_artifact_dir):
+        raise BalfrinMultiReleaseZoneDemoHandoffError(
+            f"pressure artifact dir must stay under /tmp or validation/private: {pressure_artifact_dir}"
+        )
+    if not is_allowed_output_root(pressure_probe_root):
+        raise BalfrinMultiReleaseZoneDemoHandoffError(
+            f"pressure probe root must stay under /tmp or validation/private: {pressure_probe_root}"
+        )
+
+    MULTI_ZONE_PRESSURE.materialize_probe_root(pressure_probe_root)
+    report = MULTI_ZONE_PRESSURE.build_report(pressure_probe_root)
+    pressure_artifact_dir.mkdir(parents=True, exist_ok=True)
+    dump_json(pressure_artifact_dir / "multi_zone_reducer_pressure_probe_v1.json", report)
+    (pressure_artifact_dir / "multi_zone_reducer_pressure_probe_v1.md").write_text(
+        MULTI_ZONE_PRESSURE.render_markdown(report),
+        encoding="utf-8",
+    )
+    return {
+        "status": report.get("probe_status", "blocked_missing_inputs"),
+        "summary": report.get("blocked_reason")
+        or "Measured multi-zone reducer pressure is recorded for fail-closed handoff enforcement.",
+        "pressure_probe_root": str(pressure_probe_root),
+        "pressure_artifact_dir": str(pressure_artifact_dir),
+        "pressure_probe_status": report.get("probe_status"),
+        "measurement_command": report.get("measurement_command"),
+        "constraint_source": report.get("measured_reducer_constraints", {}).get("constraint_source", {}),
+        "measured_reducer_constraints": dict(report.get("measured_reducer_constraints") or {}),
+        "recommended_reducer_constraints": dict(report.get("recommended_reducer_constraints") or {}),
+        "bottleneck_classification": report.get("bottleneck_classification"),
+        "multi_zone_dry_run_blocked": report.get("multi_zone_dry_run_blocked"),
+        "blocked_reason": report.get("blocked_reason"),
+    }
+
+
+def build_constraint_pressure_report(
+    *,
+    pressure_report: dict[str, Any],
+    requested_release_zone_batch_size: int,
+    requested_reducer_chunk_count: int,
+    requested_reducer_worker_count: int,
+) -> dict[str, Any]:
+    measured_constraints = dict(pressure_report.get("measured_reducer_constraints") or {})
+    constraint_source = dict(measured_constraints.get("constraint_source") or {})
+    if pressure_report.get("status") == "blocked_missing_inputs" or not measured_constraints:
+        return {
+            "status": "blocked_missing_inputs",
+            "summary": "Measured multi-zone reducer constraints could not be loaded.",
+            "constraint_source": constraint_source,
+            "requested_release_zone_batch_size": requested_release_zone_batch_size,
+            "requested_reducer_chunk_count": requested_reducer_chunk_count,
+            "requested_reducer_worker_count": requested_reducer_worker_count,
+            "measured_constraints": measured_constraints,
+            "constraint_checks": [],
+            "blocked_reason": pressure_report.get("blocked_reason", "missing measured reducer constraints"),
+        }
+
+    checks = [
+        constraint_check(
+            label="simultaneous_release_zone_batch_size",
+            requested=requested_release_zone_batch_size,
+            limit=positive_int(measured_constraints.get("simultaneous_release_zone_batch_max"), "measured simultaneous release-zone batch max"),
+        ),
+        constraint_check(
+            label="reducer_chunk_count",
+            requested=requested_reducer_chunk_count,
+            limit=positive_int(measured_constraints.get("reducer_chunk_count_max"), "measured reducer chunk count max"),
+        ),
+        constraint_check(
+            label="reducer_worker_count",
+            requested=requested_reducer_worker_count,
+            limit=positive_int(measured_constraints.get("reducer_worker_count_max"), "measured reducer worker count max"),
+        ),
+    ]
+    status = overall_constraint_status(checks)
+    summary = constraint_pressure_summary(status, checks)
+    return {
+        "status": status,
+        "summary": summary,
+        "constraint_source": constraint_source,
+        "requested_release_zone_batch_size": requested_release_zone_batch_size,
+        "requested_reducer_chunk_count": requested_reducer_chunk_count,
+        "requested_reducer_worker_count": requested_reducer_worker_count,
+        "measured_constraints": measured_constraints,
+        "constraint_checks": checks,
+        "blocked_reason": summary if status == "blocked" else None,
+        "warning_reason": summary if status == "warning" else None,
+    }
+
+
+def constraint_check(*, label: str, requested: int, limit: int) -> dict[str, Any]:
+    if requested < 1:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"{label} must be greater than 0")
+    if requested > limit:
+        status = "blocked"
+        reason = f"requested {label}={requested} exceeds measured max {limit}"
+    elif requested == limit:
+        status = "warning"
+        reason = f"requested {label}={requested} reaches measured max {limit}"
+    else:
+        status = "acceptable"
+        reason = f"requested {label}={requested} stays within measured max {limit}"
+    return {
+        "label": label,
+        "status": status,
+        "requested": requested,
+        "limit": limit,
+        "reason": reason,
+    }
+
+
+def overall_constraint_status(checks: list[dict[str, Any]]) -> str:
+    if any(check["status"] == "blocked" for check in checks):
+        return "blocked"
+    if any(check["status"] == "warning" for check in checks):
+        return "warning"
+    return "acceptable"
+
+
+def constraint_pressure_summary(status: str, checks: list[dict[str, Any]]) -> str:
+    reasons = [check["reason"] for check in checks if check["status"] != "acceptable"]
+    if status == "blocked":
+        return "blocked: " + "; ".join(reasons)
+    if status == "warning":
+        return "warning: " + "; ".join(reasons)
+    return "acceptable: requested multi-zone settings stay below measured reducer constraints"
+
+
+def positive_int(value: Any, context: str) -> int:
+    if not isinstance(value, int) or value <= 0:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"{context} must be a positive integer")
+    return value
+
+
 def build_uncertainty_post_processing(
     *,
     single_job_report: dict[str, Any],
@@ -914,6 +1139,7 @@ def build_section_provenance_profile(
     output_profile_report: dict[str, Any],
     reducer_scaling_report: dict[str, Any],
     single_job_report: dict[str, Any],
+    pressure_report: dict[str, Any],
     command_plan: dict[str, Any],
 ) -> list[dict[str, Any]]:
     return [
@@ -938,6 +1164,18 @@ def build_section_provenance_profile(
                 reducer_scaling_report.get("artifacts_measured", [{}])[0].get("validation_manifest_path")
                 if reducer_scaling_report.get("artifacts_measured")
                 else None,
+            ],
+        },
+        {
+            "section": "pressure_constraints",
+            "status": pressure_report.get("status"),
+            "evidence_type": "measured"
+            if pressure_report.get("status") != "blocked_missing_inputs"
+            else "blocked_missing_inputs",
+            "source_paths": [
+                pressure_report.get("measurement_command"),
+                pressure_report.get("constraint_source", {}).get("source_document"),
+                pressure_report.get("pressure_artifact_dir"),
             ],
         },
         {
@@ -967,16 +1205,21 @@ def classify_package_status(
     output_profile_report: dict[str, Any],
     reducer_scaling_report: dict[str, Any],
     single_job_report: dict[str, Any],
+    pressure_report: dict[str, Any],
 ) -> str:
     sections = [
         candidate_report.get("candidate_metrics_status"),
         output_profile_report.get("acceptance_classification"),
         reducer_scaling_report.get("reducer_scaling_status"),
         single_job_report.get("final_classification"),
+        pressure_report.get("status"),
     ]
     if any(status == "blocked_missing_inputs" for status in sections):
         return "blocked_missing_inputs"
-    if any(status in {"defer", "ready", "mixed_provenance", "measured_existing_artifacts"} for status in sections):
+    if any(
+        status in {"defer", "ready", "mixed_provenance", "measured_existing_artifacts", "measured_scratch_root"}
+        for status in sections
+    ):
         return "mixed_provenance"
     return "ready"
 
@@ -1021,6 +1264,7 @@ def build_sbatch_script(report: dict[str, Any]) -> str:
     artifact_dir = Path(report["artifact_dir"])
     command_plan_path = Path(report["command_plan_path"])
     package_json_path = Path(report["package_json_path"])
+    constraint_source = dict(report.get("constraint_pressure", {}).get("constraint_source") or {})
     lines = [
         "#!/usr/bin/env bash",
         "#SBATCH --job-name=balfrin-multi-zone-demo",
@@ -1040,6 +1284,9 @@ def build_sbatch_script(report: dict[str, Any]) -> str:
         "",
         'echo "Balfrin multi-release-zone dry-run handoff only."',
         'echo "Live execution requires new human authorization."',
+        'echo "Deterministic merge order: sorted_chunk_id"',
+        'echo "Restart/replay checkpoints: trajectory_execution_index.json, trajectory_merge_state.json, reducer_execution_index.json, reducer_merge_state.json"',
+        f'echo "Constraint source: {constraint_source.get("source_script", "scripts/summarize_multi_zone_reducer_pressure.py")}"',
         'echo "Command plan follows for review:"',
         'cat "${COMMAND_PLAN_PATH}"',
         "",
@@ -1088,12 +1335,17 @@ def materialize_artifacts(
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    constraint_pressure = dict(report.get("constraint_pressure") or {})
+    measured_constraints = dict(constraint_pressure.get("measured_constraints") or {})
+    constraint_source = dict(constraint_pressure.get("constraint_source") or {})
     lines = [
         "Balfrin Multi-Release-Zone Demo Package",
         "",
         f"- Package status: `{report['package_status']}`",
         f"- Submission classification: `{report['submission_classification']}`",
         f"- Live execution requires new human authorization: `{report['live_execution_requires_new_human_authorization']}`",
+        f"- Package constraint status: `{report['package_constraint_status']}`",
+        f"- Constraint summary: {constraint_pressure.get('summary', 'unavailable')}",
         f"- Artifact dir: `{report['artifact_dir']}`",
         f"- Candidate output root: `{report['candidate_output_root']}`",
         f"- Target-area output root: `{report['target_area_output_root']}`",
@@ -1121,6 +1373,20 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reducer-chunk pressure status: `{report['pressure_checkpoints']['reducer_chunk_pressure']['status']}`",
         f"- Restartability status: `{report['pressure_checkpoints']['restartability']['status']}`",
         f"- Reducer merge order: `{report['pressure_checkpoints']['restartability']['reducer_state'].get('reducer_merge_order')}`",
+        "",
+        "## Multi-Zone Constraints",
+        "",
+        f"- Constraint status: `{constraint_pressure.get('status')}`",
+        f"- Requested release-zone batch size: `{constraint_pressure.get('requested_release_zone_batch_size')}`",
+        f"- Requested reducer chunk count: `{constraint_pressure.get('requested_reducer_chunk_count')}`",
+        f"- Requested reducer worker count: `{constraint_pressure.get('requested_reducer_worker_count')}`",
+        f"- Measured simultaneous release-zone batch max: `{measured_constraints.get('simultaneous_release_zone_batch_max')}`",
+        f"- Measured reducer chunk max: `{measured_constraints.get('reducer_chunk_count_max')}`",
+        f"- Measured reducer worker max: `{measured_constraints.get('reducer_worker_count_max')}`",
+        f"- Measured manifest size bytes max: `{measured_constraints.get('manifest_size_bytes_max')}`",
+        f"- Measured root file count max: `{measured_constraints.get('root_file_count_max')}`",
+        f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
+        f"- Constraint source: `{constraint_source.get('source_document')}`",
         "",
         "## Uncertainty Post-Processing",
         "",

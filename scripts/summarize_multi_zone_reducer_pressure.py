@@ -267,9 +267,25 @@ def build_report(probe_root: Path) -> dict[str, Any]:
             reducer_chunk_count=number_or_zero(reducer_execution.get("chunk_count")),
             reducer_worker_count=number_or_zero(reducer_execution.get("worker_count")),
         ),
+        "measured_reducer_constraints": measured_reducer_constraints(
+            probe_root=probe_root,
+            probe_status=probe_status,
+            blocked_reason=bottleneck_labels["probe_blocker"]["reason"],
+            bottleneck_labels=bottleneck_labels,
+            recommended_constraints=recommended_constraints(
+                release_zone_count=len(release_zones),
+                reducer_chunk_count=number_or_zero(reducer_execution.get("chunk_count")),
+                reducer_worker_count=number_or_zero(reducer_execution.get("worker_count")),
+            ),
+            manifest_size_bytes=manifest_size_bytes,
+            root_file_count=root_file_count,
+            output_file_count=output_file_count,
+            output_family_bytes=output_family_bytes,
+            output_family_file_counts=output_family_file_counts,
+        ),
         "measurement_command": (
             "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
-            "--materialize-root /tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1 --format json"
+            f"--materialize-root {probe_root} --format json"
         ),
     }
     return report
@@ -830,6 +846,48 @@ def recommended_constraints(*, release_zone_count: int, reducer_chunk_count: int
         "reducer_chunk_count_max": max(1, min(reducer_chunk_count, 4)),
         "simultaneous_release_zone_batch_max": max(4, min(release_zone_count, 8)),
         "recommendation": "keep reducer fan-out fixed until a larger scratch probe shows manifest and file pressure remain bounded",
+    }
+
+
+def measured_reducer_constraints(
+    *,
+    probe_root: Path,
+    probe_status: str,
+    blocked_reason: str,
+    bottleneck_labels: dict[str, dict[str, Any]],
+    recommended_constraints: dict[str, Any],
+    manifest_size_bytes: int,
+    root_file_count: int,
+    output_file_count: int,
+    output_family_bytes: dict[str, int],
+    output_family_file_counts: dict[str, int],
+) -> dict[str, Any]:
+    return {
+        "schema_version": "multi_zone_reducer_constraints_v1",
+        "constraint_source": {
+            "schema_version": SCHEMA_VERSION,
+            "source_script": "scripts/summarize_multi_zone_reducer_pressure.py",
+            "source_command": (
+                "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
+                f"--materialize-root {probe_root} --format json"
+            ),
+            "source_document": "docs/multi_zone_reducer_pressure_probe.md",
+            "probe_root": str(probe_root),
+            "probe_status": probe_status,
+        },
+        "simultaneous_release_zone_batch_max": recommended_constraints["simultaneous_release_zone_batch_max"],
+        "reducer_chunk_count_max": recommended_constraints["reducer_chunk_count_max"],
+        "reducer_worker_count_max": recommended_constraints["reducer_worker_count_max"],
+        "manifest_size_bytes_max": manifest_size_bytes,
+        "root_file_count_max": root_file_count,
+        "output_file_count_max": output_file_count,
+        "output_family_bytes_max": output_family_bytes,
+        "output_family_file_counts_max": output_family_file_counts,
+        "merge_order": recommended_constraints["merge_order"],
+        "merge_order_independent": recommended_constraints["merge_order_independent"],
+        "probe_blocker": bottleneck_labels["probe_blocker"],
+        "bottleneck_labels": bottleneck_labels,
+        "blocked_reason": blocked_reason,
     }
 
 
