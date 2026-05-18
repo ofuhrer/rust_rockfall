@@ -662,3 +662,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, and no physical validation claim.
 - Next task: `TB-208`
+
+### TB-208: Independent Physical Evidence Intake Pilot
+
+- Date: 2026-05-18
+- Commit: `7f6f4c5`
+- Objective: populate a fail-closed observed runout/deposition intake contract with explicit manifest, observed-geometry/provenance, uncertainty, dataset-role, and physical-credibility-gap reporting while keeping calibration and validation separate.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added an explicit benchmark intake manifest alongside the existing contract, including observed geometry fields, provenance fields, uncertainty fields, objective-function readiness, and calibration/validation separation.
+  - Expanded the dataset-role classification to cover observed runout/deposition, release-zone provenance, block-population evidence, calibration inputs, validation inputs, and holdout data, then threaded that shape into the blocked report and readable text output.
+  - Surfaced the physical-credibility gap update from the shared evidence-requirements helper so the intake report stays pinned to `not_established` unless real accepted evidence is staged.
+  - Added focused tests for the accepted fixture shape, the blocked acquisition report, and claim-boundary hygiene, then removed TB-208 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json >/tmp/tb208_observed_contract.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_physical_credibility_evidence_requirements`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no calibration, no parameter fitting, no validation-status upgrade without real evidence, no annual-frequency or physical-probability claim, and no operational claim.
+- Next task: `TB-209`
