@@ -87,7 +87,12 @@ where reducer-manifest bytes, sidecar counts, per-family counts, and merge
 order are regression-checked before any larger live root is considered. The
 current TB-245 handoff recheck still reports
 `blocked_budget_reduction_needed`, so manifest reduction is still needed
-before the current handoff projection can be treated as budget-safe.
+before the current handoff projection can be treated as budget-safe. TB-246
+adds a compact manifest-pruning path that reduces the projected handoff from
+`62` files / `26057` manifest bytes / `21` sidecars to `39` files / `17788`
+manifest bytes / `2` sidecars while keeping replay-safe hashes and merge-state
+fields explicit, but the compact path still remains blocked on
+`manifest_size_bytes`.
 
 ## Summary-Only Conditional Curves
 

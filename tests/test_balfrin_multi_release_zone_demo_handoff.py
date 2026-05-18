@@ -85,22 +85,24 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["status"], "blocked")
         self.assertEqual(output_budget_projection["gate_status"], "blocked_fixture_backed")
         self.assertEqual(output_budget_projection["projection_provenance"], "handoff_command_plan")
+        self.assertEqual(output_budget_projection["projection_mode"], "compact")
         self.assertEqual(output_budget_projection["release_zone_count"], 12)
         self.assertEqual(output_budget_projection["reducer_chunk_count"], 4)
         self.assertEqual(output_budget_projection["reducer_worker_count"], 2)
         self.assertEqual(output_budget_projection["primary_output_file_count"], 36)
-        self.assertEqual(output_budget_projection["sidecar_file_count"], 21)
-        self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 4)
+        self.assertEqual(output_budget_projection["sidecar_file_count"], 2)
+        self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 0)
+        self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 0)
+        self.assertEqual(output_budget_projection["output_file_count"], 39)
         self.assertGreater(output_budget_projection["primary_output_byte_count"], 0)
         self.assertGreater(output_budget_projection["sidecar_byte_count"], 0)
-        self.assertGreater(output_budget_projection["reducer_manifest_bytes"], 0)
         self.assertGreater(output_budget_projection["manifest_size_bytes"], 0)
         self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_blocked"], "manifest_size_bytes")
         self.assertEqual(output_budget_projection["budget_recheck"]["status"], "blocked_budget_reduction_needed")
         self.assertIn("manifest_size_bytes", output_budget_projection["budget_recheck"]["reason"])
         self.assertEqual(
             set(output_budget_projection["replay_critical_field_inventory"]),
-            {"command_plan", "projection", "thresholds", "constraints", "smallest_run"},
+            {"command_plan", "projection", "thresholds", "constraints", "smallest_run", "manifest_pruning"},
         )
         self.assertIn(
             "command_plan.commands[id=multi_zone_reducer_pressure_summary].command",
@@ -109,6 +111,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn(
             "constraint_pressure.measured_constraints.manifest_size_bytes_max",
             output_budget_projection["replay_critical_field_inventory"]["constraints"],
+        )
+        self.assertIn(
+            "handoff_output_budget_projection.projection_file_hashes.output_manifest_sha256",
+            output_budget_projection["replay_critical_field_inventory"]["projection"],
+        )
+        self.assertIn(
+            "manifest_pruning.exact_blocking_fields",
+            output_budget_projection["replay_critical_field_inventory"]["manifest_pruning"],
         )
         self.assertIn("manifest_size_bytes", [check["metric"] for check in output_budget_projection["budget_checks"]])
         self.assertIn(
@@ -125,6 +135,26 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             first["constraint_pressure"]["constraint_source"]["source_document"],
             "docs/multi_zone_reducer_pressure_probe.md",
         )
+        manifest_pruning = first["manifest_pruning"]
+        self.assertEqual(manifest_pruning["status"], "blocked_budget_reduction_needed")
+        self.assertEqual(manifest_pruning["before"]["manifest_size_bytes"], 26057)
+        self.assertEqual(manifest_pruning["after"]["manifest_size_bytes"], 17788)
+        self.assertEqual(manifest_pruning["before"]["sidecar_file_count"], 21)
+        self.assertEqual(manifest_pruning["after"]["sidecar_file_count"], 2)
+        self.assertEqual(manifest_pruning["before"]["output_file_count"], 62)
+        self.assertEqual(manifest_pruning["after"]["output_file_count"], 39)
+        self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 964)
+        self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 0)
+        self.assertEqual(
+            manifest_pruning["exact_blocking_fields"],
+            ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
+        )
+        self.assertEqual(
+            manifest_pruning["replay_critical_output_families"],
+            ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
+        )
+        self.assertIn("reducer_chunk_manifest", manifest_pruning["pruned_output_families"])
+        self.assertIn("trajectory_merge_state", manifest_pruning["exact_blocking_fields"])
         self.assertEqual(first["command_plan"]["output_profile_policy"]["classification"], "blocked_unscalable_default")
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
@@ -235,6 +265,32 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             "constraint_pressure.measured_constraints.reducer_worker_count_max",
             projection["replay_critical_field_inventory"]["constraints"],
         )
+
+    def test_budget_recheck_reports_no_reduction_needed_when_projection_is_ready(self) -> None:
+        ready_projection = {
+            "status": "acceptable",
+            "gate_status": "fixture_backed_ready",
+            "budget_recheck": {"status": "budget_passes_no_reduction_needed", "reason": "current handoff projection stays within the current budget thresholds"},
+            "first_bottleneck_labels": {"first_relevant": "ready"},
+        }
+
+        recheck = MODULE.build_handoff_budget_recheck(
+            handoff_output_budget_projection=ready_projection,
+            first_bottleneck_labels={"first_relevant": "ready"},
+        )
+
+        self.assertEqual(recheck["status"], "budget_passes_no_reduction_needed")
+        self.assertIn("within the current budget thresholds", recheck["reason"])
+
+    def test_manifest_pruning_refuses_to_drop_replay_critical_fields(self) -> None:
+        with self.assertRaises(MODULE.BalfrinMultiReleaseZoneDemoHandoffError):
+            MODULE.prune_manifest_output_family_mix(
+                tuple(
+                    family
+                    for family in MODULE.FULL_OUTPUT_FAMILY_MIX
+                    if family not in {"trajectory_merge_state"}
+                )
+            )
 
     def test_constraint_pressure_classification_covers_acceptable_warning_and_blocked_cases(self) -> None:
         pressure_report = {

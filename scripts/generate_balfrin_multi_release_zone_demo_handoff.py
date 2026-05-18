@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib.util
 import json
 import shlex
@@ -108,6 +109,18 @@ MULTI_ZONE_PRESSURE = _load_module(
 MULTI_ZONE_PRESSURE_GATE = _load_module(
     "balfrin_multi_release_zone_pressure_gate",
     "validate_multi_zone_reducer_pressure_gate.py",
+)
+
+FULL_OUTPUT_FAMILY_MIX = tuple(MULTI_ZONE_PRESSURE.DEFAULT_OUTPUT_FAMILY_MIX)
+REPLAY_CRITICAL_OUTPUT_FAMILIES = (
+    "trajectory_csv",
+    "deposition_csv",
+    "impact_events_csv",
+    "trajectory_merge_state",
+    "reducer_merge_state",
+)
+PRUNED_OUTPUT_FAMILIES = tuple(
+    family for family in FULL_OUTPUT_FAMILY_MIX if family not in REPLAY_CRITICAL_OUTPUT_FAMILIES
 )
 
 
@@ -547,12 +560,14 @@ def build_report(
             pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
         ),
     )
-    handoff_output_budget_projection = safe_build(
-        "handoff_output_budget_projection",
-        lambda: build_handoff_output_budget_projection(
-            command_plan=command_plan,
-            pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
-        ),
+    manifest_pruning_report = build_manifest_pruning_report(
+        command_plan=command_plan,
+        pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
+    )
+    handoff_output_budget_projection = dict(
+        manifest_pruning_report.get("active_handoff_output_budget_projection")
+        or manifest_pruning_report.get("baseline_handoff_output_budget_projection")
+        or {}
     )
     constraint_pressure_report = build_constraint_pressure_report(
         pressure_report=pressure_report,
@@ -664,6 +679,13 @@ def build_report(
         ),
         "multi_zone_pressure": pressure_report,
         "handoff_output_budget_projection": handoff_output_budget_projection,
+        "manifest_pruning": manifest_pruning_report,
+        "baseline_handoff_output_budget_projection": manifest_pruning_report.get(
+            "baseline_handoff_output_budget_projection"
+        ),
+        "compact_handoff_output_budget_projection": manifest_pruning_report.get(
+            "compact_handoff_output_budget_projection"
+        ),
         "constraint_pressure": constraint_pressure_report,
         "uncertainty_post_processing": build_uncertainty_post_processing(
             single_job_report=single_job_report,
@@ -1388,6 +1410,7 @@ def build_handoff_output_budget_projection(
     *,
     command_plan: dict[str, Any],
     pressure_artifact_dir: Path,
+    manifest_mode: str = "full",
 ) -> dict[str, Any]:
     pressure_artifact_dir = resolve_output_root(pressure_artifact_dir)
     if not is_allowed_output_root(pressure_artifact_dir):
@@ -1396,20 +1419,27 @@ def build_handoff_output_budget_projection(
         )
 
     command_spec = parse_handoff_pressure_command(command_plan)
-    projection_root = pressure_artifact_dir / "handoff_output_budget_projection_root"
+    if manifest_mode not in {"full", "compact"}:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"unsupported manifest mode: {manifest_mode}")
+    if manifest_mode == "compact":
+        output_family_mix, pruned_output_family_mix = prune_manifest_output_family_mix(command_spec["output_family_mix"])
+    else:
+        output_family_mix = command_spec["output_family_mix"]
+        pruned_output_family_mix = []
+    projection_root = pressure_artifact_dir / f"handoff_output_budget_projection_{manifest_mode}_root"
     gate_report = MULTI_ZONE_PRESSURE_GATE.build_report(
         materialize_root=projection_root,
         release_zone_count=command_spec["release_zone_count"],
         reducer_chunk_count=command_spec["reducer_chunk_count"],
         reducer_workers=command_spec["reducer_worker_count"],
-        output_family_mix=command_spec["output_family_mix"],
+        output_family_mix=output_family_mix,
     )
     target_profile = dict(gate_report.get("target_profile") or {})
     first_bottleneck_labels = first_handoff_budget_bottleneck_labels(gate_report)
     normalized_status = normalize_gate_status(gate_report.get("gate_status"))
     pressure_artifact_dir.mkdir(parents=True, exist_ok=True)
-    gate_report_path = pressure_artifact_dir / "handoff_output_budget_projection_v1.json"
-    gate_text_path = pressure_artifact_dir / "handoff_output_budget_projection_v1.txt"
+    gate_report_path = pressure_artifact_dir / f"handoff_output_budget_projection_{manifest_mode}_v1.json"
+    gate_text_path = pressure_artifact_dir / f"handoff_output_budget_projection_{manifest_mode}_v1.txt"
     dump_json(gate_report_path, gate_report)
     gate_text_path.write_text(MULTI_ZONE_PRESSURE_GATE.render_text_report(gate_report) + "\n", encoding="utf-8")
 
@@ -1437,11 +1467,14 @@ def build_handoff_output_budget_projection(
         "command_id": command_spec["command_id"],
         "source_command": command_spec["source_command"],
         "planned_pressure_probe_root": command_spec["planned_pressure_probe_root"],
+        "projection_mode": manifest_mode,
         "projection_root": str(projection_root),
         "release_zone_count": command_spec["release_zone_count"],
         "reducer_chunk_count": command_spec["reducer_chunk_count"],
         "reducer_worker_count": command_spec["reducer_worker_count"],
-        "output_family_mix": list(command_spec["output_family_mix"]),
+        "output_family_mix": list(output_family_mix),
+        "full_output_family_mix": list(command_spec["output_family_mix"]),
+        "pruned_output_family_mix": list(pruned_output_family_mix),
         "projected_profile": target_profile,
         "thresholds": dict(gate_report.get("thresholds") or {}),
         "budget_checks": list(gate_report.get("budget_checks") or []),
@@ -1465,6 +1498,7 @@ def build_handoff_output_budget_projection(
         "output_byte_count": target_profile.get("output_byte_count", 0),
         "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
         "output_family_bytes": dict(target_profile.get("output_family_bytes") or {}),
+        "projection_file_hashes": build_projection_file_hashes(projection_root),
         "budget_recheck": budget_recheck,
         "replay_critical_field_inventory": build_replay_critical_field_inventory(),
         "gate_report_path": str(gate_report_path),
@@ -1472,6 +1506,176 @@ def build_handoff_output_budget_projection(
         "blocked_reason": summary if normalized_status == "blocked" else None,
         "warning_reason": summary if normalized_status == "warning" else None,
     }
+
+
+def build_manifest_pruning_report(
+    *,
+    command_plan: dict[str, Any],
+    pressure_artifact_dir: Path,
+) -> dict[str, Any]:
+    baseline_projection = build_handoff_output_budget_projection(
+        command_plan=command_plan,
+        pressure_artifact_dir=pressure_artifact_dir,
+        manifest_mode="full",
+    )
+    if baseline_projection.get("budget_recheck", {}).get("status") == "budget_passes_no_reduction_needed":
+        return {
+            "status": "budget_passes_no_reduction_needed",
+            "summary": "current handoff projection already fits the budget; manifest pruning is not needed",
+            "mode": "full",
+            "baseline_handoff_output_budget_projection": baseline_projection,
+            "compact_handoff_output_budget_projection": None,
+            "active_handoff_output_budget_projection": baseline_projection,
+            "before": summarize_projection_budget(baseline_projection),
+            "after": summarize_projection_budget(baseline_projection),
+            "delta": zero_projection_delta(),
+            "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
+            "pruned_output_families": [],
+            "retained_output_families": list(baseline_projection.get("output_family_mix") or []),
+            "projection_hashes": dict(baseline_projection.get("projection_file_hashes") or {}),
+            "blocked_reason": None,
+        }
+
+    try:
+        compact_projection = build_handoff_output_budget_projection(
+            command_plan=command_plan,
+            pressure_artifact_dir=pressure_artifact_dir,
+            manifest_mode="compact",
+        )
+    except BalfrinMultiReleaseZoneDemoHandoffError as exc:
+        return {
+            "status": "blocked_manifest_pruning_impossible",
+            "summary": str(exc),
+            "mode": "compact",
+            "baseline_handoff_output_budget_projection": baseline_projection,
+            "compact_handoff_output_budget_projection": None,
+            "active_handoff_output_budget_projection": baseline_projection,
+            "before": summarize_projection_budget(baseline_projection),
+            "after": None,
+            "delta": None,
+            "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
+            "pruned_output_families": list(PRUNED_OUTPUT_FAMILIES),
+            "retained_output_families": list(baseline_projection.get("output_family_mix") or []),
+            "projection_hashes": dict(baseline_projection.get("projection_file_hashes") or {}),
+            "blocked_reason": str(exc),
+        }
+
+    delta = projection_budget_delta(baseline_projection, compact_projection)
+    compact_status = str(compact_projection.get("budget_recheck", {}).get("status") or "")
+    comparison_status = compact_status if compact_status else "blocked_replay_contract_ambiguity"
+    retained_output_families = list(compact_projection.get("output_family_mix") or [])
+    exact_blocking_fields = list(retained_output_families)
+    summary = (
+        "manifest pruning reduced the projected handoff pressure from "
+        f"{baseline_projection.get('manifest_size_bytes')} manifest bytes / "
+        f"{baseline_projection.get('sidecar_file_count')} sidecar files to "
+        f"{compact_projection.get('manifest_size_bytes')} manifest bytes / "
+        f"{compact_projection.get('sidecar_file_count')} sidecar files."
+    )
+    if comparison_status == "budget_passes_no_reduction_needed":
+        summary = (
+            "manifest pruning produces a budget-safe compact handoff projection: "
+            f"{baseline_projection.get('manifest_size_bytes')} -> {compact_projection.get('manifest_size_bytes')} manifest bytes, "
+            f"{baseline_projection.get('sidecar_file_count')} -> {compact_projection.get('sidecar_file_count')} sidecar files."
+        )
+    elif comparison_status == "blocked_budget_reduction_needed":
+        summary = (
+            "manifest pruning remains blocked because the replay-safe compact projection still includes "
+            f"{', '.join(retained_output_families)}."
+        )
+    return {
+        "status": comparison_status,
+        "summary": summary,
+        "mode": "compact",
+        "baseline_handoff_output_budget_projection": baseline_projection,
+        "compact_handoff_output_budget_projection": compact_projection,
+        "active_handoff_output_budget_projection": compact_projection,
+        "before": summarize_projection_budget(baseline_projection),
+        "after": summarize_projection_budget(compact_projection),
+        "delta": delta,
+        "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
+        "pruned_output_families": list(PRUNED_OUTPUT_FAMILIES),
+        "retained_output_families": retained_output_families,
+        "exact_blocking_fields": exact_blocking_fields,
+        "projection_hashes": dict(compact_projection.get("projection_file_hashes") or {}),
+        "blocked_reason": compact_projection.get("budget_recheck", {}).get("reason")
+        if comparison_status != "budget_passes_no_reduction_needed"
+        else None,
+    }
+
+
+def summarize_projection_budget(projection: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": projection.get("status"),
+        "budget_recheck_status": dict(projection.get("budget_recheck") or {}).get("status"),
+        "manifest_size_bytes": projection.get("manifest_size_bytes", 0),
+        "sidecar_file_count": projection.get("sidecar_file_count", 0),
+        "sidecar_byte_count": projection.get("sidecar_byte_count", 0),
+        "output_file_count": projection.get("output_file_count", 0),
+        "output_byte_count": projection.get("output_byte_count", 0),
+        "reducer_manifest_bytes": projection.get("reducer_manifest_bytes", 0),
+        "reducer_manifest_file_count": projection.get("reducer_manifest_file_count", 0),
+        "reducer_worker_count": projection.get("reducer_worker_count", 0),
+        "reducer_chunk_count": projection.get("reducer_chunk_count", 0),
+        "release_zone_count": projection.get("release_zone_count", 0),
+        "output_family_mix": list(projection.get("output_family_mix") or []),
+    }
+
+
+def projection_budget_delta(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "manifest_size_bytes": _number_or_zero(before.get("manifest_size_bytes")) - _number_or_zero(after.get("manifest_size_bytes")),
+        "sidecar_file_count": _number_or_zero(before.get("sidecar_file_count")) - _number_or_zero(after.get("sidecar_file_count")),
+        "sidecar_byte_count": _number_or_zero(before.get("sidecar_byte_count")) - _number_or_zero(after.get("sidecar_byte_count")),
+        "output_file_count": _number_or_zero(before.get("output_file_count")) - _number_or_zero(after.get("output_file_count")),
+        "output_byte_count": _number_or_zero(before.get("output_byte_count")) - _number_or_zero(after.get("output_byte_count")),
+        "reducer_manifest_bytes": _number_or_zero(before.get("reducer_manifest_bytes")) - _number_or_zero(after.get("reducer_manifest_bytes")),
+        "reducer_manifest_file_count": _number_or_zero(before.get("reducer_manifest_file_count"))
+        - _number_or_zero(after.get("reducer_manifest_file_count")),
+    }
+
+
+def zero_projection_delta() -> dict[str, int]:
+    return {
+        "manifest_size_bytes": 0,
+        "sidecar_file_count": 0,
+        "sidecar_byte_count": 0,
+        "output_file_count": 0,
+        "output_byte_count": 0,
+        "reducer_manifest_bytes": 0,
+        "reducer_manifest_file_count": 0,
+    }
+
+
+def prune_manifest_output_family_mix(output_family_mix: tuple[str, ...]) -> tuple[tuple[str, ...], list[str]]:
+    normalized_mix = MULTI_ZONE_PRESSURE.normalize_output_family_mix(output_family_mix)
+    missing_required = [family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family not in normalized_mix]
+    if missing_required:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(
+            "manifest-pruning mode cannot remove replay-critical output families: "
+            + ", ".join(missing_required)
+        )
+    pruned = [family for family in normalized_mix if family in PRUNED_OUTPUT_FAMILIES]
+    retained = tuple(family for family in normalized_mix if family not in PRUNED_OUTPUT_FAMILIES)
+    return retained, pruned
+
+
+def build_projection_file_hashes(projection_root: Path) -> dict[str, str]:
+    return {
+        "probe_manifest_sha256": file_sha256(projection_root / "input" / "multi_zone_reducer_pressure_probe_manifest.json"),
+        "command_plan_sha256": file_sha256(projection_root / "command_plan.json"),
+        "output_manifest_sha256": file_sha256(
+            projection_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json"
+        ),
+    }
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def parse_handoff_pressure_command(command_plan: dict[str, Any]) -> dict[str, Any]:
@@ -1642,6 +1846,12 @@ def build_replay_critical_field_inventory() -> dict[str, list[str]]:
             "handoff_output_budget_projection.output_file_count",
             "handoff_output_budget_projection.output_byte_count",
             "handoff_output_budget_projection.first_bottleneck_labels.first_relevant",
+            "handoff_output_budget_projection.projection_mode",
+            "handoff_output_budget_projection.full_output_family_mix",
+            "handoff_output_budget_projection.pruned_output_family_mix",
+            "handoff_output_budget_projection.projection_file_hashes.probe_manifest_sha256",
+            "handoff_output_budget_projection.projection_file_hashes.command_plan_sha256",
+            "handoff_output_budget_projection.projection_file_hashes.output_manifest_sha256",
         ],
         "thresholds": [
             "handoff_output_budget_projection.threshold_provenance",
@@ -1681,6 +1891,21 @@ def build_replay_critical_field_inventory() -> dict[str, list[str]]:
             "follow_up_recommendation.minimum_measured_multi_zone_run.pilot_gis_package",
             "follow_up_recommendation.minimum_measured_multi_zone_run.output_profile_policy.classification",
             "follow_up_recommendation.minimum_measured_multi_zone_run.preservation_gate_checklist",
+        ],
+        "manifest_pruning": [
+            "manifest_pruning.status",
+            "manifest_pruning.summary",
+            "manifest_pruning.before.manifest_size_bytes",
+            "manifest_pruning.after.manifest_size_bytes",
+            "manifest_pruning.before.sidecar_file_count",
+            "manifest_pruning.after.sidecar_file_count",
+            "manifest_pruning.before.output_file_count",
+            "manifest_pruning.after.output_file_count",
+            "manifest_pruning.before.reducer_manifest_bytes",
+            "manifest_pruning.after.reducer_manifest_bytes",
+            "manifest_pruning.replay_critical_output_families",
+            "manifest_pruning.pruned_output_families",
+            "manifest_pruning.exact_blocking_fields",
         ],
     }
 
@@ -2414,10 +2639,28 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
         f"- Constraint source: `{constraint_source.get('source_document')}`",
         "",
+        "## Manifest Pruning",
+        "",
+        f"- Status: `{report.get('manifest_pruning', {}).get('status')}`",
+        f"- Mode: `{report.get('manifest_pruning', {}).get('mode')}`",
+        f"- Summary: {report.get('manifest_pruning', {}).get('summary')}",
+        f"- Before manifest bytes: `{report.get('manifest_pruning', {}).get('before', {}).get('manifest_size_bytes')}`",
+        f"- After manifest bytes: `{report.get('manifest_pruning', {}).get('after', {}).get('manifest_size_bytes')}`",
+        f"- Before sidecar files: `{report.get('manifest_pruning', {}).get('before', {}).get('sidecar_file_count')}`",
+        f"- After sidecar files: `{report.get('manifest_pruning', {}).get('after', {}).get('sidecar_file_count')}`",
+        f"- Before output files: `{report.get('manifest_pruning', {}).get('before', {}).get('output_file_count')}`",
+        f"- After output files: `{report.get('manifest_pruning', {}).get('after', {}).get('output_file_count')}`",
+        f"- Before reducer manifest bytes: `{report.get('manifest_pruning', {}).get('before', {}).get('reducer_manifest_bytes')}`",
+        f"- After reducer manifest bytes: `{report.get('manifest_pruning', {}).get('after', {}).get('reducer_manifest_bytes')}`",
+        f"- Replay-critical output families: `{report.get('manifest_pruning', {}).get('replay_critical_output_families', [])}`",
+        f"- Pruned output families: `{report.get('manifest_pruning', {}).get('pruned_output_families', [])}`",
+        f"- Exact blocking fields: `{report.get('manifest_pruning', {}).get('exact_blocking_fields', [])}`",
+        "",
         "## Handoff Output-Budget Projection",
         "",
         f"- Projection status: `{output_budget_projection.get('status')}`",
         f"- Projection provenance: `{output_budget_projection.get('projection_provenance')}`",
+        f"- Projection mode: `{output_budget_projection.get('projection_mode')}`",
         f"- Command id: `{output_budget_projection.get('command_id')}`",
         f"- Release-zone count: `{output_budget_projection.get('release_zone_count')}`",
         f"- Reducer chunk count: `{output_budget_projection.get('reducer_chunk_count')}`",
@@ -2432,6 +2675,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reducer manifest files: `{output_budget_projection.get('reducer_manifest_file_count')}`",
         f"- Reducer manifest bytes: `{output_budget_projection.get('reducer_manifest_bytes')}`",
         f"- First bottleneck: `{first_bottleneck_labels.get('first_relevant')}`",
+        f"- Projection hashes: `{output_budget_projection.get('projection_file_hashes')}`",
         "",
         "## Budget Recheck",
         "",

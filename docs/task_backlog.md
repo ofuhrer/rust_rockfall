@@ -23,38 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-246: Multi-Zone Handoff Manifest Budget Reduction
-
-Goal: If TB-245 still reports budget pressure, reduce the smallest multi-zone handoff's projected manifest and sidecar pressure without losing replay-critical fields.
-
-Capability gap reduced: The smallest multi-zone path is blocked not only by authorization but also by reducer/manifest pressure in the reviewed handoff projection.
-
-Why this outranks alternatives: A full-scale Balfrin demonstration cannot advance beyond single-zone comfort until the smallest many-zone handoff stays inside measured reducer and file-family budgets, but pruning is only justified after current-budget remeasurement.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- A blocked `budget_passes_no_reduction_needed` branch when TB-245 shows the current handoff already fits the budget.
-- A bounded compact-manifest or manifest-pruning mode for the handoff projection that preserves replay-critical fields, hashes, merge order, and provenance.
-- Before/after fixture-backed budget measurements for manifest bytes, sidecar bytes, file counts, and reducer constraints.
-- Fail-closed tests proving replay-critical fields cannot be removed to satisfy the budget.
-
-Definition of done:
-
-- The smallest multi-zone handoff either passes the current budget gate with preserved replayability or reports the exact manifest fields that make it impossible.
-
-Boundaries: Handoff/projection mechanics only; no live Balfrin job, no loss of replay metadata, no distributed reducer, no physics change, no generated heavy outputs committed, and no operational claim.
-
 ### TB-247: Smallest Multi-Zone Authorization Preflight Recheck
 
 Goal: Re-run and refresh the smallest multi-zone authorization preflight after the current budget is rechecked and any needed manifest-budget reduction work is complete.

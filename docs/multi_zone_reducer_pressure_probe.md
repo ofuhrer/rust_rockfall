@@ -106,17 +106,26 @@ shape is otherwise within measured reducer maxima.
 
 ## TB-245 Current Handoff Projection
 
-The current TB-245 recheck stays `blocked_budget_reduction_needed` rather than
-`budget_passes_no_reduction_needed`. The current handoff projection records
-`12` release zones, `62` output files, `34944` output bytes, `24497` manifest
-bytes, `21` sidecar files, and `964` reducer-manifest bytes, while the
-measured reducer constraints remain capped at `8` simultaneous release zones,
-`4` reducer chunks, and `2` reducer workers.
+The current TB-245 recheck still stays `blocked_budget_reduction_needed`
+rather than `budget_passes_no_reduction_needed`. The full baseline projection
+records `12` release zones, `62` output files, `36432` output bytes, `26057`
+manifest bytes, `21` sidecar files, and `964` reducer-manifest bytes.
 
-The replay-critical inventory for the handoff recheck keeps the command-plan
-record, the projected manifest and sidecar counts, the constraint thresholds,
-the budget-check lists, and the smallest-run replay fields explicit so the
-budget can be rechecked without mutating handoff semantics.
+TB-246 adds a compact manifest-pruning path that keeps the replay-safe
+primary outputs plus the merge-state files and projection hashes while
+pruning the chunk-manifest, execution-plan, execution-index, diagnostics, and
+GIS sidecars. That compact projection now records `39` output files,
+`23772` output bytes, `17788` manifest bytes, `2` sidecar files, and `0`
+reducer-manifest bytes, but it still remains `blocked_budget_reduction_needed`
+because the first blocked label is still `manifest_size_bytes`.
+
+The compact projection now makes the replay-critical boundary explicit:
+`trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state` remain, along with the
+`probe_manifest`, `command_plan`, and `output_manifest` SHA-256 hashes that the
+handoff report records for provenance. The budget can therefore be rechecked
+without mutating the live handoff semantics, while still reporting the exact
+remaining fields that prevent a smaller manifest.
 
 ## Smallest Authorization Preflight Shape
 
