@@ -34,13 +34,20 @@ from scripts import build_hazard_layers as hazard
 from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure
 
 
-SCHEMA_VERSION = "multi_zone_hazard_throughput_profile_v1"
-DEFAULT_PROFILE_ROOT = Path("/tmp/rust_rockfall/multi_zone_hazard_throughput_profile_v1")
+SCHEMA_VERSION = "multi_zone_hazard_throughput_profile_v2"
+DEFAULT_PROFILE_ROOT = Path("/tmp/rust_rockfall/multi_zone_hazard_throughput_profile_v2")
+DEFAULT_PROFILE_ID = "multi_zone"
+SMOKE_PROFILE_ID = "smoke"
 DEFAULT_RELEASE_ZONE_COUNT = 12
 DEFAULT_REDUCER_WORKERS = 2
 DEFAULT_REDUCER_CHUNK_COUNT = 4
 DEFAULT_TRAJECTORY_SAMPLES_PER_ZONE = 5
 DEFAULT_IMPACT_ROWS_PER_ZONE = 2
+SMOKE_RELEASE_ZONE_COUNT = 2
+SMOKE_REDUCER_WORKERS = 1
+SMOKE_REDUCER_CHUNK_COUNT = 1
+SMOKE_TRAJECTORY_SAMPLES_PER_ZONE = 2
+SMOKE_IMPACT_ROWS_PER_ZONE = 0
 DEFAULT_GRID_XMIN = 0.0
 DEFAULT_GRID_YMIN = 0.0
 DEFAULT_GRID_CELLSIZE = 1.0
@@ -75,13 +82,68 @@ class MultiZoneHazardProfileFixture:
     fixture_fingerprint: str
 
 
+@dataclass(frozen=True)
+class ProfileSpec:
+    profile_id: str
+    release_zone_count: int
+    reducer_workers: int
+    reducer_chunk_count: int
+    trajectory_samples_per_zone: int
+    impact_rows_per_zone: int
+    measure_bounds_discovery: bool
+    render_report: bool
+
+    @property
+    def run_modes(self) -> tuple[str, ...]:
+        return ("auto", "explicit") if self.measure_bounds_discovery else ("explicit",)
+
+
+@dataclass(frozen=True)
+class ProfileRunResult:
+    mode: str
+    output_dir: Path
+    hazard_manifest_path: Path
+    hazard_manifest: dict[str, Any]
+    performance: dict[str, Any]
+    output_pressure: dict[str, Any]
+    timing_breakdown: dict[str, Any]
+    timing: dict[str, float]
+
+
+PROFILE_SPECS: dict[str, ProfileSpec] = {
+    SMOKE_PROFILE_ID: ProfileSpec(
+        profile_id=SMOKE_PROFILE_ID,
+        release_zone_count=SMOKE_RELEASE_ZONE_COUNT,
+        reducer_workers=SMOKE_REDUCER_WORKERS,
+        reducer_chunk_count=SMOKE_REDUCER_CHUNK_COUNT,
+        trajectory_samples_per_zone=SMOKE_TRAJECTORY_SAMPLES_PER_ZONE,
+        impact_rows_per_zone=SMOKE_IMPACT_ROWS_PER_ZONE,
+        measure_bounds_discovery=False,
+        render_report=False,
+    ),
+    DEFAULT_PROFILE_ID: ProfileSpec(
+        profile_id=DEFAULT_PROFILE_ID,
+        release_zone_count=DEFAULT_RELEASE_ZONE_COUNT,
+        reducer_workers=DEFAULT_REDUCER_WORKERS,
+        reducer_chunk_count=DEFAULT_REDUCER_CHUNK_COUNT,
+        trajectory_samples_per_zone=DEFAULT_TRAJECTORY_SAMPLES_PER_ZONE,
+        impact_rows_per_zone=DEFAULT_IMPACT_ROWS_PER_ZONE,
+        measure_bounds_discovery=True,
+        render_report=False,
+    ),
+}
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--materialize-root", type=Path, default=None, help="Create the deterministic scratch fixture here first.")
     parser.add_argument("--profile-root", type=Path, default=None, help="Existing scratch fixture root to profile.")
-    parser.add_argument("--release-zone-count", type=int, default=DEFAULT_RELEASE_ZONE_COUNT)
-    parser.add_argument("--reducer-workers", type=int, default=DEFAULT_REDUCER_WORKERS)
-    parser.add_argument("--reducer-chunk-count", type=int, default=DEFAULT_REDUCER_CHUNK_COUNT)
+    parser.add_argument(
+        "--profile",
+        choices=tuple(PROFILE_SPECS),
+        default=DEFAULT_PROFILE_ID,
+        help="fixture size and measurement depth to materialize and profile",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
@@ -90,13 +152,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    profile_spec = PROFILE_SPECS[args.profile]
     try:
         if args.materialize_root is not None:
             fixture = materialize_fixture_root(
                 args.materialize_root,
-                release_zone_count=args.release_zone_count,
-                reducer_workers=args.reducer_workers,
-                reducer_chunk_count=args.reducer_chunk_count,
+                profile_spec=profile_spec,
             )
             profile_root = fixture.profile_root
         else:
@@ -123,10 +184,13 @@ def main(argv: list[str] | None = None) -> int:
 def materialize_fixture_root(
     profile_root: Path,
     *,
-    release_zone_count: int = DEFAULT_RELEASE_ZONE_COUNT,
-    reducer_workers: int = DEFAULT_REDUCER_WORKERS,
-    reducer_chunk_count: int = DEFAULT_REDUCER_CHUNK_COUNT,
+    profile_spec: ProfileSpec = PROFILE_SPECS[DEFAULT_PROFILE_ID],
 ) -> MultiZoneHazardProfileFixture:
+    release_zone_count = profile_spec.release_zone_count
+    reducer_workers = profile_spec.reducer_workers
+    reducer_chunk_count = profile_spec.reducer_chunk_count
+    trajectory_rows_per_zone = profile_spec.trajectory_samples_per_zone
+    impact_rows_per_zone = profile_spec.impact_rows_per_zone
     if release_zone_count <= 1:
         raise MultiZoneHazardThroughputProfileError("release_zone_count must be greater than 1")
     if reducer_workers <= 0:
@@ -149,8 +213,6 @@ def materialize_fixture_root(
 
     release_zones = reducer_pressure.build_release_zones(release_zone_count)
     scenario_rows = reducer_pressure.build_scenario_rows(release_zones, reducer_chunk_count=reducer_chunk_count)
-    trajectory_rows_per_zone = DEFAULT_TRAJECTORY_SAMPLES_PER_ZONE
-    impact_rows_per_zone = DEFAULT_IMPACT_ROWS_PER_ZONE
 
     deposition_rows: list[dict[str, Any]] = []
     impact_rows: list[dict[str, Any]] = []
@@ -241,6 +303,7 @@ def materialize_fixture_root(
     fixture_manifest_path = input_root / "multi_zone_hazard_profile_fixture_manifest.json"
     fixture_manifest = {
         "schema_version": "multi_zone_hazard_profile_fixture_manifest_v1",
+        "profile_id": profile_spec.profile_id,
         "profile_root": str(profile_root),
         "case_path": str(case_path),
         "trajectory_dir": str(trajectory_dir),
@@ -256,6 +319,8 @@ def materialize_fixture_root(
         "scenario_count": len(scenario_rows),
         "trajectory_rows_per_zone": trajectory_rows_per_zone,
         "impact_rows_per_zone": impact_rows_per_zone,
+        "measure_bounds_discovery": profile_spec.measure_bounds_discovery,
+        "render_report": profile_spec.render_report,
         "grid": {
             "xmin": DEFAULT_GRID_XMIN,
             "ymin": DEFAULT_GRID_YMIN,
@@ -308,126 +373,89 @@ def build_report(profile_root: Path) -> dict[str, Any]:
         raise MultiZoneHazardThroughputProfileError("missing fixture inputs: " + ", ".join(missing_paths))
 
     fixture_manifest = load_json(fixture_manifest_path)
+    profile_spec = PROFILE_SPECS.get(str(fixture_manifest.get("profile_id") or DEFAULT_PROFILE_ID), PROFILE_SPECS[DEFAULT_PROFILE_ID])
     case = load_yaml(case_path)
     case["_path"] = str(case_path)
-    profile_output_root = profile_root / "output"
-    if profile_output_root.exists():
-        shutil.rmtree(profile_output_root)
-    profile_output_root.mkdir(parents=True, exist_ok=True)
-
-    timing = {"read_seconds": 0.0, "reducer_merge_seconds": 0.0}
-    read_started = time.perf_counter()
     _ = load_json(diagnostics_path)
-    timing["read_seconds"] += time.perf_counter() - read_started
 
-    original_read_trajectory = hazard.read_trajectory_sample_batch
-    original_read_deposition = hazard.read_deposition_batch
-    original_read_impact_csv_batches = hazard.read_impact_event_csv_batches
-    original_read_impact_parquet_batches = hazard.read_impact_event_parquet_batches
-    original_merge = hazard.HazardAccumulator.merge
+    run_results: dict[str, ProfileRunResult] = {}
+    for mode in profile_spec.run_modes:
+        run_results[mode] = run_profiled_hazard_build(
+            profile_root=profile_root,
+            profile_spec=profile_spec,
+            fixture_manifest=fixture_manifest,
+            case_path=case_path,
+            trajectory_dir=trajectory_dir,
+            deposition_path=deposition_path,
+            impact_event_dir=impact_event_dir,
+            diagnostics_path=diagnostics_path,
+            mode=mode,
+        )
 
-    def timed_trajectory_reader(path: Path, warnings: list[str]) -> Any:
-        started = time.perf_counter()
-        try:
-            return original_read_trajectory(path, warnings)
-        finally:
-            timing["read_seconds"] += time.perf_counter() - started
-
-    def timed_deposition_reader(path: Path | None, warnings: list[str]) -> Any:
-        started = time.perf_counter()
-        try:
-            return original_read_deposition(path, warnings)
-        finally:
-            timing["read_seconds"] += time.perf_counter() - started
-
-    def timed_impact_csv_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
-        started = time.perf_counter()
-        try:
-            for batch in original_read_impact_csv_batches(paths, warnings):
-                yield batch
-        finally:
-            timing["read_seconds"] += time.perf_counter() - started
-
-    def timed_impact_parquet_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
-        started = time.perf_counter()
-        try:
-            for batch in original_read_impact_parquet_batches(paths, warnings):
-                yield batch
-        finally:
-            timing["read_seconds"] += time.perf_counter() - started
-
-    def timed_merge(self: Any, other: Any) -> Any:
-        started = time.perf_counter()
-        try:
-            return original_merge(self, other)
-        finally:
-            timing["reducer_merge_seconds"] += time.perf_counter() - started
-
-    output_dir = profile_output_root / "hazard"
-    args = [
-        "--case",
-        str(case_path),
-        "--output-dir",
-        str(output_dir),
-        "--grid-xmin",
-        str(DEFAULT_GRID_XMIN),
-        "--grid-ymin",
-        str(DEFAULT_GRID_YMIN),
-        "--grid-ncols",
-        str(DEFAULT_GRID_NCOLS),
-        "--grid-nrows",
-        str(DEFAULT_GRID_NROWS),
-        "--grid-cell-size",
-        str(DEFAULT_GRID_CELLSIZE),
-        "--conditional-curve-export",
-        "summary-only",
-        "--grid-csv-export",
-        "none",
-        "--trajectory-workers",
-        "1",
-        "--reducer-workers",
-        "2",
-        "--export-geotiff",
-        "--diagnostics",
-        str(diagnostics_path),
-        "--ensemble-trajectories-dir",
-        str(trajectory_dir),
-        "--deposition",
-        str(deposition_path),
-        "--ensemble-impact-events-dir",
-        str(impact_event_dir),
-    ]
-
-    with patch_hazard_timing_functions(
-        hazard,
-        timed_trajectory_reader,
-        timed_deposition_reader,
-        timed_impact_csv_reader,
-        timed_impact_parquet_reader,
-        timed_merge,
-    ):
-        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            status = hazard.main_with_args(args)
-
-    if status != 0:
-        raise MultiZoneHazardThroughputProfileError(f"hazard builder exited with status {status}")
-
-    hazard_manifest_path = output_dir / "multi_zone_hazard_profile_manifest.json"
-    if not hazard_manifest_path.exists():
-        raise MultiZoneHazardThroughputProfileError(f"missing hazard manifest: {hazard_manifest_path}")
-    hazard_manifest = load_json(hazard_manifest_path)
-    performance = hazard_manifest.get("performance") or {}
-    outputs = hazard_manifest.get("outputs") or []
-    if not isinstance(performance, dict) or not isinstance(outputs, list):
-        raise MultiZoneHazardThroughputProfileError("hazard manifest missing performance or outputs sections")
-
-    output_pressure = summarize_output_pressure(outputs)
-    timing_breakdown = summarize_timing_breakdown(performance, timing)
+    explicit_run = run_results["explicit"]
+    auto_run = run_results.get("auto")
+    output_pressure = explicit_run.output_pressure
+    timing_breakdown = summarize_timing_breakdown(
+        explicit_run.performance,
+        explicit_run.timing,
+        bounds_discovery_seconds=number_or_zero((auto_run.performance if auto_run else explicit_run.performance).get("bounds_discovery_seconds")),
+        report_render_seconds=number_or_zero(explicit_run.performance.get("plot_render_seconds")),
+    )
     bottleneck = classify_bottleneck(output_pressure, timing_breakdown)
-    recommendation = recommend_optimization(bottleneck, output_pressure, timing_breakdown)
+    recommendation = recommend_optimization(
+        bottleneck,
+        output_pressure,
+        timing_breakdown,
+        profile_spec=profile_spec,
+    )
+
+    run_summaries = {
+        mode: {
+            "hazard_manifest_path": str(result.hazard_manifest_path),
+            "hazard_manifest": {
+                "schema_version": result.hazard_manifest.get("schema_version"),
+                "case_id": result.hazard_manifest.get("case_id"),
+                "completion_status": result.hazard_manifest.get("completion_status"),
+                "execution_status": result.hazard_manifest.get("execution_status"),
+                "conditional_execution": result.hazard_manifest.get("conditional_execution"),
+                "performance": {
+                    "trajectory_read_seconds": round(result.timing["trajectory_read_seconds"], 6),
+                    "input_read_seconds": round(result.timing["input_read_seconds"], 6),
+                    "accumulation_seconds": number_or_zero(result.performance.get("accumulation_seconds")),
+                    "reducer_merge_seconds": round(result.timing["reducer_merge_seconds"], 6),
+                    "manifest_seconds": round(
+                        number_or_zero(result.performance.get("manifest_write_seconds"))
+                        + number_or_zero(result.performance.get("json_serialization_seconds")),
+                        6,
+                    ),
+                    "raster_write_seconds": round(
+                        sum(
+                            number_or_zero(value)
+                            for key, value in (result.performance.get("output_write_kind_seconds") or {}).items()
+                            if key in {"csv_grid", "esri_ascii_grid", "geotiff"}
+                        ),
+                        6,
+                    ),
+                    "report_render_seconds": round(number_or_zero(result.performance.get("plot_render_seconds")), 6),
+                    "bounds_discovery_seconds": round(number_or_zero(result.performance.get("bounds_discovery_seconds")), 6),
+                    "cog_export_seconds": None,
+                },
+            },
+            "output_pressure": result.output_pressure,
+            "timings": result.timing_breakdown,
+            "profile_scale": {
+                "output_file_count": number_or_zero(result.performance.get("output_file_count")),
+                "output_bytes": number_or_zero(result.performance.get("output_bytes")),
+                "hazard_layer_seconds": number_or_zero(result.performance.get("hazard_layer_seconds")),
+                "total_wall_seconds": number_or_zero(result.performance.get("total_wall_seconds")),
+            },
+        }
+        for mode, result in run_results.items()
+    }
 
     report = {
         "schema_version": SCHEMA_VERSION,
+        "profile_id": profile_spec.profile_id,
         "profile_status": "profiled_scratch_root",
         "profile_root": str(profile_root),
         "fixture": {
@@ -443,33 +471,39 @@ def build_report(profile_root: Path) -> dict[str, Any]:
             "impact_file_count": fixture_manifest.get("impact_file_count"),
             "deposition_row_count": fixture_manifest.get("deposition_row_count"),
             "impact_row_count": fixture_manifest.get("impact_row_count"),
+            "profile_id": fixture_manifest.get("profile_id"),
+            "measure_bounds_discovery": fixture_manifest.get("measure_bounds_discovery"),
+            "render_report": fixture_manifest.get("render_report"),
             "fixture_fingerprint": fixture_manifest.get("fixture_fingerprint"),
         },
-        "hazard_manifest_path": str(hazard_manifest_path),
+        "runs": run_summaries,
+        "hazard_manifest_path": str(explicit_run.hazard_manifest_path),
         "hazard_manifest": {
-            "schema_version": hazard_manifest.get("schema_version"),
-            "case_id": hazard_manifest.get("case_id"),
-            "completion_status": hazard_manifest.get("completion_status"),
-            "execution_status": hazard_manifest.get("execution_status"),
-            "conditional_execution": hazard_manifest.get("conditional_execution"),
+            "schema_version": explicit_run.hazard_manifest.get("schema_version"),
+            "case_id": explicit_run.hazard_manifest.get("case_id"),
+            "completion_status": explicit_run.hazard_manifest.get("completion_status"),
+            "execution_status": explicit_run.hazard_manifest.get("execution_status"),
+            "conditional_execution": explicit_run.hazard_manifest.get("conditional_execution"),
             "performance": {
-                "read_seconds": round(timing["read_seconds"], 6),
-                "accumulation_seconds": number_or_zero(performance.get("accumulation_seconds")),
-                "reducer_merge_seconds": round(timing["reducer_merge_seconds"], 6),
+                "trajectory_read_seconds": round(explicit_run.timing["trajectory_read_seconds"], 6),
+                "input_read_seconds": round(explicit_run.timing["input_read_seconds"], 6),
+                "accumulation_seconds": number_or_zero(explicit_run.performance.get("accumulation_seconds")),
+                "reducer_merge_seconds": round(explicit_run.timing["reducer_merge_seconds"], 6),
                 "manifest_seconds": round(
-                    number_or_zero(performance.get("manifest_write_seconds"))
-                    + number_or_zero(performance.get("json_serialization_seconds")),
+                    number_or_zero(explicit_run.performance.get("manifest_write_seconds"))
+                    + number_or_zero(explicit_run.performance.get("json_serialization_seconds")),
                     6,
                 ),
                 "raster_write_seconds": round(
                     sum(
                         number_or_zero(value)
-                        for key, value in (performance.get("output_write_kind_seconds") or {}).items()
+                        for key, value in (explicit_run.performance.get("output_write_kind_seconds") or {}).items()
                         if key in {"csv_grid", "esri_ascii_grid", "geotiff"}
                     ),
                     6,
                 ),
-                "report_render_seconds": round(number_or_zero(performance.get("plot_render_seconds")), 6),
+                "report_render_seconds": round(number_or_zero(explicit_run.performance.get("plot_render_seconds")), 6),
+                "bounds_discovery_seconds": round(number_or_zero((auto_run.performance if auto_run else explicit_run.performance).get("bounds_discovery_seconds")), 6),
                 "cog_export_seconds": None,
             },
         },
@@ -486,17 +520,170 @@ def build_report(profile_root: Path) -> dict[str, Any]:
         "bottleneck": bottleneck,
         "recommendation": recommendation,
         "profile_scale": {
-            "output_file_count": number_or_zero(performance.get("output_file_count")),
-            "output_bytes": number_or_zero(performance.get("output_bytes")),
-            "hazard_layer_seconds": number_or_zero(performance.get("hazard_layer_seconds")),
-            "total_wall_seconds": number_or_zero(performance.get("total_wall_seconds")),
+            "output_file_count": number_or_zero(explicit_run.performance.get("output_file_count")),
+            "output_bytes": number_or_zero(explicit_run.performance.get("output_bytes")),
+            "hazard_layer_seconds": number_or_zero(explicit_run.performance.get("hazard_layer_seconds")),
+            "total_wall_seconds": number_or_zero(explicit_run.performance.get("total_wall_seconds")),
         },
         "analysis_notes": [
-            "The fixture is explicit-grid and summary-only to keep the profile focused on post-processing fan-out.",
+            "The representative fixture uses explicit-grid output to isolate trajectory accumulation from bounds discovery.",
+            "The smoke profile is smaller and omits report rendering to keep routine tests fast.",
             "COG/GIS export is not applicable in the default fixture because the helper does not materialize a map package.",
         ],
     }
     return report
+
+
+def run_profiled_hazard_build(
+    *,
+    profile_root: Path,
+    profile_spec: ProfileSpec,
+    fixture_manifest: dict[str, Any],
+    case_path: Path,
+    trajectory_dir: Path,
+    deposition_path: Path,
+    impact_event_dir: Path,
+    diagnostics_path: Path,
+    mode: str,
+) -> ProfileRunResult:
+    profile_output_root = profile_root / "output" / mode
+    if profile_output_root.exists():
+        shutil.rmtree(profile_output_root)
+    profile_output_root.mkdir(parents=True, exist_ok=True)
+
+    timing = {"trajectory_read_seconds": 0.0, "input_read_seconds": 0.0, "reducer_merge_seconds": 0.0}
+    read_started = time.perf_counter()
+    _ = load_json(diagnostics_path)
+    timing["input_read_seconds"] += time.perf_counter() - read_started
+
+    original_read_trajectory = hazard.read_trajectory_sample_batch
+    original_read_deposition = hazard.read_deposition_batch
+    original_read_impact_csv_batches = hazard.read_impact_event_csv_batches
+    original_read_impact_parquet_batches = hazard.read_impact_event_parquet_batches
+    original_merge = hazard.HazardAccumulator.merge
+
+    def timed_trajectory_reader(path: Path, warnings: list[str]) -> Any:
+        started = time.perf_counter()
+        try:
+            return original_read_trajectory(path, warnings)
+        finally:
+            elapsed = time.perf_counter() - started
+            timing["trajectory_read_seconds"] += elapsed
+            timing["input_read_seconds"] += elapsed
+
+    def timed_deposition_reader(path: Path | None, warnings: list[str]) -> Any:
+        started = time.perf_counter()
+        try:
+            return original_read_deposition(path, warnings)
+        finally:
+            timing["input_read_seconds"] += time.perf_counter() - started
+
+    def timed_impact_csv_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
+        started = time.perf_counter()
+        try:
+            for batch in original_read_impact_csv_batches(paths, warnings):
+                yield batch
+        finally:
+            timing["input_read_seconds"] += time.perf_counter() - started
+
+    def timed_impact_parquet_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
+        started = time.perf_counter()
+        try:
+            for batch in original_read_impact_parquet_batches(paths, warnings):
+                yield batch
+        finally:
+            timing["input_read_seconds"] += time.perf_counter() - started
+
+    def timed_merge(self: Any, other: Any) -> Any:
+        started = time.perf_counter()
+        try:
+            return original_merge(self, other)
+        finally:
+            timing["reducer_merge_seconds"] += time.perf_counter() - started
+
+    args = [
+        "--case",
+        str(case_path),
+        "--output-dir",
+        str(profile_output_root / "hazard"),
+        "--conditional-curve-export",
+        "summary-only",
+        "--grid-csv-export",
+        "none",
+        "--trajectory-workers",
+        "1",
+        "--reducer-workers",
+        str(profile_spec.reducer_workers),
+        "--diagnostics",
+        str(diagnostics_path),
+        "--ensemble-trajectories-dir",
+        str(trajectory_dir),
+        "--deposition",
+        str(deposition_path),
+        "--ensemble-impact-events-dir",
+        str(impact_event_dir),
+    ]
+    if mode == "explicit":
+        args.extend(
+            [
+                "--grid-xmin",
+                str(DEFAULT_GRID_XMIN),
+                "--grid-ymin",
+                str(DEFAULT_GRID_YMIN),
+                "--grid-ncols",
+                str(DEFAULT_GRID_NCOLS),
+                "--grid-nrows",
+                str(DEFAULT_GRID_NROWS),
+                "--grid-cell-size",
+                str(DEFAULT_GRID_CELLSIZE),
+            ]
+        )
+        args.append("--export-geotiff")
+        if not profile_spec.render_report:
+            args.append("--no-plots")
+    else:
+        args.append("--no-plots")
+
+    with patch_hazard_timing_functions(
+        hazard,
+        timed_trajectory_reader,
+        timed_deposition_reader,
+        timed_impact_csv_reader,
+        timed_impact_parquet_reader,
+        timed_merge,
+    ):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            status = hazard.main_with_args(args)
+
+    if status != 0:
+        raise MultiZoneHazardThroughputProfileError(f"hazard builder exited with status {status} for mode {mode}")
+
+    hazard_manifest_path = profile_output_root / "hazard" / "multi_zone_hazard_profile_manifest.json"
+    if not hazard_manifest_path.exists():
+        raise MultiZoneHazardThroughputProfileError(f"missing hazard manifest: {hazard_manifest_path}")
+    hazard_manifest = load_json(hazard_manifest_path)
+    performance = hazard_manifest.get("performance") or {}
+    outputs = hazard_manifest.get("outputs") or []
+    if not isinstance(performance, dict) or not isinstance(outputs, list):
+        raise MultiZoneHazardThroughputProfileError("hazard manifest missing performance or outputs sections")
+
+    output_pressure = summarize_output_pressure(outputs)
+    timing_breakdown = summarize_timing_breakdown(
+        performance,
+        timing,
+        bounds_discovery_seconds=number_or_zero(performance.get("bounds_discovery_seconds")),
+        report_render_seconds=number_or_zero(performance.get("plot_render_seconds")),
+    )
+    return ProfileRunResult(
+        mode=mode,
+        output_dir=profile_output_root / "hazard",
+        hazard_manifest_path=hazard_manifest_path,
+        hazard_manifest=hazard_manifest,
+        performance=performance,
+        output_pressure=output_pressure,
+        timing_breakdown=timing_breakdown,
+        timing=timing,
+    )
 
 
 @contextmanager
@@ -674,8 +861,15 @@ def summarize_output_pressure(outputs: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def summarize_timing_breakdown(performance: dict[str, Any], helper_timing: dict[str, float]) -> dict[str, Any]:
-    read_seconds = round(helper_timing["read_seconds"], 6)
+def summarize_timing_breakdown(
+    performance: dict[str, Any],
+    helper_timing: dict[str, float],
+    *,
+    bounds_discovery_seconds: float,
+    report_render_seconds: float,
+) -> dict[str, Any]:
+    trajectory_read_seconds = round(helper_timing["trajectory_read_seconds"], 6)
+    input_read_seconds = round(helper_timing["input_read_seconds"], 6)
     accumulation_seconds = round(number_or_zero(performance.get("accumulation_seconds")), 6)
     reducer_merge_seconds = round(helper_timing["reducer_merge_seconds"], 6)
     manifest_seconds = round(
@@ -691,13 +885,15 @@ def summarize_timing_breakdown(performance: dict[str, Any], helper_timing: dict[
         ),
         6,
     )
-    report_render_seconds = round(number_or_zero(performance.get("plot_render_seconds")), 6)
+    report_render_seconds = round(report_render_seconds, 6)
+    bounds_discovery_seconds = round(bounds_discovery_seconds, 6)
     phase_seconds = {
-        "read_seconds": read_seconds,
+        "trajectory_read_seconds": trajectory_read_seconds,
+        "bounds_discovery_seconds": bounds_discovery_seconds,
         "accumulation_seconds": accumulation_seconds,
         "reducer_merge_seconds": reducer_merge_seconds,
-        "manifest_seconds": manifest_seconds,
         "raster_write_seconds": raster_write_seconds,
+        "manifest_seconds": manifest_seconds,
         "report_render_seconds": report_render_seconds,
     }
     return {
@@ -706,17 +902,19 @@ def summarize_timing_breakdown(performance: dict[str, Any], helper_timing: dict[
         "total_wall_seconds": round(number_or_zero(performance.get("total_wall_seconds")), 6),
         "output_file_count": number_or_zero(performance.get("output_file_count")),
         "output_bytes": number_or_zero(performance.get("output_bytes")),
+        "input_read_seconds": input_read_seconds,
     }
 
 
 def phase_rank(name: str) -> int:
     order = {
-        "read_seconds": 0,
-        "accumulation_seconds": 1,
-        "reducer_merge_seconds": 2,
-        "manifest_seconds": 3,
+        "trajectory_read_seconds": 0,
+        "bounds_discovery_seconds": 1,
+        "accumulation_seconds": 2,
+        "reducer_merge_seconds": 3,
         "raster_write_seconds": 4,
-        "report_render_seconds": 5,
+        "manifest_seconds": 5,
+        "report_render_seconds": 6,
     }
     return order.get(name, 99)
 
@@ -742,7 +940,7 @@ def classify_bottleneck(output_pressure: dict[str, Any], timing_breakdown: dict[
     )
     if profile_small:
         return {
-            "label": "no_change",
+            "label": "insufficient_scale_to_optimize",
             "reason": (
                 "profile is too small to justify an optimization; "
                 f"largest phase is {largest_phase_name} at {largest_phase_seconds:.3f}s and "
@@ -778,11 +976,13 @@ def recommend_optimization(
     bottleneck: dict[str, Any],
     output_pressure: dict[str, Any],
     timing_breakdown: dict[str, Any],
+    *,
+    profile_spec: ProfileSpec,
 ) -> dict[str, Any]:
-    if bottleneck["label"] == "no_change":
+    if bottleneck["label"] == "insufficient_scale_to_optimize":
         return {
-            "label": "no_change",
-            "status": "insufficient_scale",
+            "label": "insufficient_scale_to_optimize",
+            "status": "insufficient_scale_to_optimize",
             "reason": bottleneck["reason"],
             "evidence": {
                 "output_file_count": timing_breakdown["output_file_count"],
@@ -818,13 +1018,31 @@ def recommend_optimization(
             },
         }
     return {
-        "label": "accumulator_focus",
+        "label": "trajectory_accumulator_batching",
         "status": "bounded_optimization",
-        "reason": "accumulation dominates, so the next bounded optimization should target accumulator batching or merge handling",
+        "reason": (
+            "trajectory accumulation dominates the explicit-grid run, so the next bounded optimization "
+            "should target Python-level trajectory batching before changing hazard semantics"
+        ),
+        "proposal": {
+            "target": "batch or vectorize trajectory-cell updates inside the existing accumulator",
+            "expected_impact": (
+                "reduce the dominant explicit-grid trajectory accumulation phase by lowering Python row-wise update overhead"
+            ),
+            "risk": (
+                "medium: batching must preserve per-cell maxima, reach counts, exceedance semantics, and reducer merge determinism"
+            ),
+            "required_tests": [
+                "smoke-profile semantic guardrail comparing profiled and control hazard outputs",
+                "representative multi-zone phase-breakdown profile",
+                "trajectory-layer idempotence and reducer-merge regressions in tests/test_hazard_layers.py",
+            ],
+        },
         "evidence": {
             "dominant_phase": bottleneck["dominant_phase"],
             "dominant_file_family": bottleneck["dominant_file_family"],
             "largest_layer_family": bottleneck["dominant_layer_family"],
+            "profile_id": profile_spec.profile_id,
         },
     }
 
@@ -909,21 +1127,33 @@ def render_text(report: dict[str, Any]) -> str:
     pressure = report["output_pressure"]
     bottleneck = report["bottleneck"]
     recommendation = report["recommendation"]
+    proposal = recommendation.get("proposal") or {}
+    runs = report.get("runs") or {}
     lines = [
         f"profile_status: {report['profile_status']}",
+        f"profile_id: {report.get('profile_id')}",
         f"release_zone_count: {report['fixture']['release_zone_count']}",
         f"trajectory_file_count: {report['fixture']['trajectory_file_count']}",
         f"impact_file_count: {report['fixture']['impact_file_count']}",
-        f"read_seconds: {timings['read_seconds']}",
+        f"trajectory_read_seconds: {timings['trajectory_read_seconds']}",
+        f"bounds_discovery_seconds: {timings['bounds_discovery_seconds']}",
         f"accumulation_seconds: {timings['accumulation_seconds']}",
         f"reducer_merge_seconds: {timings['reducer_merge_seconds']}",
-        f"manifest_seconds: {timings['manifest_seconds']}",
         f"raster_write_seconds: {timings['raster_write_seconds']}",
+        f"manifest_seconds: {timings['manifest_seconds']}",
         f"report_render_seconds: {timings['report_render_seconds']}",
         f"bottleneck: {bottleneck['label']}",
         f"recommendation: {recommendation['label']}",
+        f"recommendation_status: {recommendation['status']}",
         "largest_layer_families:",
     ]
+    if runs:
+        lines.append("runs:")
+        for mode, run in sorted(runs.items()):
+            mode_timings = run["timings"]["phase_seconds"]
+            lines.append(
+                f"- {mode}: accumulation={mode_timings['accumulation_seconds']}, report_render={mode_timings['report_render_seconds']}"
+            )
     for item in pressure["largest_layer_families"]:
         lines.append(f"- {item['kind']}: files={item['file_count']}, bytes={item['total_bytes']}")
     lines.append("largest_file_families:")
@@ -934,6 +1164,8 @@ def render_text(report: dict[str, Any]) -> str:
         lines.append(f"- {item['kind']}: files={item['file_count']}, bytes={item['total_bytes']}")
     lines.append(f"reason: {bottleneck['reason']}")
     lines.append(f"recommendation_reason: {recommendation['reason']}")
+    if proposal:
+        lines.append(f"proposal_target: {proposal.get('target')}")
     return "\n".join(lines)
 
 
@@ -942,22 +1174,35 @@ def render_markdown(report: dict[str, Any]) -> str:
     pressure = report["output_pressure"]
     bottleneck = report["bottleneck"]
     recommendation = report["recommendation"]
+    proposal = recommendation.get("proposal") or {}
+    runs = report.get("runs") or {}
     lines = [
         "# Multi-Zone Hazard Throughput Profile",
         "",
         f"- profile_status: `{report['profile_status']}`",
+        f"- profile_id: `{report.get('profile_id')}`",
         f"- release_zone_count: `{report['fixture']['release_zone_count']}`",
-        f"- read_seconds: `{timings['read_seconds']}`",
+        f"- trajectory_read_seconds: `{timings['trajectory_read_seconds']}`",
+        f"- bounds_discovery_seconds: `{timings['bounds_discovery_seconds']}`",
         f"- accumulation_seconds: `{timings['accumulation_seconds']}`",
         f"- reducer_merge_seconds: `{timings['reducer_merge_seconds']}`",
-        f"- manifest_seconds: `{timings['manifest_seconds']}`",
         f"- raster_write_seconds: `{timings['raster_write_seconds']}`",
+        f"- manifest_seconds: `{timings['manifest_seconds']}`",
         f"- report_render_seconds: `{timings['report_render_seconds']}`",
         f"- bottleneck: `{bottleneck['label']}`",
         f"- recommendation: `{recommendation['label']}`",
+        f"- recommendation_status: `{recommendation['status']}`",
         "",
         "## Layer Families",
     ]
+    if runs:
+        lines.append("## Runs")
+        for mode, run in sorted(runs.items()):
+            mode_timings = run["timings"]["phase_seconds"]
+            lines.append(
+                f"- `{mode}`: accumulation=`{mode_timings['accumulation_seconds']}`, report_render=`{mode_timings['report_render_seconds']}`"
+            )
+        lines.append("")
     lines.extend(
         f"- `{item['kind']}`: `{item['file_count']}` files / `{item['total_bytes']}` bytes"
         for item in pressure["largest_layer_families"]
@@ -985,6 +1230,18 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
         ]
     )
+    if proposal:
+        lines.extend(
+            [
+                "## Proposal",
+                f"- target: `{proposal.get('target')}`",
+                f"- expected impact: `{proposal.get('expected_impact')}`",
+                f"- risk: `{proposal.get('risk')}`",
+                "- required tests:",
+            ]
+        )
+        lines.extend(f"  - `{item}`" for item in proposal.get("required_tests", []))
+        lines.append("")
     return "\n".join(lines)
 
 

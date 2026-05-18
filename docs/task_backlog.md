@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-219: Hazard Accumulation Throughput Hotspot Isolation
-
-Goal: Isolate the remaining Python hazard-accumulation hotspot after explicit-grid improvements and define one bounded optimization target.
-
-Capability gap reduced: Python hazard accumulation may become the next bottleneck after output-profile and reducer constraints are enforced.
-
-Why this outranks alternatives: The reviewer noted trajectory accumulation remains dominant after explicit-grid mode reduced hazard-stage time; optimizing without a focused profile risks adding complexity in the wrong place.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_output_writers.py`
-- `scripts/hazard_output_manifests.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/hazard_output_profile_contract.md`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A microprofile that separates trajectory reading, bounds discovery, accumulation, reducer merge, raster write, manifest write, and report rendering.
-- A representative fixture-backed multi-zone profile and a smaller smoke profile suitable for routine tests.
-- One bounded optimization proposal with expected impact, risk, and required tests, or an explicit `insufficient_scale_to_optimize` classification.
-- Guardrails proving the profile does not change hazard values or output semantics.
-
-Definition of done:
-
-- The repo has a concrete, measured next optimization target for hazard accumulation, or a defensible reason to defer optimization until larger measured roots exist.
-
-Boundaries: Profiling and target selection only; no broad hazard-builder rewrite, no probability semantics change, no physics change, and no generated heavy outputs committed.
-
 ### TB-220: Release-Zone And Scenario Physical-Meaning Firewall
 
 Goal: Add an explicit interpretation firewall that prevents workflow-generated release candidates, scenario tables, and sampling weights from being represented as field-supported source probabilities.

@@ -904,3 +904,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: fixture-backed regression gate only, no live Balfrin job, no distributed reducer, no Swiss-wide projection claim, and no generated heavy outputs committed.
 - Next task: `TB-219`
+
+### TB-219: Hazard Accumulation Throughput Hotspot Isolation
+
+- Date: 2026-05-18
+- Commit: TBD
+- Objective: isolate the remaining Python hazard-accumulation hotspot after explicit-grid improvements and define one bounded optimization target.
+- Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/hazard_throughput_bottleneck_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the fixture-backed throughput profiler with smoke and representative presets, explicit-grid and auto-grid runs, and phase timing fields that separate trajectory reading, bounds discovery, accumulation, reducer merge, raster write, manifest write, and report rendering.
+  - Added a smoke semantic guardrail that compares profiled and control hazard-layer signatures plus path-free manifest semantics, so the profiling path does not change hazard values or output meaning.
+  - Confirmed the representative multi-zone fixture still points to trajectory accumulation as the dominant explicit-grid phase and recorded a bounded next target: batch or vectorize trajectory-cell updates inside the existing accumulator.
+  - Updated the throughput report with the measured representative profile and removed TB-219 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_hazard_throughput_profile.py tests/test_multi_zone_hazard_throughput_profile.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb219_multi_zone_profile --profile multi_zone --format json > /tmp/tb219_multi_zone_profile.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/rust_rockfall/tb219_smoke_profile --profile smoke --format json > /tmp/tb219_smoke_profile.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: profiling and target selection only, no hazard semantics or physics change, no heavy outputs committed, and no distributed or operational claims introduced.
+- Next task: `TB-220`

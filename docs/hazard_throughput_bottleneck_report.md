@@ -209,3 +209,47 @@ Interpretation:
 - Trajectory Parquet should still wait until the hazard builder has a reader
   path that can use projected/batched trajectory columns rather than converting
   back to row-wise Python objects.
+
+## TB-219 Microprofile Update
+
+The current microprofile helper now separates the remaining hazard-stage
+phases on a fixture-backed scratch root:
+
+- smoke profile: 2 release zones, explicit-only routine check, 18 output files
+  / 824030 bytes, bounded by `raster_write_seconds`.
+- representative profile: 12 release zones, auto-grid bounds pass plus
+  explicit-grid accumulation pass, 25 output files / 957998 bytes.
+
+Representative measured phases:
+
+- trajectory reading: `0.002586` s
+- bounds discovery: `0.001153` s
+- accumulation: `0.07079` s
+- reducer merge: `0.004829` s
+- raster write: `0.026177` s
+- manifest write: `0.000317` s
+- report rendering: `0.0` s
+
+Representative output pressure:
+
+- largest phase: `accumulation_seconds`
+- largest layer family: `max_kinetic_energy` at `2` files / `129276` bytes
+- largest file family: `geotiff` at `9` files / `665910` bytes
+
+Bounded next target:
+
+- batch or vectorize trajectory-cell updates inside the existing accumulator.
+- expected impact: reduce the dominant explicit-grid trajectory accumulation
+  phase by lowering Python row-wise update overhead.
+- risk: batching must preserve per-cell maxima, reach counts, exceedance
+  semantics, and reducer merge determinism.
+- required tests: smoke-profile semantic guardrail, representative phase
+  breakdown, and the existing trajectory-layer / reducer-merge regressions in
+  `tests/test_hazard_layers.py`.
+
+Interpretation:
+
+- Auto-grid bounds discovery is now measurable but small on the representative
+  fixture, so explicit-grid remains the right control for accumulation work.
+- The smoke profile stays intentionally smaller and routine; it is useful for
+  semantic guardrails, but not for selecting the next optimization target.
