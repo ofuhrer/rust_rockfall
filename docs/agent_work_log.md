@@ -752,3 +752,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live execution, no operational claim, no distributed execution, no annual-frequency or physical-probability semantics, and no fabricated metrics.
 - Next task: `TB-212`
+
+### TB-212: Real Second-Site Prepared-Pilot Dry Run
+
+- Date: 2026-05-18
+- Commit: `dfda69b`
+- Objective: compose a deterministic Chant Sura / Fluelapass prepared-pilot dry run that stays fail-closed when required real staged inputs are missing or fixture-backed.
+- Files changed: `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added provenance-aware reporting that separates `real_staged` from `fixture_backed` prepared-pilot inputs and classifies the workflow as `blocked_fixture_backed_inputs` when staged paths exist but the public-context contract is still synthetic.
+  - Threaded the provenance and blocked-input summaries into the rendered report, ready-for-next-step output, and tiny bounded ensemble handoff so the dry-run path preserves real-versus-fixture boundaries.
+  - Added focused regressions for clean-checkout blocked behavior, fixture-backed fail-closed behavior, staged-real-like ready behavior, and forbidden output-root writes.
+  - Removed TB-212 from the active backlog after the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_chant_sura_fluelapass_dry_run_report.py tests/test_chant_sura_fluelapass_workflow_dry_run_report.py tests/test_aoi_to_prepared_pilot_dry_run.py`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_chant_sura_fluelapass_workflow_dry_run_report tests.test_aoi_to_prepared_pilot_dry_run`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads, no ensemble execution without explicit authorization, no synthetic public-context evidence, no physical-validation claim, no operational claim, and no readiness claim when required real inputs are absent.
+- Next task: `TB-213`
