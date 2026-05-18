@@ -50,6 +50,10 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             report["physical_credibility_gap_update"]["physical_credibility_requirements_status"],
             "mapped_current_gaps",
         )
+        self.assertEqual(
+            report["next_action_recommendation"]["first_acquisition_action"],
+            "Stage an independent observed runout/deposition benchmark manifest and the matching observed geometry record(s).",
+        )
         self.assertEqual(report["benchmark_intake_manifest"]["manifest_status"], "report_only")
         self.assertEqual(len(report["acquisition_blocker_matrix"]), 6)
         self.assertEqual(report["next_action_recommendation"]["primary_track"], "data_acquisition")
@@ -195,6 +199,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_dataset_status: absent", text)
         self.assertIn("No calibration dataset is available for objective fitting.", text)
+        self.assertIn("first_acquisition_action: Stage an independent observed runout/deposition benchmark manifest", text)
         self.assertIn("acquisition_blocker_matrix:", text)
         self.assertIn("next_action_recommendation:", text)
 
@@ -355,10 +360,13 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             self.assertEqual(validation_summary["validation_status"], "ready")
             self.assertEqual(validation_summary["missing_files"], [])
             self.assertIn("independent observed runout/deposition benchmark manifest", acquisition_checklist)
+            self.assertIn("First acquisition action:", acquisition_checklist)
+            self.assertIn("Stage an independent observed runout/deposition benchmark manifest", acquisition_checklist)
             self.assertIn("Keep the benchmark intake separate from calibration data and fit targets.", acquisition_checklist)
             self.assertIn("blocked_missing_inputs", blocked_no_evidence_report)
             self.assertIn("Acquisition blocker matrix:", blocked_no_evidence_report)
             self.assertIn("Next-action recommendation:", blocked_no_evidence_report)
+            self.assertIn("first_acquisition_action: Stage an independent observed runout/deposition benchmark manifest", blocked_no_evidence_report)
             self.assertIn("calibration_readiness_status: blocked_missing_inputs", blocked_no_evidence_report)
             self.assertIn("physical_credibility_requirements_status: mapped_current_gaps", blocked_no_evidence_report)
             self.assertIn("current_physical_credibility_status: not_established", blocked_no_evidence_report)

@@ -23,34 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-233: Observed Runout Acquisition Operator Package
-
-Goal: Materialize an operator-facing observed runout/deposition acquisition package that follows the blocker matrix without treating the package as evidence.
-
-Capability gap reduced: Physical credibility remains weak because no independent observed benchmark package is staged, and the next acquisition action must be concrete.
-
-Why this outranks alternatives: More interpretation of existing conditional runs will not reduce the physical-evidence gap; workers should be able to prepare the package while preserving the non-evidence boundary.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A generated acquisition package in a caller-provided scratch root with required inventory, geometry/provenance templates, uncertainty fields, licensing/readiness notes, and blocked no-evidence report.
-- Tests proving the generated package is classified as template/non-evidence.
-- Text output that names the first acquisition action.
-
-Definition of done:
-
-- The package is executable as a dry run and cannot be confused with an accepted observed benchmark dataset.
-
-Boundaries: Worker may generate templates in a caller-provided scratch root only; no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or physical-probability claim, no operational claim, and no generated acquisition files committed.
-
 ### TB-234: Observed Benchmark Intake Acceptance Smoke
 
 Goal: Add a fixture-backed acceptance smoke path for a complete observed runout/deposition benchmark intake and explicit rejection paths for common schema failures.

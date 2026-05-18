@@ -1222,3 +1222,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-233`
+
+### TB-233: Observed Runout Acquisition Operator Package
+- Date: 2026-05-18
+- Commit: recorded in final worker report after commit
+- Objective: materialize an operator-facing observed runout/deposition acquisition package that follows the blocker matrix while staying explicitly template/non-evidence.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `first_acquisition_action` to the next-action recommendation and threaded it through the rendered text report, acquisition checklist, and blocked no-evidence report.
+  - Kept the generated scratch-root package classified as `template_non_evidence` while preserving the required inventory, geometry template, provenance template, uncertainty fields, licensing/readiness notes, and validation summary.
+  - Extended the contract tests to assert the first acquisition action appears in the plain-text output and in the generated package artifacts.
+  - Removed TB-233 from the active backlog after the operator package path was verified.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --output-root /tmp/tb233_observed_runout_pack --format text`
+- Result/status: implemented_measured
+- Boundaries: no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency claim, no physical-probability claim, no operational claim, and no generated acquisition files committed.
+- Next task: `TB-234`

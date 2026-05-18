@@ -878,11 +878,15 @@ def build_objective_function_placeholders(*, report: dict[str, Any], pack_root: 
 def build_acquisition_checklist(*, report: dict[str, Any], pack_root: Path) -> str:
     contract = report["benchmark_intake_contract"]
     current_state = report["current_repo_state"]
+    next_action = report["next_action_recommendation"]
     lines = [
         "# Observed runout/deposition acquisition checklist",
         "",
         "Template / non-evidence artifact.",
         "This checklist identifies the independent benchmark artifacts that must exist before the intake can be treated as real evidence.",
+        "",
+        "First acquisition action:",
+        f"- {next_action['first_acquisition_action']}",
         "",
         "Required acquisition items:",
         f"- Benchmark manifest: {EXPECTED_BENCHMARK_MANIFEST}",
@@ -967,6 +971,7 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
             "",
             "Next-action recommendation:",
             f"- primary_track: {next_action_recommendation['primary_track']}",
+            f"- first_acquisition_action: {next_action_recommendation['first_acquisition_action']}",
             f"- summary: {next_action_recommendation['summary']}",
             f"- data_acquisition: {next_action_recommendation['data_acquisition']['summary']}",
             f"- schema_repair: {next_action_recommendation['schema_repair']['summary']}",
@@ -1504,6 +1509,7 @@ def build_next_action_recommendation(acquisition_blocker_matrix: list[dict[str, 
         primary_track = "scientific_deferral"
     return {
         "primary_track": primary_track,
+        "first_acquisition_action": "Stage an independent observed runout/deposition benchmark manifest and the matching observed geometry record(s).",
         "data_acquisition": {
             "summary": "Acquire a real observed runout/deposition package before trying to reuse the evidence for anything else.",
             "applies_when": "no independent benchmark package is staged",
@@ -1612,6 +1618,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  calibration_validation_role: {item['calibration_validation_role']}")
     lines.append("next_action_recommendation:")
     lines.append(f"- primary_track: {next_action_recommendation['primary_track']}")
+    lines.append(f"- first_acquisition_action: {next_action_recommendation['first_acquisition_action']}")
     lines.append(f"- summary: {next_action_recommendation['summary']}")
     lines.append("benchmark_intake_missing_inputs:")
     for item in current_state["benchmark_intake_missing_inputs"]:
