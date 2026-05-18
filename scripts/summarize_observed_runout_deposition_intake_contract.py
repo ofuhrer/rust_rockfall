@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,328 @@ EXPECTED_BENCHMARK_INPUTS = (
     EXPECTED_BENCHMARK_GEOMETRY,
 )
 
+ACQUISITION_MATRIX_SCHEMA_VERSION = "observed_runout_deposition_acquisition_matrix_v1"
+
+ACQUISITION_MATRIX_BLUEPRINTS: tuple[dict[str, Any], ...] = (
+    {
+        "category": "observed_runout_deposition",
+        "dataset_role": "observed_runout_deposition_benchmark",
+        "label": "Independent observed runout/deposition benchmark",
+        "required_fields": {
+            "geometry": [
+                "geometry_id",
+                "geometry_role",
+                "geometry_encoding",
+                "geometry_crs",
+                "geometry_value",
+            ],
+            "provenance": [
+                "event_id",
+                "event_date",
+                "site_id",
+                "source_id",
+                "source_name",
+                "observer",
+                "observation_method",
+                "provenance_uri",
+                "source_origin_description",
+                "source_reference_frame",
+                "source_geometry_reference",
+            ],
+            "uncertainty": [
+                "geometry_tolerance_m",
+                "position_tolerance_m",
+                "timing_tolerance_days",
+                "coverage_completeness",
+                "qa_status",
+                "uncertainty_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Independent field or benchmark intake staged as a separate observed package.",
+            "Observed geometry must be traceable to the event and not reused for calibration selection.",
+            "License or usage notes must allow review without silently inheriting calibration permissions.",
+        ],
+        "uncertainty_fields": [
+            "geometry_tolerance_m",
+            "position_tolerance_m",
+            "timing_tolerance_days",
+            "coverage_completeness",
+            "qa_status",
+            "uncertainty_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Record the access, citation, or usage-rights note with the package.",
+            "Do not mark the package ready if geometry or uncertainty metadata are missing.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "not_allowed",
+            "validation": "benchmark_intake_only",
+            "holdout": "ineligible",
+        },
+        "holdout_eligibility": False,
+        "required_inputs": (
+            EXPECTED_BENCHMARK_MANIFEST,
+            EXPECTED_BENCHMARK_GEOMETRY,
+        ),
+        "blocked_reason": "no independent observed runout/deposition benchmark intake is staged in the repo",
+        "acceptance_notes": [
+            "The observed intake is the physical-credibility anchor for this task.",
+            "If a real package later appears, it still cannot be converted into calibration data.",
+        ],
+    },
+    {
+        "category": "release_zone_provenance",
+        "dataset_role": "release_zone_provenance",
+        "label": "Site-specific release-zone provenance",
+        "required_fields": {
+            "geometry": [
+                "geometry_id",
+                "geometry_role",
+                "geometry_encoding",
+                "geometry_crs",
+                "geometry_value",
+            ],
+            "provenance": [
+                "source_id",
+                "source_origin_description",
+                "source_reference_frame",
+                "source_geometry_reference",
+                "provenance_uri",
+            ],
+            "uncertainty": [
+                "geometry_tolerance_m",
+                "position_tolerance_m",
+                "qa_status",
+                "uncertainty_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Field reconnaissance or mapped release geometry with a stable provenance record.",
+            "Geometry must be distinct from workflow-only candidate release-zone inputs.",
+            "Release-zone provenance may support validation context, but not calibration by itself.",
+        ],
+        "uncertainty_fields": [
+            "geometry_tolerance_m",
+            "position_tolerance_m",
+            "qa_status",
+            "uncertainty_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Record the provenance citation or access note before treating the geometry as reviewable evidence.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "not_allowed",
+            "validation": "context_only",
+            "holdout": "ineligible",
+        },
+        "holdout_eligibility": False,
+        "required_inputs": (
+            EXPECTED_BENCHMARK_MANIFEST,
+            EXPECTED_BENCHMARK_GEOMETRY,
+        ),
+        "blocked_reason": "no independent release-zone provenance package is staged in the repo",
+        "acceptance_notes": [
+            "Release-zone provenance is a separate acquisition path from the benchmark intake.",
+        ],
+    },
+    {
+        "category": "block_population_evidence",
+        "dataset_role": "block_population_evidence",
+        "label": "Block-population or block-size evidence",
+        "required_fields": {
+            "geometry": [
+                "geometry_id",
+                "geometry_role",
+                "geometry_encoding",
+                "geometry_crs",
+                "geometry_value",
+            ],
+            "provenance": [
+                "survey_id",
+                "observer",
+                "observation_method",
+                "provenance_uri",
+                "source_origin_description",
+                "source_reference_frame",
+            ],
+            "uncertainty": [
+                "block_count",
+                "size_class_notes",
+                "sampling_frame_description",
+                "uncertainty_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Field census, photogrammetry survey, or another defensible block-population record.",
+            "Must be traceable to a survey frame rather than a source-frequency catalogue.",
+        ],
+        "uncertainty_fields": [
+            "block_count",
+            "size_class_notes",
+            "sampling_frame_description",
+            "uncertainty_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Include the survey access or citation note so the census can be audited later.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "not_allowed",
+            "validation": "future_probability_bridge_only",
+            "holdout": "ineligible",
+        },
+        "holdout_eligibility": False,
+        "required_inputs": (ROOT / "docs/target_area_physical_evidence_acquisition_pack.md",),
+        "blocked_reason": "no block-population or block-size survey is staged in the repo",
+        "acceptance_notes": [
+            "Block-population evidence is a future physical-probability bridge, not a calibration target.",
+        ],
+    },
+    {
+        "category": "calibration_inputs",
+        "dataset_role": "calibration_inputs",
+        "label": "Calibration inputs",
+        "required_fields": {
+            "geometry": [
+                "dataset_id",
+                "case_id",
+                "split_id",
+                "objective_function_id",
+            ],
+            "provenance": [
+                "calibration_dataset_ids",
+                "objective_function_id",
+                "fit_record_provenance_uri",
+                "split_rules",
+            ],
+            "uncertainty": [
+                "parameter_bounds",
+                "fit_residual_notes",
+                "split_uncertainty_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Calibration dataset must be separate from the validation and holdout evidence used by the task.",
+            "Objective function and fit record must be explicit if calibration is later authorized.",
+        ],
+        "uncertainty_fields": [
+            "parameter_bounds",
+            "fit_residual_notes",
+            "split_uncertainty_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Calibration data may be useful only after a later task explicitly authorizes fitting.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "primary",
+            "validation": "separated_from_holdout",
+            "holdout": "ineligible",
+        },
+        "holdout_eligibility": False,
+        "required_inputs": (EXPECTED_CALIBRATION_ROOT,),
+        "blocked_reason": "no calibration dataset is staged in the repo",
+        "acceptance_notes": [
+            "Calibration inputs must never be inferred from the observed benchmark intake.",
+        ],
+    },
+    {
+        "category": "validation_inputs",
+        "dataset_role": "validation_inputs",
+        "label": "Validation inputs",
+        "required_fields": {
+            "geometry": [
+                "case_id",
+                "split_id",
+                "validation_case_path",
+                "validation_manifest_path",
+            ],
+            "provenance": [
+                "validation_dataset_ids",
+                "split_rules",
+                "selection_boundary_notes",
+                "provenance_uri",
+            ],
+            "uncertainty": [
+                "validation_scoring_notes",
+                "selection_boundary_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Validation fixtures must be disjoint from calibration fixtures and selection data.",
+            "The record is acceptable when the split provenance is explicit and deterministic.",
+        ],
+        "uncertainty_fields": [
+            "validation_scoring_notes",
+            "selection_boundary_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Validation data are acceptable only when the split and provenance are documented.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "not_allowed",
+            "validation": "primary",
+            "holdout": "ineligible",
+        },
+        "holdout_eligibility": False,
+        "required_inputs": (
+            EXPECTED_VALIDATION_INPUT_MANIFEST,
+            EXPECTED_VALIDATION_INPUT_CASE,
+        ),
+        "blocked_reason": None,
+        "acceptance_notes": [
+            "Validation inputs remain separate from calibration inputs and holdout data.",
+        ],
+    },
+    {
+        "category": "holdout_data",
+        "dataset_role": "holdout_data",
+        "label": "Holdout data",
+        "required_fields": {
+            "geometry": [
+                "case_id",
+                "split_id",
+                "holdout_case_path",
+                "holdout_manifest_path",
+            ],
+            "provenance": [
+                "holdout_dataset_ids",
+                "split_rules",
+                "selection_boundary_notes",
+                "provenance_uri",
+            ],
+            "uncertainty": [
+                "holdout_scoring_notes",
+                "selection_boundary_notes",
+            ],
+        },
+        "acceptable_provenance": [
+            "Holdout data must be disjoint from selection and calibration data.",
+            "The package is acceptable only when reuse-for-fitting is explicitly forbidden.",
+        ],
+        "uncertainty_fields": [
+            "holdout_scoring_notes",
+            "selection_boundary_notes",
+        ],
+        "licensing_readiness_notes": [
+            "Holdout data are only ready when the split fence is explicit and stable.",
+        ],
+        "calibration_validation_role": {
+            "calibration": "not_allowed",
+            "validation": "holdout_only",
+            "holdout": "primary",
+        },
+        "holdout_eligibility": True,
+        "required_inputs": (
+            EXPECTED_HOLDOUT_MANIFEST,
+            EXPECTED_HOLDOUT_CASE,
+        ),
+        "blocked_reason": None,
+        "acceptance_notes": [
+            "Holdout data are validation-side evidence only and must remain separated from calibration.",
+        ],
+    },
+)
+
 
 class ObservedRunoutDepositionIntakeContractError(ValueError):
     """User-facing observed runout/deposition intake contract error."""
@@ -89,12 +412,16 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     contract = build_contract()
     field_requirement_map = build_field_requirement_map()
     current_state = build_current_state()
+    acquisition_blocker_matrix = build_acquisition_blocker_matrix(current_state=current_state)
+    next_action_recommendation = build_next_action_recommendation(acquisition_blocker_matrix)
     physical_credibility_gap_update = build_physical_credibility_gap_update()
     dataset_role_classification = build_dataset_role_classification(current_state=current_state)
     benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=contract,
         current_state=current_state,
+        acquisition_blocker_matrix=acquisition_blocker_matrix,
+        next_action_recommendation=next_action_recommendation,
         physical_credibility_gap_update=physical_credibility_gap_update,
         dataset_role_classification=dataset_role_classification,
         pack_root=None,
@@ -111,6 +438,8 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "benchmark_intake_manifest": benchmark_intake_manifest,
                 "field_requirement_map": field_requirement_map,
                 "current_repo_state": current_state,
+                "acquisition_blocker_matrix": acquisition_blocker_matrix,
+                "next_action_recommendation": next_action_recommendation,
                 "physical_credibility_gap_update": physical_credibility_gap_update,
                 "dataset_role_classification": dataset_role_classification,
                 "claim_boundaries": claim_boundaries(),
@@ -125,6 +454,8 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "benchmark_intake_manifest": benchmark_intake_manifest,
             "field_requirement_map": field_requirement_map,
             "current_repo_state": current_state,
+            "acquisition_blocker_matrix": acquisition_blocker_matrix,
+            "next_action_recommendation": next_action_recommendation,
             "physical_credibility_gap_update": physical_credibility_gap_update,
             "dataset_role_classification": dataset_role_classification,
             "claim_boundaries": claim_boundaries(),
@@ -154,6 +485,8 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=report["benchmark_intake_contract"],
         current_state=report["current_repo_state"],
+        acquisition_blocker_matrix=report["acquisition_blocker_matrix"],
+        next_action_recommendation=report["next_action_recommendation"],
         physical_credibility_gap_update=report["physical_credibility_gap_update"],
         dataset_role_classification=report["dataset_role_classification"],
         pack_root=pack_root,
@@ -250,6 +583,8 @@ def build_benchmark_intake_manifest(
     *,
     contract: dict[str, Any],
     current_state: dict[str, Any],
+    acquisition_blocker_matrix: list[dict[str, Any]],
+    next_action_recommendation: dict[str, Any],
     physical_credibility_gap_update: dict[str, Any],
     dataset_role_classification: list[dict[str, Any]],
     pack_root: Path | None,
@@ -309,6 +644,8 @@ def build_benchmark_intake_manifest(
             "calibration_validation_overlap_allowed": False,
             "no_reuse_for_fit": True,
         },
+        "acquisition_blocker_matrix": acquisition_blocker_matrix,
+        "next_action_recommendation": next_action_recommendation,
         "dataset_role_classification": dataset_role_classification,
         "physical_credibility_gap_update": physical_credibility_gap_update,
         "claim_boundaries": claim_boundaries(),
@@ -335,44 +672,61 @@ def build_physical_credibility_gap_update() -> dict[str, Any]:
 
 
 def build_dataset_role_classification(current_state: dict[str, Any]) -> list[dict[str, Any]]:
-    return [
-        {
-            "dataset_role": "observed_runout_deposition_benchmark",
-            "status": "present" if current_state["benchmark_intake_readiness_status"] == "ready" else "missing",
-            "required_inputs": [str(EXPECTED_BENCHMARK_MANIFEST), str(EXPECTED_BENCHMARK_GEOMETRY)],
-            "claim_boundary": "benchmark intake only; no calibration or operational claim",
-        },
-        {
-            "dataset_role": "release_zone_provenance",
-            "status": "present" if current_state["benchmark_intake_readiness_status"] == "ready" else "missing",
-            "required_inputs": [str(EXPECTED_BENCHMARK_MANIFEST), str(EXPECTED_BENCHMARK_GEOMETRY)],
-            "claim_boundary": "release-zone provenance only; no validation or calibration claim",
-        },
-        {
-            "dataset_role": "block_population_evidence",
-            "status": "missing",
-            "required_inputs": [str(ROOT / "docs/target_area_physical_evidence_acquisition_pack.md")],
-            "claim_boundary": "future physical-probability bridge only",
-        },
-        {
-            "dataset_role": "calibration_inputs",
-            "status": "present" if current_state["calibration_readiness_status"] == "ready" else "missing",
-            "required_inputs": [str(EXPECTED_CALIBRATION_ROOT)],
-            "claim_boundary": "calibration only; separated from benchmark intake and holdout data",
-        },
-        {
-            "dataset_role": "validation_inputs",
-            "status": "present" if validation_inputs_available() else "missing",
-            "required_inputs": [str(EXPECTED_VALIDATION_INPUT_MANIFEST), str(EXPECTED_VALIDATION_INPUT_CASE)],
-            "claim_boundary": "validation-only inputs; separated from calibration inputs",
-        },
-        {
-            "dataset_role": "holdout_data",
-            "status": "present" if holdout_data_available() else "missing",
-            "required_inputs": [str(EXPECTED_HOLDOUT_MANIFEST), str(EXPECTED_HOLDOUT_CASE)],
-            "claim_boundary": "holdout-only data; no reuse for tuning",
-        },
-    ]
+    rows: list[dict[str, Any]] = []
+    for blueprint in ACQUISITION_MATRIX_BLUEPRINTS:
+        dataset_role = str(blueprint["dataset_role"])
+        if dataset_role in {"observed_runout_deposition_benchmark", "release_zone_provenance"}:
+            status = "present" if current_state["benchmark_intake_readiness_status"] == "ready" else "missing"
+        elif dataset_role == "block_population_evidence":
+            status = "missing"
+        elif dataset_role == "calibration_inputs":
+            status = "present" if current_state["calibration_readiness_status"] == "ready" else "missing"
+        elif dataset_role == "validation_inputs":
+            status = "present" if validation_inputs_available() else "missing"
+        elif dataset_role == "holdout_data":
+            status = "present" if holdout_data_available() else "missing"
+        else:  # pragma: no cover - blueprints are exhaustive.
+            status = "missing"
+        rows.append(
+            {
+                "schema_version": ACQUISITION_MATRIX_SCHEMA_VERSION,
+                "category": blueprint["category"],
+                "dataset_role": dataset_role,
+                "label": blueprint["label"],
+                "status": status,
+                "repository_status": status,
+                "acceptance_status": "ready" if status == "present" else "blocked_missing_inputs",
+                "required_inputs": [str(path) for path in blueprint["required_inputs"]],
+                "required_fields": deepcopy(blueprint["required_fields"]),
+                "acceptable_provenance": list(blueprint["acceptable_provenance"]),
+                "uncertainty_fields": list(blueprint["uncertainty_fields"]),
+                "licensing_readiness_notes": list(blueprint["licensing_readiness_notes"]),
+                "calibration_validation_role": dict(blueprint["calibration_validation_role"]),
+                "holdout_eligibility": blueprint["holdout_eligibility"],
+                "claim_boundary": claim_boundary_for_dataset_role(dataset_role),
+                "blocking_reasons": missing_blocking_reasons(
+                    repository_status=status,
+                    missing_inputs=[str(path) for path in blueprint["required_inputs"] if not Path(path).exists()],
+                    required_fields=blueprint["required_fields"],
+                )
+                if status != "present"
+                else [],
+                "acceptance_notes": list(blueprint["acceptance_notes"]),
+            }
+        )
+    return rows
+
+
+def claim_boundary_for_dataset_role(dataset_role: str) -> str:
+    claim_boundaries = {
+        "observed_runout_deposition_benchmark": "benchmark intake only; no calibration or operational claim",
+        "release_zone_provenance": "release-zone provenance only; no validation or calibration claim",
+        "block_population_evidence": "future physical-probability bridge only",
+        "calibration_inputs": "calibration only; separated from benchmark intake and holdout data",
+        "validation_inputs": "validation-only inputs; separated from calibration inputs",
+        "holdout_data": "holdout-only data; no reuse for tuning",
+    }
+    return claim_boundaries.get(dataset_role, "non-operational acquisition-only boundary")
 
 
 def dataset_role_status(dataset_roles: list[dict[str, Any]], dataset_role: str) -> str:
@@ -560,6 +914,8 @@ def build_acquisition_checklist(*, report: dict[str, Any], pack_root: Path) -> s
 def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path) -> str:
     current_state = report["current_repo_state"]
     physical_gap = report["physical_credibility_gap_update"]
+    acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
+    next_action_recommendation = report["next_action_recommendation"]
     lines = [
         "# Blocked no-evidence report",
         "",
@@ -586,6 +942,35 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
         lines.append(f"- {role['dataset_role']}: {role['status']}")
     lines.extend(
         [
+            "",
+            "Acquisition blocker matrix:",
+        ]
+    )
+    for row in acquisition_blocker_matrix:
+        lines.append(
+            "- {category}: repository={repository_status}, acceptance={acceptance_status}, holdout={holdout}".format(
+                category=row["category"],
+                repository_status=row["repository_status"],
+                acceptance_status=row["acceptance_status"],
+                holdout=str(row["holdout_eligibility"]).lower(),
+            )
+        )
+        lines.append(f"  required geometry: {', '.join(row['required_fields']['geometry'])}")
+        lines.append(f"  required provenance: {', '.join(row['required_fields']['provenance'])}")
+        lines.append(f"  required uncertainty: {', '.join(row['required_fields']['uncertainty'])}")
+        lines.append(f"  acceptable provenance: {'; '.join(row['acceptable_provenance'])}")
+        lines.append(f"  licensing readiness notes: {'; '.join(row['licensing_readiness_notes'])}")
+        lines.append(f"  calibration/validation role: {row['calibration_validation_role']}")
+        lines.append(f"  blocking reasons: {', '.join(row['blocking_reasons']) if row['blocking_reasons'] else 'none'}")
+    lines.extend(
+        [
+            "",
+            "Next-action recommendation:",
+            f"- primary_track: {next_action_recommendation['primary_track']}",
+            f"- summary: {next_action_recommendation['summary']}",
+            f"- data_acquisition: {next_action_recommendation['data_acquisition']['summary']}",
+            f"- schema_repair: {next_action_recommendation['schema_repair']['summary']}",
+            f"- scientific_deferral: {next_action_recommendation['scientific_deferral']['summary']}",
             "",
             "Physical-credibility gap update:",
             f"- physical_credibility_requirements_status: {physical_gap['physical_credibility_requirements_status']}",
@@ -944,6 +1329,201 @@ def current_state_summary(current_state: dict[str, Any]) -> list[dict[str, Any]]
     ]
 
 
+def build_acquisition_blocker_matrix(current_state: dict[str, Any]) -> list[dict[str, Any]]:
+    matrix: list[dict[str, Any]] = []
+    dataset_roles = build_dataset_role_classification(current_state)
+    for blueprint in ACQUISITION_MATRIX_BLUEPRINTS:
+        repository_status = dataset_role_status(dataset_roles, str(blueprint["dataset_role"]))
+        acceptance_status = "ready" if repository_status == "present" else "blocked_missing_inputs"
+        missing_inputs = [
+            str(path)
+            for path in blueprint["required_inputs"]
+            if not Path(path).exists()
+        ]
+        matrix.append(
+            {
+                "schema_version": ACQUISITION_MATRIX_SCHEMA_VERSION,
+                "category": blueprint["category"],
+                "dataset_role": blueprint["dataset_role"],
+                "label": blueprint["label"],
+                "repository_status": repository_status,
+                "acceptance_status": acceptance_status,
+                "required_fields": deepcopy(blueprint["required_fields"]),
+                "acceptable_provenance": list(blueprint["acceptable_provenance"]),
+                "uncertainty_fields": list(blueprint["uncertainty_fields"]),
+                "licensing_readiness_notes": list(blueprint["licensing_readiness_notes"]),
+                "calibration_validation_role": dict(blueprint["calibration_validation_role"]),
+                "holdout_eligibility": blueprint["holdout_eligibility"],
+                "required_inputs": [str(path) for path in blueprint["required_inputs"]],
+                "missing_inputs": missing_inputs,
+                "acceptance_notes": list(blueprint["acceptance_notes"]),
+                "blocking_reasons": missing_blocking_reasons(
+                    repository_status=repository_status,
+                    missing_inputs=missing_inputs,
+                    required_fields=blueprint["required_fields"],
+                ),
+                "blocked_reason": blueprint["blocked_reason"],
+            }
+        )
+    return matrix
+
+
+def missing_blocking_reasons(
+    *,
+    repository_status: str,
+    missing_inputs: list[str],
+    required_fields: dict[str, list[str]],
+) -> list[str]:
+    reasons: list[str] = []
+    if repository_status != "present":
+        reasons.append("missing_inputs")
+    if missing_inputs:
+        reasons.append("missing_required_artifacts")
+    if not required_fields.get("geometry"):
+        reasons.append("missing_geometry")
+    if not required_fields.get("provenance"):
+        reasons.append("missing_provenance")
+    if not required_fields.get("uncertainty"):
+        reasons.append("missing_uncertainty")
+    return reasons
+
+
+def build_acquisition_fixture_template(category: str) -> dict[str, Any]:
+    blueprint = acquisition_blueprint(category)
+    return {
+        "category": blueprint["category"],
+        "dataset_role": blueprint["dataset_role"],
+        "geometry": {
+            field: f"placeholder_{category}_{field}"
+            for field in blueprint["required_fields"]["geometry"]
+        },
+        "provenance": {
+            field: f"placeholder_{category}_{field}"
+            for field in blueprint["required_fields"]["provenance"]
+        },
+        "uncertainty": {
+            field: f"placeholder_{category}_{field}"
+            for field in blueprint["required_fields"]["uncertainty"]
+        },
+        "calibration_validation_role": dict(blueprint["calibration_validation_role"]),
+        "holdout_eligibility": blueprint["holdout_eligibility"],
+        "license": {
+            "status": "placeholder_only",
+            "note": "synthetic acquisition fixture for acceptance tests",
+        },
+    }
+
+
+def classify_acquisition_fixture_row(category: str, fixture: dict[str, Any]) -> dict[str, Any]:
+    blueprint = acquisition_blueprint(category)
+    geometry = fixture.get("geometry") if isinstance(fixture.get("geometry"), dict) else {}
+    provenance = fixture.get("provenance") if isinstance(fixture.get("provenance"), dict) else {}
+    uncertainty = fixture.get("uncertainty") if isinstance(fixture.get("uncertainty"), dict) else {}
+    role = fixture.get("calibration_validation_role")
+    expected_role = blueprint["calibration_validation_role"]
+
+    missing_geometry = [field for field in blueprint["required_fields"]["geometry"] if field not in geometry]
+    missing_provenance = [field for field in blueprint["required_fields"]["provenance"] if field not in provenance]
+    missing_uncertainty = [field for field in blueprint["required_fields"]["uncertainty"] if field not in uncertainty]
+
+    calibration_validation_role_status = "clear" if role == expected_role else "unclear"
+    blocking_reasons = []
+    if missing_geometry:
+        blocking_reasons.append("missing_geometry")
+    if missing_provenance:
+        blocking_reasons.append("missing_provenance")
+    if missing_uncertainty:
+        blocking_reasons.append("missing_uncertainty")
+    if calibration_validation_role_status != "clear":
+        blocking_reasons.append("unclear_calibration_role")
+
+    if blocking_reasons:
+        acceptance_status = "blocked_schema_gap" if any(
+            reason.startswith("missing_") for reason in blocking_reasons
+        ) else "blocked_role_unclear"
+    else:
+        acceptance_status = "ready"
+
+    blocked_status = fixture.get("blocked_status")
+    if blocked_status == "blocked_missing_inputs" and acceptance_status == "ready":
+        blocking_reasons.append("overclaimed_blocked_status")
+        acceptance_status = "blocked_claim_overclaim"
+
+    return {
+        "schema_version": ACQUISITION_MATRIX_SCHEMA_VERSION,
+        "category": blueprint["category"],
+        "dataset_role": blueprint["dataset_role"],
+        "label": blueprint["label"],
+        "repository_status": "present" if acceptance_status == "ready" else "missing",
+        "acceptance_status": acceptance_status,
+        "required_fields": deepcopy(blueprint["required_fields"]),
+        "acceptable_provenance": list(blueprint["acceptable_provenance"]),
+        "uncertainty_fields": list(blueprint["uncertainty_fields"]),
+        "licensing_readiness_notes": list(blueprint["licensing_readiness_notes"]),
+        "calibration_validation_role": dict(blueprint["calibration_validation_role"]),
+        "holdout_eligibility": blueprint["holdout_eligibility"],
+        "missing_geometry_fields": missing_geometry,
+        "missing_provenance_fields": missing_provenance,
+        "missing_uncertainty_fields": missing_uncertainty,
+        "calibration_validation_role_status": calibration_validation_role_status,
+        "blocking_reasons": blocking_reasons,
+        "acceptance_notes": list(blueprint["acceptance_notes"]),
+        "blocked_reason": blueprint["blocked_reason"],
+    }
+
+
+def acquisition_blueprint(category: str) -> dict[str, Any]:
+    for blueprint in ACQUISITION_MATRIX_BLUEPRINTS:
+        if blueprint["category"] == category:
+            return blueprint
+    raise KeyError(category)
+
+
+def build_next_action_recommendation(acquisition_blocker_matrix: list[dict[str, Any]]) -> dict[str, Any]:
+    acquisition_gap_categories = {
+        "observed_runout_deposition",
+        "release_zone_provenance",
+        "block_population_evidence",
+        "calibration_inputs",
+    }
+    acquisition_gap_rows = [
+        row
+        for row in acquisition_blocker_matrix
+        if row["category"] in acquisition_gap_categories and row["repository_status"] != "present"
+    ]
+    schema_gap_rows = [
+        row
+        for row in acquisition_blocker_matrix
+        if row["acceptance_status"] in {"blocked_schema_gap", "blocked_role_unclear", "blocked_claim_overclaim"}
+    ]
+    if acquisition_gap_rows:
+        primary_track = "data_acquisition"
+    elif schema_gap_rows:
+        primary_track = "schema_repair"
+    else:
+        primary_track = "scientific_deferral"
+    return {
+        "primary_track": primary_track,
+        "data_acquisition": {
+            "summary": "Acquire a real observed runout/deposition package before trying to reuse the evidence for anything else.",
+            "applies_when": "no independent benchmark package is staged",
+        },
+        "schema_repair": {
+            "summary": "Repair geometry, provenance, uncertainty, or role metadata only after a package has been staged.",
+            "applies_when": "a package exists but fails the acceptance fixture shape",
+        },
+        "scientific_deferral": {
+            "summary": "Defer any stronger scientific claim if the staged evidence still does not justify it.",
+            "applies_when": "the package is complete but the claim would still exceed the evidence boundary",
+        },
+        "summary": (
+            "Acquire the observed benchmark first; repair schema only if a staged package fails geometry, provenance, "
+            "uncertainty, or role checks; defer the scientific claim if the staged package is still insufficient for "
+            "the requested interpretation."
+        ),
+    }
+
+
 def claim_boundaries() -> dict[str, bool]:
     return {
         "calibration_claims_allowed": False,
@@ -973,6 +1553,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
     benchmark_manifest = report["benchmark_intake_manifest"]
     current_state = report["current_repo_state"]
+    acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
+    next_action_recommendation = report["next_action_recommendation"]
     lines = [
         f"schema_version: {report['schema_version']}",
         f"observed_runout_deposition_intake_status: {report['observed_runout_deposition_intake_status']}",
@@ -1017,6 +1599,20 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"- benchmark_intake_dataset_status: {current_state['benchmark_intake_dataset_status']}")
     lines.append(f"- calibration_dataset_status: {current_state['calibration_dataset_status']}")
     lines.append(f"- evidence_boundary: {current_state['evidence_boundary']}")
+    lines.append("acquisition_blocker_matrix:")
+    for item in acquisition_blocker_matrix:
+        lines.append(
+            f"- {item['category']}: repository={item['repository_status']} acceptance={item['acceptance_status']} "
+            f"holdout={str(item['holdout_eligibility']).lower()}"
+        )
+        lines.append(f"  required_geometry: {', '.join(item['required_fields']['geometry'])}")
+        lines.append(f"  required_provenance: {', '.join(item['required_fields']['provenance'])}")
+        lines.append(f"  required_uncertainty: {', '.join(item['required_fields']['uncertainty'])}")
+        lines.append(f"  acceptable_provenance: {'; '.join(item['acceptable_provenance'])}")
+        lines.append(f"  calibration_validation_role: {item['calibration_validation_role']}")
+    lines.append("next_action_recommendation:")
+    lines.append(f"- primary_track: {next_action_recommendation['primary_track']}")
+    lines.append(f"- summary: {next_action_recommendation['summary']}")
     lines.append("benchmark_intake_missing_inputs:")
     for item in current_state["benchmark_intake_missing_inputs"]:
         lines.append(f"- {item}")

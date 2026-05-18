@@ -950,3 +950,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: claim-boundary hardening only; no calibration, no annual-frequency semantics, no operational claim, no new physical evidence, and no source-zone heuristic change.
 - Next task: `TB-221`
+
+### TB-221: Observed Runout And Deposition Acquisition Blocker Matrix
+
+- Date: 2026-05-18
+- Commit: TBD
+- Objective: convert the observed runout/deposition intake gap into a machine-readable blocker matrix that separates acquisition, schema repair, and scientific deferral without upgrading the physical-credibility boundary.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a six-row acquisition blocker matrix that records required geometry, provenance, uncertainty, licensing/readiness notes, calibration-versus-validation role, holdout eligibility, and current repository status for observed runout/deposition, release-zone provenance, block-population evidence, calibration inputs, validation inputs, and holdout data.
+  - Added a deterministic next-action recommendation plus a blocked no-evidence report that keeps data acquisition distinct from schema repair and scientific deferral when no real observed benchmark package is staged.
+  - Added a fixture classifier and focused acceptance tests for complete shape, missing geometry, missing uncertainty, unclear calibration role, and blocked-status overclaiming, then kept the existing non-operational claim boundaries intact.
+  - Removed TB-221 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_observed_runout_deposition_intake_contract.py tests/test_observed_runout_deposition_intake_contract.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_physical_credibility_evidence_gaps -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: acquisition planning and acceptance gate only; no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
+- Next task: backlog refill needed

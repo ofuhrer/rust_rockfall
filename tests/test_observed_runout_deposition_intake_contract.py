@@ -22,6 +22,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "benchmark_intake_manifest",
             "field_requirement_map",
             "current_repo_state",
+            "acquisition_blocker_matrix",
+            "next_action_recommendation",
             "physical_credibility_gap_update",
             "dataset_role_classification",
             "claim_boundaries",
@@ -49,6 +51,11 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "mapped_current_gaps",
         )
         self.assertEqual(report["benchmark_intake_manifest"]["manifest_status"], "report_only")
+        self.assertEqual(len(report["acquisition_blocker_matrix"]), 6)
+        self.assertEqual(report["next_action_recommendation"]["primary_track"], "data_acquisition")
+        self.assertIn("geometry", report["acquisition_blocker_matrix"][0]["required_fields"])
+        self.assertTrue(report["acquisition_blocker_matrix"][0]["acceptable_provenance"])
+        self.assertFalse(report["acquisition_blocker_matrix"][0]["holdout_eligibility"])
         self.assertEqual(
             [entry["dataset_role"] for entry in report["dataset_role_classification"]],
             [
@@ -62,6 +69,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         )
         self.assertEqual(report["dataset_role_classification"][4]["status"], "present")
         self.assertEqual(report["dataset_role_classification"][5]["status"], "present")
+        self.assertEqual(report["acquisition_blocker_matrix"][4]["acceptance_status"], "ready")
+        self.assertEqual(report["acquisition_blocker_matrix"][5]["acceptance_status"], "ready")
         self.assertEqual(
             report["benchmark_intake_manifest"]["calibration_validation_separation"]["validation_inputs_status"],
             "present",
@@ -118,6 +127,11 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
+        self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][0]["blocking_reasons"])
+        self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][2]["blocking_reasons"])
+        self.assertEqual(report["acquisition_blocker_matrix"][3]["acceptance_status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_blocker_matrix"][4]["acceptance_status"], "ready")
+        self.assertEqual(report["acquisition_blocker_matrix"][5]["acceptance_status"], "ready")
 
     def test_benchmark_ready_without_calibration_is_reported_as_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -158,6 +172,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(report["dataset_role_classification"][5]["status"], "present")
         self.assertEqual(report["benchmark_intake_manifest"]["manifest_status"], "report_only")
         self.assertEqual(report["benchmark_intake_manifest"]["observed_geometry"]["required_crs"], "EPSG:2056")
+        self.assertEqual(report["next_action_recommendation"]["primary_track"], "data_acquisition")
         self.assertEqual(
             report["current_state_summary"][0]["status"],
             "ready",
@@ -180,6 +195,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_dataset_status: absent", text)
         self.assertIn("No calibration dataset is available for objective fitting.", text)
+        self.assertIn("acquisition_blocker_matrix:", text)
+        self.assertIn("next_action_recommendation:", text)
 
     def test_all_missing_state_reports_benchmark_and_calibration_independently(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -214,6 +231,52 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             current_state["calibration_missing_inputs"],
             [str(calibration_root)],
         )
+
+    def test_acquisition_fixture_classifier_accepts_complete_shape(self) -> None:
+        fixture = helper.build_acquisition_fixture_template("observed_runout_deposition")
+        classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "ready")
+        self.assertEqual(classified["missing_geometry_fields"], [])
+        self.assertEqual(classified["missing_provenance_fields"], [])
+        self.assertEqual(classified["missing_uncertainty_fields"], [])
+        self.assertEqual(classified["calibration_validation_role_status"], "clear")
+        self.assertFalse(classified["holdout_eligibility"])
+
+    def test_acquisition_fixture_classifier_flags_missing_geometry(self) -> None:
+        fixture = helper.build_acquisition_fixture_template("observed_runout_deposition")
+        fixture["geometry"].pop("geometry_value")
+        classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_schema_gap")
+        self.assertIn("geometry_value", classified["missing_geometry_fields"])
+        self.assertIn("missing_geometry", classified["blocking_reasons"])
+
+    def test_acquisition_fixture_classifier_flags_missing_uncertainty(self) -> None:
+        fixture = helper.build_acquisition_fixture_template("validation_inputs")
+        fixture["uncertainty"].pop("validation_scoring_notes")
+        classified = helper.classify_acquisition_fixture_row("validation_inputs", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_schema_gap")
+        self.assertIn("validation_scoring_notes", classified["missing_uncertainty_fields"])
+        self.assertIn("missing_uncertainty", classified["blocking_reasons"])
+
+    def test_acquisition_fixture_classifier_flags_unclear_calibration_role(self) -> None:
+        fixture = helper.build_acquisition_fixture_template("holdout_data")
+        fixture["calibration_validation_role"] = "unclear"
+        classified = helper.classify_acquisition_fixture_row("holdout_data", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_role_unclear")
+        self.assertEqual(classified["calibration_validation_role_status"], "unclear")
+        self.assertIn("unclear_calibration_role", classified["blocking_reasons"])
+
+    def test_acquisition_fixture_classifier_refuses_overclaimed_blocked_statuses(self) -> None:
+        fixture = helper.build_acquisition_fixture_template("holdout_data")
+        fixture["blocked_status"] = "blocked_missing_inputs"
+        classified = helper.classify_acquisition_fixture_row("holdout_data", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_claim_overclaim")
+        self.assertIn("overclaimed_blocked_status", classified["blocking_reasons"])
 
     def test_readiness_pack_writes_template_non_evidence_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -294,6 +357,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             self.assertIn("independent observed runout/deposition benchmark manifest", acquisition_checklist)
             self.assertIn("Keep the benchmark intake separate from calibration data and fit targets.", acquisition_checklist)
             self.assertIn("blocked_missing_inputs", blocked_no_evidence_report)
+            self.assertIn("Acquisition blocker matrix:", blocked_no_evidence_report)
+            self.assertIn("Next-action recommendation:", blocked_no_evidence_report)
             self.assertIn("calibration_readiness_status: blocked_missing_inputs", blocked_no_evidence_report)
             self.assertIn("physical_credibility_requirements_status: mapped_current_gaps", blocked_no_evidence_report)
             self.assertIn("current_physical_credibility_status: not_established", blocked_no_evidence_report)

@@ -21,38 +21,6 @@ to the next task. Stop on any failure or dirty worktree; do not pre-generate
 later prompts. Full sequential-loop guidance lives in
 `docs/orchestration_strategy.md`.
 
-## Active Tasks
-
-### TB-221: Observed Runout And Deposition Acquisition Blocker Matrix
-
-Goal: Convert the physical-evidence intake gap into a concrete acquisition blocker matrix for observed runout/deposition, release-zone provenance, block-population evidence, calibration inputs, validation inputs, and holdout data.
-
-Capability gap reduced: Physical credibility remains `not_established` partly because missing evidence categories are named, but not yet organized into an actionable acquisition and acceptance matrix.
-
-Why this outranks alternatives: The reviewer identified independent physical evidence as the highest scientific priority; a precise blocker matrix prevents more workflow packaging from masquerading as progress.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/validation_data_schema.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A machine-readable acquisition matrix with required fields, acceptable provenance, uncertainty fields, licensing/readiness notes, calibration-versus-validation role, and holdout eligibility for each evidence category.
-- A deterministic blocked report when no real observed runout/deposition package is available.
-- Acceptance tests for complete fixture shape, missing geometry, missing uncertainty, unclear calibration role, and overclaiming blocked statuses.
-- A short next-action recommendation that distinguishes data acquisition, schema repair, and scientific deferral.
-
-Definition of done:
-
-- A worker can tell exactly which physical evidence category is missing, what would make it acceptable, and why workflow reproducibility still does not establish physical credibility.
-
-Boundaries: Acquisition planning and acceptance gate only; no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
