@@ -124,6 +124,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_scientific_delta_report.py`
 - `scripts/summarize_balfrin_single_job_execution.py`
 - `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
+- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
 - `scripts/summarize_balfrin_target_area_candidate_stability.py`
 - `scripts/summarize_balfrin_target_area_evidence_bundle.py`
 - `scripts/summarize_balfrin_target_area_gis_cog_scope.py`

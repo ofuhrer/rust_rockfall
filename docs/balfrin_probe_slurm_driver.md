@@ -177,6 +177,13 @@ the required metrics, preserved run-root files, SLURM accounting fields,
 output-family summaries, and declared GIS artifact paths for the next
 authorized live run.
 
+For the metrics-completion rerun package that closes only the missing
+target-area peak-memory and split validation/hazard output metrics, use
+`scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`.
+It stays read-only, emits the dry-run rerun plan and SBATCH package, and keeps
+the comparison against the recorded target-area run separate from any live
+submission path.
+
 ## Clean-fresh SLURM baseline evidence (420×450 grid)
 
 A fresh baseline on balfrin used the tracked 420×450 grid probe manifest:

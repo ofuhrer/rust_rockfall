@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-206: Target-Area Metrics Completion Rerun Package
-
-Goal: Prepare a bounded Balfrin rerun package whose only purpose is closing missing target-area peak-memory and split validation/hazard output metrics.
-
-Capability gap reduced: Incomplete measured target-area evidence caused by missing memory and split-output provenance.
-
-Why this outranks alternatives: If the next live action is not multi-zone, the most valuable single-zone/target-area rerun is one that closes known evidence gaps rather than producing another broad package.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/submit_balfrin_probe.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A dry-run rerun command plan and SBATCH package focused on peak memory, split validation/hazard output bytes and counts, hashes, run-root paths, reducer state, and replay metadata.
-- A preservation checklist that fails closed unless all required metrics and run-root files are declared.
-- A comparison against the existing target-area run identifying exactly which fields the rerun is meant to close.
-- Focused tests for complete, partial, and missing-rerun-package classifications.
-
-Definition of done:
-
-- The rerun package is reproducible and explicitly scoped to metrics completion, with no live submission and no claim that the existing measured target-area evidence has been upgraded before a real rerun occurs.
-
-Boundaries: No live Balfrin submission, no new scientific interpretation, no scale-up authorization, no operational claim, and no fabricated metrics.
-
 ### TB-207: Real Chant Sura Public-Context Staging Verification
 
 Goal: Verify real staged Chant Sura / Fluelapass public-context inputs when present, while preserving deterministic blocked reports when the clean checkout lacks those inputs.

@@ -160,6 +160,12 @@ output-family summaries, and declared GIS artifact paths that must be
 preserved for the next authorized live run, and it reports
 `blocked_missing_run_root` when the mounted run root is absent.
 
+For a dry-run rerun package that closes only the missing target-area
+peak-memory and split validation/hazard output metrics, use
+`scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`.
+It keeps the rerun plan, SBATCH handoff, preservation checklist, and recorded
+target-area comparison separate without authorizing a live submission.
+
 The canonical conditional diagnostic interpretation helper,
 `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, is the
 preferred synthesis entrypoint when the current single-job evidence needs to
