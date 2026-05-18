@@ -1782,3 +1782,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local staging and verification only; no network download, no simulation, no physical validation claim, no operational claim, and no heavy geodata committed.
 - Next task: backlog refill needed
+
+### TB-259: Prepared Terrain And Context Builder For AOI
+
+- Date: 2026-05-19
+- Commit: `d948d3e`
+- Objective: build the prepared terrain crop and context QA products from verified AOI cache inputs into a deterministic prepared-input root.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a prepared-input builder front door to the AOI terrain planner that stages terrain crops, terrain metadata, an AOI tile catalog copy, a terrain QA summary, and a context availability summary under an ignored prepared-input root.
+  - Added explicit `ready`, `partial_context`, `blocked_missing_terrain`, and `blocked_metadata_mismatch` classifications, with deterministic slope/aspect/hillshade QA metrics derived from the staged ESRI ASCII grid.
+  - Added fixture-backed tests for the ready, partial-context, missing-terrain, and metadata-mismatch paths, plus regression coverage for the existing terrain-preprocessing helper.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_context_overlap -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: preparation only; no release-zone validation, no ensemble execution, no operational claim, and no heavy public geodata committed.
+- Next task: `TB-260`
