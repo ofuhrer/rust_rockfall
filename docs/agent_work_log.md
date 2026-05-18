@@ -1560,3 +1560,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: read-only checklist and fixture-backed evidence gates only; no live Balfrin submission, no remote mutation, no authorization grant, no generated heavy output commit, no scale-up or distributed-execution claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-249`
+
+### TB-249: Chant Sura Real Core-Input Staging Verification
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: tighten the Chant Sura gate so it distinguishes real-staged core inputs, fixture-backed scaffolding, metadata mismatches, missing rows/files, and deferred public-context products before any prepared-pilot dry run.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit real-core input classifier with ordered row definitions, file validation, synthetic-marker detection, and separate handling for real-staged, fixture-backed, metadata-mismatch, missing-row, and deferred rows.
+  - Split the no-download verifier output into first missing real input details, first fixture-backed input details, exact missing-field lists, and separate missing-row versus missing-file counts.
+  - Tightened the gate/status logic so metadata mismatches report a dedicated blocked state instead of collapsing into generic missing-input output.
+  - Added focused tests for clean missing-input, fixture-backed blocked, partial-real, metadata-mismatch, missing-row, ready-real-core, and render-text cases, then removed TB-249 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_chant_sura_real_context_readiness_gate.py tests/test_chant_sura_real_context_readiness_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate -v`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, no physical-validation claim, no scale-up claim, and no generated heavy outputs committed.
+- Next task: `TB-250`

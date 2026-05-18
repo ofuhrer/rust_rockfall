@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-249: Chant Sura Real Core-Input Staging Verification
-
-Goal: Convert the Chant Sura / Fluelapass real-context gate from fixture-ready scaffolding toward real-input readiness by verifying whether locally staged terrain metadata, AOI tile catalog, source-zone metadata, scenario table, and policy records exist and are non-synthetic.
-
-Capability gap reduced: Second-site portability remains blocked because the current candidate has fixture-backed core readiness but missing or deferred real public-context products and metadata.
-
-Why this outranks alternatives: A second-site prepared pilot is the next portability milestone, but it must start with real staged core inputs rather than synthetic fixtures or downloads.
-
-Inspect first:
-
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-
-Deliverables:
-
-- A stricter real-core-input classification that separates real staged files, fixture-backed files, metadata mismatches, missing rows, and deferred public-context products.
-- A no-download verifier report naming the first non-synthetic missing input and the exact path or metadata field needed.
-- Focused tests for fixture-backed blocked, partial-real, metadata-mismatch, and ready-real-core classifications.
-
-Definition of done:
-
-- The Chant Sura gate can tell whether real core inputs, not just fixture scaffolding, are ready for a prepared-pilot dry run.
-
-Boundaries: No downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, no physical-validation claim, and no generated heavy outputs committed.
-
 ### TB-250: Chant Sura Missing-Input Acquisition Handoff
 
 Goal: If TB-249 reports missing real core inputs, produce one no-download acquisition/staging handoff that names the exact files, metadata fields, and authorization decisions needed before a real-input dry run.

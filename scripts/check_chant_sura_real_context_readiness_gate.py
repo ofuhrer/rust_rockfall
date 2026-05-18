@@ -84,6 +84,138 @@ PREPARED_PILOT_REAL_INPUT_ROW_STATUSES = {
     "deferred",
 }
 
+PREPARED_PILOT_REAL_INPUT_DEFINITIONS = [
+    {
+        "category": "terrain_crop",
+        "product": "swissALTI3D",
+        "required": True,
+        "path_key": "terrain_crop",
+        "validator_category": "terrain_crop",
+        "required_fields": ["file_present", "non_empty"],
+    },
+    {
+        "category": "terrain_metadata",
+        "product": "swissALTI3D terrain metadata",
+        "required": True,
+        "path_key": "terrain_metadata",
+        "validator_category": "terrain_crs_vertical_datum",
+        "required_fields": [
+            "coordinate_reference_system.epsg",
+            "coordinate_reference_system.vertical_datum",
+            "preprocessing.crop_extent_lv95_m",
+            "provenance.intended_use",
+        ],
+    },
+    {
+        "category": "aoi_tile_catalog",
+        "product": "AOI tile catalog for deterministic swisstopo discovery",
+        "required": True,
+        "path_key": "aoi_tile_catalog",
+        "validator_category": "aoi_tile_catalog",
+        "required_fields": [
+            "schema_version",
+            "catalog_status",
+            "source_product",
+            "product_id",
+            "crs",
+            "resolution_m",
+            "tiles",
+            "tiles[*].tile_id",
+            "tiles[*].source_product",
+            "tiles[*].source_url",
+            "tiles[*].extent_lv95_m",
+        ],
+    },
+    {
+        "category": "source_zone_metadata",
+        "product": "release / source-zone metadata",
+        "required": True,
+        "path_key": "source_zone_metadata",
+        "validator_category": "source_zone_metadata",
+        "required_fields": [
+            "zone_id",
+            "geometry.type",
+            "geometry.coordinates",
+            "release_points",
+            "coordinate_reference_system.vertical_datum",
+            "provenance.intended_use",
+        ],
+    },
+    {
+        "category": "scenario_table",
+        "product": "block / scenario table",
+        "required": True,
+        "path_key": "scenario_table",
+        "validator_category": "scenario_table",
+        "required_fields": [
+            "scenario_id",
+            "source_zone_id",
+            "block_family",
+            "relative_weight",
+            "probability_semantics",
+            "release_point_id",
+        ],
+    },
+    {
+        "category": "source_scenario_policy",
+        "product": "source-scenario policy record",
+        "required": True,
+        "path_key": "source_scenario_policy",
+        "validator_category": "source_scenario_policy",
+        "required_fields": [
+            "policy_id",
+            "site_id",
+            "source_zone_id_pattern",
+            "source_zone_geometry",
+            "release_point_table",
+            "block_scenario_table",
+            "scenario_probability_semantics",
+        ],
+    },
+    {
+        "category": "swissimage_context",
+        "product": "SWISSIMAGE",
+        "required": True,
+        "path_key": "swissimage_context",
+        "deferred": True,
+    },
+    {
+        "category": "swisstlm3d_context",
+        "product": "swissTLM3D",
+        "required": True,
+        "path_key": "swisstlm3d_context",
+        "deferred": True,
+    },
+    {
+        "category": "swisstlm3d_metadata",
+        "product": "swissTLM3D metadata",
+        "required": True,
+        "path_key": "swisstlm3d_metadata",
+        "deferred": True,
+    },
+    {
+        "category": "swisssurface3d_context",
+        "product": "swissSURFACE3D",
+        "required": True,
+        "path_key": "swisssurface3d_context",
+        "deferred": True,
+    },
+    {
+        "category": "swisssurface3d_raster_context",
+        "product": "swissSURFACE3D Raster",
+        "required": True,
+        "path_key": "swisssurface3d_raster_context",
+        "deferred": True,
+    },
+    {
+        "category": "swissbuildings3d_context",
+        "product": "swissBUILDINGS3D",
+        "required": True,
+        "path_key": "swissbuildings3d_context",
+        "deferred": True,
+    },
+]
+
 CORE_PRODUCT_VALIDATION_RULES = {
     "aoi_tile_catalog": {
         "required_fields": [
@@ -194,55 +326,249 @@ def load_acquisition_package(path: Path | None) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def build_prepared_pilot_real_input_readiness(acquisition_package: dict[str, Any]) -> dict[str, Any]:
-    required_rows = [
-        row
-        for row in acquisition_package.get("required_acquisition_items") or []
-        if isinstance(row, dict)
-    ]
+def build_prepared_pilot_real_input_readiness(
+    acquisition_package: dict[str, Any],
+    *,
+    preflight_report: dict[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    package_rows = {
+        PREFLIGHT.text_value(row.get("category")): row
+        for row in (acquisition_package.get("required_acquisition_items") or [])
+        if isinstance(row, dict) and PREFLIGHT.text_value(row.get("category"))
+    }
+    expected_paths = preflight_report.get("expected_local_paths") or {}
+
     required_states: list[dict[str, Any]] = []
-    for row in required_rows:
-        classification = PREFLIGHT.text_value(row.get("classification")) or PREFLIGHT.text_value(row.get("current_status")) or "missing"
-        if classification not in PREPARED_PILOT_REAL_INPUT_ROW_STATUSES:
-            classification = "missing"
+    for definition in PREPARED_PILOT_REAL_INPUT_DEFINITIONS:
+        category = definition["category"]
+        package_row = package_rows.get(category)
+        expected_path = (
+            PREFLIGHT.text_value((package_row or {}).get("expected_path"))
+            or PREFLIGHT.text_value(expected_paths.get(definition["path_key"]))
+            or ""
+        )
         required_states.append(
-            {
-                "category": PREFLIGHT.text_value(row.get("category")) or "unknown",
-                "product": PREFLIGHT.text_value(row.get("product")) or PREFLIGHT.text_value(row.get("category")) or "unknown",
-                "classification": classification,
-                "expected_path": PREFLIGHT.text_value(row.get("expected_path")) or "",
-            }
+            build_prepared_pilot_real_input_row(
+                definition=definition,
+                package_row=package_row,
+                expected_path=expected_path,
+                repo_root=repo_root,
+            )
         )
 
-    real_staged_categories = [row["category"] for row in required_states if row["classification"] == "real_staged"]
-    fixture_backed_categories = [row["category"] for row in required_states if row["classification"] == "fixture_backed"]
-    missing_categories = [row["category"] for row in required_states if row["classification"] == "missing"]
-    deferred_categories = [row["category"] for row in required_states if row["classification"] == "deferred"]
-    first_missing_real_input_category = next(
-        (row["category"] for row in required_states if row["classification"] != "real_staged"),
-        "",
+    core_states = [row for row in required_states if not row["deferred"]]
+    deferred_states = [row for row in required_states if row["deferred"]]
+
+    real_staged_states = [row for row in core_states if row["classification"] == "real_staged"]
+    fixture_backed_states = [row for row in core_states if row["classification"] == "fixture_backed"]
+    missing_states = [row for row in core_states if row["classification"] == "missing"]
+    metadata_mismatch_states = [row for row in core_states if row["classification"] == "metadata_mismatch"]
+    missing_row_states = [row for row in missing_states if row["missing_reason"] == "missing_row"]
+    missing_file_states = [row for row in missing_states if row["missing_reason"] == "missing_file"]
+
+    first_fixture_backed_input = next((row for row in core_states if row["classification"] == "fixture_backed"), None)
+    first_missing_non_synthetic_input = next(
+        (row for row in core_states if row["classification"] in {"missing", "metadata_mismatch"}),
+        None,
     )
 
-    if required_states and len(real_staged_categories) == len(required_states):
+    if core_states and len(real_staged_states) == len(core_states):
         classification = "ready_real"
-    elif real_staged_categories:
+    elif real_staged_states:
         classification = "partial_real"
-    elif required_states and len(fixture_backed_categories) == len(required_states):
+    elif metadata_mismatch_states:
+        classification = "metadata_mismatch"
+    elif fixture_backed_states and not missing_states and not metadata_mismatch_states:
         classification = "fixture_backed"
     else:
         classification = "missing"
 
-    return {
+    report = {
         "schema_version": PREPARED_PILOT_REAL_INPUT_READINESS_SCHEMA_VERSION,
-        "required_real_input_count": len(required_states),
-        "real_staged_real_input_count": len(real_staged_categories),
-        "fixture_backed_real_input_count": len(fixture_backed_categories),
-        "missing_real_input_count": len(missing_categories),
-        "deferred_real_input_count": len(deferred_categories),
+        "required_real_input_count": len(core_states),
+        "real_staged_real_input_count": len(real_staged_states),
+        "fixture_backed_real_input_count": len(fixture_backed_states),
+        "metadata_mismatch_real_input_count": len(metadata_mismatch_states),
+        "missing_real_input_count": len(missing_states),
+        "missing_row_count": len(missing_row_states),
+        "missing_file_count": len(missing_file_states),
+        "deferred_real_input_count": len(deferred_states),
         "input_classification": classification,
-        "first_missing_real_input_category": "" if classification == "ready_real" else first_missing_real_input_category,
-        "required_real_inputs": required_states,
+        "first_missing_real_input_category": first_missing_non_synthetic_input["category"] if first_missing_non_synthetic_input else "",
+        "first_missing_real_input_classification": first_missing_non_synthetic_input["classification"] if first_missing_non_synthetic_input else "",
+        "first_missing_real_input_path": first_missing_non_synthetic_input["expected_path"] if first_missing_non_synthetic_input else "",
+        "first_missing_real_input_required_fields": [] if first_missing_non_synthetic_input is None else list(first_missing_non_synthetic_input.get("required_fields") or []),
+        "first_missing_real_input_missing_fields": [] if first_missing_non_synthetic_input is None else list(first_missing_non_synthetic_input.get("missing_fields") or []),
+        "first_missing_real_input_issue": first_missing_non_synthetic_input or {},
+        "first_fixture_backed_real_input_category": first_fixture_backed_input["category"] if first_fixture_backed_input else "",
+        "first_fixture_backed_real_input_classification": first_fixture_backed_input["classification"] if first_fixture_backed_input else "",
+        "first_fixture_backed_real_input_path": first_fixture_backed_input["expected_path"] if first_fixture_backed_input else "",
+        "first_fixture_backed_real_input_missing_fields": [] if first_fixture_backed_input is None else list(first_fixture_backed_input.get("missing_fields") or []),
+        "first_missing_non_synthetic_input": first_missing_non_synthetic_input or {},
+        "required_real_inputs": core_states,
+        "deferred_public_context_inputs": deferred_states,
     }
+    return report
+
+
+def build_prepared_pilot_real_input_row(
+    *,
+    definition: dict[str, Any],
+    package_row: dict[str, Any] | None,
+    expected_path: str,
+    repo_root: Path,
+) -> dict[str, Any]:
+    category = definition["category"]
+    product = PREFLIGHT.text_value((package_row or {}).get("product")) or definition["product"]
+    required_fields = list(definition.get("required_fields") or [])
+    deferred = bool(definition.get("deferred"))
+    package_classification = PREFLIGHT.text_value((package_row or {}).get("classification")) or PREFLIGHT.text_value((package_row or {}).get("current_status"))
+
+    if deferred:
+        return {
+            "category": category,
+            "product": product,
+            "classification": "deferred",
+            "expected_path": expected_path,
+            "required_fields": required_fields,
+            "missing_fields": [],
+            "metadata_mismatches": [],
+            "row_present": package_row is not None,
+            "file_present": False,
+            "package_classification": package_classification or "deferred",
+            "deferred": True,
+            "missing_reason": "",
+            "verification_status": "deferred",
+            "notes": "public-context products remain intentionally deferred until staged and verified",
+        }
+
+    if package_row is None:
+        return {
+            "category": category,
+            "product": product,
+            "classification": "missing",
+            "expected_path": expected_path,
+            "required_fields": required_fields,
+            "missing_fields": required_fields,
+            "metadata_mismatches": [],
+            "row_present": False,
+            "file_present": False,
+            "package_classification": "",
+            "deferred": False,
+            "missing_reason": "missing_row",
+            "verification_status": "missing",
+            "notes": "required real-input row is missing from the acquisition package",
+        }
+
+    resolved_path = resolve_repo_path_for_repo_root(expected_path, repo_root)
+    file_present = resolved_path.exists()
+    package_is_fixture_backed = package_classification == "fixture_backed"
+
+    if file_present:
+        validation_row = build_real_input_validation_row(
+            category=category,
+            expected_path=resolved_path,
+            required_fields=required_fields,
+        )
+        if package_is_fixture_backed or real_input_payload_has_fixture_markers(resolved_path):
+            return {
+                **validation_row,
+                "category": category,
+                "product": product,
+                "classification": "fixture_backed",
+                "expected_path": expected_path,
+                "required_fields": required_fields,
+                "row_present": True,
+                "file_present": True,
+                "package_classification": package_classification or "fixture_backed",
+                "deferred": False,
+                "missing_reason": "fixture_backed",
+                "verification_status": "fixture_backed",
+                "notes": "fixture-backed inputs are intentionally non-evidence and do not count as real staging evidence",
+            }
+        if validation_row["classification"] == "ready":
+            return {
+                **validation_row,
+                "category": category,
+                "product": product,
+                "classification": "real_staged",
+                "expected_path": expected_path,
+                "required_fields": required_fields,
+                "row_present": True,
+                "file_present": True,
+                "package_classification": package_classification or "real_staged",
+                "deferred": False,
+                "missing_reason": "",
+                "verification_status": "real_staged",
+                "notes": "real staged input satisfies the local file and metadata contract",
+            }
+        return {
+            **validation_row,
+            "category": category,
+            "product": product,
+            "classification": "metadata_mismatch",
+            "expected_path": expected_path,
+            "required_fields": required_fields,
+            "row_present": True,
+            "file_present": True,
+            "package_classification": package_classification or "real_staged",
+            "deferred": False,
+            "missing_reason": "metadata_mismatch",
+            "verification_status": "metadata_mismatch",
+            "notes": "staged file exists but metadata contract is incomplete or mismatched",
+        }
+
+    return {
+        "category": category,
+        "product": product,
+        "classification": "missing",
+        "expected_path": expected_path,
+        "required_fields": required_fields,
+        "missing_fields": required_fields,
+        "metadata_mismatches": [],
+        "row_present": True,
+        "file_present": False,
+        "package_classification": package_classification or "missing",
+        "deferred": False,
+        "missing_reason": "missing_file",
+        "verification_status": "missing",
+        "notes": "required real-input file is absent from the expected staged path",
+    }
+
+
+def build_real_input_validation_row(*, category: str, expected_path: Path, required_fields: list[str]) -> dict[str, Any]:
+    validation_category = "terrain_crs_vertical_datum" if category == "terrain_metadata" else category
+    validation_row = build_local_product_readiness_row(
+        category=validation_category,
+        local_core_input={"product": category},
+        expected_path=str(expected_path),
+        required_fields=required_fields,
+    )
+    return validation_row
+
+
+def resolve_repo_path_for_repo_root(path_text: str, repo_root: Path) -> Path:
+    path = Path(path_text)
+    return path if path.is_absolute() else repo_root / path
+
+
+def real_input_payload_has_fixture_markers(path: Path) -> bool:
+    try:
+        payload = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+    lowered = payload.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "synthetic",
+            "fixture",
+            "minimal_preflight",
+            "placeholder_second_site",
+            "placeholder",
+        )
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -328,7 +654,11 @@ def build_report(
             real_context_product_readiness=real_context_product_readiness,
             cache_contract=cache_contract,
         )
-        prepared_pilot_real_input_readiness = build_prepared_pilot_real_input_readiness(acquisition_package)
+        prepared_pilot_real_input_readiness = build_prepared_pilot_real_input_readiness(
+            acquisition_package,
+            preflight_report=preflight_report,
+            repo_root=repo_root,
+        )
 
         gate_status = determine_gate_status(
             core_input_status=preflight_report["core_input_status"],
@@ -345,6 +675,13 @@ def build_report(
             "prepared_pilot_real_input_readiness": prepared_pilot_real_input_readiness,
             "prepared_pilot_input_classification": prepared_pilot_real_input_readiness["input_classification"],
             "first_missing_real_input_category": prepared_pilot_real_input_readiness["first_missing_real_input_category"],
+            "first_missing_real_input_classification": prepared_pilot_real_input_readiness["first_missing_real_input_classification"],
+            "first_missing_real_input_path": prepared_pilot_real_input_readiness["first_missing_real_input_path"],
+            "first_missing_real_input_missing_fields": prepared_pilot_real_input_readiness["first_missing_real_input_missing_fields"],
+            "first_fixture_backed_real_input_category": prepared_pilot_real_input_readiness["first_fixture_backed_real_input_category"],
+            "first_fixture_backed_real_input_classification": prepared_pilot_real_input_readiness["first_fixture_backed_real_input_classification"],
+            "first_fixture_backed_real_input_path": prepared_pilot_real_input_readiness["first_fixture_backed_real_input_path"],
+            "first_missing_non_synthetic_input": prepared_pilot_real_input_readiness["first_missing_non_synthetic_input"],
             "candidate_site_id": preflight_report["candidate_site_id"],
             "candidate_site_name": preflight_report["candidate_site_name"],
             "candidate_selection_rationale": preflight_report["candidate_selection_rationale"],
@@ -903,6 +1240,7 @@ def build_real_context_staging_checklist(
     missing_count = 0
     deferred_count = 0
     partially_staged_count = 0
+    metadata_mismatch_count = 0
 
     for product in real_context_product_readiness.get("products") or []:
         if not isinstance(product, dict) or product.get("category") not in DEFERRED_PUBLIC_CONTEXT_CATEGORIES:
@@ -923,6 +1261,10 @@ def build_real_context_staging_checklist(
             readiness_impact = "required staged files or metadata are still absent"
             missing_count += 1
             checklist_state = "missing"
+        elif classification == "metadata_mismatch":
+            readiness_impact = "staged inputs exist but the metadata contract is mismatched"
+            metadata_mismatch_count += 1
+            checklist_state = "metadata_mismatch"
         else:
             readiness_impact = "staged inputs exist but the cache verifier still fails closed"
             partially_staged_count += 1
@@ -955,6 +1297,8 @@ def build_real_context_staging_checklist(
         checklist_state = "deferred"
     elif missing_count == len(rows) and rows:
         checklist_state = "missing"
+    elif metadata_mismatch_count == len(rows) and rows:
+        checklist_state = "metadata_mismatch"
     elif partially_staged_count or (rows and verified_count and (missing_count or deferred_count)):
         checklist_state = "partially_staged"
     else:
@@ -968,6 +1312,7 @@ def build_real_context_staging_checklist(
         "missing_product_count": missing_count,
         "deferred_product_count": deferred_count,
         "partially_staged_product_count": partially_staged_count,
+        "metadata_mismatch_product_count": metadata_mismatch_count,
         "cache_manifest_path": str(cache_contract.get("cache_layout", {}).get("cache_manifest_path") or ""),
         "verifier_command": verifier_command,
         "verification_fields": verification_fields,
@@ -1026,6 +1371,8 @@ def determine_gate_status(
         return "blocked_fixture_backed_inputs"
     if input_classification == "partial_real":
         return "blocked_partial_real_inputs"
+    if input_classification == "metadata_mismatch":
+        return "blocked_metadata_mismatch_inputs"
     if input_classification != "ready_real":
         return "blocked_missing_inputs"
     if (real_context_product_readiness.get("missing_product_count") or 0) > 0:
@@ -1069,6 +1416,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"real_context_staging_checklist_state: {report['real_context_staging_checklist_state']}",
         f"prepared_pilot_input_classification: {report.get('prepared_pilot_input_classification', '')}",
         f"first_missing_real_input_category: {report.get('first_missing_real_input_category', '')}",
+        f"first_missing_real_input_classification: {report.get('first_missing_real_input_classification', '')}",
+        f"first_missing_real_input_path: {report.get('first_missing_real_input_path', '')}",
+        f"first_missing_real_input_missing_fields: {report.get('first_missing_real_input_missing_fields', '')}",
+        f"first_fixture_backed_real_input_category: {report.get('first_fixture_backed_real_input_category', '')}",
+        f"first_fixture_backed_real_input_classification: {report.get('first_fixture_backed_real_input_classification', '')}",
+        f"first_fixture_backed_real_input_path: {report.get('first_fixture_backed_real_input_path', '')}",
         f"core_input_status: {report['core_input_status']}",
         f"deferred_public_context_status: {report['deferred_public_context_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
@@ -1143,10 +1496,32 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(
         f"- first_missing_real_input_category: {prepared_pilot_real_input_readiness.get('first_missing_real_input_category', '')}"
     )
+    lines.append(
+        f"- first_missing_real_input_classification: {prepared_pilot_real_input_readiness.get('first_missing_real_input_classification', '')}"
+    )
+    lines.append(f"- first_missing_real_input_path: {prepared_pilot_real_input_readiness.get('first_missing_real_input_path', '')}")
+    lines.append(
+        f"- first_missing_real_input_missing_fields: {prepared_pilot_real_input_readiness.get('first_missing_real_input_missing_fields', [])}"
+    )
+    lines.append(
+        f"- first_fixture_backed_real_input_category: {prepared_pilot_real_input_readiness.get('first_fixture_backed_real_input_category', '')}"
+    )
+    lines.append(
+        f"- first_fixture_backed_real_input_classification: {prepared_pilot_real_input_readiness.get('first_fixture_backed_real_input_classification', '')}"
+    )
+    lines.append(
+        f"- first_fixture_backed_real_input_path: {prepared_pilot_real_input_readiness.get('first_fixture_backed_real_input_path', '')}"
+    )
     lines.append(f"- required_real_input_count: {prepared_pilot_real_input_readiness.get('required_real_input_count', '')}")
     lines.append(f"- real_staged_real_input_count: {prepared_pilot_real_input_readiness.get('real_staged_real_input_count', '')}")
     lines.append(f"- fixture_backed_real_input_count: {prepared_pilot_real_input_readiness.get('fixture_backed_real_input_count', '')}")
+    lines.append(f"- metadata_mismatch_real_input_count: {prepared_pilot_real_input_readiness.get('metadata_mismatch_real_input_count', '')}")
     lines.append(f"- missing_real_input_count: {prepared_pilot_real_input_readiness.get('missing_real_input_count', '')}")
+    lines.append(f"- missing_row_count: {prepared_pilot_real_input_readiness.get('missing_row_count', '')}")
+    lines.append(f"- missing_file_count: {prepared_pilot_real_input_readiness.get('missing_file_count', '')}")
+    lines.append(
+        f"- first_missing_non_synthetic_input: {prepared_pilot_real_input_readiness.get('first_missing_non_synthetic_input', {})}"
+    )
 
     lines.append("")
     lines.append("balfrin_trigger_summary:")

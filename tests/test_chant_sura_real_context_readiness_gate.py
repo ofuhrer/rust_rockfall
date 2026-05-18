@@ -85,31 +85,39 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
                 acquisition_package_path=package_path,
             )
 
-        readiness = report["real_context_product_readiness"]
+        core_readiness = report["real_context_product_readiness"]
+        readiness = report["prepared_pilot_real_input_readiness"]
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(report["real_context_readiness_gate_status"], "blocked_missing_inputs")
         self.assertEqual(report["prepared_pilot_input_classification"], "missing")
         self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
-        self.assertEqual(readiness["readiness_status"], "missing")
-        self.assertEqual(readiness["ready_product_count"], 0)
-        self.assertEqual(readiness["missing_product_count"], 6)
-        self.assertEqual(readiness["deferred_product_count"], 5)
-        self.assertEqual(readiness["metadata_mismatch_product_count"], 0)
+        self.assertEqual(report["first_missing_real_input_classification"], "missing")
+        self.assertTrue(str(report["first_missing_real_input_path"]).endswith("terrain.asc"))
+        self.assertEqual(readiness["input_classification"], "missing")
+        self.assertEqual(readiness["required_real_input_count"], 6)
+        self.assertEqual(readiness["real_staged_real_input_count"], 0)
+        self.assertEqual(readiness["fixture_backed_real_input_count"], 0)
+        self.assertEqual(readiness["metadata_mismatch_real_input_count"], 0)
+        self.assertEqual(readiness["missing_real_input_count"], 6)
+        self.assertEqual(readiness["missing_row_count"], 0)
+        self.assertEqual(readiness["missing_file_count"], 6)
+        self.assertEqual(readiness["deferred_real_input_count"], 6)
+        self.assertEqual(readiness["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(readiness["first_missing_real_input_classification"], "missing")
+        self.assertTrue(str(readiness["first_missing_real_input_path"]).endswith("terrain.asc"))
+        self.assertEqual(readiness["first_missing_real_input_missing_fields"], ["file_present", "non_empty"])
         self.assertEqual(report["real_context_staging_checklist_state"], "deferred")
         self.assertEqual(checklist["checklist_state"], "deferred")
         self.assertEqual(checklist["verified_product_count"], 0)
         self.assertEqual(checklist["missing_product_count"], 0)
         self.assertEqual(checklist["deferred_product_count"], 5)
         self.assertEqual(checklist["partially_staged_product_count"], 0)
+        self.assertEqual(checklist["metadata_mismatch_product_count"], 0)
         self.assertEqual(checklist["claim_boundary_note"], gate.CHECKLIST_BOUNDARY_NOTE)
-        self.assertEqual(
-            report["prepared_pilot_real_input_readiness"]["input_classification"],
-            "missing",
-        )
-        self.assertEqual(
-            report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"],
-            "terrain_crop",
-        )
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["input_classification"], "missing")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_classification"], "missing")
+        self.assertTrue(str(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_path"]).endswith("terrain.asc"))
         expected_manifest_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"
         expected_verifier_command = (
             "PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py "
@@ -120,8 +128,8 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("verify_public_geodata_cache.py", checklist["verifier_command"])
         self.assertTrue(all(entry["classification"] == "deferred" for entry in checklist["products"]))
         self.assertTrue(all(entry["checklist_state"] == "deferred" for entry in checklist["products"]))
-        self.assertEqual([entry["classification"] for entry in readiness["products"][:6]], ["missing"] * 6)
-        self.assertEqual([entry["classification"] for entry in readiness["products"][6:]], ["deferred"] * 5)
+        self.assertEqual([entry["classification"] for entry in readiness["required_real_inputs"]], ["missing"] * 6)
+        self.assertEqual([entry["classification"] for entry in readiness["deferred_public_context_inputs"]], ["deferred"] * 6)
         self.assertTrue(all(entry["readiness_impact"] for entry in checklist["products"]))
 
     def test_fixture_backed_minimal_inputs_block_second_site_readiness(self) -> None:
@@ -137,40 +145,59 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
             )
 
         readiness = report["real_context_product_readiness"]
+        prepared = report["prepared_pilot_real_input_readiness"]
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(report["real_context_readiness_gate_status"], "blocked_fixture_backed_inputs")
         self.assertEqual(report["prepared_pilot_input_classification"], "fixture_backed")
-        self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["first_missing_real_input_category"], "")
+        self.assertEqual(report["first_missing_real_input_classification"], "")
+        self.assertEqual(report["first_missing_real_input_path"], "")
+        self.assertEqual(report["first_fixture_backed_real_input_category"], "terrain_crop")
+        self.assertEqual(report["first_fixture_backed_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(report["first_fixture_backed_real_input_path"]).endswith("terrain.asc"))
         self.assertEqual(readiness["readiness_status"], "deferred")
-        self.assertEqual(readiness["ready_product_count"], 6)
-        self.assertEqual(readiness["missing_product_count"], 0)
-        self.assertEqual(readiness["deferred_product_count"], 5)
-        self.assertEqual(readiness["metadata_mismatch_product_count"], 0)
+        self.assertEqual(prepared["required_real_input_count"], 6)
+        self.assertEqual(prepared["real_staged_real_input_count"], 0)
+        self.assertEqual(prepared["fixture_backed_real_input_count"], 6)
+        self.assertEqual(prepared["metadata_mismatch_real_input_count"], 0)
+        self.assertEqual(prepared["missing_real_input_count"], 0)
+        self.assertEqual(prepared["missing_row_count"], 0)
+        self.assertEqual(prepared["missing_file_count"], 0)
+        self.assertEqual(prepared["deferred_real_input_count"], 6)
         self.assertEqual(report["real_context_staging_checklist_state"], "deferred")
         self.assertEqual(checklist["checklist_state"], "deferred")
         self.assertEqual(checklist["verified_product_count"], 0)
         self.assertEqual(checklist["missing_product_count"], 0)
         self.assertEqual(checklist["deferred_product_count"], 5)
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["input_classification"], "fixture_backed")
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "terrain_crop")
-        row_states = {entry["category"]: entry["classification"] for entry in readiness["products"]}
-        self.assertEqual(row_states["aoi_tile_catalog"], "ready")
-        self.assertEqual(row_states["terrain_crop"], "ready")
-        self.assertEqual(row_states["terrain_crs_vertical_datum"], "ready")
-        self.assertEqual(row_states["source_zone_metadata"], "ready")
-        self.assertEqual(row_states["scenario_table"], "ready")
-        self.assertEqual(row_states["source_scenario_policy"], "ready")
-        self.assertEqual(row_states["swissimage_context"], "deferred")
-        self.assertEqual(row_states["swisstlm3d_context"], "deferred")
-        self.assertEqual(row_states["swisssurface3d_context"], "deferred")
-        self.assertEqual(row_states["swisssurface3d_raster_context"], "deferred")
-        self.assertEqual(row_states["swissbuildings3d_context"], "deferred")
+        self.assertEqual(prepared["input_classification"], "fixture_backed")
+        self.assertEqual(prepared["first_missing_real_input_category"], "")
+        self.assertEqual(prepared["first_missing_real_input_classification"], "")
+        self.assertEqual(prepared["first_missing_real_input_path"], "")
+        self.assertEqual(prepared["first_fixture_backed_real_input_category"], "terrain_crop")
+        self.assertEqual(prepared["first_fixture_backed_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(prepared["first_fixture_backed_real_input_path"]).endswith("terrain.asc"))
+        self.assertEqual(prepared["first_missing_non_synthetic_input"], {})
+        row_states = {entry["category"]: entry["classification"] for entry in prepared["required_real_inputs"]}
+        self.assertEqual(row_states["aoi_tile_catalog"], "fixture_backed")
+        self.assertEqual(row_states["terrain_crop"], "fixture_backed")
+        self.assertEqual(row_states["terrain_metadata"], "fixture_backed")
+        self.assertEqual(row_states["source_zone_metadata"], "fixture_backed")
+        self.assertEqual(row_states["scenario_table"], "fixture_backed")
+        self.assertEqual(row_states["source_scenario_policy"], "fixture_backed")
+        deferred_states = {entry["category"]: entry["classification"] for entry in prepared["deferred_public_context_inputs"]}
+        self.assertEqual(deferred_states["swissimage_context"], "deferred")
+        self.assertEqual(deferred_states["swisstlm3d_context"], "deferred")
+        self.assertEqual(deferred_states["swisstlm3d_metadata"], "deferred")
+        self.assertEqual(deferred_states["swisssurface3d_context"], "deferred")
+        self.assertEqual(deferred_states["swisssurface3d_raster_context"], "deferred")
+        self.assertEqual(deferred_states["swissbuildings3d_context"], "deferred")
         self.assertTrue(all(entry["checklist_state"] == "deferred" for entry in checklist["products"]))
 
     def test_partial_real_inputs_block_second_site_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
+            self._write_real_core_inputs(repo_root, {"terrain_crop", "terrain_metadata", "aoi_tile_catalog"})
             package_path = self._write_acquisition_package(
                 repo_root,
                 classification_map={
@@ -198,7 +225,12 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(report["real_context_readiness_gate_status"], "blocked_partial_real_inputs")
         self.assertEqual(report["prepared_pilot_input_classification"], "partial_real")
-        self.assertEqual(report["first_missing_real_input_category"], "swissimage_context")
+        self.assertEqual(report["first_missing_real_input_category"], "")
+        self.assertEqual(report["first_missing_real_input_classification"], "")
+        self.assertEqual(report["first_missing_real_input_path"], "")
+        self.assertEqual(report["first_fixture_backed_real_input_category"], "source_zone_metadata")
+        self.assertEqual(report["first_fixture_backed_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(report["first_fixture_backed_real_input_path"]).endswith("source_zone_metadata.yaml"))
         self.assertEqual(readiness["readiness_status"], "metadata_mismatch")
         self.assertEqual(readiness["ready_product_count"], 8)
         self.assertEqual(readiness["missing_product_count"], 2)
@@ -209,20 +241,129 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(checklist["verified_product_count"], 2)
         self.assertEqual(checklist["missing_product_count"], 2)
         self.assertEqual(checklist["deferred_product_count"], 0)
-        self.assertEqual(checklist["partially_staged_product_count"], 1)
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["input_classification"], "partial_real")
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "swissimage_context")
-        row_states = {entry["category"]: entry["classification"] for entry in readiness["products"]}
-        self.assertEqual(row_states["swissimage_context"], "ready")
-        self.assertEqual(row_states["swisstlm3d_context"], "ready")
-        self.assertEqual(row_states["swisssurface3d_context"], "metadata_mismatch")
-        self.assertEqual(row_states["swisssurface3d_raster_context"], "missing")
-        self.assertEqual(row_states["swissbuildings3d_context"], "missing")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_classification"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_path"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_missing_fields"], [])
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_category"], "source_zone_metadata")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_path"]).endswith("source_zone_metadata.yaml"))
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_non_synthetic_input"], {})
+        row_states = {
+            entry["category"]: entry["classification"] for entry in report["prepared_pilot_real_input_readiness"]["required_real_inputs"]
+        }
+        self.assertEqual(row_states["terrain_crop"], "real_staged")
+        self.assertEqual(row_states["terrain_metadata"], "real_staged")
+        self.assertEqual(row_states["aoi_tile_catalog"], "real_staged")
+        self.assertEqual(row_states["source_zone_metadata"], "fixture_backed")
+        self.assertEqual(row_states["scenario_table"], "fixture_backed")
+        self.assertEqual(row_states["source_scenario_policy"], "fixture_backed")
+
+    def test_metadata_mismatch_real_inputs_block_second_site_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            self._write_real_core_inputs(
+                repo_root,
+                {"terrain_crop", "terrain_metadata", "aoi_tile_catalog", "source_zone_metadata", "scenario_table", "source_scenario_policy"},
+            )
+            self._corrupt_core_inputs_for_metadata_mismatch(repo_root)
+            package_path = self._write_acquisition_package(
+                repo_root,
+                classification="real_staged",
+            )
+
+            report = gate.build_report(
+                self._site_config_path(),
+                repo_root=repo_root,
+                acquisition_package_path=package_path,
+            )
+
+        readiness = report["prepared_pilot_real_input_readiness"]
+        self.assertEqual(report["real_context_readiness_gate_status"], "blocked_metadata_mismatch_inputs")
+        self.assertEqual(report["prepared_pilot_input_classification"], "metadata_mismatch")
+        self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["first_missing_real_input_classification"], "metadata_mismatch")
+        self.assertTrue(str(report["first_missing_real_input_path"]).endswith("terrain.asc"))
+        self.assertEqual(report["first_missing_real_input_missing_fields"], ["non_empty"])
+        self.assertEqual(readiness["input_classification"], "metadata_mismatch")
+        self.assertEqual(readiness["real_staged_real_input_count"], 0)
+        self.assertEqual(readiness["fixture_backed_real_input_count"], 0)
+        self.assertEqual(readiness["metadata_mismatch_real_input_count"], 6)
+        self.assertEqual(readiness["missing_real_input_count"], 0)
+        self.assertEqual(readiness["missing_row_count"], 0)
+        self.assertEqual(readiness["missing_file_count"], 0)
+        self.assertEqual(readiness["first_missing_non_synthetic_input"]["classification"], "metadata_mismatch")
+        self.assertEqual(readiness["first_missing_non_synthetic_input"]["missing_reason"], "metadata_mismatch")
+        self.assertTrue(str(readiness["first_missing_non_synthetic_input"]["expected_path"]).endswith("terrain.asc"))
+        row_states = {entry["category"]: entry["classification"] for entry in readiness["required_real_inputs"]}
+        self.assertEqual(row_states["terrain_crop"], "metadata_mismatch")
+        self.assertEqual(row_states["terrain_metadata"], "metadata_mismatch")
+        self.assertEqual(row_states["aoi_tile_catalog"], "metadata_mismatch")
+        self.assertEqual(row_states["source_zone_metadata"], "metadata_mismatch")
+        self.assertEqual(row_states["scenario_table"], "metadata_mismatch")
+        self.assertEqual(row_states["source_scenario_policy"], "metadata_mismatch")
+
+    def test_missing_row_is_reported_separately_from_missing_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            package_path = self._write_acquisition_package(
+                repo_root,
+                classification="fixture_backed",
+                omit_categories={"source_scenario_policy"},
+            )
+
+            report = gate.build_report(
+                self._site_config_path(),
+                repo_root=repo_root,
+                acquisition_package_path=package_path,
+            )
+
+        readiness = report["prepared_pilot_real_input_readiness"]
+        self.assertEqual(report["real_context_readiness_gate_status"], "blocked_missing_inputs")
+        self.assertEqual(report["prepared_pilot_input_classification"], "missing")
+        self.assertEqual(report["first_missing_real_input_category"], "source_scenario_policy")
+        self.assertEqual(report["first_missing_real_input_classification"], "missing")
+        self.assertTrue(
+            str(report["first_missing_real_input_path"]).endswith(
+                "chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml"
+            )
+        )
+        self.assertEqual(
+            report["first_missing_real_input_missing_fields"],
+            [
+                "policy_id",
+                "site_id",
+                "source_zone_id_pattern",
+                "source_zone_geometry",
+                "release_point_table",
+                "block_scenario_table",
+                "scenario_probability_semantics",
+            ],
+        )
+        self.assertEqual(readiness["missing_row_count"], 1)
+        self.assertEqual(readiness["missing_file_count"], 0)
+        self.assertEqual(readiness["missing_real_input_count"], 1)
+        self.assertEqual(readiness["first_missing_non_synthetic_input"]["classification"], "missing")
+        self.assertEqual(readiness["first_missing_non_synthetic_input"]["missing_reason"], "missing_row")
+        self.assertTrue(
+            str(readiness["first_missing_non_synthetic_input"]["expected_path"]).endswith(
+                "chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml"
+            )
+        )
+        row_states = {entry["category"]: entry["classification"] for entry in readiness["required_real_inputs"]}
+        self.assertEqual(row_states["source_scenario_policy"], "missing")
 
     def test_ready_real_inputs_allow_second_site_readiness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
+            self._write_real_core_inputs(
+                repo_root,
+                {"terrain_crop", "terrain_metadata", "aoi_tile_catalog", "source_zone_metadata", "scenario_table", "source_scenario_policy"},
+            )
             package_path = self._write_acquisition_package(
                 repo_root,
                 classification="real_staged",
@@ -249,6 +390,12 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(report["readiness_status"], "ready_for_real_context_acquisition")
         self.assertEqual(report["prepared_pilot_input_classification"], "ready_real")
         self.assertEqual(report["first_missing_real_input_category"], "")
+        self.assertEqual(report["first_missing_real_input_classification"], "")
+        self.assertEqual(report["first_missing_real_input_path"], "")
+        self.assertEqual(report["first_missing_real_input_missing_fields"], [])
+        self.assertEqual(report["first_fixture_backed_real_input_category"], "")
+        self.assertEqual(report["first_fixture_backed_real_input_classification"], "")
+        self.assertEqual(report["first_fixture_backed_real_input_path"], "")
         self.assertEqual(readiness["readiness_status"], "ready")
         self.assertEqual(readiness["ready_product_count"], 11)
         self.assertEqual(readiness["missing_product_count"], 0)
@@ -260,6 +407,13 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertFalse(report["synthetic_core_inputs_are_public_context_evidence"])
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["input_classification"], "ready_real")
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_classification"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_path"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_missing_fields"], [])
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_non_synthetic_input"], {})
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_category"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_classification"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_path"], "")
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(checklist["verification_fields"], report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verification_fields"])
         self.assertTrue(checklist["products"][0]["expected_staging_root"].endswith("/context/swissimage"))
@@ -331,6 +485,10 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
+            self._write_real_core_inputs(
+                repo_root,
+                {"terrain_crop", "terrain_metadata", "aoi_tile_catalog", "source_zone_metadata", "scenario_table", "source_scenario_policy"},
+            )
             package_path = self._write_acquisition_package(repo_root, classification="real_staged")
             self._write_real_context_cache_manifest(
                 repo_root,
@@ -356,6 +514,8 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("real_context_staging_checklist_state: verifier_ready", text_report)
         self.assertIn("prepared_pilot_input_classification: ready_real", text_report)
         self.assertIn("first_missing_real_input_category: ", text_report)
+        self.assertIn("first_missing_real_input_classification: ", text_report)
+        self.assertIn("first_missing_real_input_path: ", text_report)
         self.assertIn("local_core_inputs:", text_report)
         self.assertIn("real_context_product_readiness:", text_report)
         self.assertIn("deterministic_acquisition_plan:", text_report)
@@ -363,6 +523,7 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("next_acquisition_decisions:", text_report)
         self.assertIn("real_context_product_readiness:", text_report)
         self.assertIn("real_context_staging_checklist:", text_report)
+        self.assertIn("prepared_pilot_real_input_readiness:", text_report)
         self.assertIn("claim_boundary_note: Checklist only; it does not authorize downloads", text_report)
         self.assertIn("synthetic_core_inputs_are_public_context_evidence: false", text_report)
         self.assertIn("processed_context_root", text_report)
@@ -434,16 +595,23 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         *,
         classification: str | None = None,
         classification_map: dict[str, str] | None = None,
+        omit_categories: set[str] | None = None,
     ) -> Path:
         package = yaml.safe_load(self._freeze_package_path().read_text(encoding="utf-8"))
         assert isinstance(package, dict)
+        omit_categories = omit_categories or set()
+        required_items = []
         for row in package.get("required_acquisition_items") or []:
             if not isinstance(row, dict):
                 continue
             category = str(row.get("category") or "")
+            if category in omit_categories:
+                continue
             row_classification = (classification_map or {}).get(category, classification or str(row.get("classification") or row.get("current_status") or "missing"))
             row["classification"] = row_classification
             row["current_status"] = row_classification
+            required_items.append(row)
+        package["required_acquisition_items"] = required_items
         package_path = repo_root / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
         package_path.parent.mkdir(parents=True, exist_ok=True)
         package_path.write_text(yaml.safe_dump(package, sort_keys=False), encoding="utf-8")
@@ -521,6 +689,172 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         }
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
         return manifest_path
+
+    def _corrupt_core_inputs_for_metadata_mismatch(self, repo_root: Path) -> None:
+        (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc").write_text(
+            "",
+            encoding="utf-8",
+        )
+        (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml").write_text(
+            "schema_version: 1\n",
+            encoding="utf-8",
+        )
+        (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml").write_text(
+            "schema_version: swisstopo_aoi_tile_catalog_v1\ncatalog_status: metadata_only\n",
+            encoding="utf-8",
+        )
+        (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml").write_text(
+            "schema_version: 1\nzone_id: chant_sura_fluelapass_real_zone_001\n",
+            encoding="utf-8",
+        )
+        (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv").write_text(
+            "scenario_id,source_zone_id\nbroken_scenario,broken_zone\n",
+            encoding="utf-8",
+        )
+        (repo_root / "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml").write_text(
+            "schema_version: 1\npolicy_id: broken_policy\n",
+            encoding="utf-8",
+        )
+
+    def _write_real_core_inputs(self, repo_root: Path, categories: set[str]) -> None:
+        base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"
+        if "terrain_crop" in categories:
+            (base / "input/terrain.asc").write_text(
+                "\n".join(
+                    [
+                        "ncols 4",
+                        "nrows 4",
+                        "xllcorner 2793000.0",
+                        "yllcorner 1180200.0",
+                        "cellsize 2.0",
+                        "NODATA_value -9999",
+                        "2475.0 2475.5 2476.0 2476.5",
+                        "2474.0 2474.5 2475.0 2475.5",
+                        "2473.0 2473.5 2474.0 2474.5",
+                        "2472.0 2472.5 2473.0 2473.5",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "terrain_metadata" in categories:
+            (base / "input/terrain_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                        },
+                        "preprocessing": {
+                            "status": "staged_real",
+                            "crop_extent_lv95_m": {
+                                "xmin": 2793000.0,
+                                "ymin": 1180200.0,
+                                "xmax": 2793008.0,
+                                "ymax": 1180208.0,
+                            },
+                        },
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "aoi_tile_catalog" in categories:
+            (base / "input/aoi_tile_catalog.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swisstopo_aoi_tile_catalog_v1",
+                        "catalog_status": "ready",
+                        "source_product": "swissALTI3D",
+                        "product_id": "swissalti3d_2m",
+                        "crs": "EPSG:2056",
+                        "resolution_m": 2,
+                        "tiles": [
+                            {
+                                "tile_id": "2793-1180",
+                                "source_product": "swissALTI3D",
+                                "source_url": "https://www.swisstopo.admin.ch/en/height-model-swissalti3d",
+                                "extent_lv95_m": {
+                                    "xmin": 2793000.0,
+                                    "ymin": 1180000.0,
+                                    "xmax": 2794000.0,
+                                    "ymax": 1181000.0,
+                                },
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "source_zone_metadata" in categories:
+            (base / "input/source_zone_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "zone_id": "chant_sura_fluelapass_real_zone_001",
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                        },
+                        "geometry": {
+                            "type": "polygon",
+                            "coordinates": [
+                                [2793001.0, 1180201.0],
+                                [2793006.0, 1180201.0],
+                                [2793006.0, 1180206.0],
+                                [2793001.0, 1180206.0],
+                            ],
+                        },
+                        "release_points": [
+                            {
+                                "release_point_id": "chant_sura_fluelapass_real_release_001",
+                                "x": 2793002.0,
+                                "y": 1180202.0,
+                                "z_offset_m": 0.05,
+                            }
+                        ],
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "scenario_table" in categories:
+            (base / "input/scenario_table.csv").write_text(
+                "\n".join(
+                    [
+                        "scenario_id,source_zone_id,block_family,relative_weight,probability_semantics,release_point_id",
+                        "chant_sura_fluelapass_real_scenario_001,chant_sura_fluelapass_real_zone_001,real_block_family,1.0,normalized within a block family; no annual frequency claim,chant_sura_fluelapass_real_release_001",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "source_scenario_policy" in categories:
+            (repo_root / "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "policy_id": "chant_sura_fluelapass_real_source_scenario_policy_v1",
+                        "site_id": "chant_sura_fluelapass_portability_example_v1",
+                        "source_zone_id_pattern": "chant_sura_fluelapass_real_*",
+                        "source_zone_geometry": "LV95 polygon",
+                        "release_point_table": "one row per release point",
+                        "block_scenario_table": "CSV table with one row per block / scenario record",
+                        "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
 
     def _measured_balfrin_evidence(self) -> dict[str, object]:
         return {
