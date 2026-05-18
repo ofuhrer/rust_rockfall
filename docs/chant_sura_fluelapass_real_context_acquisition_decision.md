@@ -329,3 +329,26 @@ Observed current statuses:
 - `check_second_site_public_geodata_preflight.py` -> `blocked_missing_inputs`
 - `check_chant_sura_real_context_readiness_gate.py` -> `blocked_missing_inputs`
 - `plan_aoi_to_prepared_pilot_dry_run.py` -> `blocked_missing_inputs`
+
+## TB-250 Missing-Input Acquisition Handoff
+
+The readiness gate now exposes a deterministic no-download handoff block so an
+operator can see the next concrete action without treating fixtures as public
+evidence.
+
+Current handoff snapshot:
+
+- Recommendation: `request_download_authorization`
+- Authorization/defer status: `download_authorization_needed`
+- First missing real core input category: `terrain_crop`
+- Expected source product: `swissALTI3D`
+- Expected local path: `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`
+- Metadata contract: `crs`, `vertical_datum`, `crop_provenance`, `checksum`
+- Stop condition: do not proceed to a real-input dry run until the terrain
+  crop download is authorized and staged
+
+If the first missing core item is instead one of the local metadata or policy
+records, the helper switches to `stage_local_existing_input` for
+`terrain_metadata`, `aoi_tile_catalog`, `source_zone_metadata`,
+`scenario_table`, or `source_scenario_policy`. If every real core input is
+present, the recommendation becomes `ready_no_handoff_needed`.

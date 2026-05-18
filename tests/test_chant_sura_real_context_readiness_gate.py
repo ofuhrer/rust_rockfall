@@ -414,6 +414,12 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_category"], "")
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_classification"], "")
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_path"], "")
+        self.assertEqual(report["real_input_acquisition_handoff"]["next_action_recommendation"], "ready_no_handoff_needed")
+        self.assertEqual(report["real_input_acquisition_handoff"]["authorization_or_defer_status"], "no_action_needed")
+        self.assertEqual(report["real_input_acquisition_handoff"]["first_missing_real_input_category"], "")
+        self.assertEqual(report["real_input_acquisition_handoff"]["expected_source_product"], "")
+        self.assertEqual(report["real_input_acquisition_handoff"]["expected_local_path"], "")
+        self.assertEqual(report["real_input_acquisition_handoff"]["metadata_contract"], [])
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(checklist["verification_fields"], report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verification_fields"])
         self.assertTrue(checklist["products"][0]["expected_staging_root"].endswith("/context/swissimage"))
@@ -481,6 +487,118 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(report["local_staged_summary"]["ready_supporting_root_count"], 4)
         self.assertFalse(report["local_staged_summary"]["synthetic_core_inputs_are_public_context_evidence"])
 
+    def test_missing_terrain_metadata_requests_local_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml").unlink()
+            self._write_real_core_inputs(
+                repo_root,
+                {"terrain_crop", "aoi_tile_catalog", "source_zone_metadata", "scenario_table", "source_scenario_policy"},
+            )
+            package_path = self._write_acquisition_package(repo_root, classification="real_staged")
+
+            report = gate.build_report(
+                self._site_config_path(),
+                repo_root=repo_root,
+                acquisition_package_path=package_path,
+            )
+
+        handoff = report["real_input_acquisition_handoff"]
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "terrain_metadata")
+        self.assertEqual(handoff["next_action_recommendation"], "stage_local_existing_input")
+        self.assertEqual(handoff["authorization_or_defer_status"], "local_staging_needed")
+        self.assertEqual(handoff["first_missing_real_input_category"], "terrain_metadata")
+        self.assertEqual(handoff["first_missing_real_input_classification"], "missing")
+        self.assertTrue(handoff["expected_local_path"].endswith("terrain_metadata.yaml"))
+        self.assertEqual(handoff["expected_source_product"], "swissALTI3D terrain metadata")
+        self.assertIn("crs", handoff["metadata_contract"])
+        self.assertFalse(handoff["authorization_required"])
+
+    def test_missing_aoi_tile_catalog_requests_local_staging(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            self._stage_minimal_inputs(repo_root)
+            (repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml").unlink()
+            self._write_real_core_inputs(
+                repo_root,
+                {"terrain_crop", "terrain_metadata", "source_zone_metadata", "scenario_table", "source_scenario_policy"},
+            )
+            package_path = self._write_acquisition_package(repo_root, classification="real_staged")
+
+            report = gate.build_report(
+                self._site_config_path(),
+                repo_root=repo_root,
+                acquisition_package_path=package_path,
+            )
+
+        handoff = report["real_input_acquisition_handoff"]
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "aoi_tile_catalog")
+        self.assertEqual(handoff["next_action_recommendation"], "stage_local_existing_input")
+        self.assertEqual(handoff["authorization_or_defer_status"], "local_staging_needed")
+        self.assertEqual(handoff["first_missing_real_input_category"], "aoi_tile_catalog")
+        self.assertTrue(handoff["expected_local_path"].endswith("aoi_tile_catalog.yaml"))
+        self.assertEqual(handoff["expected_source_product"], "AOI tile catalog for deterministic swisstopo discovery")
+        self.assertIn("tile_id", handoff["metadata_contract"])
+        self.assertFalse(handoff["authorization_required"])
+
+    def test_missing_source_scenario_policy_records_request_local_staging(self) -> None:
+        missing_cases = [
+            ("source_zone_metadata", "source_zone_metadata.yaml", "release / source-zone metadata", "geometry"),
+            ("scenario_table", "scenario_table.csv", "block / scenario table", "scenario_id"),
+            (
+                "source_scenario_policy",
+                "chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml",
+                "source-scenario policy record",
+                "policy_id",
+            ),
+        ]
+
+        for category, suffix, expected_source_product, field_name in missing_cases:
+            with self.subTest(category=category):
+                with tempfile.TemporaryDirectory() as tmp:
+                    repo_root = Path(tmp)
+                    self._stage_minimal_inputs(repo_root)
+                    missing_path = {
+                        "source_zone_metadata": repo_root
+                        / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml",
+                        "scenario_table": repo_root
+                        / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv",
+                        "source_scenario_policy": repo_root
+                        / "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml",
+                    }[category]
+                    missing_path.unlink()
+                    real_categories = {
+                        "terrain_crop",
+                        "terrain_metadata",
+                        "aoi_tile_catalog",
+                        "source_zone_metadata",
+                        "scenario_table",
+                        "source_scenario_policy",
+                    }
+                    real_categories.remove(category)
+                    self._write_real_core_inputs(
+                        repo_root,
+                        real_categories,
+                    )
+                    package_path = self._write_acquisition_package(repo_root, classification="real_staged")
+
+                    report = gate.build_report(
+                        self._site_config_path(),
+                        repo_root=repo_root,
+                        acquisition_package_path=package_path,
+                    )
+
+                handoff = report["real_input_acquisition_handoff"]
+                self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], category)
+                self.assertEqual(handoff["next_action_recommendation"], "stage_local_existing_input")
+                self.assertEqual(handoff["authorization_or_defer_status"], "local_staging_needed")
+                self.assertEqual(handoff["first_missing_real_input_category"], category)
+                self.assertTrue(handoff["expected_local_path"].endswith(suffix))
+                self.assertEqual(handoff["expected_source_product"], expected_source_product)
+                self.assertIn(field_name, handoff["metadata_contract"])
+                self.assertFalse(handoff["authorization_required"])
+
     def test_text_output_mentions_boundary_and_next_acquisition_decisions(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
@@ -516,6 +634,8 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertIn("first_missing_real_input_category: ", text_report)
         self.assertIn("first_missing_real_input_classification: ", text_report)
         self.assertIn("first_missing_real_input_path: ", text_report)
+        self.assertIn("real_input_acquisition_handoff:", text_report)
+        self.assertIn("next_action_recommendation: ready_no_handoff_needed", text_report)
         self.assertIn("local_core_inputs:", text_report)
         self.assertIn("real_context_product_readiness:", text_report)
         self.assertIn("deterministic_acquisition_plan:", text_report)

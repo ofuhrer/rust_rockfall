@@ -1578,3 +1578,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no second-site ensemble, no synthetic public-context evidence, no operational claim, no physical-validation claim, no scale-up claim, and no generated heavy outputs committed.
 - Next task: `TB-250`
+
+### TB-250: Chant Sura Missing-Input Acquisition Handoff
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: add a no-download Chant Sura handoff that names the first missing real core input, the expected local path, the metadata contract, and the deterministic next action before a real-input dry run.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `real_input_acquisition_handoff` block to the Chant Sura readiness gate so operators can read the next action directly from the report instead of inferring it from blocker state.
+  - Classified the handoff as `ready_no_handoff_needed`, `stage_local_existing_input`, `request_download_authorization`, or `defer_second_site` using the first missing real core input and its metadata contract.
+  - Added focused tests covering ready-real-core, missing terrain metadata, missing AOI tile catalog, and missing source-zone / scenario / policy records, then verified the gate text output includes the new handoff section.
+  - Documented the current no-download handoff snapshot in the Chant Sura real-context acquisition decision pack and removed TB-250 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: handoff only; no downloads, no second-site ensemble, no generated heavy outputs committed, no physical-validation claim, no operational claim, and no scale-up / annual-frequency / risk / exposure / vulnerability / distributed-execution claim.
+- Next task: `TB-251`

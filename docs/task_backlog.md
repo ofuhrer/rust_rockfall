@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-250: Chant Sura Missing-Input Acquisition Handoff
-
-Goal: If TB-249 reports missing real core inputs, produce one no-download acquisition/staging handoff that names the exact files, metadata fields, and authorization decisions needed before a real-input dry run.
-
-Capability gap reduced: Second-site portability can otherwise stall after a verifier report without a concrete next operator action.
-
-Why this outranks alternatives: A blocked verifier is useful only if it points to a bounded acquisition path rather than another fixture-backed dry run.
-
-Inspect first:
-
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A no-download handoff report for the first missing real core-input category, with expected source product, local path, metadata contract, and authorization/defer status.
-- A deterministic recommendation of `ready_no_handoff_needed`, `stage_local_existing_input`, `request_download_authorization`, or `defer_second_site`.
-- Tests for ready-real-core, missing terrain metadata, missing AOI tile catalog, and missing source/scenario/policy records.
-
-Definition of done:
-
-- A worker or operator can see the next concrete Chant Sura acquisition/staging action without treating fixtures as public evidence.
-
-Boundaries: Handoff only; no downloads, no second-site ensemble, no generated heavy outputs committed, no physical-validation claim, and no operational claim.
-
 ### TB-251: Real-Input Chant Sura Prepared-Pilot Dry Run
 
 Goal: Run the AOI-to-prepared-pilot dry-run path for Chant Sura only when TB-249 reports real staged core inputs, otherwise emit a deterministic blocked report.

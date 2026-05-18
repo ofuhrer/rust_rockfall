@@ -37,6 +37,7 @@ SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
 REAL_CONTEXT_PRODUCT_READINESS_SCHEMA_VERSION = "chant_sura_real_context_product_readiness_v1"
 REAL_CONTEXT_STAGING_CHECKLIST_SCHEMA_VERSION = "chant_sura_real_context_staging_checklist_v1"
 PREPARED_PILOT_REAL_INPUT_READINESS_SCHEMA_VERSION = "chant_sura_prepared_pilot_real_input_readiness_v1"
+REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION = "chant_sura_real_input_acquisition_handoff_v1"
 BALFRIN_TRIGGER_MATRIX_SCHEMA_VERSION = "chant_sura_real_context_trigger_matrix_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
@@ -215,6 +216,15 @@ PREPARED_PILOT_REAL_INPUT_DEFINITIONS = [
         "deferred": True,
     },
 ]
+
+REAL_INPUT_DOWNLOAD_REQUEST_CATEGORIES = {"terrain_crop"}
+REAL_INPUT_LOCAL_STAGING_CATEGORIES = {
+    "terrain_metadata",
+    "aoi_tile_catalog",
+    "source_zone_metadata",
+    "scenario_table",
+    "source_scenario_policy",
+}
 
 CORE_PRODUCT_VALIDATION_RULES = {
     "aoi_tile_catalog": {
@@ -410,6 +420,97 @@ def build_prepared_pilot_real_input_readiness(
         "deferred_public_context_inputs": deferred_states,
     }
     return report
+
+
+def build_real_input_acquisition_handoff(
+    acquisition_package: dict[str, Any],
+    *,
+    prepared_pilot_real_input_readiness: dict[str, Any],
+    preflight_report: dict[str, Any],
+) -> dict[str, Any]:
+    package_rows = {
+        PREFLIGHT.text_value(row.get("category")): row
+        for row in (acquisition_package.get("required_acquisition_items") or [])
+        if isinstance(row, dict) and PREFLIGHT.text_value(row.get("category"))
+    }
+    first_missing = dict(prepared_pilot_real_input_readiness.get("first_missing_non_synthetic_input") or {})
+    input_classification = str(prepared_pilot_real_input_readiness.get("input_classification") or "missing")
+
+    if input_classification == "ready_real":
+        return {
+            "schema_version": REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION,
+            "next_action_recommendation": "ready_no_handoff_needed",
+            "authorization_or_defer_status": "no_action_needed",
+            "first_missing_real_input_category": "",
+            "first_missing_real_input_classification": "",
+            "expected_source_product": "",
+            "expected_local_path": "",
+            "metadata_contract": [],
+            "missing_metadata_fields": [],
+            "authorization_required": False,
+            "reason": "All real core inputs are staged with matching metadata; no acquisition handoff is needed.",
+            "stop_condition": "No handoff stop condition; a real-input dry run can be requested after downstream gates pass.",
+        }
+
+    category = PREFLIGHT.text_value(first_missing.get("category"))
+    classification = PREFLIGHT.text_value(first_missing.get("classification")) or input_classification
+    package_row = package_rows.get(category) or next(
+        (row for row in PREPARED_PILOT_REAL_INPUT_DEFINITIONS if row["category"] == category),
+        {},
+    )
+    expected_local_path = (
+        PREFLIGHT.text_value(first_missing.get("expected_path"))
+        or PREFLIGHT.text_value(package_row.get("expected_path"))
+        or PREFLIGHT.text_value((preflight_report.get("expected_local_paths") or {}).get(category))
+    )
+    expected_source_product = PREFLIGHT.text_value(package_row.get("product")) or category
+    metadata_contract = list(package_row.get("metadata_fields") or package_row.get("required_fields") or [])
+    missing_metadata_fields = list(first_missing.get("missing_fields") or [])
+
+    if category in REAL_INPUT_DOWNLOAD_REQUEST_CATEGORIES:
+        next_action = "request_download_authorization"
+        authorization_status = "download_authorization_needed"
+        reason = (
+            f"The first missing real core input is {expected_source_product}; "
+            "download authorization is required before any real-input dry run can stage it."
+        )
+        stop_condition = (
+            f"Stop until download authorization is granted and {expected_local_path} can be staged as a real input."
+        )
+        authorization_required = True
+    elif category in REAL_INPUT_LOCAL_STAGING_CATEGORIES:
+        next_action = "stage_local_existing_input"
+        authorization_status = "local_staging_needed"
+        reason = (
+            f"The first missing real core input is {expected_source_product}; "
+            "stage the existing local input or metadata record at the expected path before rerunning."
+        )
+        stop_condition = f"Stop until {expected_local_path} exists with the listed metadata contract."
+        authorization_required = False
+    else:
+        next_action = "defer_second_site"
+        authorization_status = "second_site_deferred"
+        reason = (
+            "The current state does not identify a concrete local staging or download action for the first "
+            "missing real core input, so second-site work stays deferred."
+        )
+        stop_condition = "Stop; do not treat fixtures as public evidence and do not proceed to a dry run."
+        authorization_required = False
+
+    return {
+        "schema_version": REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION,
+        "next_action_recommendation": next_action,
+        "authorization_or_defer_status": authorization_status,
+        "first_missing_real_input_category": category,
+        "first_missing_real_input_classification": classification,
+        "expected_source_product": expected_source_product,
+        "expected_local_path": expected_local_path,
+        "metadata_contract": metadata_contract,
+        "missing_metadata_fields": missing_metadata_fields,
+        "authorization_required": authorization_required,
+        "reason": reason,
+        "stop_condition": stop_condition,
+    }
 
 
 def build_prepared_pilot_real_input_row(
@@ -659,6 +760,11 @@ def build_report(
             preflight_report=preflight_report,
             repo_root=repo_root,
         )
+        real_input_acquisition_handoff = build_real_input_acquisition_handoff(
+            acquisition_package,
+            prepared_pilot_real_input_readiness=prepared_pilot_real_input_readiness,
+            preflight_report=preflight_report,
+        )
 
         gate_status = determine_gate_status(
             core_input_status=preflight_report["core_input_status"],
@@ -673,6 +779,7 @@ def build_report(
             "real_context_readiness_gate_status": gate_status,
             "readiness_status": gate_status,
             "prepared_pilot_real_input_readiness": prepared_pilot_real_input_readiness,
+            "real_input_acquisition_handoff": real_input_acquisition_handoff,
             "prepared_pilot_input_classification": prepared_pilot_real_input_readiness["input_classification"],
             "first_missing_real_input_category": prepared_pilot_real_input_readiness["first_missing_real_input_category"],
             "first_missing_real_input_classification": prepared_pilot_real_input_readiness["first_missing_real_input_classification"],
@@ -1522,6 +1629,22 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(
         f"- first_missing_non_synthetic_input: {prepared_pilot_real_input_readiness.get('first_missing_non_synthetic_input', {})}"
     )
+
+    lines.append("")
+    lines.append("real_input_acquisition_handoff:")
+    handoff = report.get("real_input_acquisition_handoff") or {}
+    lines.append(f"- schema_version: {handoff.get('schema_version', '')}")
+    lines.append(f"- next_action_recommendation: {handoff.get('next_action_recommendation', '')}")
+    lines.append(f"- authorization_or_defer_status: {handoff.get('authorization_or_defer_status', '')}")
+    lines.append(f"- first_missing_real_input_category: {handoff.get('first_missing_real_input_category', '')}")
+    lines.append(f"- first_missing_real_input_classification: {handoff.get('first_missing_real_input_classification', '')}")
+    lines.append(f"- expected_source_product: {handoff.get('expected_source_product', '')}")
+    lines.append(f"- expected_local_path: {handoff.get('expected_local_path', '')}")
+    lines.append(f"- metadata_contract: {handoff.get('metadata_contract', [])}")
+    lines.append(f"- missing_metadata_fields: {handoff.get('missing_metadata_fields', [])}")
+    lines.append(f"- authorization_required: {handoff.get('authorization_required', '')}")
+    lines.append(f"- reason: {handoff.get('reason', '')}")
+    lines.append(f"- stop_condition: {handoff.get('stop_condition', '')}")
 
     lines.append("")
     lines.append("balfrin_trigger_summary:")
