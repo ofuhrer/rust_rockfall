@@ -23,35 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-253: First Real Observed Benchmark Intake Integration
-
-Goal: If TB-252 identifies and stages a real observed benchmark candidate, integrate it through the observed runout/deposition intake contract while keeping calibration and claim boundaries explicit.
-
-Capability gap reduced: Physical credibility cannot improve until a real observed benchmark package passes the intake contract and is separated from calibration and holdout roles.
-
-Why this outranks alternatives: A successful real intake would move the scientific evidence base more than another workflow report; a failed intake would still clarify the exact evidence blocker.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-
-Deliverables:
-
-- A real-input intake report with geometry, provenance, uncertainty, calibration-role, validation-role, and holdout-eligibility classifications.
-- A physical-credibility gap update that remains `not_established` unless the evidence genuinely satisfies the required intake boundary.
-- Rejection tests for missing geometry, missing provenance, missing uncertainty, ambiguous calibration role, and fixture-only inputs.
-
-Definition of done:
-
-- The repo can accept or reject one real observed benchmark package deterministically, and any accepted intake is not confused with calibration, annual-frequency, or operational validation.
-
-Boundaries: Intake only; no calibration, no parameter fitting, no source-frequency semantics, no annual-frequency or risk semantics, no operational claim, and no claim upgrade beyond what the accepted evidence supports.
-
 ### TB-254: Release-Zone, Block-Population, And Source-Frequency Evidence Triage
 
 Goal: Triage the next real-evidence acquisition blockers for field-supported release zones, block-population evidence, and source-frequency records without implementing physical probability semantics.

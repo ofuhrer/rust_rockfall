@@ -1645,3 +1645,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: acquisition triage only; no downloads, no calibration, no parameter fitting, no validation-status upgrade, no annual-frequency or risk semantics, and no operational claim.
 - Next task: `TB-253`
+
+### TB-253: First Real Observed Benchmark Intake Integration
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: integrate deterministic real-input observed benchmark intake classification while keeping calibration, holdout, and claim boundaries explicit.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a first-class `real_input_intake_report` to the observed intake helper so the report now separates package availability from acceptance and reports geometry, provenance, uncertainty, calibration-role, validation-role, holdout-eligibility, and license classifications.
+  - Implemented deterministic blocked states for `blocked_missing_inputs`, `blocked_schema_gap`, `blocked_role_unclear`, `blocked_claim_overclaim`, and `blocked_fixture_only_inputs`, while keeping the physical-credibility gap update at `not_established`.
+  - Wired the real-input classification into the top-level report, the blocker summary, the readiness-pack manifest, and the CLI exit path so non-ready intake stays explicit without upgrading claims.
+  - Updated the regression coverage to prove a contract-compliant staged package is accepted, missing-field and role-gap cases are rejected, fixture-only inputs fail closed, and the default repo state remains blocked until a real package is staged.
+  - Removed TB-253 from the active backlog after the intake contract and tests were aligned.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json >/tmp/tb253_default_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: intake only; no calibration, no parameter fitting, no source-frequency semantics, no annual-frequency or risk semantics, no operational claim, and no claim upgrade beyond what accepted evidence supports.
+- Next task: `TB-254`

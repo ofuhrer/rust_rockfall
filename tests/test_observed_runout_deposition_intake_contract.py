@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import tempfile
 import unittest
@@ -12,6 +13,50 @@ from scripts import summarize_observed_runout_deposition_intake_contract as help
 
 
 class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
+    def _make_real_input_package(self) -> dict[str, object]:
+        package = deepcopy(helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE))
+        package["license"]["status"] = "reviewed"
+        package["license"]["note"] = "real benchmark intake"
+        package["provenance"]["source_origin_description"] = "Field survey record staged for intake"
+        package["provenance"]["provenance_uri"] = "https://example.com/observed-runout-deposition/real-001"
+        package["provenance"]["source_name"] = "Chant Sura observed benchmark intake"
+        return package
+
+    def _write_real_input_package(self, tmp_path: Path, package: dict[str, object]) -> tuple[Path, Path, Path]:
+        benchmark_root = tmp_path / "validation/data/processed/observed_runout_deposition_benchmark"
+        benchmark_root.mkdir(parents=True, exist_ok=True)
+        manifest_path = benchmark_root / "manifest.json"
+        geometry_path = benchmark_root / "observed_runout_deposition.geojson"
+        manifest_path.write_text(json.dumps(package, indent=2, sort_keys=True, default=str), encoding="utf-8")
+        geometry_section = package.get("geometry") if isinstance(package.get("geometry"), dict) else {}
+        geometry_value = geometry_section.get("geometry_value")
+        geometry_payload = (
+            {"type": "Feature", "geometry": geometry_value, "properties": {}}
+            if isinstance(geometry_value, dict)
+            else {"type": "LineString", "coordinates": [[0.0, 0.0], [1.0, 1.0]]}
+        )
+        geometry_path.write_text(json.dumps(geometry_payload, indent=2, sort_keys=True), encoding="utf-8")
+        return benchmark_root, manifest_path, geometry_path
+
+    def _build_report_from_package(self, package: dict[str, object], *, patch_calibration: bool = False) -> dict[str, object]:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            benchmark_root, manifest_path, geometry_path = self._write_real_input_package(tmp_path, package)
+            patches = [
+                patch.object(helper, "EXPECTED_BENCHMARK_ROOT", benchmark_root),
+                patch.object(helper, "EXPECTED_BENCHMARK_MANIFEST", manifest_path),
+                patch.object(helper, "EXPECTED_BENCHMARK_GEOMETRY", geometry_path),
+                patch.object(helper, "EXPECTED_BENCHMARK_INPUTS", (manifest_path, geometry_path)),
+            ]
+            if patch_calibration:
+                calibration_root = tmp_path / "validation/data/processed/observed_runout_deposition_calibration"
+                patches.append(patch.object(helper, "EXPECTED_CALIBRATION_ROOT", calibration_root))
+            with patches[0], patches[1], patches[2], patches[3]:
+                if patch_calibration:
+                    with patches[4]:
+                        return helper.build_report()
+                return helper.build_report()
+
     def test_contract_shape_and_field_requirements(self) -> None:
         report = helper.build_report()
 
@@ -26,6 +71,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "next_action_recommendation",
             "physical_credibility_gap_update",
             "candidate_acquisition_report",
+            "real_input_intake_report",
             "fixture_acceptance_smoke",
             "dataset_role_classification",
             "claim_boundaries",
@@ -48,6 +94,9 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("runout_endpoint_error_m", contract["objective_function_placeholders"]["required_fields"])
         self.assertEqual(contract["objective_function_placeholders"]["objective_status"], "placeholder_only")
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
+        self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "blocked_missing_inputs")
+        self.assertIn("missing_manifest", report["real_input_intake_report"]["blocking_reasons"])
+        self.assertIn("missing_geometry", report["real_input_intake_report"]["blocking_reasons"])
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_status"], "fixture_backed")
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
         self.assertEqual(
@@ -160,6 +209,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(report["acquisition_blocker_matrix"][3]["acceptance_status"], "blocked_missing_inputs")
         self.assertEqual(report["acquisition_blocker_matrix"][4]["acceptance_status"], "ready")
         self.assertEqual(report["acquisition_blocker_matrix"][5]["acceptance_status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "blocked_missing_inputs")
 
     def test_candidate_acquisition_report_reports_no_candidate(self) -> None:
         with patch.object(helper, "LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS", tuple()):
@@ -188,29 +238,35 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("missing_staged_benchmark_geometry", candidate_report["licensing_provenance_blockers"])
 
     def test_benchmark_ready_without_calibration_is_reported_as_ready(self) -> None:
+        package = self._make_real_input_package()
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            benchmark_root = tmp_path / "validation/data/processed/observed_runout_deposition_benchmark"
-            benchmark_root.mkdir(parents=True, exist_ok=True)
-            (benchmark_root / "manifest.json").write_text("{}", encoding="utf-8")
-            (benchmark_root / "observed_runout_deposition.geojson").write_text("{}", encoding="utf-8")
+            benchmark_root, manifest_path, geometry_path = self._write_real_input_package(tmp_path, package)
+            calibration_root = tmp_path / "validation/data/processed/observed_runout_deposition_calibration"
 
             with patch.object(helper, "EXPECTED_BENCHMARK_ROOT", benchmark_root), patch.object(
-                helper, "EXPECTED_BENCHMARK_MANIFEST", benchmark_root / "manifest.json"
+                helper, "EXPECTED_BENCHMARK_MANIFEST", manifest_path
             ), patch.object(
-                helper, "EXPECTED_BENCHMARK_GEOMETRY", benchmark_root / "observed_runout_deposition.geojson"
+                helper, "EXPECTED_BENCHMARK_GEOMETRY", geometry_path
             ), patch.object(
                 helper, "EXPECTED_BENCHMARK_INPUTS", (
-                    benchmark_root / "manifest.json",
-                    benchmark_root / "observed_runout_deposition.geojson",
+                    manifest_path,
+                    geometry_path,
                 )
-            ), patch.object(helper, "EXPECTED_CALIBRATION_ROOT", tmp_path / "validation/data/processed/observed_runout_deposition_calibration"):
+            ), patch.object(helper, "EXPECTED_CALIBRATION_ROOT", calibration_root):
                 report = helper.build_report()
 
         current_state = report["current_repo_state"]
         self.assertEqual(report["observed_runout_deposition_intake_status"], "ready")
         self.assertIsNone(report["blocked_reason"])
         self.assertEqual(report["missing_inputs"], [])
+        self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["geometry_classification"]["status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["provenance_classification"]["status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["uncertainty_classification"]["status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["calibration_role_classification"]["status"], "clear")
+        self.assertEqual(report["real_input_intake_report"]["validation_role_classification"]["status"], "clear")
+        self.assertEqual(report["real_input_intake_report"]["holdout_eligibility_classification"]["status"], "clear")
         self.assertEqual(current_state["benchmark_intake_readiness_status"], "ready")
         self.assertEqual(current_state["calibration_readiness_status"], "blocked_missing_inputs")
         self.assertEqual(current_state["benchmark_intake_dataset_status"], "present")
@@ -218,7 +274,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(current_state["benchmark_intake_missing_inputs"], [])
         self.assertEqual(
             current_state["calibration_missing_inputs"],
-            [str(tmp_path / "validation/data/processed/observed_runout_deposition_calibration")],
+            [str(calibration_root)],
         )
         self.assertEqual(report["dataset_role_classification"][0]["status"], "present")
         self.assertEqual(report["dataset_role_classification"][1]["status"], "present")
@@ -236,11 +292,78 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "blocked_missing_inputs",
         )
 
+    def test_real_input_intake_report_rejects_contract_gaps_and_fixture_only_inputs(self) -> None:
+        cases = [
+            (
+                "missing_geometry",
+                lambda package: package["geometry"].pop("geometry_value"),
+                "blocked_schema_gap",
+                "missing_geometry",
+                ("geometry_classification", "blocked_schema_gap"),
+            ),
+            (
+                "missing_provenance",
+                lambda package: package["provenance"].pop("provenance_uri"),
+                "blocked_schema_gap",
+                "missing_provenance",
+                ("provenance_classification", "blocked_schema_gap"),
+            ),
+            (
+                "missing_uncertainty",
+                lambda package: package["uncertainty"].pop("qa_status"),
+                "blocked_schema_gap",
+                "missing_uncertainty",
+                ("uncertainty_classification", "blocked_schema_gap"),
+            ),
+            (
+                "ambiguous_calibration_role",
+                lambda package: package["calibration_validation_role"].__setitem__("validation", "benchmark_intake_and_validation"),
+                "blocked_role_unclear",
+                "ambiguous_validation_role",
+                ("role_classification", "blocked_role_unclear"),
+            ),
+            (
+                "fixture_only_inputs",
+                lambda package: None,
+                "blocked_fixture_only_inputs",
+                "fixture_only_inputs",
+                ("license_classification", "fixture_only"),
+            ),
+        ]
+
+        for case_name, mutate, expected_status, expected_reason, status_path in cases:
+            with self.subTest(case=case_name):
+                package = self._make_real_input_package()
+                if case_name == "fixture_only_inputs":
+                    package = deepcopy(helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE))
+                else:
+                    mutate(package)
+                report = self._build_report_from_package(package)
+                self.assertEqual(report["observed_runout_deposition_intake_status"], expected_status)
+                self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], expected_status)
+                self.assertIn(expected_reason, report["real_input_intake_report"]["blocking_reasons"])
+                self.assertEqual(report["current_repo_state"]["benchmark_intake_package_status"], "present")
+                self.assertEqual(report["current_repo_state"]["benchmark_intake_dataset_status"], "present")
+                section_name, section_status = status_path
+                if case_name == "fixture_only_inputs":
+                    self.assertEqual(
+                        report["real_input_intake_report"][section_name]["status_classification"],
+                        section_status,
+                    )
+                    self.assertEqual(
+                        report["real_input_intake_report"]["license_classification"]["status"],
+                        "placeholder_only",
+                    )
+                else:
+                    self.assertEqual(report["real_input_intake_report"][section_name]["status"], section_status)
+
     def test_text_output_mentions_placeholder_and_split_readiness(self) -> None:
         text = helper.render_text_report(helper.build_report())
 
         self.assertIn("observed_runout_deposition_intake_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_manifest:", text)
+        self.assertIn("real_input_intake_report:", text)
+        self.assertIn("real_input_intake_status: blocked_missing_inputs", text)
         self.assertIn("fixture_acceptance_smoke:", text)
         self.assertIn("physical_credibility_gap_update:", text)
         self.assertIn("candidate_acquisition_report:", text)

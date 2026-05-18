@@ -64,6 +64,7 @@ LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS = (
 
 ACQUISITION_MATRIX_SCHEMA_VERSION = "observed_runout_deposition_acquisition_matrix_v1"
 OBSERVED_RUNOUT_DEPOSITION_CANDIDATE_REPORT_SCHEMA_VERSION = "observed_runout_deposition_candidate_acquisition_report_v1"
+REAL_INPUT_INTAKE_REPORT_SCHEMA_VERSION = "observed_runout_deposition_real_input_intake_report_v1"
 
 ACQUISITION_MATRIX_BLUEPRINTS: tuple[dict[str, Any], ...] = (
     {
@@ -411,20 +412,20 @@ def main(argv: list[str] | None = None) -> int:
     readiness_pack = report.get("readiness_pack", {})
     if readiness_pack.get("readiness_pack_status") == "written":
         return 0
-    return 2 if report["observed_runout_deposition_intake_status"] == "blocked_missing_inputs" else 0
+    return 2 if report["observed_runout_deposition_intake_status"] != "ready" else 0
 
 
 def build_report(output_root: Path | None = None) -> dict[str, Any]:
     contract = build_contract()
     field_requirement_map = build_field_requirement_map()
-    current_state = build_current_state()
+    physical_credibility_gap_update = build_physical_credibility_gap_update()
+    real_input_intake_report = build_real_input_intake_report()
+    current_state = build_current_state(real_input_intake_report=real_input_intake_report)
     acquisition_blocker_matrix = build_acquisition_blocker_matrix(current_state=current_state)
     next_action_recommendation = build_next_action_recommendation(acquisition_blocker_matrix)
-    physical_credibility_gap_update = build_physical_credibility_gap_update()
     dataset_role_classification = build_dataset_role_classification(current_state=current_state)
     fixture_acceptance_smoke = build_fixture_acceptance_smoke()
     candidate_acquisition_report = build_candidate_acquisition_report(current_state=current_state)
-    benchmark_missing_inputs = current_state["benchmark_intake_missing_inputs"]
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=contract,
         current_state=current_state,
@@ -432,15 +433,17 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
         next_action_recommendation=next_action_recommendation,
         physical_credibility_gap_update=physical_credibility_gap_update,
         dataset_role_classification=dataset_role_classification,
+        real_input_intake_report=real_input_intake_report,
         pack_root=None,
     )
 
-    if benchmark_missing_inputs:
+    if real_input_intake_report["real_input_intake_status"] != "ready":
         report: dict[str, Any] = shared_build_blocked_report(
             schema_version=SCHEMA_VERSION,
             status_key="observed_runout_deposition_intake_status",
-            missing_inputs=benchmark_missing_inputs,
-            blocked_reason="no independent observed runout/deposition benchmark intake is staged in the repo",
+            missing_inputs=real_input_intake_report["missing_inputs"],
+            blocked_reason=real_input_intake_report["blocked_reason"] or "observed runout/deposition intake is blocked",
+            blocked_status=real_input_intake_report["real_input_intake_status"],
             extra_fields={
                 "benchmark_intake_contract": contract,
                 "benchmark_intake_manifest": benchmark_intake_manifest,
@@ -452,8 +455,11 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "candidate_acquisition_report": candidate_acquisition_report,
                 "dataset_role_classification": dataset_role_classification,
                 "fixture_acceptance_smoke": fixture_acceptance_smoke,
+                "real_input_intake_report": real_input_intake_report,
                 "claim_boundaries": claim_boundaries(),
-                "current_state_summary": current_state_summary(current_state),
+                "current_state_summary": current_state_summary(
+                    current_state, real_input_intake_report=real_input_intake_report
+                ),
             },
         )
     else:
@@ -470,10 +476,13 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "candidate_acquisition_report": candidate_acquisition_report,
             "dataset_role_classification": dataset_role_classification,
             "fixture_acceptance_smoke": fixture_acceptance_smoke,
+            "real_input_intake_report": real_input_intake_report,
             "claim_boundaries": claim_boundaries(),
             "blocked_reason": None,
             "missing_inputs": [],
-            "current_state_summary": current_state_summary(current_state),
+            "current_state_summary": current_state_summary(
+                current_state, real_input_intake_report=real_input_intake_report
+            ),
         }
     validate_claim_boundaries(report["claim_boundaries"])
     shared_scan_text_for_misleading_claims(report, require_fn=require)
@@ -501,6 +510,7 @@ def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[s
         next_action_recommendation=report["next_action_recommendation"],
         physical_credibility_gap_update=report["physical_credibility_gap_update"],
         dataset_role_classification=report["dataset_role_classification"],
+        real_input_intake_report=report["real_input_intake_report"],
         pack_root=pack_root,
     )
 
@@ -599,6 +609,7 @@ def build_benchmark_intake_manifest(
     next_action_recommendation: dict[str, Any],
     physical_credibility_gap_update: dict[str, Any],
     dataset_role_classification: list[dict[str, Any]],
+    real_input_intake_report: dict[str, Any],
     pack_root: Path | None,
 ) -> dict[str, Any]:
     geometry = contract["geometry"]
@@ -611,10 +622,22 @@ def build_benchmark_intake_manifest(
         "manifest_status": "dry_run_template" if pack_root is not None else "report_only",
         "pack_root": str(pack_root) if pack_root is not None else None,
         "blocked_reason": (
-            "no independent observed runout/deposition benchmark intake is staged in the repo"
+            real_input_intake_report["blocked_reason"]
             if current_state["benchmark_intake_readiness_status"] != "ready"
             else None
         ),
+        "real_input_intake": {
+            "status": real_input_intake_report["real_input_intake_status"],
+            "blocked_reason": real_input_intake_report["blocked_reason"],
+            "blocking_reasons": list(real_input_intake_report["blocking_reasons"]),
+            "geometry_status": real_input_intake_report["geometry_classification"]["status"],
+            "provenance_status": real_input_intake_report["provenance_classification"]["status"],
+            "uncertainty_status": real_input_intake_report["uncertainty_classification"]["status"],
+            "calibration_role_status": real_input_intake_report["calibration_role_classification"]["status"],
+            "validation_role_status": real_input_intake_report["validation_role_classification"]["status"],
+            "holdout_eligibility_status": real_input_intake_report["holdout_eligibility_classification"]["status"],
+            "license_status": real_input_intake_report["license_classification"]["status_classification"],
+        },
         "observed_geometry": {
             "required_crs": geometry["required_crs"],
             "required_vertical_datum": geometry["required_vertical_datum"],
@@ -664,6 +687,7 @@ def build_benchmark_intake_manifest(
         "notes": [
             "Template/non-evidence manifest for a future observed runout/deposition intake.",
             "No real benchmark data, calibration fit, or operational claim is encoded here.",
+            f"Real-input intake report status: {real_input_intake_report['real_input_intake_status']}.",
         ],
     }
 
@@ -716,6 +740,95 @@ def build_fixture_acceptance_smoke() -> dict[str, Any]:
     }
 
 
+def build_real_input_intake_report() -> dict[str, Any]:
+    contract = build_contract()
+    package_state = load_real_input_package_state()
+    package_available = package_state["package_available"]
+    parse_errors = list(package_state.get("parse_errors", []))
+
+    if not package_available:
+        blocking_reasons = [
+            reason
+            for reason, path in (
+                ("missing_manifest", EXPECTED_BENCHMARK_MANIFEST),
+                ("missing_geometry", EXPECTED_BENCHMARK_GEOMETRY),
+            )
+            if str(path) in package_state["missing_inputs"]
+        ]
+        geometry_classification = unavailable_section_classification(
+            "geometry",
+            contract["geometry"]["required_fields"],
+        )
+        provenance_classification = unavailable_section_classification(
+            "provenance",
+            contract["event_source_metadata"]["required_fields"] + contract["event_source_metadata"]["source_metadata_required"],
+        )
+        uncertainty_classification = unavailable_section_classification(
+            "uncertainty",
+            contract["uncertainty"]["required_fields"],
+        )
+        role_classification = unavailable_role_classification()
+        license_classification = unavailable_license_classification()
+        return build_real_intake_report(
+            contract=contract,
+            package_state=package_state,
+            geometry_classification=geometry_classification,
+            provenance_classification=provenance_classification,
+            uncertainty_classification=uncertainty_classification,
+            role_classification=role_classification,
+            license_classification=license_classification,
+            real_input_intake_status="blocked_missing_inputs",
+            blocked_reason=real_input_blocked_reason("blocked_missing_inputs", blocking_reasons),
+            blocking_reasons=blocking_reasons,
+        )
+
+    package = package_state["manifest"]
+    geometry_package = package_state["geometry"]
+    geometry_classification = classify_geometry_section(
+        package,
+        contract=contract,
+    )
+    provenance_classification = classify_provenance_section(
+        package,
+        contract=contract,
+    )
+    uncertainty_classification = classify_uncertainty_section(
+        package,
+        contract=contract,
+    )
+    role_classification = classify_role_section(
+        package,
+        contract=contract,
+    )
+    license_classification = classify_license_section(package)
+    real_intake_status, blocking_reasons = derive_real_input_intake_status(
+        geometry_classification=geometry_classification,
+        provenance_classification=provenance_classification,
+        uncertainty_classification=uncertainty_classification,
+        role_classification=role_classification,
+        license_classification=license_classification,
+    )
+    if parse_errors:
+        blocking_reasons = ["invalid_package_payload", *parse_errors, *blocking_reasons]
+        if real_intake_status == "ready":
+            real_intake_status = "blocked_schema_gap"
+
+    blocked_reason = real_input_blocked_reason(real_intake_status, blocking_reasons)
+    return build_real_intake_report(
+        contract=contract,
+        package_state=package_state,
+        geometry_classification=geometry_classification,
+        provenance_classification=provenance_classification,
+        uncertainty_classification=uncertainty_classification,
+        role_classification=role_classification,
+        license_classification=license_classification,
+        real_input_intake_status=real_intake_status,
+        blocked_reason=blocked_reason,
+        blocking_reasons=blocking_reasons,
+        geometry_package=geometry_package,
+    )
+
+
 def build_candidate_acquisition_report(*, current_state: dict[str, Any]) -> dict[str, Any]:
     contract = build_contract()
     candidate_sources = list(current_state.get("adjacent_diagnostic_materials", []))
@@ -761,6 +874,300 @@ def build_candidate_acquisition_report(*, current_state: dict[str, Any]) -> dict
         "first_missing_uncertainty_field": first_missing_uncertainty_fields[0] if first_missing_uncertainty_fields else None,
         "blocked_reason": blocked_reason,
     }
+
+
+def build_real_intake_report(
+    *,
+    contract: dict[str, Any],
+    package_state: dict[str, Any],
+    geometry_classification: dict[str, Any],
+    provenance_classification: dict[str, Any],
+    uncertainty_classification: dict[str, Any],
+    role_classification: dict[str, Any],
+    license_classification: dict[str, Any],
+    real_input_intake_status: str | None = None,
+    blocked_reason: str | None = None,
+    blocking_reasons: list[str] | None = None,
+    geometry_package: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    package_available = package_state["package_available"]
+    missing_inputs = list(package_state["missing_inputs"])
+    if real_input_intake_status is None:
+        real_input_intake_status = "blocked_missing_inputs" if missing_inputs else "blocked_schema_gap"
+    if blocking_reasons is None:
+        blocking_reasons = []
+    if blocked_reason is None:
+        blocked_reason = real_input_blocked_reason(real_input_intake_status, blocking_reasons)
+
+    return {
+        "schema_version": REAL_INPUT_INTAKE_REPORT_SCHEMA_VERSION,
+        "real_input_intake_status": real_input_intake_status,
+        "package_status": "present" if package_available else "absent",
+        "package_available": package_available,
+        "manifest_path": str(EXPECTED_BENCHMARK_MANIFEST),
+        "geometry_path": str(EXPECTED_BENCHMARK_GEOMETRY),
+        "missing_inputs": missing_inputs,
+        "blocking_reasons": list(blocking_reasons),
+        "blocked_reason": blocked_reason,
+        "claim_boundaries": claim_boundaries(),
+        "geometry_classification": geometry_classification,
+        "provenance_classification": provenance_classification,
+        "uncertainty_classification": uncertainty_classification,
+        "calibration_role_classification": role_classification["calibration"],
+        "validation_role_classification": role_classification["validation"],
+        "holdout_eligibility_classification": role_classification["holdout_eligibility"],
+        "role_classification": role_classification,
+        "license_classification": license_classification,
+        "package_geometry_summary": geometry_package if geometry_package is not None else {},
+        "physical_credibility_gap_update": build_physical_credibility_gap_update(),
+    }
+
+
+def load_real_input_package_state() -> dict[str, Any]:
+    missing_inputs = shared_missing_repo_paths(
+        {
+            "manifest": EXPECTED_BENCHMARK_MANIFEST,
+            "geometry": EXPECTED_BENCHMARK_GEOMETRY,
+        }
+    )
+    if missing_inputs:
+        return {
+            "package_available": False,
+            "missing_inputs": missing_inputs,
+            "manifest": {},
+            "geometry": {},
+            "parse_errors": [],
+        }
+    parse_errors: list[str] = []
+    manifest: dict[str, Any] = {}
+    geometry: dict[str, Any] = {}
+    try:
+        manifest = load_json(EXPECTED_BENCHMARK_MANIFEST)
+    except Exception as exc:  # noqa: BLE001 - deterministic rejection is better than a crash.
+        parse_errors.append(f"manifest_parse_error: {exc}")
+    try:
+        geometry = load_json(EXPECTED_BENCHMARK_GEOMETRY)
+    except Exception as exc:  # noqa: BLE001 - deterministic rejection is better than a crash.
+        parse_errors.append(f"geometry_parse_error: {exc}")
+    return {
+        "package_available": True,
+        "missing_inputs": [],
+        "manifest": manifest,
+        "geometry": geometry,
+        "parse_errors": parse_errors,
+    }
+
+
+def classify_geometry_section(package: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
+    geometry = package.get("geometry") if isinstance(package.get("geometry"), dict) else {}
+    required_fields = list(contract["geometry"]["required_fields"])
+    missing_fields = [field for field in required_fields if field not in geometry]
+    geometry_role = str(geometry.get("geometry_role") or "").strip()
+    allowed_roles = list(contract["geometry"]["allowed_geometry_roles"])
+    geometry_role_status = "clear" if geometry_role in allowed_roles else "unclear"
+    if missing_fields:
+        status = "blocked_schema_gap"
+    elif geometry_role_status != "clear":
+        status = "blocked_role_unclear"
+    else:
+        status = "ready"
+    return {
+        "status": status,
+        "required_crs": contract["geometry"]["required_crs"],
+        "required_vertical_datum": contract["geometry"]["required_vertical_datum"],
+        "allowed_geometry_roles": allowed_roles,
+        "required_fields": required_fields,
+        "present_fields": [field for field in required_fields if field in geometry],
+        "missing_fields": missing_fields,
+        "geometry_role": geometry_role,
+        "geometry_role_status": geometry_role_status,
+    }
+
+
+def classify_provenance_section(package: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
+    provenance = package.get("provenance") if isinstance(package.get("provenance"), dict) else {}
+    required_fields = list(contract["event_source_metadata"]["required_fields"]) + list(
+        contract["event_source_metadata"]["source_metadata_required"]
+    )
+    missing_fields = [field for field in required_fields if field not in provenance]
+    status = "ready" if not missing_fields else "blocked_schema_gap"
+    return {
+        "status": status,
+        "required_fields": required_fields,
+        "present_fields": [field for field in required_fields if field in provenance],
+        "missing_fields": missing_fields,
+    }
+
+
+def classify_uncertainty_section(package: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
+    uncertainty = package.get("uncertainty") if isinstance(package.get("uncertainty"), dict) else {}
+    required_fields = list(contract["uncertainty"]["required_fields"])
+    missing_fields = [field for field in required_fields if field not in uncertainty]
+    status = "ready" if not missing_fields else "blocked_schema_gap"
+    return {
+        "status": status,
+        "required_fields": required_fields,
+        "present_fields": [field for field in required_fields if field in uncertainty],
+        "missing_fields": missing_fields,
+    }
+
+
+def classify_role_section(package: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
+    actual_role = package.get("calibration_validation_role") if isinstance(package.get("calibration_validation_role"), dict) else {}
+    expected_calibration = "not_allowed"
+    expected_validation = "benchmark_intake_only"
+    expected_holdout = False
+
+    calibration_value = str(actual_role.get("calibration") or "").strip()
+    validation_value = str(actual_role.get("validation") or "").strip()
+    holdout_value = package.get("holdout_eligibility")
+    calibration_status = "clear" if calibration_value == expected_calibration else "unclear"
+    validation_status = "clear" if validation_value == expected_validation else "unclear"
+    holdout_status = "clear" if holdout_value == expected_holdout else "unclear"
+    if not actual_role:
+        status = "blocked_schema_gap"
+    elif calibration_status != "clear" or validation_status != "clear":
+        status = "blocked_role_unclear"
+    elif holdout_status != "clear":
+        status = "blocked_claim_overclaim"
+    else:
+        status = "ready"
+    return {
+        "status": status,
+        "calibration": {
+            "expected": expected_calibration,
+            "actual": calibration_value,
+            "status": calibration_status,
+        },
+        "validation": {
+            "expected": expected_validation,
+            "actual": validation_value,
+            "status": validation_status,
+        },
+        "holdout_eligibility": {
+            "expected": expected_holdout,
+            "actual": holdout_value,
+            "status": holdout_status,
+        },
+    }
+
+
+def classify_license_section(package: dict[str, Any]) -> dict[str, Any]:
+    license_info = package.get("license") if isinstance(package.get("license"), dict) else {}
+    status = str(license_info.get("status") or "").strip() or "unknown"
+    note = str(license_info.get("note") or "").strip()
+    provenance = package.get("provenance") if isinstance(package.get("provenance"), dict) else {}
+    origin_description = str(provenance.get("source_origin_description") or "").strip()
+    provenance_uri = str(provenance.get("provenance_uri") or "").strip()
+    fixture_only_markers = package_fixture_only_markers(status, note, origin_description, provenance_uri)
+    return {
+        "status": status,
+        "note": note,
+        "fixture_only_markers": fixture_only_markers,
+        "status_classification": "fixture_only" if fixture_only_markers else "reviewable",
+    }
+
+
+def unavailable_section_classification(section_name: str, required_fields: list[str]) -> dict[str, Any]:
+    return {
+        "status": "blocked_missing_inputs",
+        "required_fields": list(required_fields),
+        "present_fields": [],
+        "missing_fields": list(required_fields),
+        "section_name": section_name,
+    }
+
+
+def unavailable_role_classification() -> dict[str, Any]:
+    return {
+        "status": "blocked_missing_inputs",
+        "calibration": {"expected": "not_allowed", "actual": None, "status": "missing"},
+        "validation": {"expected": "benchmark_intake_only", "actual": None, "status": "missing"},
+        "holdout_eligibility": {"expected": False, "actual": None, "status": "missing"},
+    }
+
+
+def unavailable_license_classification() -> dict[str, Any]:
+    return {
+        "status": "blocked_missing_inputs",
+        "note": "",
+        "fixture_only_markers": ["missing_inputs"],
+        "status_classification": "blocked_missing_inputs",
+    }
+
+
+def package_fixture_only_markers(status: str, note: str, origin_description: str, provenance_uri: str) -> list[str]:
+    markers: list[str] = []
+    if status == "placeholder_only":
+        markers.append("placeholder_license")
+    if "fixture" in note.lower() or "synthetic" in note.lower():
+        markers.append("fixture_license_note")
+    if "fixture" in origin_description.lower():
+        markers.append("fixture_origin_description")
+    if "example.invalid" in provenance_uri.lower():
+        markers.append("fixture_provenance_uri")
+    return markers
+
+
+def derive_real_input_intake_status(
+    *,
+    geometry_classification: dict[str, Any],
+    provenance_classification: dict[str, Any],
+    uncertainty_classification: dict[str, Any],
+    role_classification: dict[str, Any],
+    license_classification: dict[str, Any],
+) -> tuple[str, list[str]]:
+    blocking_reasons: list[str] = []
+    if geometry_classification["status"] == "blocked_missing_inputs":
+        blocking_reasons.append("missing_geometry_inputs")
+    if geometry_classification["missing_fields"]:
+        blocking_reasons.extend(["missing_geometry"] if geometry_classification["status"] == "blocked_schema_gap" else [])
+    if provenance_classification["status"] == "blocked_missing_inputs":
+        blocking_reasons.append("missing_provenance_inputs")
+    if provenance_classification["missing_fields"]:
+        blocking_reasons.extend(["missing_provenance"] if provenance_classification["status"] == "blocked_schema_gap" else [])
+    if uncertainty_classification["status"] == "blocked_missing_inputs":
+        blocking_reasons.append("missing_uncertainty_inputs")
+    if uncertainty_classification["missing_fields"]:
+        blocking_reasons.extend(["missing_uncertainty"] if uncertainty_classification["status"] == "blocked_schema_gap" else [])
+    if license_classification["fixture_only_markers"]:
+        blocking_reasons.append("fixture_only_inputs")
+    if role_classification["calibration"]["status"] != "clear":
+        blocking_reasons.append("ambiguous_calibration_role")
+    if role_classification["validation"]["status"] != "clear":
+        blocking_reasons.append("ambiguous_validation_role")
+    if role_classification["holdout_eligibility"]["status"] != "clear":
+        blocking_reasons.append("holdout_eligibility_not_ineligible")
+
+    if "missing_geometry_inputs" in blocking_reasons or "missing_provenance_inputs" in blocking_reasons or "missing_uncertainty_inputs" in blocking_reasons:
+        return "blocked_missing_inputs", blocking_reasons
+    if "fixture_only_inputs" in blocking_reasons:
+        return "blocked_fixture_only_inputs", blocking_reasons
+    if "missing_geometry" in blocking_reasons or "missing_provenance" in blocking_reasons or "missing_uncertainty" in blocking_reasons:
+        return "blocked_schema_gap", blocking_reasons
+    if "ambiguous_calibration_role" in blocking_reasons or "ambiguous_validation_role" in blocking_reasons:
+        return "blocked_role_unclear", blocking_reasons
+    if "holdout_eligibility_not_ineligible" in blocking_reasons:
+        return "blocked_claim_overclaim", blocking_reasons
+    return "ready", blocking_reasons
+
+
+def real_input_blocked_reason(real_input_intake_status: str, blocking_reasons: list[str]) -> str | None:
+    messages = {
+        "blocked_missing_inputs": "no independent observed runout/deposition benchmark intake is staged in the repo",
+        "blocked_fixture_only_inputs": "fixture-only benchmark inputs cannot be accepted as real observed benchmark intake",
+        "blocked_schema_gap": "the staged benchmark package is missing required geometry, provenance, or uncertainty fields",
+        "blocked_role_unclear": "the staged benchmark package has an ambiguous calibration or validation role",
+        "blocked_claim_overclaim": "the staged benchmark package overclaims holdout eligibility",
+        "ready": None,
+    }
+    if real_input_intake_status == "ready":
+        return None
+    if real_input_intake_status in messages:
+        return messages[real_input_intake_status]
+    if blocking_reasons:
+        return blocking_reasons[0]
+    return "observed runout/deposition intake is blocked"
 
 
 def summarize_local_candidate_source(source: dict[str, Any], *, contract: dict[str, Any]) -> dict[str, Any]:
@@ -1084,6 +1491,7 @@ def build_acquisition_checklist(*, report: dict[str, Any], pack_root: Path) -> s
 
 def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path) -> str:
     current_state = report["current_repo_state"]
+    real_input_report = report["real_input_intake_report"]
     physical_gap = report["physical_credibility_gap_update"]
     candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
@@ -1091,10 +1499,16 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
     lines = [
         "# Blocked no-evidence report",
         "",
-        "Status: blocked_missing_inputs",
+        f"Status: {real_input_report['real_input_intake_status']}",
         "",
         "Reason:",
         f"- {report['blocked_reason']}",
+        "",
+        "Real-input intake report:",
+        f"- real_input_intake_status: {real_input_report['real_input_intake_status']}",
+        f"- package_status: {real_input_report['package_status']}",
+        f"- blocked_reason: {real_input_report['blocked_reason']}",
+        f"- blocking_reasons: {', '.join(real_input_report['blocking_reasons']) if real_input_report['blocking_reasons'] else 'none'}",
         "",
         "Missing benchmark inputs:",
     ]
@@ -1455,13 +1869,8 @@ def field_requirement(field_path: str, requirement_category: str, why_it_matters
     }
 
 
-def build_current_state() -> dict[str, Any]:
-    benchmark_missing_inputs = shared_missing_repo_paths(
-        {
-            "manifest": EXPECTED_BENCHMARK_MANIFEST,
-            "geometry": EXPECTED_BENCHMARK_GEOMETRY,
-        }
-    )
+def build_current_state(*, real_input_intake_report: dict[str, Any]) -> dict[str, Any]:
+    benchmark_missing_inputs = list(real_input_intake_report["missing_inputs"])
     calibration_missing_inputs = shared_missing_repo_paths({"calibration_root": EXPECTED_CALIBRATION_ROOT})
     adjacent_diagnostic_materials = []
     for path in LOCAL_OBSERVED_DEPOSITION_CANDIDATE_PATHS:
@@ -1481,9 +1890,9 @@ def build_current_state() -> dict[str, Any]:
             }
         )
     return {
-        "benchmark_intake_readiness_status": "blocked_missing_inputs" if benchmark_missing_inputs else "ready",
+        "benchmark_intake_readiness_status": real_input_intake_report["real_input_intake_status"],
         "calibration_readiness_status": "blocked_missing_inputs" if calibration_missing_inputs else "ready",
-        "benchmark_intake_dataset_status": "absent" if benchmark_missing_inputs else "present",
+        "benchmark_intake_dataset_status": "present" if real_input_intake_report["package_status"] == "present" else "absent",
         "calibration_dataset_status": "absent" if calibration_missing_inputs else "present",
         "required_inputs": [
             {"path": str(EXPECTED_BENCHMARK_MANIFEST), "exists": EXPECTED_BENCHMARK_MANIFEST.exists()},
@@ -1492,18 +1901,30 @@ def build_current_state() -> dict[str, Any]:
         ],
         "adjacent_diagnostic_materials": adjacent_diagnostic_materials,
         "benchmark_intake_missing_inputs": benchmark_missing_inputs,
+        "benchmark_intake_blocking_reasons": list(real_input_intake_report["blocking_reasons"]),
         "calibration_missing_inputs": calibration_missing_inputs,
         "missing_inputs": benchmark_missing_inputs,
         "evidence_boundary": "diagnostic_only_until_independent_benchmark_is_staged",
+        "benchmark_intake_package_status": real_input_intake_report["package_status"],
+        "benchmark_intake_package_available": real_input_intake_report["package_available"],
     }
 
 
-def current_state_summary(current_state: dict[str, Any]) -> list[dict[str, Any]]:
+def current_state_summary(current_state: dict[str, Any], *, real_input_intake_report: dict[str, Any]) -> list[dict[str, Any]]:
+    if real_input_intake_report["real_input_intake_status"] == "ready":
+        benchmark_summary = "An independent observed runout/deposition benchmark package is staged and satisfies the intake contract."
+    elif real_input_intake_report["real_input_intake_status"] == "blocked_fixture_only_inputs":
+        benchmark_summary = "A fixture-only benchmark package is staged, but it is rejected for real intake."
+    elif real_input_intake_report["real_input_intake_status"] == "blocked_schema_gap":
+        benchmark_summary = "A benchmark package is staged, but it still fails the required geometry, provenance, or uncertainty contract."
+    elif real_input_intake_report["real_input_intake_status"] == "blocked_role_unclear":
+        benchmark_summary = "A benchmark package is staged, but its calibration or validation role remains ambiguous."
+    elif real_input_intake_report["real_input_intake_status"] == "blocked_claim_overclaim":
+        benchmark_summary = "A benchmark package is staged, but its holdout eligibility overclaims the intake boundary."
+    else:
+        benchmark_summary = "No independent observed runout/deposition benchmark intake is staged in the repo."
     return [
-        {
-            "summary": "No independent observed runout/deposition benchmark intake is staged in the repo.",
-            "status": current_state["benchmark_intake_readiness_status"],
-        },
+        {"summary": benchmark_summary, "status": current_state["benchmark_intake_readiness_status"]},
         {
             "summary": "No calibration dataset is available for objective fitting.",
             "status": current_state["calibration_readiness_status"],
@@ -1755,6 +2176,7 @@ def validate_claim_boundaries(boundaries: dict[str, Any]) -> None:
 def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
     benchmark_manifest = report["benchmark_intake_manifest"]
+    real_input_report = report["real_input_intake_report"]
     current_state = report["current_repo_state"]
     candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
@@ -1776,6 +2198,17 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- manifest_status: {benchmark_manifest['manifest_status']}",
         f"- dataset_roles: {', '.join(role['dataset_role'] for role in benchmark_manifest['dataset_role_classification'])}",
         f"- physical_credibility_status: {benchmark_manifest['physical_credibility_gap_update']['current_physical_credibility_status']}",
+        "",
+        "real_input_intake_report:",
+        f"- real_input_intake_status: {real_input_report['real_input_intake_status']}",
+        f"- package_status: {real_input_report['package_status']}",
+        f"- blocked_reason: {real_input_report['blocked_reason']}",
+        f"- geometry.status: {real_input_report['geometry_classification']['status']}",
+        f"- provenance.status: {real_input_report['provenance_classification']['status']}",
+        f"- uncertainty.status: {real_input_report['uncertainty_classification']['status']}",
+        f"- calibration_role.status: {real_input_report['calibration_role_classification']['status']}",
+        f"- validation_role.status: {real_input_report['validation_role_classification']['status']}",
+        f"- holdout_eligibility.status: {real_input_report['holdout_eligibility_classification']['status']}",
         "",
         "fixture_acceptance_smoke:",
         f"- fixture_path: {report['fixture_acceptance_smoke']['fixture_path']}",
