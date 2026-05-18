@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-209: Multi-Zone Hazard Builder Throughput Profile
-
-Goal: Profile hazard-layer post-processing on the multi-zone scratch fixture and identify the first concrete throughput or output-pressure bottleneck.
-
-Capability gap reduced: Unknown hazard-builder pressure for multi-zone products after the reducer probe and writer-module split.
-
-Why this outranks alternatives: The next measured Balfrin step may be limited by post-processing and output fan-out before the Rust trajectory kernel.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/hazard_output_writers.py`
-- `scripts/hazard_output_manifests.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/hazard_output_profile_contract.md`
-
-Deliverables:
-
-- A deterministic profiling helper or mode that uses a multi-zone scratch fixture and reports read time, accumulation time, reducer merge time, manifest time, raster write time, COG/export time where applicable, and report-rendering time.
-- Output-pressure measurements by layer family, file family, manifest family, and optional COG/GIS family.
-- One bounded optimization recommendation with evidence, plus a no-change label if the profile is too small to justify optimization.
-- Focused tests for profile schema, deterministic fixture generation, and blocked-missing-input behavior.
-
-Definition of done:
-
-- The profile is reproducible without live Balfrin artifacts, identifies the first bottleneck or declares insufficient scale, and does not change hazard values or output semantics.
-
-Boundaries: Profiling only; no broad hazard-builder rewrite, no probability-semantics change, no GIS/COG claim upgrade, and no generated heavy outputs committed.
-
 ### TB-210: Full-Scale Balfrin Demonstration Readiness Matrix
 
 Goal: Define the evidence and execution gates that must be satisfied before the project can call a Balfrin run a full-scale demonstration.

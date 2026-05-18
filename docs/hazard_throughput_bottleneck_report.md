@@ -93,6 +93,37 @@ The safest next implementation slice is therefore an explicit-grid benchmark
 mode/update for the synthetic benchmark runner, followed by a focused
 trajectory-accumulation optimization pass.
 
+## Multi-Zone Scratch Profile
+
+TB-209 added a deterministic multi-zone scratch-root profiler at
+`scripts/summarize_multi_zone_hazard_throughput_profile.py`. The helper
+materializes a 12-zone synthetic hazard corpus, runs the hazard-layer builder
+with explicit-grid and reduced-output controls, and captures the builder's own
+timing fields together with read and reducer-merge instrumentation.
+
+Measured on the scratch fixture:
+
+- read time: `0.004` s
+- accumulation time: `0.071` s
+- reducer merge time: `0.005` s
+- manifest time: `0.000` s
+- raster write time: `0.027` s
+- report-rendering time: `0.000` s
+- output file count: `26`
+- output bytes: `968042`
+
+Observed output pressure:
+
+- layer family leader: `max_kinetic_energy` at `2` files / `129276` bytes
+- file family leader: `geotiff` at `9` files / `665910` bytes
+- manifest family leader: `reducer_execution_plan` at `1` file / `14133` bytes
+- COG/GIS family: not applicable in the default fixture
+
+The first concrete bottleneck is accumulation time, not output fan-out. The
+bounded recommendation is to focus the next optimization slice on accumulator
+batching or merge handling rather than touching hazard semantics or output
+formats.
+
 ## Explicit-Grid Follow-Up
 
 The benchmark runner now supports `--hazard-grid explicit`, `auto`, and `both`.
