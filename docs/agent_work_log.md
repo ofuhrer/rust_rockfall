@@ -1495,3 +1495,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measurement/recheck only; no pruning, no live Balfrin job, no output-schema change, no distributed reducer, no scale-up claim, and no operational claim.
 - Next task: `TB-246`
+
+### TB-246: Multi-Zone Handoff Manifest Budget Reduction
+
+- Date: 2026-05-18
+- Commit: `0eb6729`
+- Objective: reduce the smallest multi-zone handoff's projected manifest and sidecar pressure with a compact replay-safe projection while keeping replay-critical fields, hashes, merge order, and provenance explicit.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a compact manifest-pruning path to the handoff projection that strips non-replay sidecars while keeping the replay-safe primary outputs, merge-state files, and projection hashes explicit.
+  - Recorded before/after fixture-backed comparisons for the baseline and compact projections, including manifest bytes, output bytes, output file counts, sidecar bytes, sidecar counts, and reducer-manifest counts.
+  - Kept the budget recheck fail-closed: the compact projection reduces the handoff from 62 files / 21 sidecars / 26057 manifest bytes to 39 files / 2 sidecars / 17788 manifest bytes, but it still remains blocked on `manifest_size_bytes`, so the report now names the exact remaining replay-safe fields.
+  - Added regressions for the compact-vs-baseline comparison, the no-reduction-needed branch, and the fail-closed refusal to prune replay-critical fields.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: projection and manifest-pruning only; no live Balfrin job, no output schema change, no distributed reducer, no scale-up claim, no physical-probability/risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-247`
