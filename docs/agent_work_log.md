@@ -1669,3 +1669,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: intake only; no calibration, no parameter fitting, no source-frequency semantics, no annual-frequency or risk semantics, no operational claim, and no claim upgrade beyond what accepted evidence supports.
 - Next task: `TB-254`
+
+### TB-254: Release-Zone, Block-Population, And Source-Frequency Evidence Triage
+
+- Date: 2026-05-18
+- Commit: `8c44f4a`
+- Objective: triage the next real-evidence acquisition blockers for field-supported release zones, block-population evidence, and source-frequency records without changing the scientific claim level.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/map_physical_credibility_evidence_requirements.py`, `docs/target_area_physical_evidence_acquisition_pack.md`, `docs/current_maturity_snapshot.md`, `tests/test_validation_calibration_evidence_gaps.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added an explicit release-zone first-missing-input and acquisition blocker path in the gap helper so the release-zone evidence gap now names a concrete field-supported geometry/provenance package instead of collapsing into the conditional contract.
+  - Added a physical-evidence triage section to the requirements helper that classifies release-zone provenance and block-population evidence as acquisition candidates while deferring source-frequency records until a later frequency-semantics phase change.
+  - Preserved the distinction between conditional sampling weights and source-frequency evidence in both the report data and the text renderers, and kept the fixture-backed second-site provenance boundary out of field-supported evidence.
+  - Updated the roadmap docs and focused tests so the next acquisition/defer actions, first-missing-input fields, and non-promotion of workflow fixtures are explicit.
+  - Removed TB-254 from the active backlog after the implementation state was aligned.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps tests.test_physical_credibility_evidence_requirements`
+  - `git diff --check`
+- Result/status: implemented_measured
+- Boundaries: acquisition triage only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no physical-probability claim, no risk/exposure semantics, no distributed-execution change, and no operational claim.
+- Next task: backlog refill needed
