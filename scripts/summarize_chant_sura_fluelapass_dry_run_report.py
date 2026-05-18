@@ -76,6 +76,50 @@ def _patched_repo_root(repo_root: Path) -> Iterator[None]:
         PREFLIGHT.ROOT = original_root
 
 
+def load_acquisition_package(path: Path | None) -> dict[str, Any]:
+    if path is None or not path.exists():
+        return {}
+    package = READINESS_GATE.load_acquisition_package(path)
+    return package if isinstance(package, dict) else {}
+
+
+def acquisition_package_row_map(acquisition_package: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    rows: dict[str, dict[str, Any]] = {}
+    for row in acquisition_package.get("required_acquisition_items") or []:
+        if not isinstance(row, dict):
+            continue
+        category = PREFLIGHT.text_value(row.get("category"))
+        if category:
+            rows[category] = row
+    return rows
+
+
+def acquisition_package_status(acquisition_package: dict[str, Any]) -> str:
+    rows = acquisition_package_row_map(acquisition_package)
+    core_definitions = [
+        definition
+        for definition in READINESS_GATE.PREPARED_PILOT_REAL_INPUT_DEFINITIONS
+        if not definition.get("deferred")
+    ]
+    core_statuses = [
+        PREFLIGHT.text_value((rows.get(definition["category"]) or {}).get("classification"))
+        or PREFLIGHT.text_value((rows.get(definition["category"]) or {}).get("current_status"))
+        or "missing"
+        for definition in core_definitions
+    ]
+    if core_statuses and all(status == "real_staged" for status in core_statuses):
+        return "ready_real"
+    if core_statuses and all(status == "fixture_backed" for status in core_statuses):
+        return "fixture_backed"
+    if core_statuses and all(status == "missing" for status in core_statuses):
+        return "missing"
+    if any(status == "real_staged" for status in core_statuses):
+        return "partial_real"
+    if any(status == "fixture_backed" for status in core_statuses):
+        return "fixture_backed"
+    return "missing"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
@@ -141,6 +185,7 @@ def build_report(
             repo_root=repo_root,
             acquisition_package_path=acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE,
         )
+        acquisition_package = load_acquisition_package(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)
         paths = PREFLIGHT.build_paths(candidate_site_id, config)
 
     candidate_generation_report = build_candidate_generation_report(
@@ -164,21 +209,42 @@ def build_report(
         "site_config_path": str(site_config),
         "synthetic_config": bool(PREFLIGHT.text_value(config.get("fixture_profile"))),
     }
-    prepared_pilot_input_classification = str(
-        readiness_report.get("prepared_pilot_input_classification") or "missing"
+    prepared_pilot_input_classification = acquisition_package_status(acquisition_package)
+    real_input_acquisition_handoff = dict(readiness_report.get("real_input_acquisition_handoff") or {})
+    first_missing_real_input_category = derive_first_missing_real_input_category(
+        prepared_pilot_input_classification=prepared_pilot_input_classification,
+        acquisition_package=acquisition_package,
     )
-    first_missing_real_input_category = str(
-        readiness_report.get("first_missing_real_input_category") or ""
+    first_missing_real_input_classification = derive_first_missing_real_input_classification(
+        prepared_pilot_input_classification=prepared_pilot_input_classification,
     )
+    if (
+        prepared_pilot_input_classification == "missing"
+        and not real_input_acquisition_handoff.get("first_missing_real_input_category")
+    ):
+        expected_local_path = str((preflight_report.get("expected_local_paths") or {}).get(first_missing_real_input_category, ""))
+        real_input_acquisition_handoff = {
+            "schema_version": READINESS_GATE.REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION,
+            "next_action_recommendation": "request_download_authorization"
+            if first_missing_real_input_category == "terrain_crop"
+            else "stage_local_existing_input",
+            "authorization_or_defer_status": "download_authorization_needed"
+            if first_missing_real_input_category == "terrain_crop"
+            else "local_staging_needed",
+            "first_missing_real_input_category": first_missing_real_input_category,
+            "first_missing_real_input_classification": first_missing_real_input_classification,
+            "expected_source_product": first_missing_real_input_category,
+            "expected_local_path": expected_local_path,
+            "metadata_contract": [],
+            "missing_metadata_fields": [],
+            "authorization_required": first_missing_real_input_category == "terrain_crop",
+            "reason": "The acquisition package does not yet contain real staged core inputs.",
+            "stop_condition": (
+                f"Stop until {first_missing_real_input_category or 'the missing real core input'}"
+                f" ({expected_local_path or 'expected local path unavailable'}) is staged and validated."
+            ),
+        }
 
-    blocked_missing_inputs = collect_blocked_missing_inputs(
-        readiness_report=readiness_report,
-        preflight_report=preflight_report,
-        candidate_generation_report=candidate_generation_report,
-        scenario_generation_report=scenario_generation_report,
-        command_plan_report=command_plan_report,
-        case_skeleton_report=case_skeleton_report,
-    )
     prepared_pilot_provenance = build_prepared_pilot_provenance(preflight_report, prep_summary)
     prepared_pilot_provenance["real_input_classification"] = prepared_pilot_input_classification
     prepared_pilot_provenance["first_missing_real_input_category"] = first_missing_real_input_category
@@ -197,12 +263,25 @@ def build_report(
         readiness_report=readiness_report,
         prepared_pilot_provenance=prepared_pilot_provenance,
     )
+    if prepared_pilot_input_classification == "missing":
+        blocked_fixture_backed_inputs = []
+        blocked_partial_real_inputs = []
     prep_summary["prepared_pilot_provenance"] = prepared_pilot_provenance
-
+    blocked_missing_inputs = collect_blocked_missing_inputs(
+        readiness_report=readiness_report,
+        preflight_report=preflight_report,
+        candidate_generation_report=candidate_generation_report,
+        scenario_generation_report=scenario_generation_report,
+        command_plan_report=command_plan_report,
+        case_skeleton_report=case_skeleton_report,
+        prepared_pilot_input_classification=prepared_pilot_input_classification,
+        real_input_acquisition_handoff=real_input_acquisition_handoff,
+    )
     workflow_classification = classify_workflow(
-        blocked_missing_inputs,
-        blocked_fixture_backed_inputs,
-        blocked_partial_real_inputs,
+        prepared_pilot_input_classification=prepared_pilot_input_classification,
+        blocked_missing_inputs=blocked_missing_inputs,
+        blocked_fixture_backed_inputs=blocked_fixture_backed_inputs,
+        blocked_partial_real_inputs=blocked_partial_real_inputs,
     )
     tiny_handoff_status = build_tiny_bounded_ensemble_handoff_status(
         workflow_classification=workflow_classification,
@@ -215,6 +294,7 @@ def build_report(
         case_skeleton_report=case_skeleton_report,
         command_plan_report=command_plan_report,
         readiness_report=readiness_report,
+        real_input_acquisition_handoff=real_input_acquisition_handoff,
         tiny_handoff_status=tiny_handoff_status,
         tiny_ensemble_note=tiny_ensemble_note,
     )
@@ -227,6 +307,11 @@ def build_report(
         command_plan_report=command_plan_report,
         tiny_handoff_report=tiny_handoff_report,
     )
+    public_context_readiness = dict(readiness_report)
+    public_context_readiness["prepared_pilot_input_classification"] = prepared_pilot_input_classification
+    public_context_readiness["first_missing_real_input_category"] = first_missing_real_input_category
+    public_context_readiness["first_missing_real_input_classification"] = first_missing_real_input_classification
+    public_context_readiness["real_input_acquisition_handoff"] = real_input_acquisition_handoff
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -234,10 +319,12 @@ def build_report(
         "readiness_status": workflow_classification,
         "prepared_pilot_input_classification": prepared_pilot_input_classification,
         "first_missing_real_input_category": first_missing_real_input_category,
+        "first_missing_real_input_classification": first_missing_real_input_classification,
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_extent": readiness_report.get("site_extent", preflight_report.get("site_extent_or_placeholder", {})),
-        "public_context_readiness": readiness_report,
+        "public_context_readiness": public_context_readiness,
+        "real_input_acquisition_handoff": real_input_acquisition_handoff,
         "aoi_preparation": case_skeleton_report,
         "release_candidate_generation": candidate_generation_report,
         "scenario_generation": scenario_generation_report,
@@ -291,6 +378,7 @@ def blocked_report(
         },
         command_plan_report={"command_plan_status": "blocked_missing_inputs", "blocked_template_commands": []},
         readiness_report={"real_context_readiness_gate_status": "blocked_missing_inputs"},
+        real_input_acquisition_handoff={},
         tiny_handoff_status="blocked_missing_inputs",
         tiny_ensemble_note=tiny_ensemble_note,
     )
@@ -300,9 +388,11 @@ def blocked_report(
         "readiness_status": "blocked_missing_inputs",
         "prepared_pilot_input_classification": "missing",
         "first_missing_real_input_category": "",
+        "first_missing_real_input_classification": "",
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_extent": "placeholder_extent_missing",
+        "real_input_acquisition_handoff": {},
         "prepared_pilot_provenance": {
             "schema_version": "chant_sura_prepared_pilot_provenance_v1",
             "status": "blocked_missing_inputs",
@@ -512,19 +602,24 @@ def collect_blocked_missing_inputs(
     scenario_generation_report: dict[str, Any],
     command_plan_report: dict[str, Any],
     case_skeleton_report: dict[str, Any],
+    prepared_pilot_input_classification: str,
+    real_input_acquisition_handoff: dict[str, Any],
 ) -> list[str]:
     blocked: list[str] = []
-    blocked.extend(str(item) for item in readiness_report.get("blocked_missing_inputs", []) if item)
-    blocked.extend(str(item) for item in preflight_report.get("blocked_missing_inputs", []) if item)
-    blocked.extend(str(item) for item in candidate_generation_report.get("blocked_missing_inputs", []) if item)
-    blocked.extend(str(item) for item in scenario_generation_report.get("missing_inputs", []) if item)
-    blocked.extend(str(item) for item in case_skeleton_report.get("blocked_reason", "").split("; ") if item and case_skeleton_report.get("case_skeleton_status") == "blocked_missing_inputs")
-    if command_plan_report.get("second_site_portability_status") == "blocked_missing_inputs":
-        blocked.extend(str(item) for item in command_plan_report.get("blocked_missing_inputs", []) if item)
-    if readiness_report.get("real_context_readiness_gate_status") == "blocked_missing_inputs":
-        first_missing = str(readiness_report.get("first_missing_real_input_category") or "")
-        if first_missing:
-            blocked.append(f"prepared pilot acquisition package is missing real input category: {first_missing}")
+    if prepared_pilot_input_classification == "missing":
+        first_missing = str(
+            readiness_report.get("first_missing_real_input_category")
+            or real_input_acquisition_handoff.get("first_missing_real_input_category")
+            or "terrain_crop"
+        )
+        blocked.append(f"prepared pilot acquisition package is missing real input category: {first_missing}")
+        handoff_reason = str(
+            real_input_acquisition_handoff.get("stop_condition")
+            or real_input_acquisition_handoff.get("reason")
+            or ""
+        )
+        if handoff_reason:
+            blocked.append(f"TB-250 acquisition handoff: {handoff_reason}")
     return dedupe(blocked)
 
 
@@ -585,17 +680,58 @@ def collect_blocked_partial_real_inputs(
     ]
 
 
+def derive_first_missing_real_input_category(
+    *,
+    prepared_pilot_input_classification: str,
+    acquisition_package: dict[str, Any],
+) -> str:
+    rows = acquisition_package_row_map(acquisition_package)
+    if prepared_pilot_input_classification == "missing":
+        for definition in READINESS_GATE.PREPARED_PILOT_REAL_INPUT_DEFINITIONS:
+            if definition.get("deferred"):
+                continue
+            row = rows.get(definition["category"]) or {}
+            classification = PREFLIGHT.text_value(row.get("classification")) or PREFLIGHT.text_value(
+                row.get("current_status")
+            )
+            if classification != "real_staged":
+                return definition["category"]
+        return "terrain_crop"
+    if prepared_pilot_input_classification == "fixture_backed":
+        return "terrain_crop"
+    if prepared_pilot_input_classification == "partial_real":
+        for definition in READINESS_GATE.PREPARED_PILOT_REAL_INPUT_DEFINITIONS:
+            if definition.get("deferred"):
+                return str(definition["category"])
+        return "swissimage_context"
+    return ""
+
+
+def derive_first_missing_real_input_classification(*, prepared_pilot_input_classification: str) -> str:
+    if prepared_pilot_input_classification == "missing":
+        return "missing"
+    if prepared_pilot_input_classification == "fixture_backed":
+        return "fixture_backed"
+    if prepared_pilot_input_classification == "partial_real":
+        return "deferred"
+    return ""
+
+
 def classify_workflow(
+    *,
+    prepared_pilot_input_classification: str,
     blocked_missing_inputs: list[str],
     blocked_fixture_backed_inputs: list[str],
     blocked_partial_real_inputs: list[str],
 ) -> str:
-    if blocked_missing_inputs:
-        return "blocked_missing_inputs"
+    if prepared_pilot_input_classification == "missing":
+        return "blocked_missing_real_core_inputs"
     if blocked_fixture_backed_inputs:
         return "blocked_fixture_backed_inputs"
     if blocked_partial_real_inputs:
         return "blocked_partial_real_inputs"
+    if blocked_missing_inputs:
+        return "blocked_missing_inputs"
     return "ready_for_next_step"
 
 
@@ -604,6 +740,8 @@ def build_tiny_bounded_ensemble_handoff_status(
     workflow_classification: str,
     allow_tiny_ensemble_handoff: bool,
 ) -> str:
+    if workflow_classification == "blocked_missing_real_core_inputs":
+        return "blocked_missing_real_core_inputs"
     if workflow_classification == "blocked_fixture_backed_inputs":
         return "blocked_fixture_backed_inputs"
     if workflow_classification == "blocked_partial_real_inputs":
@@ -621,9 +759,26 @@ def build_tiny_bounded_ensemble_handoff(
     case_skeleton_report: dict[str, Any],
     command_plan_report: dict[str, Any],
     readiness_report: dict[str, Any],
+    real_input_acquisition_handoff: dict[str, Any],
     tiny_handoff_status: str,
     tiny_ensemble_note: str,
 ) -> dict[str, Any]:
+    if tiny_handoff_status == "blocked_missing_real_core_inputs":
+        blocked_reason = str(
+            real_input_acquisition_handoff.get("stop_condition")
+            or real_input_acquisition_handoff.get("reason")
+            or "real-input acquisition package is not ready"
+        )
+    elif tiny_handoff_status == "blocked_fixture_backed_inputs":
+        blocked_reason = "synthetic fixture inputs are not public evidence"
+    elif tiny_handoff_status == "blocked_partial_real_inputs":
+        blocked_reason = "prepared-pilot inputs are only partially real"
+    elif tiny_handoff_status == "blocked_missing_permission":
+        blocked_reason = "explicit permission not recorded"
+    elif tiny_handoff_status == "blocked_missing_inputs":
+        blocked_reason = "required real-context inputs are missing"
+    else:
+        blocked_reason = ""
     return {
         "schema_version": "chant_sura_tiny_bounded_ensemble_handoff_v1",
         "status": tiny_handoff_status,
@@ -635,18 +790,7 @@ def build_tiny_bounded_ensemble_handoff(
         "readiness_status": readiness_report.get("real_context_readiness_gate_status", "blocked_missing_inputs"),
         "requires_explicit_permission": True,
         "permission_note": tiny_ensemble_note,
-        "blocked_reason": (
-            "synthetic fixture inputs are not public evidence"
-            if tiny_handoff_status == "blocked_fixture_backed_inputs"
-            else "prepared-pilot inputs are only partially real"
-            if tiny_handoff_status == "blocked_partial_real_inputs"
-            else
-            "explicit permission not recorded"
-            if tiny_handoff_status == "blocked_missing_permission"
-            else "required real-context inputs are missing"
-            if tiny_handoff_status == "blocked_missing_inputs"
-            else ""
-        ),
+        "blocked_reason": blocked_reason,
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "scale_up_authorized": False,
@@ -721,11 +865,13 @@ def dedupe(items: list[str]) -> list[str]:
 
 def render_text_report(report: dict[str, Any]) -> str:
     provenance = report.get("prepared_pilot_provenance", {})
+    handoff = report.get("real_input_acquisition_handoff", {})
     lines = [
         f"schema_version: {report['schema_version']}",
         f"workflow_classification: {report['workflow_classification']}",
         f"prepared_pilot_input_classification: {report.get('prepared_pilot_input_classification', '')}",
         f"first_missing_real_input_category: {report.get('first_missing_real_input_category', '')}",
+        f"first_missing_real_input_classification: {report.get('first_missing_real_input_classification', '')}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
@@ -769,21 +915,35 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- blocked_reason: {report['tiny_bounded_ensemble_handoff'].get('blocked_reason', '')}",
         f"- permission_note: {report['tiny_bounded_ensemble_handoff'].get('permission_note', '')}",
         "",
+        "real_input_acquisition_handoff:",
+        f"- next_action_recommendation: {handoff.get('next_action_recommendation', '')}",
+        f"- authorization_or_defer_status: {handoff.get('authorization_or_defer_status', '')}",
+        f"- first_missing_real_input_category: {handoff.get('first_missing_real_input_category', '')}",
+        f"- first_missing_real_input_classification: {handoff.get('first_missing_real_input_classification', '')}",
+        f"- expected_source_product: {handoff.get('expected_source_product', '')}",
+        f"- expected_local_path: {handoff.get('expected_local_path', '')}",
+        f"- authorization_required: {handoff.get('authorization_required', False)}",
+        f"- reason: {handoff.get('reason', '')}",
+        f"- stop_condition: {handoff.get('stop_condition', '')}",
+        "",
         "workflow_steps:",
     ]
     for step in report.get("workflow_steps", []):
         lines.append(f"- {step.get('step_id', '')}: {step.get('status', '')}")
         if step.get("blocked_reason"):
             lines.append(f"  blocked_reason: {step['blocked_reason']}")
-    if report.get("blocked_missing_inputs"):
-        lines.extend(["", "blocked_missing_inputs:"])
-        lines.extend(f"- {item}" for item in report["blocked_missing_inputs"])
     if report.get("blocked_fixture_backed_inputs"):
         lines.extend(["", "blocked_fixture_backed_inputs:"])
         lines.extend(f"- {item}" for item in report["blocked_fixture_backed_inputs"])
     if report.get("blocked_partial_real_inputs"):
         lines.extend(["", "blocked_partial_real_inputs:"])
         lines.extend(f"- {item}" for item in report["blocked_partial_real_inputs"])
+    if report.get("blocked_missing_inputs") and report["workflow_classification"] == "blocked_missing_real_core_inputs":
+        lines.extend(["", "blocked_missing_real_core_inputs:"])
+        lines.extend(f"- {item}" for item in report["blocked_missing_inputs"])
+    elif report.get("blocked_missing_inputs"):
+        lines.extend(["", "blocked_missing_inputs:"])
+        lines.extend(f"- {item}" for item in report["blocked_missing_inputs"])
     lines.extend(["", "ready_for_next_step:"])
     ready = report.get("ready_for_next_step", {})
     lines.append(f"- status: {ready.get('status', '')}")

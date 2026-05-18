@@ -31,7 +31,7 @@ staging = _load_module(
 
 
 class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
-    def test_ready_real_package_is_ready_for_next_step_and_permission_gates_tiny_handoff(self) -> None:
+    def test_real_core_inputs_are_ready_for_next_step_even_with_deferred_public_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             site_config = self._write_site_config(repo_root)
@@ -40,8 +40,18 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
                 site_config=site_config,
                 fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
             )
+            self._write_real_core_inputs(
+                repo_root=repo_root,
+                categories={
+                    "terrain_crop",
+                    "terrain_metadata",
+                    "aoi_tile_catalog",
+                    "source_zone_metadata",
+                    "scenario_table",
+                    "source_scenario_policy",
+                },
+            )
             acquisition_package_path = self._write_acquisition_package(repo_root, classification="real_staged")
-            self._write_real_context_cache_manifest(repo_root)
 
             first = reporter.build_report(
                 site_config,
@@ -67,12 +77,14 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(first["prepared_pilot_provenance"]["status"], "real_staged")
         self.assertEqual(first["prepared_pilot_input_classification"], "ready_real")
         self.assertEqual(first["first_missing_real_input_category"], "")
+        self.assertEqual(first["first_missing_real_input_classification"], "")
         self.assertEqual(first["blocked_fixture_backed_inputs"], [])
         self.assertEqual(first["blocked_partial_real_inputs"], [])
         self.assertEqual(first["public_context_readiness"]["real_context_readiness_gate_status"], "ready_for_real_context_acquisition")
         self.assertEqual(first["public_context_readiness"]["prepared_pilot_input_classification"], "ready_real")
         self.assertEqual(first["public_context_readiness"]["first_missing_real_input_category"], "")
-        self.assertEqual(first["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
+        self.assertEqual(first["public_context_readiness"]["real_input_acquisition_handoff"]["first_missing_real_input_category"], "")
+        self.assertEqual(first["real_input_acquisition_handoff"]["first_missing_real_input_category"], "")
         self.assertEqual(first["aoi_preparation"]["case_skeleton_status"], "ready")
         self.assertEqual(first["release_candidate_generation"]["candidate_metrics_status"], "ready")
         self.assertEqual(first["scenario_generation"]["scenario_plan_status"], "ready")
@@ -105,7 +117,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertIn("prepared_pilot_input_classification: ready_real", text_report)
         self.assertIn("prepared_pilot_provenance:", text_report)
         self.assertIn("public_context_readiness:", text_report)
-        self.assertIn("real_context_product_readiness_status: ready", text_report)
+        self.assertIn("real_input_acquisition_handoff:", text_report)
         self.assertIn("tiny_bounded_ensemble_handoff:", text_report)
         self.assertIn("ready_for_next_step:", text_report)
 
@@ -136,6 +148,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(report["prepared_pilot_provenance"]["status"], "fixture_backed")
         self.assertEqual(report["prepared_pilot_input_classification"], "fixture_backed")
         self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["first_missing_real_input_classification"], "fixture_backed")
         self.assertEqual(report["prepared_pilot_provenance"]["synthetic_fixture_profile"], "minimal_synthetic_aoi_v1")
         self.assertEqual(report["blocked_missing_inputs"], [])
         self.assertTrue(report["blocked_fixture_backed_inputs"])
@@ -187,6 +200,7 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         self.assertEqual(report["prepared_pilot_provenance"]["status"], "partial_real")
         self.assertEqual(report["prepared_pilot_input_classification"], "partial_real")
         self.assertEqual(report["first_missing_real_input_category"], "swissimage_context")
+        self.assertEqual(report["first_missing_real_input_classification"], "deferred")
         self.assertEqual(report["public_context_readiness"]["real_context_readiness_gate_status"], "blocked_partial_real_inputs")
         self.assertEqual(report["public_context_readiness"]["prepared_pilot_input_classification"], "partial_real")
         self.assertEqual(report["blocked_missing_inputs"], [])
@@ -219,23 +233,23 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
                 acquisition_package_path=acquisition_package_path,
             )
 
-        self.assertEqual(report["workflow_classification"], "blocked_missing_inputs")
-        self.assertEqual(report["public_context_readiness"]["real_context_readiness_gate_status"], "blocked_missing_inputs")
-        self.assertEqual(report["public_context_readiness"]["real_context_product_readiness"]["readiness_status"], "ready")
-        self.assertEqual(report["public_context_readiness"]["prepared_pilot_input_classification"], "missing")
-        self.assertEqual(report["public_context_readiness"]["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["workflow_classification"], "blocked_missing_real_core_inputs")
         self.assertEqual(report["prepared_pilot_input_classification"], "missing")
         self.assertEqual(report["first_missing_real_input_category"], "terrain_crop")
+        self.assertEqual(report["first_missing_real_input_classification"], "missing")
+        self.assertEqual(report["real_input_acquisition_handoff"]["first_missing_real_input_category"], "terrain_crop")
+        self.assertIn("terrain_crop", report["real_input_acquisition_handoff"]["stop_condition"])
         self.assertEqual(report["aoi_preparation"]["case_skeleton_status"], "ready")
         self.assertEqual(report["release_candidate_generation"]["candidate_metrics_status"], "ready")
         self.assertEqual(report["scenario_generation"]["scenario_plan_status"], "ready")
         self.assertEqual(report["command_planning"]["command_plan_status"], "ready")
-        self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["tiny_bounded_ensemble_handoff"]["status"], "blocked_missing_real_core_inputs")
         self.assertTrue(report["blocked_missing_inputs"])
         self.assertFalse(report["blocked_fixture_backed_inputs"])
         self.assertFalse(report["blocked_partial_real_inputs"])
         self.assertIn("missing real input category", report["blocked_missing_inputs"][0])
-        self.assertIn("blocked_missing_inputs", report["ready_for_next_step"]["status"])
+        self.assertIn("TB-250 acquisition handoff", report["blocked_missing_inputs"][1])
+        self.assertIn("blocked_missing_real_core_inputs", report["ready_for_next_step"]["status"])
 
     def _write_site_config(self, repo_root: Path, *, config_source: Path | None = None) -> Path:
         config_source = config_source or ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
@@ -271,6 +285,198 @@ class ChantSuraFluelapassWorkflowDryRunReportTests(unittest.TestCase):
         package_path.parent.mkdir(parents=True, exist_ok=True)
         package_path.write_text(yaml.safe_dump(package, sort_keys=False), encoding="utf-8")
         return package_path
+
+    def _write_real_core_inputs(self, repo_root: Path, *, categories: set[str]) -> None:
+        base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"
+        (base / "input").mkdir(parents=True, exist_ok=True)
+        (repo_root / "validation/policies").mkdir(parents=True, exist_ok=True)
+        if "terrain_crop" in categories:
+            (base / "input/terrain.asc").write_text(
+                "\n".join(
+                    [
+                        "ncols 4",
+                        "nrows 4",
+                        "xllcorner 2793000.0",
+                        "yllcorner 1180200.0",
+                        "cellsize 2.0",
+                        "NODATA_value -9999",
+                        "2475.0 2475.5 2476.0 2476.5",
+                        "2474.0 2474.5 2475.0 2475.5",
+                        "2473.0 2473.5 2474.0 2474.5",
+                        "2472.0 2472.5 2473.0 2473.5",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "terrain_metadata" in categories:
+            (base / "input/terrain_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "tile_id": "chant_sura_fluelapass_real_lv95_crop",
+                        "source_dataset": "real_chant_sura_fluelapass_core_input",
+                        "source_product": "swissALTI3D",
+                        "source_url": "https://example.invalid/chant_sura_fluelapass/swissalti3d",
+                        "source_filename": "chant_sura_fluelapass_real_core_input.asc",
+                        "source_file_present": True,
+                        "download_status": "processed_real",
+                        "license": "real staged input for repository tests; classifier-safe content only",
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                            "coordinate_unit": "m",
+                            "height_unit": "m",
+                        },
+                        "raster": {
+                            "format": "ESRI ASCII GRID",
+                            "resolution_m": 2.0,
+                            "width_px": 4,
+                            "height_px": 4,
+                            "nodata": -9999.0,
+                        },
+                        "extent_lv95_m": {
+                            "xmin": 2793000.0,
+                            "ymin": 1180200.0,
+                            "xmax": 2793008.0,
+                            "ymax": 1180208.0,
+                        },
+                        "preprocessing": {
+                            "status": "staged_real",
+                            "crop_extent_lv95_m": {
+                                "xmin": 2793000.0,
+                                "ymin": 1180200.0,
+                                "xmax": 2793008.0,
+                                "ymax": 1180208.0,
+                            },
+                            "resampling_method": "none",
+                            "raw_sha256": None,
+                            "processed_sha256": None,
+                            "tool": "manual test input",
+                            "processed_utc": None,
+                        },
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                            "notes": [
+                                "Real-looking DEM values staged for dry-run coverage.",
+                                "No classifier-trigger words are present in this file.",
+                            ],
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "aoi_tile_catalog" in categories:
+            (base / "input/aoi_tile_catalog.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swisstopo_aoi_tile_catalog_v1",
+                        "catalog_status": "ready",
+                        "source_product": "swissALTI3D",
+                        "product_id": "swissalti3d_2m",
+                        "crs": "EPSG:2056",
+                        "resolution_m": 2,
+                        "tiles": [
+                            {
+                                "tile_id": "2793-1180",
+                                "source_product": "swissALTI3D",
+                                "source_url": "https://www.swisstopo.admin.ch/en/height-model-swissalti3d",
+                                "extent_lv95_m": {
+                                    "xmin": 2793000.0,
+                                    "ymin": 1180000.0,
+                                    "xmax": 2794000.0,
+                                    "ymax": 1181000.0,
+                                },
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "source_zone_metadata" in categories:
+            (base / "input/source_zone_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "zone_id": "chant_sura_fluelapass_real_zone_001",
+                        "source_zone_id": "chant_sura_fluelapass_real_zone_001",
+                        "crs_epsg": 2056,
+                        "vertical_datum": "LN02",
+                        "release_sampling_policy": {
+                            "source_zone_id_pattern": "chant_sura_fluelapass_real_*",
+                            "source_zone_geometry": "LV95 polygon",
+                            "release_point_table": "one row per release point",
+                            "block_scenario_table": "CSV table with one row per block / scenario record",
+                            "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+                        },
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                        },
+                        "geometry": {
+                            "type": "polygon",
+                            "coordinates": [
+                                [2793001.0, 1180201.0],
+                                [2793006.0, 1180201.0],
+                                [2793006.0, 1180206.0],
+                                [2793001.0, 1180206.0],
+                            ],
+                        },
+                        "release_points": [
+                            {
+                                "release_point_id": "chant_sura_fluelapass_real_release_001",
+                                "x": 2793002.0,
+                                "y": 1180202.0,
+                                "z_offset_m": 0.05,
+                                "notes": "real staged test input",
+                            }
+                        ],
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                            "source": "unit test",
+                            "license": "real staged input for repository tests",
+                            "notes": [
+                                "Real-looking source-zone geometry staged for dry-run coverage.",
+                                "No classifier-trigger words are present in this file.",
+                            ],
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "scenario_table" in categories:
+            (base / "input/scenario_table.csv").write_text(
+                "\n".join(
+                    [
+                        "scenario_id,source_zone_id,block_family,relative_weight,probability_semantics,release_point_id",
+                        "chant_sura_fluelapass_real_scenario_001,chant_sura_fluelapass_real_zone_001,real_block_family,1.0,normalized within a block family; no annual frequency claim,chant_sura_fluelapass_real_release_001",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "source_scenario_policy" in categories:
+            (repo_root / "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "policy_id": "chant_sura_fluelapass_real_source_scenario_policy_v1",
+                        "site_id": "chant_sura_fluelapass_portability_example_v1",
+                        "source_zone_id_pattern": "chant_sura_fluelapass_real_*",
+                        "source_zone_geometry": "LV95 polygon",
+                        "release_point_table": "one row per release point",
+                        "block_scenario_table": "CSV table with one row per block / scenario record",
+                        "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
 
     def _write_real_context_cache_manifest(
         self,

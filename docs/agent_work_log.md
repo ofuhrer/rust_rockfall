@@ -1599,3 +1599,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: handoff only; no downloads, no second-site ensemble, no generated heavy outputs committed, no physical-validation claim, no operational claim, and no scale-up / annual-frequency / risk / exposure / vulnerability / distributed-execution claim.
 - Next task: `TB-251`
+
+### TB-251: Real-Input Chant Sura Prepared-Pilot Dry Run
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: make the Chant Sura AOI-to-prepared-pilot dry run follow the acquisition-package core-input status, stay ready only for real staged core inputs, and emit a deterministic blocked handoff for missing real core inputs.
+- Files changed: `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the Chant Sura dry-run summarizer to classify readiness from the acquisition package core-input status instead of file presence, which keeps fixture-backed or partial packages from looking ready and preserves a ready path for genuine real-staged core inputs.
+  - Added a deterministic `blocked_missing_real_core_inputs` path with a TB-250 acquisition-handoff pointer, while keeping fixture-backed and partial-real packages in their own blocked states.
+  - Mirrored the acquisition-package-derived core classification back into the nested readiness section so the JSON and text report stay internally consistent.
+  - Updated the Chant Sura dry-run regression to cover a real-core ready path, fixture-backed fail-closed behavior, partial-real fail-closed behavior, and the blocked-missing-real-core-inputs handoff.
+  - Removed TB-251 from the active backlog after the dry-run report behavior and tests were aligned.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_fluelapass_workflow_dry_run_report`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: dry run only; no downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-252`

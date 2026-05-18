@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-251: Real-Input Chant Sura Prepared-Pilot Dry Run
-
-Goal: Run the AOI-to-prepared-pilot dry-run path for Chant Sura only when TB-249 reports real staged core inputs, otherwise emit a deterministic blocked report.
-
-Capability gap reduced: The repo needs a real-input second-site workflow proof before it can claim portability beyond the current primary demonstration site.
-
-Why this outranks alternatives: This moves second-site work from acquisition planning into executable workflow evidence while preserving fail-closed boundaries.
-
-Inspect first:
-
-- `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_chant_sura_fluelapass_workflow_dry_run_report.py`
-
-Deliverables:
-
-- A real-input prepared-pilot dry-run report with terrain, source-zone, scenario, command-plan, ignored-root, and blocked public-context classifications.
-- A `blocked_missing_real_core_inputs` report when TB-249 is not ready, with a pointer to the TB-250 acquisition handoff when applicable.
-- Tests proving fixture-backed inputs cannot produce a ready second-site classification.
-
-Definition of done:
-
-- Chant Sura can either produce a real-input prepared-pilot dry-run package or state exactly why it remains blocked, without representing fixtures as public evidence.
-
-Boundaries: Dry run only; no downloads, no ensemble execution, no synthetic evidence claim, no physical-validation claim, no operational claim, and no generated heavy outputs committed.
-
 ### TB-252: Observed Benchmark Candidate Acquisition Triage
 
 Goal: Identify one concrete candidate path for real observed runout/deposition benchmark evidence, or produce a precise blocked acquisition report if no candidate can be staged.
