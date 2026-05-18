@@ -775,3 +775,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads, no ensemble execution without explicit authorization, no synthetic public-context evidence, no physical-validation claim, no operational claim, and no readiness claim when required real inputs are absent.
 - Next task: `TB-213`
+
+### TB-213: Evidence-Gated Balfrin Demonstration Closure Package
+
+- Date: 2026-05-18
+- Commit: `83fc07e`
+- Objective: produce a deterministic Balfrin closure package that answers the demonstration-readiness question while failing closed unless new preservation-checked measured evidence is present.
+- Files changed: `scripts/summarize_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_demonstration_closure_package.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated closure-package helper that composes the current management evidence with the metrics-completion rerun package, the multi-zone handoff, and the preservation gate, while classifying provenance across measured, fixture-backed, dry-run, blocked, unavailable, unauthorized, and historical evidence.
+  - Implemented a fail-closed `blocked_no_new_measured_evidence` path, a mixed-provenance warning, and a complete-measured path that can upgrade maturity labels only when all sections are explicitly measured.
+  - Added focused tests for the blocked-no-new-evidence, mixed-provenance, complete-measured, and CLI artifact-materialization paths, then updated the Balfrin documentation and script inventory to point reviewers at the new helper.
+  - Removed TB-213 from the active backlog after the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_demonstration_closure_package.py tests/test_balfrin_demonstration_closure_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_demonstration_closure_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no live execution, no operational claim, no annual-frequency or risk semantics, no maturity upgrade without new preservation-checked measured evidence, and no replacement of the authoritative backlog or work log.
+- Next task: `TB-214`
