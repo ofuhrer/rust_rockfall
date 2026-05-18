@@ -710,3 +710,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: profiling only; no hazard-value rewrite, no probability-semantics change, no GIS/COG claim upgrade, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-210`
+
+### TB-210: Full-Scale Balfrin Demonstration Readiness Matrix
+
+- Date: 2026-05-18
+- Commit: `c540679`
+- Objective: define a deterministic Balfrin readiness matrix that separates measured, fixture-backed, dry-run, blocked, unavailable, and unauthorized evidence before anyone treats "full-scale" as a maturity label.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a `readiness_matrix` section to the Balfrin management package with rows for measured multi-zone execution, preservation gate, reducer constraints, output budget, restart/replay, GIS package scope, command-plan reproducibility, clean-checkout behavior, scientific claim boundaries, and live authorization.
+  - Threaded the matrix through the report renderer and recorded a metrics-completion next milestone from the existing next-live-run decision helper, while keeping the package claim boundaries false.
+  - Added focused tests that require the matrix rows, the clean-checkout blocked path, the next-milestone recommendation, and the disallowed claim-boundary language to stay explicit.
+  - Removed TB-210 from the active backlog after the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_management_demo_package.py tests/test_balfrin_management_demo_package.py`
+- Result/status: implemented_measured
+- Boundaries: no live execution, no claim upgrade, no operational or annual-frequency semantics, and no fabricated full-scale evidence.
+- Next task: `TB-211`
