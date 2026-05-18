@@ -1,0 +1,105 @@
+schema_version: balfrin_smallest_multi_zone_authorization_preflight_answer_v1
+task_id: TB-247
+preflight_report_schema_version: balfrin_smallest_multi_zone_probe_authorization_preflight_v1
+status: blocked_reducer_budget
+preflight_status: blocked_reducer_budget
+blocked_reason: "blocked: requested reducer_worker_count=2 reaches measured max 2; handoff output-budget projection blocked: first bottleneck manifest_size_bytes; current handoff projection remains blocked_fixture_backed at first bottleneck manifest_size_bytes"
+refreshed_with:
+  handoff_command: "PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json"
+  access_preflight_command: "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json"
+  preflight_command: "PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb247_balfrin_access_preflight.json --format json"
+access:
+  status: ready_for_read_only_collection
+  ready_for_read_only_collection: true
+  read_only: true
+  live_submission_authorized: false
+  ssh_target: balfrin
+  remote_repo_root: /users/olifu/work/rust_rockfall
+  run_root: /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517
+reviewed_handoff_package:
+  status: reviewed
+  command_path: /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json
+  resolved_path: /private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json
+  sha256: 6f2b5288e4c87369c847b566a1cce31685a91146536207d2cdc3c0d182028f64
+authorization_record:
+  status: missing
+  command_path: /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml
+  resolved_path: /private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml
+reducer_budget:
+  status: blocked_reducer_budget
+  package_constraint_status: blocked
+  requested_release_zone_batch_size: 2
+  requested_reducer_chunk_count: 2
+  requested_reducer_worker_count: 2
+  measured_constraints:
+    simultaneous_release_zone_batch_max: 8
+    reducer_chunk_count_max: 4
+    reducer_worker_count_max: 2
+    manifest_size_bytes_max: 21312
+    output_file_count_max: 62
+  constraint_checks:
+    - label: simultaneous_release_zone_batch_size
+      status: acceptable
+      requested: 2
+      limit: 8
+    - label: reducer_chunk_count
+      status: acceptable
+      requested: 2
+      limit: 4
+    - label: reducer_worker_count
+      status: warning
+      requested: 2
+      limit: 2
+  handoff_output_budget_projection:
+    status: blocked
+    projection_mode: compact
+    budget_recheck_status: blocked_budget_reduction_needed
+    first_blocked: manifest_size_bytes
+  manifest_pruning:
+    status: blocked_budget_reduction_needed
+    mode: compact
+    before:
+      manifest_size_bytes: 26187
+      output_file_count: 62
+      sidecar_file_count: 21
+      reducer_manifest_bytes: 964
+    after:
+      manifest_size_bytes: 17872
+      output_file_count: 39
+      sidecar_file_count: 2
+      reducer_manifest_bytes: 0
+    exact_blocking_fields:
+      - trajectory_csv
+      - deposition_csv
+      - impact_events_csv
+      - trajectory_merge_state
+      - reducer_merge_state
+output_profile:
+  status: ready
+  classification: scalable_default
+  conditional_curve_export: summary-only
+  grid_csv_export: none
+  export_geotiff: true
+  pilot_gis_package: true
+smallest_multi_zone_run_shape:
+  release_zone_count: 2
+  scenario_count: 2
+  trajectory_count_target: 1000
+  trajectory_workers: 2
+  reducer_workers: 2
+  reducer_chunk_count: 2
+  release_zone_batch_size: 2
+  estimates:
+    runtime_seconds: 0.498
+    storage_bytes: 5318
+    file_count: 10
+    manifest_pressure_bytes: 3552
+claim_boundaries:
+  preflight_does_not_grant_authorization: true
+  live_submission_authorized: false
+  operational_claims_allowed: false
+  annual_frequency_claims_allowed: false
+  physical_probability_claims_allowed: false
+  risk_exposure_vulnerability_claims_allowed: false
+  scale_up_authorized: false
+  distributed_execution_authorized: false

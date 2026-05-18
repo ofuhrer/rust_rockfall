@@ -112,12 +112,14 @@ PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone
 The preflight is deterministic for a supplied package, authorization record,
 and Balfrin access report. It records the exact smallest run shape, reducer
 budget, reduced-output profile, and preservation checklist, but it does not
-grant authorization. The gate reports `ready_for_authorized_submission` only
+grant authorization. The gate reports `ready_for_authorization_review` only
 when the reviewed package, live-run authorization record, read-only Balfrin
-access preflight, and reducer-budget checks are all ready. Missing
-authorization, expired SSH, missing remote artifacts, scheduler-query blockers,
-or over-budget reducer settings return a blocked status before any submission
-artifacts are written.
+access preflight, reducer-budget checks, and reduced-output profile are all
+ready. Missing authorization returns `blocked_missing_authorization`; expired
+SSH, missing remote artifacts, and scheduler-query blockers return
+`blocked_access` while preserving the exact consumed Balfrin access status; and
+over-budget reducer or compact handoff settings return `blocked_reducer_budget`
+before any submission artifacts are written.
 
 The frozen target-area demonstration contract is
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.

@@ -23,36 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-247: Smallest Multi-Zone Authorization Preflight Recheck
-
-Goal: Re-run and refresh the smallest multi-zone authorization preflight after the current budget is rechecked and any needed manifest-budget reduction work is complete.
-
-Capability gap reduced: The multi-zone route needs a current go/no-go classification after budget changes before anyone considers a live authorization request.
-
-Why this outranks alternatives: A stale blocked preflight could hide that the smallest multi-zone measurement is now reviewable, or could let a still-blocked package proceed toward authorization.
-
-Inspect first:
-
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A refreshed preflight report with access status, reviewed package hash, authorization-record status, reducer-budget status, output-profile status, and exact smallest run shape.
-- A deterministic branch for `ready_for_authorization_review`, `blocked_missing_authorization`, `blocked_reducer_budget`, and `blocked_access`.
-- Tests proving the preflight consumes the current or compacted handoff budget and remains explicit that it does not grant authorization.
-
-Definition of done:
-
-- The repo has a current, machine-readable preflight answer for the smallest multi-zone Balfrin measurement.
-
-Boundaries: Preflight only; no live submission, no authorization grant, no scale-up claim, no distributed execution, and no operational claim.
-
 ### TB-248: Authorization-Gated Smallest Multi-Zone Measurement Evidence Path
 
 Goal: Prepare the post-authorization execution and evidence-collection path for the smallest multi-zone Balfrin measurement if TB-247 reaches `ready_for_authorization_review`.

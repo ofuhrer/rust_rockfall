@@ -1518,3 +1518,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: projection and manifest-pruning only; no live Balfrin job, no output schema change, no distributed reducer, no scale-up claim, no physical-probability/risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-247`
+
+### TB-247: Smallest Multi-Zone Authorization Preflight Recheck
+
+- Date: 2026-05-18
+- Commit: local
+- Objective: refresh the smallest multi-zone Balfrin authorization preflight after the compact handoff budget recheck and keep the go/no-go branch machine-readable.
+- Files changed: `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Refreshed the preflight decision branch to report `ready_for_authorization_review`, `blocked_missing_authorization`, `blocked_reducer_budget`, or `blocked_access`, while preserving the exact consumed Balfrin access status separately.
+  - Made reducer-budget and compact handoff-budget blockers take precedence over missing authorization, so the current `blocked_budget_reduction_needed` manifest-size blocker remains fail-closed as `blocked_reducer_budget`.
+  - Added explicit output-profile status, reviewed-package hash, authorization-record status, reducer-budget status, and smallest-run shape fields to the machine-readable preflight report.
+  - Materialized the current compact answer in `validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml`: access was `ready_for_read_only_collection`, the reviewed package hash was `6f2b5288e4c87369c847b566a1cce31685a91146536207d2cdc3c0d182028f64`, the authorization record was missing, output profile was ready, and status remained `blocked_reducer_budget`.
+  - Added fixture-backed tests for the ready-for-review, missing-authorization, reducer-budget, compact handoff-budget, and blocked-access branches, then removed TB-247 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorized_multi_zone_submit tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb247_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json > /tmp/tb247_default_smallest_multi_zone_handoff.json` (expected exit 2 because the compact handoff budget remains blocked)
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb247_balfrin_access_preflight.json --json-output /tmp/tb247_default_smallest_multi_zone_authorization_preflight.json --text-output /tmp/tb247_default_smallest_multi_zone_authorization_preflight.txt --format json > /tmp/tb247_default_smallest_multi_zone_authorization_preflight.stdout` (expected exit 2 with `blocked_reducer_budget`)
+- Result/status: implemented_measured
+- Boundaries: preflight only; no live Balfrin submission, no remote mutation beyond read-only access checks, no authorization grant, no scale-up claim, no distributed-execution claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-248`

@@ -147,3 +147,13 @@ chunks, summary-only conditional curves, no grid CSV export, GeoTIFF export,
 and pilot GIS packaging. This stays within the measured reducer constraints
 above while retaining the non-operational, no-scale-up, and no-distributed-run
 boundaries.
+
+TB-247 refreshes the preflight decision branch so the machine-readable answer is
+one of `ready_for_authorization_review`, `blocked_missing_authorization`,
+`blocked_reducer_budget`, or `blocked_access`. The current compact handoff
+budget is still consumed before the authorization-record branch, so the
+remaining `blocked_budget_reduction_needed` manifest-size blocker keeps the
+smallest package at `blocked_reducer_budget` rather than making it reviewable.
+The Balfrin access report status is still recorded separately, and the preflight
+continues to state that it does not grant authorization or permit live
+submission.

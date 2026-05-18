@@ -50,7 +50,13 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "checked_commands": [{"name": "ssh_availability", "status": "fail"}],
         }
 
-    def _write_package(self, path: Path, *, reducer_status: str = "acceptable") -> str:
+    def _write_package(
+        self,
+        path: Path,
+        *,
+        reducer_status: str = "acceptable",
+        compact_handoff_budget_status: str | None = None,
+    ) -> str:
         constraint = {
             "status": reducer_status,
             "summary": f"{reducer_status}: requested multi-zone settings stay within measured reducer constraints",
@@ -78,13 +84,58 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         }
         if reducer_status == "blocked":
             constraint["blocked_reason"] = "requested reducer settings exceed measured max"
+        manifest_pruning = None
+        if compact_handoff_budget_status is not None:
+            compact_projection = {
+                "status": "blocked" if compact_handoff_budget_status == "blocked_budget_reduction_needed" else "ready",
+                "projection_mode": "compact",
+                "manifest_size_bytes": 17788,
+                "output_file_count": 39,
+                "sidecar_file_count": 2,
+                "reducer_manifest_bytes": 0,
+                "first_bottleneck_labels": {
+                    "first_blocked": "manifest_size_bytes"
+                    if compact_handoff_budget_status == "blocked_budget_reduction_needed"
+                    else None,
+                    "first_relevant": "manifest_size_bytes"
+                    if compact_handoff_budget_status == "blocked_budget_reduction_needed"
+                    else "ready",
+                    "blocked": ["manifest_size_bytes"]
+                    if compact_handoff_budget_status == "blocked_budget_reduction_needed"
+                    else [],
+                    "warning": [],
+                },
+                "budget_recheck": {
+                    "status": compact_handoff_budget_status,
+                    "reason": "current handoff projection remains blocked at first bottleneck manifest_size_bytes",
+                },
+            }
+            constraint["handoff_output_budget_projection"] = compact_projection
+            if compact_handoff_budget_status == "blocked_budget_reduction_needed":
+                constraint["status"] = "blocked"
+                constraint["summary"] = "handoff output-budget projection blocked at manifest_size_bytes"
+                constraint["blocked_reason"] = constraint["summary"]
+            manifest_pruning = {
+                "status": compact_handoff_budget_status,
+                "mode": "compact",
+                "before": {"manifest_size_bytes": 26057, "output_file_count": 62, "sidecar_file_count": 21},
+                "after": {"manifest_size_bytes": 17788, "output_file_count": 39, "sidecar_file_count": 2},
+                "exact_blocking_fields": [
+                    "trajectory_csv",
+                    "deposition_csv",
+                    "impact_events_csv",
+                    "trajectory_merge_state",
+                    "reducer_merge_state",
+                ],
+                "blocked_reason": compact_projection["budget_recheck"]["reason"],
+            }
         payload = {
             "schema_version": "balfrin_multi_release_zone_demo_package_v1",
             "package_status": "mixed_provenance",
             "submission_classification": "blocked_pending_new_human_authorization",
             "authorization_classification": "blocked_pending_authorization",
             "live_execution_requires_new_human_authorization": True,
-            "package_constraint_status": reducer_status,
+            "package_constraint_status": constraint["status"],
             "constraint_pressure": constraint,
             "follow_up_recommendation": {
                 "minimum_measured_multi_zone_run": {
@@ -110,6 +161,8 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 }
             },
         }
+        if manifest_pruning is not None:
+            payload["manifest_pruning"] = manifest_pruning
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -139,9 +192,14 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 balfrin_access_preflight_source="fixture",
             )
 
-        self.assertEqual(report["preflight_status"], "ready_for_authorized_submission")
+        self.assertEqual(report["preflight_status"], "ready_for_authorization_review")
+        self.assertTrue(report["ready_for_authorization_review"])
         self.assertTrue(report["ready_for_authorized_submission"])
         self.assertFalse(report["authorization_granted_by_preflight"])
+        self.assertFalse(report["live_submission_authorized"])
+        self.assertEqual(report["balfrin_access_status"], "ready_for_read_only_collection")
+        self.assertEqual(report["reducer_budget_status"], "ready")
+        self.assertEqual(report["output_profile_status"], "ready")
         self.assertEqual(report["smallest_multi_zone_run_shape"]["release_zone_count"], 2)
         self.assertEqual(report["smallest_multi_zone_run_shape"]["scenario_count"], 2)
         self.assertEqual(report["smallest_multi_zone_run_shape"]["reducer_workers"], 2)
@@ -168,9 +226,10 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertEqual(package_sha, report["reviewed_handoff_package_sha256"])
         self.assertEqual(report["preflight_status"], "blocked_missing_authorization")
         self.assertIn("authorization record", report["blocked_reason"])
+        self.assertFalse(report["ready_for_authorization_review"])
         self.assertFalse(report["ready_for_authorized_submission"])
 
-    def test_expired_balfrin_access_status_is_preserved_exactly(self) -> None:
+    def test_expired_balfrin_access_status_maps_to_blocked_access_and_preserves_consumed_status(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             tmp = Path(tmpdir)
             package = tmp / "reviewed_package.json"
@@ -185,7 +244,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 balfrin_access_preflight_source="fixture",
             )
 
-        self.assertEqual(report["preflight_status"], "blocked_ssh_unavailable")
+        self.assertEqual(report["preflight_status"], "blocked_access")
         self.assertEqual(
             report["balfrin_access_preflight_requirement"]["consumed_status"],
             "blocked_ssh_unavailable",
@@ -210,6 +269,28 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertEqual(report["preflight_status"], "blocked_reducer_budget")
         self.assertEqual(report["reducer_budget_requirement"]["status"], "blocked_reducer_budget")
         self.assertIn("requested reducer settings", report["blocked_reason"])
+
+    def test_compact_handoff_budget_blocker_precedes_missing_authorization(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            self._write_package(package, compact_handoff_budget_status="blocked_budget_reduction_needed")
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=tmp / "missing_authorization.yaml",
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(
+            report["reducer_budget_requirement"]["handoff_budget_recheck_status"],
+            "blocked_budget_reduction_needed",
+        )
+        self.assertEqual(report["reducer_budget_requirement"]["manifest_pruning_status"], "blocked_budget_reduction_needed")
+        self.assertIn("manifest_size_bytes", report["blocked_reason"])
+        self.assertEqual(report["authorization_record_status"], "missing")
 
 
 if __name__ == "__main__":
