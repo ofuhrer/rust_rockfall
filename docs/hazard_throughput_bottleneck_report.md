@@ -253,3 +253,29 @@ Interpretation:
   fixture, so explicit-grid remains the right control for accumulation work.
 - The smoke profile stays intentionally smaller and routine; it is useful for
   semantic guardrails, but not for selecting the next optimization target.
+
+## TB-229 Bounded Accumulator Spike
+
+A narrow trajectory-accumulation rewrite was tested against the same
+fixture-backed multi-zone scratch profile used by the profiler. The attempted
+change buffered per-trajectory cell maxima before committing them back to the
+existing grids, while leaving reach counts, threshold exceedance counts, merge
+contracts, and manifest semantics unchanged.
+
+Measured results on `/tmp/rust_rockfall/tb229_baseline` versus
+`/tmp/rust_rockfall/tb229_after`:
+
+- explicit-grid accumulation: `0.068822` s before, `0.070471` s after
+- explicit-grid hazard-stage wall time: effectively unchanged within noise
+- hazard-layer signatures: unchanged in the smoke guardrail
+- path-free manifest semantics: unchanged in the smoke guardrail
+
+Decision:
+
+- reject the buffering rewrite as a retained optimization
+- keep the current accumulator implementation unchanged
+- leave the bounded next target as trajectory batching or vectorization only if
+  a future measured slice can beat this baseline without changing semantics
+
+Before/after profile artifacts were written only to `/tmp` and were not
+committed.

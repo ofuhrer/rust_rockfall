@@ -23,37 +23,6 @@ later prompts. Full sequential-loop guidance lives in
 
 ## Active Tasks
 
-### TB-229: Bounded Hazard Accumulator Optimization Spike
-
-Goal: Implement or reject one bounded trajectory-accumulation optimization inside the existing hazard builder based on the TB-219 hotspot evidence.
-
-Capability gap reduced: Multi-zone hazard throughput is likely to hit Python trajectory accumulation before Rust simulation limits, but unmeasured rewrites would be risky.
-
-Why this outranks alternatives: The profiler has already isolated a concrete bottleneck; the next engineering step should be one small measured slice, not a broad hazard-builder rewrite.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `tests/test_multi_zone_hazard_throughput_profile.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `scripts/hazard_output_manifests.py`
-- `scripts/hazard_output_reports.py`
-- `scripts/hazard_output_writers.py`
-
-Deliverables:
-
-- One narrowly scoped accumulator change, or a measured no-retain report if the attempted optimization is not stable.
-- Semantic guardrail tests showing hazard-layer signatures and path-free manifest semantics are unchanged.
-- Before/after profile artifacts written only to `/tmp`.
-
-Definition of done:
-
-- The task reports whether the optimization is retained, reverted, or explicitly rejected based on measured throughput and unchanged semantics.
-- Existing output-profile and claim-boundary behavior remains unchanged.
-
-Boundaries: No physics change, no hazard semantics change, no output-schema change unless explicitly backward-compatible, no generated heavy outputs committed, and no operational claim.
-
 ### TB-230: Post-Optimization Multi-Zone Throughput Reprofile
 
 Goal: Reprofile the representative multi-zone hazard-builder fixture after TB-229 and update the throughput report with retained or rejected optimization evidence.
