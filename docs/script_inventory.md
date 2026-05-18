@@ -114,6 +114,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/prototype_cog_conversion.py`
 - `scripts/run_dem_terrain_sensitivity.py`
 - `scripts/run_performance_benchmark.py`
+- `scripts/run_aoi_hazard_workflow.py`
 
 ## Evidence Summarizers
 
