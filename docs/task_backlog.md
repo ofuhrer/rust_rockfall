@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-261: Reviewed Source-Zone And Scenario Plan Freezer
-
-Goal: Convert reviewed release-zone candidates into frozen source-zone metadata, conditional scenario tables, and a source/scenario policy record for the AOI.
-
-Capability gap reduced: The workflow needs a deterministic handoff from user-reviewed candidates to runnable conditional scenarios.
-
-Why this outranks alternatives: Execution plans should consume frozen, reviewed source/scenario records rather than raw heuristic candidate outputs.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/validate_source_scenario_policy.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `docs/source_zone_block_scenario_policy_v1.md`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_source_scenario_policy.py`
-
-Deliverables:
-
-- A freezer mode that consumes accepted candidate IDs and emits source-zone metadata, release rows, conditional scenario table, and policy YAML under the AOI ignored root.
-- Explicit block-family, trajectory-count, seed-policy, and conditional-weight controls with annual/frequency fields left empty.
-- Tests for deterministic IDs, rejected-candidate exclusion, invalid weights, and conditional-only claim boundaries.
-
-Definition of done:
-
-- A reviewed AOI candidate package can become a reproducible conditional scenario plan ready for command-plan generation.
-
-Boundaries: Conditional scenario planning only; no physical probability, no source-frequency evidence, no calibration, no operational claim, and no generated heavy outputs committed.
-
 ### TB-262: Prepared-Pilot Compiler From AOI Manifest
 
 Goal: Compile the AOI manifest, prepared inputs, reviewed source zones, and frozen scenario plan into one runnable prepared-pilot command plan.
