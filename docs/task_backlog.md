@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-262: Prepared-Pilot Compiler From AOI Manifest
-
-Goal: Compile the AOI manifest, prepared inputs, reviewed source zones, and frozen scenario plan into one runnable prepared-pilot command plan.
-
-Capability gap reduced: The current dry-run pieces are broad but still require users to stitch together acquisition, terrain, release, scenario, output-root, and command-plan artifacts manually.
-
-Why this outranks alternatives: A user cannot rapidly move from AOI definition to execution until there is a deterministic compiler that says which commands will run and where outputs will land.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/validate_public_real_site_conditional_pilot_run.py`
-- `scripts/lib/command_plan_contract.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- A prepared-pilot compiler mode that emits a run manifest, command plan, expected input/output inventory, output profile, Balfrin/local execution hints, and first blocker.
-- A `ready_for_local_smoke`, `ready_for_balfrin_postproc`, or `blocked_missing_inputs` classification.
-- Tests for ready fixture, missing terrain, missing reviewed source zones, missing scenario plan, and deterministic command-plan shape.
-
-Definition of done:
-
-- A user can compile all AOI preparation artifacts into one execution-ready or blocked pilot package.
-
-Boundaries: Compilation only; no live Balfrin submission in this task, no ensemble execution, no annual-frequency semantics, no operational claim, and no heavy outputs committed.
-
 ### TB-263: Local Tiny AOI Hazard-Map Smoke Run
 
 Goal: Execute a tiny local fixture-backed AOI prepared-pilot run through trajectory generation and hazard-layer building to prove the front-door workflow produces actual map artifacts.

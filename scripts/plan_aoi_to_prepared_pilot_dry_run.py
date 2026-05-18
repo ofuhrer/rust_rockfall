@@ -23,6 +23,7 @@ try:
 except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
+from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_to_prepared_pilot_dry_run_v1"
@@ -32,6 +33,11 @@ EXPECTED_OUTPUT_ROOTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_output_ro
 BLOCKED_EXECUTION_SCHEMA_VERSION = "aoi_to_prepared_pilot_blocked_execution_v1"
 GIS_SCOPE_SUMMARY_SCHEMA_VERSION = "aoi_to_prepared_pilot_gis_scope_summary_v1"
 CACHE_VERIFICATION_SCHEMA_VERSION = "aoi_to_prepared_pilot_cache_verification_v1"
+COMPILER_SCHEMA_VERSION = "aoi_to_prepared_pilot_compiler_v1"
+RUN_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_run_manifest_v1"
+EXPECTED_IO_INVENTORY_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_io_inventory_v1"
+EXECUTION_HINTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_execution_hints_v1"
+FIRST_BLOCKER_SCHEMA_VERSION = "aoi_to_prepared_pilot_first_blocker_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -490,7 +496,8 @@ def main(argv: list[str] | None = None) -> int:
 
     output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
-    return 0 if report["workflow_status"] == "ready" else 2
+    compiler_status = report.get("prepared_pilot_compiler", {}).get("classification", report["workflow_status"])
+    return 0 if compiler_status != "blocked_missing_inputs" else 2
 
 
 def build_report(
@@ -543,6 +550,42 @@ def build_report(
     )
     if isinstance(prep_summary.get("gis_scope_summary"), dict):
         prep_summary["gis_scope_summary"]["status"] = workflow_status
+    source_zone_inputs = prep_summary.get("candidate_source_zones", {}).get("source_zone_inputs") or {}
+    scenario_source_inputs = prep_summary.get("scenario_generation_inputs", {}).get("source_inputs") or {}
+    def resolve_compiler_path(value: Any) -> Path | None:
+        if not isinstance(value, str) or not value:
+            return None
+        path = Path(value)
+        return path if path.is_absolute() else repo_root / path
+
+    compiler_required_paths = dedupe(
+        [
+            *(
+                str(resolved)
+                for row in prep_summary.get("terrain_manifests", [])
+                if row.get("expected_staged_path")
+                for resolved in [resolve_compiler_path(row.get("expected_staged_path"))]
+                if resolved is not None
+            ),
+            *(
+                str(resolved)
+                for key, value in source_zone_inputs.items()
+                for resolved in [resolve_compiler_path(value) if key.endswith("_path") else None]
+                if resolved is not None
+            ),
+            *(
+                str(resolved)
+                for key, value in scenario_source_inputs.items()
+                for resolved in [resolve_compiler_path(value) if key != "same_scale_reference_path" else None]
+                if resolved is not None
+            ),
+        ]
+    )
+    compiler_missing_inputs = [path for path in compiler_required_paths if not Path(path).exists()]
+    if compiler_missing_inputs:
+        workflow_status = "blocked_missing_inputs"
+        if isinstance(prep_summary.get("gis_scope_summary"), dict):
+            prep_summary["gis_scope_summary"]["status"] = workflow_status
     skeleton_output = build_case_skeleton_output(
         report_inputs={
             "config_path": config_path,
@@ -558,6 +601,7 @@ def build_report(
             "prep_summary": prep_summary,
             "workflow_status": workflow_status,
             "workflow_steps": steps,
+            "compiler_missing_inputs": compiler_missing_inputs,
         },
         repo_root=repo_root,
         output_root=skeleton_output_root,
@@ -595,6 +639,8 @@ def build_report(
                 *(str(item) for item in acquisition_report.get("blocked_missing_inputs", []) if item),
                 *(str(item) for item in cache_verification_report.get("blocked_missing_inputs", []) if item),
                 *(str(item) for item in prep_summary.get("candidate_source_zones", {}).get("blocked_missing_inputs", []) if item),
+                *(str(item) for item in release_plan_report.get("missing_inputs", []) if item),
+                *compiler_missing_inputs,
             ]
         ),
         "expected_inputs_by_step": {step["step_id"]: step["expected_inputs"] for step in steps},
@@ -611,6 +657,7 @@ def build_report(
         "operational_claims_allowed": False,
         "case_skeleton_output": skeleton_output,
     }
+    report["prepared_pilot_compiler"] = build_prepared_pilot_compiler_report(skeleton_output=skeleton_output)
     return report
 
 
@@ -803,7 +850,7 @@ def build_steps(
             "step_id": "release_plan_dry_run",
             "label": "Scenario-table generation",
             "status": release_plan_report["scenario_plan_status"],
-            "blocked_reason": "",
+            "blocked_reason": release_plan_report.get("blocked_reason", ""),
             "expected_inputs": expected_inputs_from_scenario_generation(release_plan_report),
             "generated_output_roots": [],
             "ignored_output_roots": [],
@@ -811,7 +858,7 @@ def build_steps(
                 "release_plan_dry_run",
                 release_plan_report["scenario_plan_status"],
                 [],
-                [],
+                release_plan_report.get("missing_inputs", []),
             ),
         },
         {
@@ -1134,6 +1181,220 @@ def dedupe(items: list[str]) -> list[str]:
     return ordered
 
 
+def classify_prepared_pilot_compiler(report: dict[str, Any]) -> str:
+    if report.get("workflow_status") == "blocked_missing_inputs":
+        return "blocked_missing_inputs"
+    if report.get("command_plan_report", {}).get("blocked_template_commands"):
+        return "ready_for_balfrin_postproc"
+    return "ready_for_local_smoke"
+
+
+def first_compiler_blocker(report: dict[str, Any]) -> dict[str, Any]:
+    compiler_missing_inputs = [str(item) for item in report.get("compiler_missing_inputs", []) if str(item).strip()]
+    if compiler_missing_inputs:
+        return {
+            "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+            "status": "blocked_missing_inputs",
+            "step_id": "prepared_pilot_inputs",
+            "label": "Prepared-pilot compiler inputs",
+            "blocked_reason": "prepared-pilot inputs are missing",
+            "missing_inputs": compiler_missing_inputs,
+            "command_plan_blocked_commands": [],
+            "first_missing_input": compiler_missing_inputs[0],
+        }
+
+    for step in report.get("workflow_steps", []):
+        if step.get("step_id") != "prepared_pilot_command_plan":
+            continue
+        blocked_template_commands = list(report.get("command_plan_report", {}).get("blocked_template_commands", []))
+        if blocked_template_commands:
+            return {
+                "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+                "status": step.get("status", "deferred_public_context_inputs"),
+                "step_id": step.get("step_id", ""),
+                "label": step.get("label", ""),
+                "blocked_reason": step.get("blocked_reason", ""),
+                "missing_inputs": blocked_template_commands,
+                "command_plan_blocked_commands": blocked_template_commands,
+                "first_missing_input": blocked_template_commands[0],
+            }
+
+    return {
+        "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+        "status": "ready",
+        "step_id": "",
+        "label": "",
+        "blocked_reason": "",
+        "missing_inputs": [],
+        "command_plan_blocked_commands": [],
+        "first_missing_input": "",
+    }
+
+
+def flatten_command_field(commands: list[dict[str, Any]], field: str) -> list[str]:
+    values: list[str] = []
+    for command in commands:
+        for item in command.get(field, []):
+            if item:
+                values.append(str(item))
+    return dedupe(values)
+
+
+def build_expected_io_inventory(
+    *,
+    report_inputs: dict[str, Any],
+    skeleton_output: dict[str, Any],
+) -> dict[str, Any]:
+    steps = report_inputs["workflow_steps"]
+    command_plan_report = report_inputs["command_plan_report"]
+    prep_summary = report_inputs["prep_summary"]
+    return {
+        "schema_version": EXPECTED_IO_INVENTORY_SCHEMA_VERSION,
+        "expected_input_paths": dedupe(
+            [
+                *flatten_command_field(steps, "expected_inputs"),
+                *command_plan_expected_inputs(command_plan_report),
+            ]
+        ),
+        "expected_output_paths": dedupe(
+            [
+                *flatten_command_field(steps, "generated_output_roots"),
+                *flatten_command_field(steps, "ignored_output_roots"),
+                *flatten_command_field(command_plan_report.get("commands", []), "expected_outputs"),
+                *skeleton_output.get("expected_output_roots", []),
+            ]
+        ),
+        "expected_inputs_by_step": skeleton_output.get("expected_inputs_by_step", {}),
+        "generated_output_roots_by_step": skeleton_output.get("generated_output_roots_by_step", {}),
+        "ignored_output_roots_by_step": skeleton_output.get("ignored_output_roots_by_step", {}),
+        "expected_step_count": len(steps),
+        "command_plan_expected_inputs": command_plan_expected_inputs(command_plan_report),
+        "command_plan_expected_outputs": flatten_command_field(command_plan_report.get("commands", []), "expected_outputs"),
+        "prepared_validation_root": prep_summary["output_root_planning"]["prepared_validation_root"],
+        "prepared_hazard_root": prep_summary["output_root_planning"]["prepared_hazard_root"],
+        "command_manifest_path": skeleton_output.get("command_manifest_path", ""),
+        "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
+        "case_skeleton_path": skeleton_output.get("case_skeleton_path", ""),
+    }
+
+
+def build_output_profile_summary(report_inputs: dict[str, Any]) -> dict[str, Any]:
+    command_plan_report = report_inputs["command_plan_report"]
+    prep_summary = report_inputs["prep_summary"]
+    return {
+        "schema_version": OUTPUT_PROFILE_POLICY.POLICY_SCHEMA_VERSION,
+        "command_profile_policy": command_plan_report.get("output_profile_policy", {}),
+        "command_plan_status": command_plan_report.get("command_plan_status", ""),
+        "blocked_template_commands": list(command_plan_report.get("blocked_template_commands", [])),
+        "gis_scope_summary": {
+            "schema_version": prep_summary.get("gis_scope_summary", {}).get("schema_version", ""),
+            "status": prep_summary.get("gis_scope_summary", {}).get("status", ""),
+            "no_hazard_layers_generated": bool(prep_summary.get("gis_scope_summary", {}).get("no_hazard_layers_generated", False)),
+            "cog_export_expectation": prep_summary.get("gis_scope_summary", {}).get("cog_export_expectation", {}),
+            "non_operational_gis_boundaries": prep_summary.get("gis_scope_summary", {}).get("non_operational_gis_boundaries", {}),
+        },
+    }
+
+
+def build_execution_hints(
+    *,
+    report_inputs: dict[str, Any],
+    skeleton_output: dict[str, Any],
+    classification: str,
+) -> dict[str, Any]:
+    prep_summary = report_inputs["prep_summary"]
+    output_root = skeleton_output.get("output_root") or prep_summary["output_root_planning"]["prepared_validation_root"]
+    balfrin_output_root = prep_summary["output_root_planning"]["prepared_hazard_root"]
+    local_status = classification if classification != "ready_for_balfrin_postproc" else "ready_for_local_smoke"
+    balfrin_status = classification if classification != "ready_for_local_smoke" else "not_required"
+    return {
+        "schema_version": EXECUTION_HINTS_SCHEMA_VERSION,
+        "local": {
+            "status": local_status,
+            "execution_surface": "local_smoke",
+            "output_root": output_root,
+            "command_manifest_path": skeleton_output.get("command_manifest_path", ""),
+            "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
+            "notes": [
+                "keep the compiler package on a writable local path for smoke review",
+                "no ensemble execution or Balfrin submission is authorized in this task",
+            ],
+        },
+        "balfrin": {
+            "status": balfrin_status,
+            "execution_surface": "balfrin_postproc",
+            "output_root": balfrin_output_root,
+            "command_manifest_path": skeleton_output.get("command_manifest_path", ""),
+            "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
+            "notes": [
+                "handoff package only; live Balfrin submission remains out of scope here",
+                "use the same compiler outputs after an access and readiness preflight in a later task",
+            ],
+        },
+    }
+
+
+def build_run_manifest(
+    *,
+    report_inputs: dict[str, Any],
+    skeleton_output: dict[str, Any],
+    classification: str,
+    first_blocker: dict[str, Any],
+) -> dict[str, Any]:
+    expected_io_inventory = build_expected_io_inventory(report_inputs=report_inputs, skeleton_output=skeleton_output)
+    output_profile = build_output_profile_summary(report_inputs)
+    execution_hints = build_execution_hints(report_inputs=report_inputs, skeleton_output=skeleton_output, classification=classification)
+    command_plan_report = report_inputs["command_plan_report"]
+    prep_summary = report_inputs["prep_summary"]
+    return {
+        "schema_version": RUN_MANIFEST_SCHEMA_VERSION,
+        "classification": classification,
+        "run_manifest_status": classification,
+        "candidate_site_id": report_inputs["acquisition_report"]["candidate_site_id"],
+        "candidate_site_name": report_inputs["acquisition_report"]["candidate_site_name"],
+        "workflow_status": report_inputs["workflow_status"],
+        "input_mode": prep_summary["input_mode"],
+        "prepared_validation_root": prep_summary["output_root_planning"]["prepared_validation_root"],
+        "prepared_hazard_root": prep_summary["output_root_planning"]["prepared_hazard_root"],
+        "command_plan": {
+            "schema_version": command_plan_report.get("schema_version", ""),
+            "command_plan_status": command_plan_report.get("command_plan_status", ""),
+            "blocked_template_commands": list(command_plan_report.get("blocked_template_commands", [])),
+            "command_group_ids": list(command_plan_report.get("command_group_ids", [])),
+            "command_group_keys": list(command_plan_report.get("command_group_keys", [])),
+            "command_ids": list(command_plan_report.get("command_ids", [])),
+            "commands": command_plan_report.get("commands", []),
+            "ignored_output_paths": list(command_plan_report.get("ignored_output_paths", [])),
+            "output_profile_policy": command_plan_report.get("output_profile_policy", {}),
+        },
+        "expected_io_inventory": expected_io_inventory,
+        "output_profile": output_profile,
+        "execution_hints": execution_hints,
+        "first_blocker": first_blocker,
+        "command_manifest_path": skeleton_output.get("command_manifest_path", ""),
+        "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
+        "case_skeleton_path": skeleton_output.get("case_skeleton_path", ""),
+    }
+
+
+def build_prepared_pilot_compiler_report(
+    *,
+    skeleton_output: dict[str, Any],
+) -> dict[str, Any]:
+    run_manifest = skeleton_output.get("run_manifest", {})
+    return {
+        "schema_version": COMPILER_SCHEMA_VERSION,
+        "classification": run_manifest.get("classification", "blocked_missing_inputs"),
+        "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
+        "first_blocker": run_manifest.get("first_blocker", {}),
+        "run_manifest": run_manifest,
+        "command_plan": run_manifest["command_plan"],
+        "expected_io_inventory": run_manifest["expected_io_inventory"],
+        "output_profile": run_manifest["output_profile"],
+        "execution_hints": run_manifest["execution_hints"],
+    }
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
@@ -1424,6 +1685,50 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "prepared_pilot_compiler:",
+        ]
+    )
+    compiler = report.get("prepared_pilot_compiler", {})
+    lines.append(f"- schema_version: {compiler.get('schema_version', '')}")
+    lines.append(f"- classification: {compiler.get('classification', '')}")
+    lines.append(f"- run_manifest_path: {compiler.get('run_manifest_path', '')}")
+    lines.append(f"- first_blocker: {compiler.get('first_blocker', {})}")
+    lines.append("- command_plan:")
+    for key, value in (compiler.get("command_plan") or {}).items():
+        if key == "commands" and isinstance(value, list):
+            lines.append(f"  - {key}: {len(value)} commands")
+            continue
+        lines.append(f"  - {key}: {value}")
+    lines.append("- expected_io_inventory:")
+    inventory = compiler.get("expected_io_inventory", {})
+    lines.append(f"  - schema_version: {inventory.get('schema_version', '')}")
+    lines.append(f"  - expected_step_count: {inventory.get('expected_step_count', 0)}")
+    lines.append(f"  - command_manifest_path: {inventory.get('command_manifest_path', '')}")
+    lines.append(f"  - run_manifest_path: {inventory.get('run_manifest_path', '')}")
+    lines.append(f"  - case_skeleton_path: {inventory.get('case_skeleton_path', '')}")
+    lines.append("- output_profile:")
+    for key, value in (compiler.get("output_profile") or {}).items():
+        if key == "gis_scope_summary" and isinstance(value, dict):
+            lines.append("  - gis_scope_summary:")
+            for subkey, subvalue in value.items():
+                lines.append(f"    - {subkey}: {subvalue}")
+            continue
+        lines.append(f"  - {key}: {value}")
+    lines.append("- execution_hints:")
+    for key, value in (compiler.get("execution_hints") or {}).items():
+        if isinstance(value, dict):
+            lines.append(f"  - {key}:")
+            for subkey, subvalue in value.items():
+                if isinstance(subvalue, list):
+                    lines.append(f"    - {subkey}:")
+                    lines.extend(f"      - {item}" for item in subvalue)
+                else:
+                    lines.append(f"    - {subkey}: {subvalue}")
+        else:
+            lines.append(f"  - {key}: {value}")
+    lines.extend(
+        [
+            "",
             "workflow_steps:",
         ]
     )
@@ -1660,7 +1965,10 @@ def build_case_skeleton_output(
         "command_manifest": command_manifest,
         "blocked_execution": blocked_execution_report,
     }
-    return {
+    run_manifest_path = str(
+        (resolved_output_root / "aoi_to_prepared_pilot_run_manifest.yaml") if resolved_output_root is not None else ""
+    )
+    skeleton_output = {
         "status": skeleton_status,
         "write_status": "written" if resolved_output_root is not None else "not_requested",
         "blocked_execution_status": blocked_execution,
@@ -1678,11 +1986,34 @@ def build_case_skeleton_output(
         "blocked_execution_path": str(
             (resolved_output_root / "aoi_to_prepared_pilot_blocked_execution.json") if resolved_output_root is not None else ""
         ),
+        "run_manifest_path": run_manifest_path,
+        "expected_inputs_by_step": {step["step_id"]: step["expected_inputs"] for step in report_inputs["workflow_steps"]},
+        "generated_output_roots_by_step": {
+            step["step_id"]: step["generated_output_roots"] for step in report_inputs["workflow_steps"]
+        },
+        "ignored_output_roots_by_step": {
+            step["step_id"]: step["ignored_output_roots"] for step in report_inputs["workflow_steps"]
+        },
         "expected_output_roots": expected_output_roots,
         "runnable_command_ids": runnable_command_ids,
         "template_only_command_ids": template_only_command_ids,
         "case_skeleton": skeleton,
     }
+    skeleton_output["run_manifest"] = build_run_manifest(
+        report_inputs=report_inputs,
+        skeleton_output=skeleton_output,
+        classification=classify_prepared_pilot_compiler({
+            **report_inputs,
+            "workflow_status": report_inputs["workflow_status"],
+            "command_plan_report": report_inputs["command_plan_report"],
+        }),
+        first_blocker=first_compiler_blocker({
+            **report_inputs,
+            "workflow_status": report_inputs["workflow_status"],
+            "command_plan_report": report_inputs["command_plan_report"],
+        }),
+    )
+    return skeleton_output
 
 
 def write_case_skeleton_bundle(skeleton_output: dict[str, Any]) -> None:
@@ -1694,6 +2025,7 @@ def write_case_skeleton_bundle(skeleton_output: dict[str, Any]) -> None:
     case_skeleton["write_status"] = "written"
     dump_yaml(Path(skeleton_output["case_skeleton_path"]), case_skeleton)
     dump_json(Path(skeleton_output["command_manifest_path"]), skeleton_output["case_skeleton"]["command_manifest"])
+    dump_yaml(Path(skeleton_output["run_manifest_path"]), skeleton_output["run_manifest"])
     dump_yaml(
         Path(skeleton_output["expected_output_roots_path"]),
         {

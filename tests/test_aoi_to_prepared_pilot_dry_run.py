@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -169,6 +170,106 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("ignored_root_layout:", text_report)
         self.assertIn("generic_candidate_source_zone_provenance", text_report)
         self.assertIn("scenario_generation_handoff", text_report)
+
+    def test_ready_compiler_fixture_emits_manifest_plan_and_hints(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+            compiler = first["prepared_pilot_compiler"]
+            run_manifest = yaml.safe_load(Path(compiler["run_manifest_path"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(first, second)
+        self.assertEqual(compiler["schema_version"], "aoi_to_prepared_pilot_compiler_v1")
+        self.assertEqual(compiler["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(compiler["execution_hints"]["local"]["status"], "ready_for_local_smoke")
+        self.assertEqual(compiler["execution_hints"]["balfrin"]["status"], "ready_for_balfrin_postproc")
+        self.assertIn("second_site_release_plan_execution_template", compiler["run_manifest"]["command_plan"]["blocked_template_commands"])
+        self.assertEqual(compiler["command_plan"]["command_plan_status"], "ready")
+        self.assertEqual(compiler["output_profile"]["command_profile_policy"]["classification"], "scalable_default")
+        self.assertEqual(run_manifest["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(run_manifest["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(run_manifest["expected_io_inventory"]["schema_version"], "aoi_to_prepared_pilot_expected_io_inventory_v1")
+        self.assertTrue(run_manifest["expected_io_inventory"]["prepared_validation_root"].endswith("validation/private/chant_sura_fluelapass_portability_example_v1"))
+        self.assertTrue(run_manifest["expected_io_inventory"]["command_plan_expected_inputs"])
+        self.assertTrue(run_manifest["expected_io_inventory"]["command_plan_expected_outputs"])
+        self.assertTrue(run_manifest["execution_hints"]["balfrin"]["output_root"].endswith("hazard/results/chant_sura_fluelapass_portability_example_v1"))
+        self.assertTrue(run_manifest["execution_hints"]["local"]["output_root"].endswith("aoi_to_prepared_pilot_dry_run"))
+        self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", compiler["run_manifest_path"])
+        self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
+
+    def test_missing_terrain_blocks_compiler(self) -> None:
+        report = self._compiler_report_with_missing_prepared_input("terrain.asc")
+        compiler = report["prepared_pilot_compiler"]
+
+        self.assertEqual(compiler["classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertTrue(any(item.endswith("terrain.asc") for item in compiler["first_blocker"]["missing_inputs"]))
+
+    def test_missing_reviewed_source_zones_blocks_compiler(self) -> None:
+        report = self._compiler_report_with_missing_prepared_input(
+            "tschamut_public_source_zone_metadata_v1.yaml",
+            under_tschamut=True,
+        )
+        compiler = report["prepared_pilot_compiler"]
+
+        self.assertEqual(compiler["classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertTrue(any(item.endswith("tschamut_public_source_zone_metadata_v1.yaml") for item in compiler["first_blocker"]["missing_inputs"]))
+
+    def test_missing_scenario_plan_blocks_compiler(self) -> None:
+        report = self._compiler_report_with_missing_prepared_input("tschamut_public_scenario_table_v1.csv", under_tschamut=True)
+        compiler = report["prepared_pilot_compiler"]
+
+        self.assertEqual(compiler["classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertTrue(any(item.endswith("tschamut_public_scenario_table_v1.csv") for item in compiler["first_blocker"]["missing_inputs"]))
+
+    def test_compiler_command_plan_shape_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+        self.assertEqual(first["prepared_pilot_compiler"]["command_plan"], second["prepared_pilot_compiler"]["command_plan"])
+        self.assertEqual(first["prepared_pilot_compiler"]["expected_io_inventory"], second["prepared_pilot_compiler"]["expected_io_inventory"])
+        self.assertEqual(first["prepared_pilot_compiler"]["output_profile"], second["prepared_pilot_compiler"]["output_profile"])
+        self.assertEqual(first["prepared_pilot_compiler"]["execution_hints"], second["prepared_pilot_compiler"]["execution_hints"])
+        self.assertEqual(first["prepared_pilot_compiler"]["run_manifest"], second["prepared_pilot_compiler"]["run_manifest"])
+        self.assertEqual(first["prepared_pilot_compiler"]["command_plan"]["command_ids"], second["prepared_pilot_compiler"]["command_plan"]["command_ids"])
+        self.assertEqual(first["prepared_pilot_compiler"]["command_plan"]["command_group_keys"], second["prepared_pilot_compiler"]["command_plan"]["command_group_keys"])
 
     def test_output_root_mode_writes_deterministic_case_skeleton_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -425,6 +526,99 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             writer = csv.DictWriter(fh, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
             writer.writerows(rows)
+
+    def _stage_ready_compiler_inputs(self, repo_root: Path, config_path: Path) -> None:
+        staging.stage_minimal_inputs(
+            repo_root=repo_root,
+            site_config=config_path,
+            fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+        )
+        catalog_path = repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/aoi_tile_catalog.yaml"
+        catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        catalog_path.write_text(
+            yaml.safe_dump(
+                {
+                    "schema_version": "swisstopo_aoi_tile_catalog_v1",
+                    "catalog_status": "metadata_only",
+                    "source_product": "swissALTI3D",
+                    "product_id": "swissalti3d_2m",
+                    "crs": "EPSG:2056",
+                    "resolution_m": 2,
+                    "expected_staging_root": "data/raw/swisstopo/tschamut_public_pilot",
+                    "tile_size_m": 1000,
+                    "tiles": [
+                        {
+                            "tile_id": "2696-1167",
+                            "source_product": "swissALTI3D",
+                            "source_filename": "swissalti3d_2019_2696-1167_2_2056_5728.tif",
+                            "source_url": "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif",
+                            "product_version": "2019",
+                            "product_date": "2019-01-01",
+                            "license": "swisstopo open data terms",
+                            "extent_lv95_m": {
+                                "xmin": 2696000.0,
+                                "ymin": 1167000.0,
+                                "xmax": 2697000.0,
+                                "ymax": 1168000.0,
+                            },
+                        }
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        self._copy_repo_file(
+            ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+            repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+        )
+        self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
+
+    def _compiler_report_with_missing_prepared_input(
+        self,
+        missing_relative_path: str,
+        *,
+        under_tschamut: bool = False,
+    ) -> dict[str, object]:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            missing_root = "data/processed/swisstopo/tschamut_public_pilot/input" if under_tschamut else "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"
+            self._remove_repo_file(repo_root, f"{missing_root}/{missing_relative_path}")
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            return planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+    def _copy_repo_file(self, source: Path, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+    def _remove_repo_file(self, repo_root: Path, relative_path: str) -> None:
+        path = repo_root / relative_path
+        if path.exists():
+            path.unlink()
 
     def _write_verified_cache_manifest(self, repo_root: Path, candidate_site_id: str) -> None:
         cache_root = repo_root / "data/processed/swisstopo" / candidate_site_id / "input"

@@ -220,6 +220,13 @@ expectations, and unavailable inputs. That summary is a planning artifact, not
 a generated hazard-map output, and it should not be read as evidence that any
 hazard layers were produced.
 
+The AOI-to-prepared-pilot compiler now packages the same handoff into a run
+manifest, command plan, expected input/output inventory, output profile, and
+execution hints with a deterministic `ready_for_local_smoke`,
+`ready_for_balfrin_postproc`, or `blocked_missing_inputs` classification. The
+compiler package is still a planning artifact and does not authorize any live
+Balfrin submission.
+
 The portable command plan now exposes the canonical package-level conversion
 path directly, including the standard audit command, the `--export-cog`
 builder path to the ignored `gate_v1_cog_export` package, and the

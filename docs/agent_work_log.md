@@ -118,35 +118,6 @@ scan thousands of lines of completed history.
   - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
   - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
   - `git diff --check`
-
-### TB-261: Reviewed Source-Zone And Scenario Plan Freezer
-
-- Date: 2026-05-19
-- Commit: `8130a82`
-- Objective: convert reviewed release-zone candidates into frozen source-zone metadata, conditional scenario tables, and a source/scenario policy record for the AOI.
-- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`
-- Implementation summary:
-  - Added a freezer mode to the candidate scenario generator that consumes a review package plus accepted candidate IDs and emits frozen source-zone metadata, release rows, a conditional scenario table, and a source/scenario policy record under an ignored output root.
-  - Kept the conditional-only boundary explicit by carrying trajectory-count, seed-policy, block-family, and conditional-weight controls into the freezer outputs while leaving annual-frequency and probability fields empty.
-  - Added focused tests for deterministic freezer IDs, rejected-candidate exclusion, invalid conditional weights, and policy-boundary validation through the existing source-scenario policy validator.
-- Checks run:
-  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py tests/test_candidate_source_zone_freezer.py`
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_source_scenario_policy`
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_deterministic_release_candidates_generate_a_large_manifest_rich_table tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_missing_inputs_fail_closed`
-  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py`
-  - Freeze-mode CLI smoke against a tiny synthetic review package
-  - `git diff --check`
-  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
-  - `scripts/git-hooks/pre-commit`
-  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
-  - `git status --short`
-- Result/status: implemented_fixture_backed
-- Boundaries: conditional scenario planning only; no physical probability, no source-frequency evidence, no calibration, no operational claim, and no generated heavy outputs committed.
-- Next task: `TB-262`
-  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
-  - `scripts/git-hooks/pre-commit`
-  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
-  - `git status --short`
 - Result/status: implemented_fixture_backed
 - Boundaries: no live Balfrin job submission, no scale-up authorization, no distributed execution, no operational claim, no generated artifacts committed, and no target-area bundle materialized by the package helper.
 - Next task: `TB-184`
@@ -1846,3 +1817,44 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: candidate generation and review packaging only; no release-zone validation claim, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-261`
+
+### TB-261: Reviewed Source-Zone And Scenario Plan Freezer
+
+- Date: 2026-05-19
+- Commit: `8130a82`
+- Objective: convert reviewed release-zone candidates into frozen source-zone metadata, conditional scenario tables, and a source/scenario policy record for the AOI.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a freezer mode to the candidate scenario generator that consumes a review package plus accepted candidate IDs and emits frozen source-zone metadata, release rows, a conditional scenario table, and a source/scenario policy record under an ignored output root.
+  - Kept the conditional-only boundary explicit by carrying trajectory-count, seed-policy, block-family, and conditional-weight controls into the freezer outputs while leaving annual-frequency and probability fields empty.
+  - Added focused tests for deterministic freezer IDs, rejected-candidate exclusion, invalid conditional weights, and policy-boundary validation through the existing source-scenario policy validator.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py tests/test_candidate_source_zone_freezer.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_source_scenario_policy`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_deterministic_release_candidates_generate_a_large_manifest_rich_table tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_missing_inputs_fail_closed`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py`
+  - Freeze-mode CLI smoke against a tiny synthetic review package
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: conditional scenario planning only; no physical probability, no source-frequency evidence, no calibration, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-262`
+
+### TB-262: Prepared-Pilot Compiler From AOI Manifest
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: compile the AOI manifest, prepared inputs, reviewed source zones, and frozen scenario plan into one runnable prepared-pilot command plan with deterministic compiler output.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `docs/public_real_site_geodata_preparation.md`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a prepared-pilot compiler mode that emits a run manifest, command plan, expected input/output inventory, output profile, Balfrin/local execution hints, and first blocker.
+  - Threaded a compiler classification through the report surface so ready fixtures classify as `ready_for_local_smoke` or `ready_for_balfrin_postproc`, while missing terrain, reviewed source zones, or scenario plans classify as `blocked_missing_inputs`.
+  - Added focused fixture-backed tests for the ready fixture, missing terrain, missing reviewed source zones, missing scenario plan, and deterministic command-plan shape, and documented the compiler handoff contract.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: compilation only; no live Balfrin submission, no ensemble execution, no annual-frequency semantics, no operational claim, and no heavy outputs committed.
+- Next task: `TB-263`
