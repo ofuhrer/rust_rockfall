@@ -505,6 +505,9 @@ def build_report(
         target_area_output_root=target_area_output_root,
         pressure_probe_root=pressure_probe_root,
         pressure_artifact_dir=pressure_artifact_dir,
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
+        requested_reducer_chunk_count=requested_reducer_chunk_count,
+        requested_reducer_worker_count=requested_reducer_worker_count,
     )
     candidate_report = safe_build(
         "candidate_stability",
@@ -762,6 +765,9 @@ def build_command_plan(
     target_area_output_root: Path,
     pressure_probe_root: Path,
     pressure_artifact_dir: Path,
+    requested_release_zone_batch_size: int,
+    requested_reducer_chunk_count: int,
+    requested_reducer_worker_count: int,
 ) -> dict[str, Any]:
     scientific_delta_dir = artifact_dir / "scientific_delta"
     restartability_dir = artifact_dir / DEFAULT_RESTARTABILITY_ARTIFACT_DIR.name
@@ -856,11 +862,11 @@ def build_command_plan(
                     "--materialize-root",
                     str(pressure_probe_root),
                     "--release-zone-count",
-                    str(MULTI_ZONE_PRESSURE.DEFAULT_RELEASE_ZONE_COUNT),
+                    str(requested_release_zone_batch_size),
                     "--reducer-workers",
-                    str(MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_WORKERS),
+                    str(requested_reducer_worker_count),
                     "--reducer-chunk-count",
-                    str(MULTI_ZONE_PRESSURE.DEFAULT_REDUCER_CHUNK_COUNT),
+                    str(requested_reducer_chunk_count),
                     "--output-family-mix",
                     ",".join(MULTI_ZONE_PRESSURE.DEFAULT_OUTPUT_FAMILY_MIX),
                     "--format",
@@ -1055,6 +1061,12 @@ def build_command_plan(
                     rel(ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"),
                     "--artifact-dir",
                     str(artifact_dir),
+                    "--requested-release-zone-batch-size",
+                    str(requested_release_zone_batch_size),
+                    "--requested-reducer-chunk-count",
+                    str(requested_reducer_chunk_count),
+                    "--requested-reducer-worker-count",
+                    str(requested_reducer_worker_count),
                     "--format",
                     "json",
                 ]

@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-286: Smallest Multi-Zone Authorization Package Refresh
-
-Goal: Rebuild the smallest two-zone Balfrin authorization package after reducer-budget compression and produce a clean authorization-ready record.
-
-Capability gap reduced: The previous multi-zone path had both reducer-budget and authorization-record blockers.
-
-Why this outranks alternatives: A live multi-zone probe should only be considered after the package, output profile, access, authorization record, and preservation gates agree.
-
-Inspect first:
-
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-- `tests/test_balfrin_authorization_gated_multi_zone_measurement_path.py`
-
-Deliverables:
-
-- A refreshed two-zone authorization preflight with reviewed package hash, exact run shape, output profile, reducer budget, remote hygiene, access state, preservation contract, and authorization-record path.
-- Text and JSON summaries suitable for user review before any live job.
-- Tests proving missing authorization, blocked budget, dirty remote hygiene, and ready-for-review states are distinct.
-
-Definition of done:
-
-- The smallest multi-zone path has one authoritative authorization package with no stale budget or package-hash ambiguity.
-
-Boundaries: Authorization package only; no live Balfrin submission, no scale-up, no distributed execution, no claim upgrade, and no operational claim.
-
 ### TB-287: Smallest Multi-Zone Balfrin Probe
 
 Goal: Execute or fail closed on the exact smallest bounded two-zone Balfrin postproc probe after all authorization and budget gates are ready.

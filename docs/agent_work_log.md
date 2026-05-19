@@ -2375,3 +2375,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: handoff and budget compression only; no live Balfrin submission, no `sbatch`, no dropped replayability, no distributed reducer, no physics change, no scale-up authorization, and no operational claim.
 - Next task: `TB-286`
+
+### TB-286: Smallest Multi-Zone Authorization Package Refresh
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: refresh the smallest two-zone Balfrin authorization package after reducer-budget compression and preserve a clean user-review record before any live job.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rebound the handoff command-plan budget projection to the requested two-zone authorization shape instead of the older 12-zone pressure command, while keeping the measured 12-zone scratch probe as the reducer constraint source.
+  - Refreshed the package under `/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1`; reviewed package hash is `9662e86553962284bfeedf27d9d8f40f57837da5c51a8ff26d08d165aedef2a1`, reducer budget is `ready`, output profile is `ready`, and the two-zone projection reports `budget_passes_no_reduction_needed`.
+  - Updated `validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml` with exact run shape, output profile, reducer budget, package hash, authorization-record path, remote hygiene state, and `/tmp` JSON/text summary paths.
+  - Preserved fail-closed blockers distinctly: Balfrin access is currently `blocked_dirty_remote_checkout`, the authorization record is missing, and no submit command was executed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-286 --format json`
+  - `rg -n "^### TB-286:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py scripts/check_balfrin_remote_access_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_authorization_gated_multi_zone_measurement_path -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json --json-output /tmp/tb286_handoff_package.json --text-output /tmp/tb286_handoff_package.txt`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb286_balfrin_access_preflight.json` (exit 2, expected dirty-remote blocker)
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb286_balfrin_access_preflight.json --json-output /tmp/tb286_authorization_preflight.json --text-output /tmp/tb286_authorization_preflight.txt --format json` (exit 2, expected access blocker)
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py --authorization-preflight /tmp/tb286_authorization_preflight.json --balfrin-access-json /tmp/tb286_balfrin_access_preflight.json --json-output /tmp/tb286_measurement_path.json --text-output /tmp/tb286_measurement_path.txt --format json` (exit 2, expected pre-authorization blocker)
+- Result/status: implemented_blocked_report
+- Boundaries: authorization package only; no `sbatch`, no live Balfrin submission, no remote cleanup, no scale-up, no distributed execution, no annual-frequency semantics, no physical-probability claim, no operational claim, and no risk/exposure/vulnerability product.
+- Next task: `TB-287`
