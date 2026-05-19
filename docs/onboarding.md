@@ -187,6 +187,10 @@ not a Swiss-wide production hazard service. New contributors should assume:
   candidate-source-zone scenario generation, ignored output roots, command-plan
   references, blocked case-skeleton handoff bundles, and planning-only GIS
   scope summaries.
+- `scripts/run_aoi_hazard_workflow.py status` is the front door for that path;
+  it now surfaces normalized `workflow_status`, `first_blocker`,
+  `next_command`, `expected_inputs`, and `expected_outputs` fields directly in
+  text and JSON output.
 - Chant Sura / Fluelapass remains a second-site readiness/acquisition track;
   synthetic fixtures and AOI automation outputs are not public-context,
   validation, calibration, source-frequency, or block-population evidence.

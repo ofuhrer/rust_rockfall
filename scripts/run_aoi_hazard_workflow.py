@@ -14,6 +14,7 @@ import copy
 import importlib.util
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,16 @@ DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.y
 DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
 SUPPORTED_COMMANDS = ("status", "prepare", "plan", "run-local-smoke", "submit-balfrin", "collect", "package-map")
 PREPARE_SCHEMA_VERSION = "aoi_hazard_prepare_front_door_v1"
+STATUS_READY = "ready"
+STATUS_BLOCKED = "blocked_missing_inputs"
+STATUS_INVALID_INPUT = "blocked_invalid_input"
+STATUS_INTERNAL_ERROR = "blocked_internal_error"
+STATUS_EXIT_CODES = {
+    STATUS_READY: 0,
+    STATUS_BLOCKED: 2,
+    STATUS_INVALID_INPUT: 64,
+    STATUS_INTERNAL_ERROR: 70,
+}
 
 
 def _load_module(module_name: str, filename: str):
@@ -58,24 +69,37 @@ GIS_COG = _load_module("aoi_hazard_front_door_gis_cog", "audit_gis_cog_package_r
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    report = build_report(
-        command=args.command,
-        site_config=args.site_config,
-        repo_root=args.repo_root,
-        release_polygon=args.release_polygon,
-        acquisition_package_path=args.acquisition_package_path,
-        artifact_root=args.artifact_root,
-        smoke_case_path=args.smoke_case_path,
-        smoke_output_root=args.smoke_output_root,
-    )
+    if args.command == "status":
+        report = build_status_report(
+            command=args.command,
+            site_config=args.site_config,
+            repo_root=args.repo_root,
+            release_polygon=args.release_polygon,
+            acquisition_package_path=args.acquisition_package_path,
+            artifact_root=args.artifact_root,
+            smoke_case_path=args.smoke_case_path,
+            smoke_output_root=args.smoke_output_root,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_status_text_report(report)
+    else:
+        report = build_report(
+            command=args.command,
+            site_config=args.site_config,
+            repo_root=args.repo_root,
+            release_polygon=args.release_polygon,
+            acquisition_package_path=args.acquisition_package_path,
+            artifact_root=args.artifact_root,
+            smoke_case_path=args.smoke_case_path,
+            smoke_output_root=args.smoke_output_root,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
-    return 0 if not str(report["status"]).startswith("blocked") else 2
+    return status_exit_code(report) if args.command == "status" else (0 if not str(report["status"]).startswith("blocked") else 2)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -152,6 +176,137 @@ def build_report(
         },
     }
     return report
+
+
+def build_status_report(
+    *,
+    command: str,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None = None,
+    acquisition_package_path: Path | None = None,
+    artifact_root: Path | None = None,
+    smoke_case_path: Path | None = None,
+    smoke_output_root: Path | None = None,
+) -> dict[str, Any]:
+    try:
+        if command not in SUPPORTED_COMMANDS:
+            raise FrontDoorStatusInvalidInputError(
+                f"unsupported command state: {command}; supported commands: {', '.join(SUPPORTED_COMMANDS)}",
+            )
+        validate_site_config_for_status(site_config)
+        detailed_report = build_report(
+            command=command,
+            site_config=site_config,
+            repo_root=repo_root,
+            release_polygon=release_polygon,
+            acquisition_package_path=acquisition_package_path,
+            artifact_root=artifact_root,
+            smoke_case_path=smoke_case_path,
+            smoke_output_root=smoke_output_root,
+        )
+    except FrontDoorStatusInvalidInputError as exc:
+        return build_status_failure_report(
+            workflow_status=STATUS_INVALID_INPUT,
+            command=command,
+            site_config=site_config,
+            next_action="fix site config and rerun",
+            first_blocker={
+                "step_id": "command",
+                "label": "Unsupported command state",
+                "status": STATUS_INVALID_INPUT,
+                "blocked_reason": str(exc),
+                "expected_inputs": list(SUPPORTED_COMMANDS),
+                "expected_outputs": [],
+                "next_command": build_status_next_command(
+                    "status",
+                    site_config=site_config,
+                    repo_root=repo_root,
+                    release_polygon=release_polygon,
+                    acquisition_package_path=acquisition_package_path,
+                    artifact_root=artifact_root,
+                    smoke_case_path=smoke_case_path,
+                    smoke_output_root=smoke_output_root,
+                ),
+            },
+            expected_inputs=list(SUPPORTED_COMMANDS),
+            expected_outputs=[],
+            claim_boundaries=default_claim_boundaries(),
+            candidate_site_id="",
+            candidate_site_name="",
+        )
+    except FrontDoorStatusInvalidSiteConfigError as exc:
+        return build_status_failure_report(
+            workflow_status=STATUS_INVALID_INPUT,
+            command=command,
+            site_config=site_config,
+            next_action="fix site config and rerun",
+            first_blocker={
+                "step_id": "site_config",
+                "label": "Invalid site config",
+                "status": STATUS_INVALID_INPUT,
+                "blocked_reason": str(exc),
+                "expected_inputs": [str(site_config)],
+                "expected_outputs": [],
+                "next_command": build_status_next_command(
+                    "status",
+                    site_config=site_config,
+                    repo_root=repo_root,
+                    release_polygon=release_polygon,
+                    acquisition_package_path=acquisition_package_path,
+                    artifact_root=artifact_root,
+                    smoke_case_path=smoke_case_path,
+                    smoke_output_root=smoke_output_root,
+                ),
+            },
+            expected_inputs=[str(site_config)],
+            expected_outputs=[],
+            claim_boundaries=default_claim_boundaries(),
+            candidate_site_id="",
+            candidate_site_name="",
+        )
+    except Exception as exc:  # pragma: no cover - defensive fail-closed wrapper.
+        return build_status_failure_report(
+            workflow_status=STATUS_INTERNAL_ERROR,
+            command=command,
+            site_config=site_config,
+            next_action="inspect the error and rerun",
+            first_blocker={
+                "step_id": "internal_error",
+                "label": "Internal error",
+                "status": STATUS_INTERNAL_ERROR,
+                "blocked_reason": str(exc),
+                "expected_inputs": [],
+                "expected_outputs": [],
+                "next_command": build_status_next_command(
+                    "status",
+                    site_config=site_config,
+                    repo_root=repo_root,
+                    release_polygon=release_polygon,
+                    acquisition_package_path=acquisition_package_path,
+                    artifact_root=artifact_root,
+                    smoke_case_path=smoke_case_path,
+                    smoke_output_root=smoke_output_root,
+                ),
+            },
+            expected_inputs=[],
+            expected_outputs=[],
+            claim_boundaries=default_claim_boundaries(),
+            candidate_site_id="",
+            candidate_site_name="",
+        )
+
+    return normalize_status_report(
+        command=command,
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+        detailed_report=detailed_report,
+    )
 
 
 def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any]:
@@ -436,6 +591,401 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
             "ready_for_next_step": {"status": "smoke_completed", "next_step": "none"},
         },
     }
+
+
+class FrontDoorStatusInvalidInputError(ValueError):
+    pass
+
+
+class FrontDoorStatusInvalidSiteConfigError(ValueError):
+    pass
+
+
+def validate_site_config_for_status(site_config: Path) -> None:
+    if not site_config.exists():
+        return
+    try:
+        raw = site_config.read_text(encoding="utf-8")
+    except OSError as exc:  # pragma: no cover - filesystem failure.
+        raise FrontDoorStatusInvalidSiteConfigError(f"unable to read site config: {site_config}") from exc
+    try:
+        parsed = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise FrontDoorStatusInvalidSiteConfigError(f"invalid YAML site config: {site_config}") from exc
+    if parsed is not None and not isinstance(parsed, dict):
+        raise FrontDoorStatusInvalidSiteConfigError(f"site config must be a mapping: {site_config}")
+
+
+def default_claim_boundaries() -> dict[str, Any]:
+    return {
+        "operational_claims_allowed": False,
+        "scale_up_authorized": False,
+        "annual_frequency_claims_allowed": False,
+        "physical_probability_claims_allowed": False,
+        "risk_exposure_vulnerability_claims_allowed": False,
+    }
+
+
+def normalize_status_report(
+    *,
+    command: str,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None,
+    acquisition_package_path: Path | None,
+    artifact_root: Path | None,
+    smoke_case_path: Path | None,
+    smoke_output_root: Path | None,
+    detailed_report: dict[str, Any],
+) -> dict[str, Any]:
+    next_action = resolve_next_action(command, aoi_report=detailed_report, package_report=build_package_report(artifact_root or DEFAULT_ARTIFACT_ROOT))
+    first_blocker = normalize_first_blocker(
+        detailed_report=detailed_report,
+        command=command,
+        next_action=next_action,
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+    )
+    expected_inputs = first_blocker.get("expected_inputs", []) if isinstance(first_blocker, dict) else []
+    expected_outputs = (
+        first_blocker.get("expected_outputs", []) if isinstance(first_blocker, dict) else []
+    ) or expected_outputs_for_next_action(
+        next_action,
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+    )
+    claim_boundaries = dict(resolve_claim_boundaries(command, aoi_report=detailed_report, package_report=build_package_report(artifact_root or DEFAULT_ARTIFACT_ROOT)))
+    claim_boundaries.setdefault("notes", [
+        "read-only front door only",
+        "no simulation, no live Balfrin submission, and no claim upgrade",
+    ])
+    workflow_status = normalize_workflow_status(command, detailed_report)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "workflow_status": workflow_status,
+        "next_action": next_action,
+        "first_blocker": first_blocker,
+        "next_command": build_status_next_command(
+            next_action,
+            site_config=site_config,
+            repo_root=repo_root,
+            release_polygon=release_polygon,
+            acquisition_package_path=acquisition_package_path,
+            artifact_root=artifact_root,
+            smoke_case_path=smoke_case_path,
+            smoke_output_root=smoke_output_root,
+        ),
+        "expected_inputs": expected_inputs,
+        "expected_outputs": expected_outputs,
+        "claim_boundaries": claim_boundaries,
+        "candidate_site_id": detailed_report.get("candidate_site_id", ""),
+        "candidate_site_name": detailed_report.get("candidate_site_name", ""),
+    }
+
+
+def build_status_failure_report(
+    *,
+    workflow_status: str,
+    command: str,
+    site_config: Path,
+    next_action: str,
+    first_blocker: dict[str, Any],
+    expected_inputs: list[str],
+    expected_outputs: list[str],
+    claim_boundaries: dict[str, Any],
+    candidate_site_id: str,
+    candidate_site_name: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "workflow_status": workflow_status,
+        "next_action": next_action,
+        "first_blocker": first_blocker,
+        "next_command": first_blocker.get("next_command", ""),
+        "expected_inputs": expected_inputs,
+        "expected_outputs": expected_outputs,
+        "claim_boundaries": claim_boundaries,
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "site_config": str(site_config),
+    }
+
+
+def normalize_workflow_status(command: str, detailed_report: dict[str, Any]) -> str:
+    if command not in SUPPORTED_COMMANDS:
+        return STATUS_INVALID_INPUT
+    status = str(detailed_report.get("status") or detailed_report.get("workflow_classification") or STATUS_BLOCKED)
+    if status in {STATUS_READY, "ready_for_next_step"}:
+        return STATUS_READY
+    if status.startswith("blocked_invalid") or status == "invalid_input":
+        return STATUS_INVALID_INPUT
+    if status.startswith("blocked"):
+        return STATUS_BLOCKED
+    return STATUS_BLOCKED
+
+
+def normalize_first_blocker(
+    *,
+    detailed_report: dict[str, Any],
+    command: str,
+    next_action: str,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None,
+    acquisition_package_path: Path | None,
+    artifact_root: Path | None,
+    smoke_case_path: Path | None,
+    smoke_output_root: Path | None,
+) -> dict[str, Any] | None:
+    if command == "status" and detailed_report.get("workflow_classification") == "ready_for_next_step":
+        return None
+    if command == "package-map":
+        package_blocker = resolve_first_blocker(command, aoi_report=detailed_report, package_report=build_package_report(artifact_root or DEFAULT_ARTIFACT_ROOT))
+        return normalize_blocker_dict(
+            package_blocker,
+            next_action=next_action,
+            next_command=build_status_next_command(
+                next_action,
+                site_config=site_config,
+                repo_root=repo_root,
+                release_polygon=release_polygon,
+                acquisition_package_path=acquisition_package_path,
+                artifact_root=artifact_root,
+                smoke_case_path=smoke_case_path,
+                smoke_output_root=smoke_output_root,
+            ),
+        )
+    step = first_non_ready_step_report(detailed_report)
+    if step is None:
+        blocker = resolve_first_blocker(command, aoi_report=detailed_report, package_report=build_package_report(artifact_root or DEFAULT_ARTIFACT_ROOT))
+        return normalize_blocker_dict(
+            blocker,
+            next_action=next_action,
+            next_command=build_status_next_command(
+                next_action,
+                site_config=site_config,
+                repo_root=repo_root,
+                release_polygon=release_polygon,
+                acquisition_package_path=acquisition_package_path,
+                artifact_root=artifact_root,
+                smoke_case_path=smoke_case_path,
+                smoke_output_root=smoke_output_root,
+            ),
+        )
+    blocker = resolve_first_blocker(command, aoi_report=detailed_report, package_report=build_package_report(artifact_root or DEFAULT_ARTIFACT_ROOT))
+    expected_outputs = expected_outputs_for_next_action(
+        next_action,
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+    )
+    normalized = normalize_blocker_dict(
+        blocker,
+        next_action=next_action,
+        next_command=build_status_next_command(
+            next_action,
+            site_config=site_config,
+            repo_root=repo_root,
+            release_polygon=release_polygon,
+            acquisition_package_path=acquisition_package_path,
+            artifact_root=artifact_root,
+            smoke_case_path=smoke_case_path,
+            smoke_output_root=smoke_output_root,
+        ),
+    )
+    normalized["expected_outputs"] = expected_outputs
+    if not normalized.get("expected_inputs"):
+        normalized["expected_inputs"] = list(step.get("expected_inputs", []))
+    return normalized
+
+
+def normalize_blocker_dict(blocker: dict[str, Any], *, next_action: str, next_command: str) -> dict[str, Any]:
+    missing_inputs = blocker.get("missing_inputs", [])
+    expected_inputs = [str(item) for item in missing_inputs if str(item)]
+    return {
+        "step_id": blocker.get("step_id", ""),
+        "label": blocker.get("label", blocker.get("step_id", "")),
+        "status": normalize_status_label(str(blocker.get("status") or STATUS_BLOCKED)),
+        "blocked_reason": blocker.get("blocked_reason", ""),
+        "expected_inputs": expected_inputs,
+        "expected_outputs": [],
+        "next_action": next_action,
+        "next_command": next_command,
+    }
+
+
+def normalize_status_label(status: str) -> str:
+    if status in {STATUS_READY, "ready_for_next_step", "ready"}:
+        return STATUS_READY
+    if status in {STATUS_INVALID_INPUT, "invalid_input"} or status.startswith("blocked_invalid"):
+        return STATUS_INVALID_INPUT
+    if status.startswith("blocked"):
+        return STATUS_BLOCKED
+    return status
+
+
+def build_status_next_command(
+    next_action: str,
+    *,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None,
+    acquisition_package_path: Path | None,
+    artifact_root: Path | None,
+    smoke_case_path: Path | None,
+    smoke_output_root: Path | None,
+) -> str:
+    base = [
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/run_aoi_hazard_workflow.py",
+        next_action,
+        "--site-config",
+        shlex.quote(str(site_config)),
+        "--repo-root",
+        shlex.quote(str(repo_root)),
+        "--acquisition-package-path",
+        shlex.quote(str(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)),
+        "--artifact-root",
+        shlex.quote(str(artifact_root or DEFAULT_ARTIFACT_ROOT)),
+    ]
+    if release_polygon is not None:
+        base.extend(["--release-polygon", shlex.quote(str(release_polygon))])
+    if smoke_case_path is not None:
+        base.extend(["--smoke-case-path", shlex.quote(str(smoke_case_path))])
+    if smoke_output_root is not None:
+        base.extend(["--smoke-output-root", shlex.quote(str(smoke_output_root))])
+    base.extend(["--format", "json"])
+    return " ".join(base)
+
+
+def expected_outputs_for_next_action(
+    next_action: str,
+    *,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None,
+    acquisition_package_path: Path | None,
+    artifact_root: Path | None,
+    smoke_case_path: Path | None,
+    smoke_output_root: Path | None,
+) -> list[str]:
+    if next_action == "run-local-smoke":
+        smoke_case = smoke_case_path or DEFAULT_LOCAL_SMOKE_CASE
+        smoke_root = smoke_output_root or DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT
+        return [
+            str(smoke_root / "validation" / "results" / "probabilistic_phase1_smoke_manifest.json"),
+            str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke" / "probabilistic_phase1_smoke_map_package_manifest.json"),
+            str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke" / "probabilistic_phase1_smoke_pilot_gis_package_manifest.json"),
+            str(smoke_case),
+        ]
+    if next_action in {"prepare", "plan", "package-map", "collect", "submit-balfrin"}:
+        try:
+            report = build_report(
+                command=next_action,
+                site_config=site_config,
+                repo_root=repo_root,
+                release_polygon=release_polygon,
+                acquisition_package_path=acquisition_package_path,
+                artifact_root=artifact_root,
+                smoke_case_path=smoke_case_path,
+                smoke_output_root=smoke_output_root,
+            )
+        except Exception:
+            return []
+        return flatten_status_paths(report.get("expected_paths", {}))
+    return []
+
+
+def flatten_status_paths(value: Any) -> list[str]:
+    items: list[str] = []
+    if isinstance(value, str):
+        if value:
+            items.append(value)
+        return items
+    if isinstance(value, list):
+        for item in value:
+            items.extend(flatten_status_paths(item))
+        return items
+    if isinstance(value, dict):
+        for key in ("expected_staged_path", "expected_input_path", "expected_output_path", "path", "artifact_root", "case_skeleton_path"):
+            item = value.get(key)
+            if isinstance(item, str) and item:
+                items.append(item)
+        for item in value.values():
+            if isinstance(item, (dict, list)):
+                items.extend(flatten_status_paths(item))
+            elif isinstance(item, str) and item and item not in items:
+                items.append(item)
+    return dedupe(items)
+
+
+def dedupe(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in items:
+        if item in seen or not item:
+            continue
+        seen.add(item)
+        ordered.append(item)
+    return ordered
+
+
+def status_exit_code(report: dict[str, Any]) -> int:
+    return STATUS_EXIT_CODES.get(str(report.get("workflow_status") or STATUS_BLOCKED), 2)
+
+
+def render_status_text_report(report: dict[str, Any]) -> str:
+    lines = [
+        f"schema_version: {report['schema_version']}",
+        f"command: {report['command']}",
+        f"workflow_status: {report['workflow_status']}",
+        f"next_action: {report['next_action']}",
+        f"next_command: {report['next_command']}",
+        "first_blocker:",
+    ]
+    blocker = report.get("first_blocker")
+    if isinstance(blocker, dict):
+        lines.append(f"- step_id: {blocker.get('step_id', '')}")
+        lines.append(f"- label: {blocker.get('label', '')}")
+        lines.append(f"- status: {blocker.get('status', '')}")
+        lines.append(f"- blocked_reason: {blocker.get('blocked_reason', '')}")
+    else:
+        lines.append("- none")
+    lines.append("expected_inputs:")
+    lines.extend(f"- {item}" for item in report.get("expected_inputs", []) or [])
+    if not report.get("expected_inputs"):
+        lines.append("- none")
+    lines.append("expected_outputs:")
+    lines.extend(f"- {item}" for item in report.get("expected_outputs", []) or [])
+    if not report.get("expected_outputs"):
+        lines.append("- none")
+    lines.append("claim_boundaries:")
+    for key, value in sorted(report.get("claim_boundaries", {}).items()):
+        if key == "notes" and isinstance(value, list):
+            lines.append(f"- {key}:")
+            lines.extend(f"  - {item}" for item in value)
+        else:
+            lines.append(f"- {key}: {value}")
+    return "\n".join(lines)
 
 
 def rewrite_smoke_case(case: dict[str, Any], smoke_output_root: Path) -> dict[str, Any]:

@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-277: AOI Front-Door Status UX Tightening
-
-Goal: Normalize the AOI front-door status output so the text and JSON modes are concise, stable, and directly actionable for a new user.
-
-Capability gap reduced: The front door exists, but user-visible status still exposes internal helper vocabulary and can be noisy or uneven across blocked states.
-
-Why this outranks alternatives: Better status semantics reduce wasted worker/user time before adding more execution paths.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `docs/onboarding.md`
-- `README.md`
-
-Deliverables:
-
-- Stable status fields for `workflow_status`, `next_action`, `first_blocker`, `next_command`, `expected_inputs`, `expected_outputs`, and `claim_boundaries`.
-- Consistent exit-code policy for ready, blocked, invalid input, and internal error states.
-- Tests for text and JSON output on ready fixture, blocked missing inputs, invalid site config, and unsupported command state.
-
-Definition of done:
-
-- A new user can run the front-door status command and understand the first blocker and next command without inspecting nested delegate reports.
-
-Boundaries: UX/status normalization only; no simulation, no live Balfrin submission, no claim upgrade, and no heavy outputs committed.
-
 ### TB-278: AOI Release Candidate Review Editing Loop
 
 Goal: Provide a deterministic command for applying user review decisions to release-zone candidate packages and validating the edited review state.

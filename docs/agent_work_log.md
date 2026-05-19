@@ -2177,3 +2177,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: fixture/regression only; no heavy data, no live Balfrin submission, no physical credibility claim, no annual-frequency semantics, no operational claim, and no real-world hazard product.
 - Next task: `TB-277`
+
+### TB-277: AOI Front-Door Status UX Tightening
+
+- Date: 2026-05-19
+- Commit: to be recorded
+- Objective: normalize the AOI front-door `status` output so text and JSON modes surface stable, directly actionable fields without helper-vocabulary noise.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `README.md`, `docs/onboarding.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a normalized `status`-mode front-door report with explicit `workflow_status`, `next_action`, `first_blocker`, `next_command`, `expected_inputs`, `expected_outputs`, and `claim_boundaries` fields.
+  - Classified malformed site config and unsupported-command state as invalid input, and reserved a separate internal-error exit path for unexpected failures.
+  - Kept the detailed helper reports available for existing callers while tightening the user-facing text and JSON output to the concise status surface.
+  - Updated onboarding and README guidance, removed TB-277 from the active backlog, and added focused tests for ready, blocked, invalid-input, and unsupported-command status paths.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_renders_concise_text_and_json_for_ready_report tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_reports_blocked_missing_inputs_in_text_and_json tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_rejects_invalid_site_config_with_exit_code_64 tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_build_report_marks_unsupported_command_state_as_invalid_input tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_clean_checkout_status_reports_the_first_blocker_and_prepare_next_step`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow`
+- `git diff --check`
+- `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- `scripts/git-hooks/pre-commit`
+- `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- `git status --short`
+- Result/status: completed
+- Boundaries: UX/status normalization only; no simulation, no live Balfrin submission, no claim upgrade, and no heavy outputs committed.
+- Next task: `TB-278`

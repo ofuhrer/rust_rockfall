@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import io
 import hashlib
+import json
 import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stdout
 from unittest import mock
 
 import yaml
@@ -32,6 +35,12 @@ staging = _load_module(
 
 
 class RunAoiHazardWorkflowTests(unittest.TestCase):
+    def _run_main(self, args: list[str]) -> tuple[int, str]:
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            code = workflow.main(args)
+        return code, stdout.getvalue().strip()
+
     def test_command_dispatch_routes_to_the_expected_backend_view(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
@@ -192,6 +201,41 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(report["workflow_summary"]["blocked_step_count"], 0)
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
+    def test_status_main_renders_concise_text_and_json_for_ready_report(self) -> None:
+        ready_report = {
+            "schema_version": workflow.SCHEMA_VERSION,
+            "command": "status",
+            "workflow_status": "ready",
+            "next_action": "submit-balfrin",
+            "first_blocker": None,
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py submit-balfrin --format json",
+            "expected_inputs": [],
+            "expected_outputs": ["submission request", "submission summary"],
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+            "candidate_site_name": "Chant Sura / Flüelapass portability example",
+        }
+
+        with mock.patch.object(workflow, "build_status_report", return_value=ready_report):
+            text_code, text_output = self._run_main(["status", "--format", "text"])
+            json_code, json_output = self._run_main(["status", "--format", "json"])
+
+        self.assertEqual(text_code, 0)
+        self.assertEqual(json_code, 0)
+        self.assertIn("workflow_status: ready", text_output)
+        self.assertIn("next_command: PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py submit-balfrin --format json", text_output)
+        self.assertNotIn("delegate_statuses", text_output)
+        parsed = json.loads(json_output)
+        self.assertEqual(parsed["workflow_status"], "ready")
+        self.assertEqual(parsed["next_action"], "submit-balfrin")
+        self.assertEqual(parsed["expected_outputs"], ["submission request", "submission summary"])
+
     def test_fixture_backed_status_aggregation_surfaces_expected_paths_and_claim_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as scratch:
             repo_root = Path(tmp)
@@ -236,6 +280,79 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
         self.assertEqual(report["delegate_statuses"]["aoi_workflow"], report["workflow_summary"]["workflow_classification"])
+
+    def test_status_main_reports_blocked_missing_inputs_in_text_and_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+
+            text_code, text_output = self._run_main([
+                "status",
+                "--site-config",
+                str(config_path),
+                "--repo-root",
+                str(repo_root),
+                "--format",
+                "text",
+            ])
+            json_code, json_output = self._run_main([
+                "status",
+                "--site-config",
+                str(config_path),
+                "--repo-root",
+                str(repo_root),
+                "--format",
+                "json",
+            ])
+
+        self.assertEqual(text_code, 2)
+        self.assertEqual(json_code, 2)
+        self.assertIn("workflow_status:", text_output)
+        self.assertIn("first_blocker:", text_output)
+        parsed = json.loads(json_output)
+        self.assertTrue(parsed["workflow_status"].startswith("blocked"))
+        self.assertTrue(parsed["next_command"])
+        self.assertIsInstance(parsed["expected_inputs"], list)
+
+    def test_status_main_rejects_invalid_site_config_with_exit_code_64(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            bad_config = repo_root / "site_config.yaml"
+            bad_config.write_text("candidate_site_id: [unterminated\n", encoding="utf-8")
+
+            code, output = self._run_main([
+                "status",
+                "--site-config",
+                str(bad_config),
+                "--repo-root",
+                str(repo_root),
+                "--format",
+                "json",
+            ])
+
+        self.assertEqual(code, 64)
+        parsed = json.loads(output)
+        self.assertEqual(parsed["workflow_status"], "blocked_invalid_input")
+        self.assertEqual(parsed["first_blocker"]["step_id"], "site_config")
+        self.assertTrue(parsed["next_command"])
+
+    def test_status_build_report_marks_unsupported_command_state_as_invalid_input(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+
+            report = workflow.build_status_report(
+                command="bogus",
+                site_config=config_path,
+                repo_root=repo_root,
+                acquisition_package_path=ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+                artifact_root=ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
+            )
+
+        self.assertEqual(report["workflow_status"], "blocked_invalid_input")
+        self.assertEqual(report["first_blocker"]["step_id"], "command")
+        self.assertIn("run_aoi_hazard_workflow.py status", report["next_command"])
+        self.assertEqual(workflow.status_exit_code(report), 64)
 
     def test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

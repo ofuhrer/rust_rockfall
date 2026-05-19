@@ -40,6 +40,11 @@ evidence overlay hook. It does not yet download all public inputs, run
 arbitrary real AOIs end to end, execute second-site ensembles, or generate
 physically annualized intensity-frequency products.
 
+The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
+normalized `workflow_status`, `first_blocker`, `next_command`,
+`expected_inputs`, and `expected_outputs` set so the next step is visible
+without digging through nested helper reports.
+
 The second-site and physical-evidence boundaries are stricter than in earlier
 milestones: Chant Sura / Fluelapass real-core inputs are classified as real,
 fixture-backed, partial, missing, or metadata-mismatched before any
