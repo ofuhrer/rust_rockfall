@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-326: Release-Zone Stability Ranking For Scale
-
-Goal: Rank automatically generated release-zone candidates by stability under slope threshold, smoothing, terrain resolution, and AOI-boundary perturbations.
-
-Capability gap reduced: Candidate generation needs defensible prioritization before many-zone scenario generation and Balfrin execution.
-
-Why this outranks alternatives: Running every heuristic candidate is likely wasteful; stability ranking gives a reproducible way to choose bounded probe subsets.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/swisstopo_data_strategy.md`
-- `tests/test_balfrin_target_area_candidate_stability.py`
-
-Deliverables:
-
-- Stability-score summary for candidate polygons with stable/unstable/sensitive classifications.
-- Deterministic top-N candidate selection for two-zone, four-zone, and eight-zone bounded probes.
-- Tests proving ranking is stable and does not depend on filesystem ordering.
-
-Definition of done:
-
-- A later worker can select bounded multi-zone probe candidates from a deterministic stability ranking.
-
-Boundaries: Ranking heuristic only; no physical credibility, calibration, source-frequency, or operational release-zone claim.
-
 ### TB-327: Multi-Zone Scenario Table Stress Test
 
 Goal: Generate deterministic scenario tables for the selected stable release-zone candidates and measure scenario cardinality, manifest pressure, and output-root expectations.

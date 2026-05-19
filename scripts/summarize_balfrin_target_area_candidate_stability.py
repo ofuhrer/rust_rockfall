@@ -182,6 +182,8 @@ def build_report(
             "baseline_variant_id": candidate_sensitivity_report["baseline_variant_id"],
             "candidate_count_range": candidate_sensitivity_report["candidate_count_range"],
             "candidate_area_range_m2": candidate_sensitivity_report["candidate_area_range_m2"],
+            "stability_score_method": candidate_sensitivity_report["candidate_stability_score_method"],
+            "ranked_candidate_count": candidate_sensitivity_report["candidate_stability_ranking_count"],
             "stable_candidate_region": stable_region,
             "unstable_candidate_region": unstable_region,
             "heuristic_sensitive_candidate_region": heuristic_sensitive_region,
@@ -189,10 +191,14 @@ def build_report(
             "candidate_sensitivity_matrix": candidate_sensitivity_report["candidate_sensitivity_matrix"],
             "candidate_persistence_metrics": candidate_sensitivity_report["candidate_persistence_metrics"],
             "pairwise_overlap_summary": candidate_sensitivity_report["pairwise_overlap_summary"],
+            "candidate_stability_ranking": candidate_sensitivity_report["candidate_stability_ranking"],
+            "bounded_probe_candidate_selection": candidate_sensitivity_report["bounded_probe_candidate_selection"],
         },
         "candidate_region_classifications": candidate_sensitivity_report["candidate_region_classifications"],
         "candidate_sensitivity_matrix": candidate_sensitivity_report["candidate_sensitivity_matrix"],
         "candidate_persistence_metrics": candidate_sensitivity_report["candidate_persistence_metrics"],
+        "candidate_stability_ranking": candidate_sensitivity_report["candidate_stability_ranking"],
+        "bounded_probe_candidate_selection": candidate_sensitivity_report["bounded_probe_candidate_selection"],
         "candidate_sweep_summary": {
             "sweep_status": candidate_report["candidate_metrics_status"],
             "sweep_mode": "real_terrain_candidate_sweep",
@@ -459,6 +465,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Stable region class: `{report['candidate_stability_summary'].get('stable_candidate_region', {}).get('region_class', 'unknown')}`",
         f"- Unstable region class: `{report['candidate_stability_summary'].get('unstable_candidate_region', {}).get('region_class', 'unknown')}`",
         f"- Heuristic-sensitive region class: `{report['candidate_stability_summary'].get('heuristic_sensitive_candidate_region', {}).get('region_class', 'unknown')}`",
+        f"- Stability score method: `{report['candidate_stability_summary'].get('stability_score_method', 'n/a')}`",
+        f"- Ranked candidate count: `{report['candidate_stability_summary'].get('ranked_candidate_count', 'n/a')}`",
         "",
         "## Target Area",
         "",
@@ -506,6 +514,32 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(
             f"- {row['region_class']}: cell_count={row['cell_count']}, area_m2={row['area_m2']}, "
             f"component_count={row['component_count']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Candidate Ranking",
+            "",
+        ]
+    )
+    for row in report.get("candidate_stability_ranking", [])[:8]:
+        lines.append(
+            f"- rank {row['stability_rank']}: {row['candidate_release_zone_id']} "
+            f"score={row['stability_score']} class={row['candidate_stability_class']} "
+            f"cells={row['component_cell_count']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Bounded Probe Selection",
+            "",
+        ]
+    )
+    selection = report.get("bounded_probe_candidate_selection", {})
+    for selection_size in selection.get("selection_sizes", []):
+        selection_entry = selection.get("selection_by_size", {}).get(str(selection_size), {})
+        lines.append(
+            f"- top {selection_size} candidate ids: `{selection_entry.get('candidate_release_zone_ids', [])}`"
         )
     lines.extend(
         [

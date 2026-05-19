@@ -211,7 +211,8 @@ contract reporting, deterministic acquisition planning, a public-geodata cache
 verification contract, fixture-backed AOI terrain preprocessing, deterministic
 release-zone candidate sensitivity reporting, a measured real-terrain
 candidate sweep with runtime/output measurements and multi-zone readiness
-reporting, generic candidate-source-zone scenario generation, a site-level
+reporting, deterministic candidate stability ranking with bounded 2/4/8-zone
+probe selection, generic candidate-source-zone scenario generation, a site-level
 AOI-to-prepared-pilot dry-run composition, an optional ignored-root
 case-skeleton bundle with scenario-generation and GIS scope summaries, and
 explicit blocked/deferred boundaries for missing public-context products.

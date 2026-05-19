@@ -87,6 +87,11 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertEqual(first["candidate_stability_summary"]["candidate_count_range"], {"min": 22793, "max": 36751})
             self.assertEqual(first["candidate_stability_summary"]["candidate_area_range_m2"], {"min": 91172.0, "max": 147004.0})
             self.assertEqual(
+                first["candidate_stability_summary"]["stability_score_method"],
+                "minimum_retention_fraction_across_bounded_heuristic_variants",
+            )
+            self.assertEqual(first["candidate_stability_summary"]["ranked_candidate_count"], 390)
+            self.assertEqual(
                 [row["sensitivity_dimension"] for row in first["candidate_sensitivity_matrix"]],
                 ["slope_threshold", "smoothing", "terrain_resolution", "aoi_boundary"],
             )
@@ -98,6 +103,29 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
                 first["candidate_persistence_metrics"]["heuristic_sensitive_candidate_cell_count"],
                 16508,
             )
+            self.assertEqual(first["candidate_stability_ranking"][0]["stability_rank"], 1)
+            self.assertEqual(first["candidate_stability_ranking"][0]["candidate_stability_class"], "stable")
+            self.assertEqual(first["candidate_stability_ranking"][-1]["stability_rank"], 390)
+            self.assertIn(first["candidate_stability_ranking"][-1]["candidate_stability_class"], {"sensitive", "unstable"})
+            self.assertTrue(
+                any(row["candidate_stability_class"] == "sensitive" for row in first["candidate_stability_ranking"])
+            )
+            self.assertEqual(
+                first["bounded_probe_candidate_selection"]["selection_sizes"],
+                [2, 4, 8],
+            )
+            self.assertEqual(
+                first["bounded_probe_candidate_selection"]["selection_by_size"]["2"]["candidate_release_zone_ids"],
+                [row["candidate_release_zone_id"] for row in first["candidate_stability_ranking"][:2]],
+            )
+            self.assertEqual(
+                first["bounded_probe_candidate_selection"]["selection_by_size"]["4"]["candidate_release_zone_ids"],
+                [row["candidate_release_zone_id"] for row in first["candidate_stability_ranking"][:4]],
+            )
+            self.assertEqual(
+                first["bounded_probe_candidate_selection"]["selection_by_size"]["8"]["candidate_release_zone_ids"],
+                [row["candidate_release_zone_id"] for row in first["candidate_stability_ranking"][:8]],
+            )
             self.assertEqual(len(first["candidate_region_classifications"]), 3)
             self.assertFalse(first["scale_up_authorized"])
             self.assertFalse(first["operational_claims_allowed"])
@@ -107,6 +135,9 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertIn("stable_across_bounded_heuristics", report_text)
             self.assertIn("unstable_across_bounded_heuristics", report_text)
             self.assertIn("heuristic_sensitive_across_bounded_heuristics", report_text)
+            self.assertIn("## Candidate Ranking", report_text)
+            self.assertIn("## Bounded Probe Selection", report_text)
+            self.assertIn("top 2 candidate ids", report_text)
             self.assertIn("Persistence Metrics", report_text)
             self.assertIn("Sensitivity Matrix", report_text)
             self.assertIn("Sweep Measurements", report_text)
@@ -126,6 +157,28 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
         self.assertIn("Candidate metrics status: `ready`", text)
         self.assertIn("Candidate release-zone output mode: `both`", text)
         self.assertIn("Candidate release-zone output status: `not_emitted`", text)
+        self.assertIn("top 2 candidate ids", text)
+        self.assertIn("Stability score method", text)
+
+    def test_selection_is_order_independent(self) -> None:
+        report = MODULE.build_report()
+        ranked_candidates = list(report["candidate_stability_ranking"])
+        scrambled = list(reversed(ranked_candidates))
+
+        reordered_selection = MODULE.CANDIDATE_PLANNER.build_bounded_probe_candidate_selection(scrambled)
+
+        self.assertEqual(
+            reordered_selection["selection_by_size"]["2"]["candidate_release_zone_ids"],
+            report["bounded_probe_candidate_selection"]["selection_by_size"]["2"]["candidate_release_zone_ids"],
+        )
+        self.assertEqual(
+            reordered_selection["selection_by_size"]["4"]["candidate_release_zone_ids"],
+            report["bounded_probe_candidate_selection"]["selection_by_size"]["4"]["candidate_release_zone_ids"],
+        )
+        self.assertEqual(
+            reordered_selection["selection_by_size"]["8"]["candidate_release_zone_ids"],
+            report["bounded_probe_candidate_selection"]["selection_by_size"]["8"]["candidate_release_zone_ids"],
+        )
 
     def test_missing_inputs_are_reported_as_blocked(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

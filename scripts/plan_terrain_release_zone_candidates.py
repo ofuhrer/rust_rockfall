@@ -53,6 +53,9 @@ MIN_CANDIDATE_SLOPE_DEG = 30.0
 MAX_CANDIDATE_SLOPE_DEG = 55.0
 HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG = 2.0
 HEURISTIC_SENSITIVITY_FOOTPRINT_BUFFER_CELLS = 1
+STABILITY_SELECTION_SIZES = (2, 4, 8)
+STABILITY_STABLE_MIN_RETENTION_FRACTION = 0.9
+STABILITY_UNSTABLE_MAX_RETENTION_FRACTION = 0.5
 NODATA_SENTINEL = -9999.0
 
 
@@ -1289,6 +1292,13 @@ def build_candidate_sensitivity_report(
         unstable_region_summary,
         heuristic_sensitive_region_summary,
     ]
+    candidate_stability_ranking = build_candidate_stability_ranking(
+        terrain=terrain,
+        source_zone_metadata=source_zone_metadata,
+        baseline_candidate_mask=baseline_candidate_mask,
+        variant_masks=variant_masks,
+        variant_summaries=variant_summaries,
+    )
     return {
         "sensitivity_status": "ready",
         "sensitivity_scope": "bounded_threshold_smoothing_resolution_and_boundary_perturbations",
@@ -1314,6 +1324,10 @@ def build_candidate_sensitivity_report(
         "candidate_sensitivity_matrix": sensitivity_matrix,
         "candidate_persistence_metrics": candidate_persistence_metrics,
         "pairwise_overlap_summary": pairwise_overlap_summary,
+        "candidate_stability_score_method": candidate_stability_ranking["candidate_stability_score_method"],
+        "candidate_stability_ranking": candidate_stability_ranking["candidate_stability_ranking"],
+        "candidate_stability_ranking_count": candidate_stability_ranking["candidate_stability_ranking_count"],
+        "bounded_probe_candidate_selection": candidate_stability_ranking["bounded_probe_candidate_selection"],
         "claim_boundaries": {
             "heuristic_stability_characterization_only": True,
             "validated_release_zone_evidence": False,
@@ -1460,6 +1474,126 @@ def build_candidate_persistence_metrics(
     }
 
 
+def build_candidate_stability_ranking(
+    *,
+    terrain: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    baseline_candidate_mask: np.ndarray,
+    variant_masks: dict[str, np.ndarray],
+    variant_summaries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    components = connected_candidate_components(baseline_candidate_mask)
+    source_zone_id = text_value(source_zone_metadata.get("source_zone_id")) or "unknown_source_zone"
+    candidate_id_width = max(3, len(str(max(0, len(components) - 1))))
+    ordered_variant_ids = [summary["variant_id"] for summary in variant_summaries]
+
+    ranked_candidates: list[dict[str, Any]] = []
+    for component_index, component in enumerate(components):
+        candidate_release_zone_id = report_candidate_id(source_zone_id, component_index, candidate_id_width)
+        candidate_mask = np.zeros_like(baseline_candidate_mask, dtype=bool)
+        for row, col in component:
+            candidate_mask[row, col] = True
+
+        overlap_counts_by_variant: dict[str, int] = {}
+        retention_fractions_by_variant: dict[str, float] = {}
+        for variant_id in ordered_variant_ids:
+            variant_mask = variant_masks[variant_id]
+            overlap_count = int(np.logical_and(candidate_mask, variant_mask).sum())
+            overlap_counts_by_variant[variant_id] = overlap_count
+            retention_fractions_by_variant[variant_id] = fraction(overlap_count, len(component)) or 0.0
+
+        retention_values = list(retention_fractions_by_variant.values())
+        minimum_retention_fraction = float(min(retention_values)) if retention_values else 0.0
+        mean_retention_fraction = float(np.mean(retention_values)) if retention_values else 0.0
+        presence_fraction = float(sum(count > 0 for count in overlap_counts_by_variant.values())) / float(
+            len(overlap_counts_by_variant) or 1
+        )
+
+        if minimum_retention_fraction >= STABILITY_STABLE_MIN_RETENTION_FRACTION:
+            stability_class = "stable"
+        elif minimum_retention_fraction <= STABILITY_UNSTABLE_MAX_RETENTION_FRACTION:
+            stability_class = "unstable"
+        else:
+            stability_class = "sensitive"
+
+        ranked_candidates.append(
+            {
+                "candidate_release_zone_id": candidate_release_zone_id,
+                "baseline_component_index": component_index,
+                "component_cell_count": len(component),
+                "component_area_m2": len(component) * (terrain["cellsize"] ** 2),
+                "component_bbox_lv95_m": component_bbox(component, terrain),
+                "stability_score": minimum_retention_fraction,
+                "minimum_retention_fraction": minimum_retention_fraction,
+                "mean_retention_fraction": mean_retention_fraction,
+                "variant_presence_fraction": presence_fraction,
+                "variant_retention_fractions": retention_fractions_by_variant,
+                "variant_overlap_cell_counts": overlap_counts_by_variant,
+                "candidate_stability_class": stability_class,
+            }
+        )
+
+    ranked_candidates.sort(key=candidate_stability_rank_key)
+    for rank, entry in enumerate(ranked_candidates, start=1):
+        entry["stability_rank"] = rank
+
+    bounded_probe_candidate_selection = build_bounded_probe_candidate_selection(ranked_candidates)
+    return {
+        "candidate_stability_score_method": "minimum_retention_fraction_across_bounded_heuristic_variants",
+        "candidate_stability_ranking_count": len(ranked_candidates),
+        "candidate_stability_ranking": ranked_candidates,
+        "bounded_probe_candidate_selection": bounded_probe_candidate_selection,
+    }
+
+
+def candidate_stability_rank_key(candidate_summary: dict[str, Any]) -> tuple[Any, ...]:
+    bbox = candidate_summary.get("component_bbox_lv95_m", {}) or {}
+    return (
+        -float(candidate_summary.get("stability_score", 0.0)),
+        -float(candidate_summary.get("mean_retention_fraction", 0.0)),
+        -float(candidate_summary.get("variant_presence_fraction", 0.0)),
+        -int(candidate_summary.get("component_cell_count", 0)),
+        float(bbox.get("ymin", 0.0)),
+        float(bbox.get("xmin", 0.0)),
+        float(bbox.get("ymax", 0.0)),
+        float(bbox.get("xmax", 0.0)),
+        str(candidate_summary.get("candidate_release_zone_id", "")),
+    )
+
+
+def build_bounded_probe_candidate_selection(
+    ranked_candidates: list[dict[str, Any]],
+    selection_sizes: tuple[int, ...] = STABILITY_SELECTION_SIZES,
+) -> dict[str, Any]:
+    ordered_candidates = sorted(ranked_candidates, key=candidate_stability_rank_key)
+    selection_by_size: dict[str, dict[str, Any]] = {}
+    for selection_size in selection_sizes:
+        selected_candidates = ordered_candidates[:selection_size]
+        selection_by_size[str(selection_size)] = {
+            "selection_size": selection_size,
+            "candidate_release_zone_ids": [
+                candidate["candidate_release_zone_id"] for candidate in selected_candidates
+            ],
+            "candidate_rankings": [
+                {
+                    "stability_rank": candidate["stability_rank"],
+                    "candidate_release_zone_id": candidate["candidate_release_zone_id"],
+                    "candidate_stability_class": candidate["candidate_stability_class"],
+                    "stability_score": candidate["stability_score"],
+                    "mean_retention_fraction": candidate["mean_retention_fraction"],
+                    "variant_presence_fraction": candidate["variant_presence_fraction"],
+                    "component_cell_count": candidate["component_cell_count"],
+                    "component_area_m2": candidate["component_area_m2"],
+                }
+                for candidate in selected_candidates
+            ],
+        }
+    return {
+        "selection_sizes": list(selection_sizes),
+        "selection_by_size": selection_by_size,
+    }
+
+
 def summarize_distribution(values: list[float]) -> dict[str, float | None]:
     finite_values = [
         value
@@ -1559,6 +1693,20 @@ def candidate_sensitivity_report_stub() -> dict[str, Any]:
         "candidate_sensitivity_matrix": [],
         "candidate_persistence_metrics": {},
         "pairwise_overlap_summary": [],
+        "candidate_stability_score_method": "minimum_retention_fraction_across_bounded_heuristic_variants",
+        "candidate_stability_ranking_count": 0,
+        "candidate_stability_ranking": [],
+        "bounded_probe_candidate_selection": {
+            "selection_sizes": list(STABILITY_SELECTION_SIZES),
+            "selection_by_size": {
+                str(size): {
+                    "selection_size": size,
+                    "candidate_release_zone_ids": [],
+                    "candidate_rankings": [],
+                }
+                for size in STABILITY_SELECTION_SIZES
+            },
+        },
         "claim_boundaries": {
             "heuristic_stability_characterization_only": True,
             "validated_release_zone_evidence": False,
