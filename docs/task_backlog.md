@@ -39,37 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-315: User AOI Guided Pipeline Command
-
-Goal: Add a single guided command that takes AOI bounds or a bootstrapped AOI manifest and walks the user through status, prepare, local smoke, package-map, and QA-review steps.
-
-Capability gap reduced: The repo has many AOI pieces, but a user still needs to know which commands to run and when to stop.
-
-Why this outranks alternatives: A clear front door is required before arbitrary user-defined regions become practical.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A guided front-door mode, for example `workflow`, that accepts bounds or a site config and emits the next command sequence, executing safe local steps when requested.
-- Unified text and JSON output with current stage, first blocker, next command, generated artifact paths, and claim boundaries.
-- Tests for blocked missing geodata, ready fixture, local smoke/package-map path, and invalid AOI input.
-
-Definition of done:
-
-- A user can start from AOI bounds or a site config and get a deterministic guided path to a local diagnostic review map or one exact blocker.
-
-Boundaries: User-facing local workflow only; no network download unless a later task enables it, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy generated outputs committed.
-
 ### TB-316: Swisstopo Public Data Acquisition Driver
 
 Goal: Add an explicit opt-in public-data acquisition driver that can fetch or stage required swisstopo products for a user-defined AOI while preserving license, source, checksum, CRS, and provenance records.

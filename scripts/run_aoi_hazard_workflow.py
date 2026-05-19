@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -38,6 +39,7 @@ DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
 SUPPORTED_COMMANDS = (
     "status",
     "prepare",
+    "workflow",
     "plan",
     "run-local-smoke",
     "run-prepared-pilot-local",
@@ -51,6 +53,7 @@ STATUS_READY = "ready"
 STATUS_BLOCKED = "blocked_missing_inputs"
 STATUS_INVALID_INPUT = "blocked_invalid_input"
 STATUS_INTERNAL_ERROR = "blocked_internal_error"
+WORKFLOW_SCHEMA_VERSION = "aoi_hazard_workflow_front_door_v2"
 STATUS_EXIT_CODES = {
     STATUS_READY: 0,
     STATUS_BLOCKED: 2,
@@ -72,6 +75,7 @@ def _load_module(module_name: str, filename: str):
 
 AOI_WORKFLOW = _load_module("aoi_hazard_front_door_aoi_workflow", "summarize_chant_sura_fluelapass_dry_run_report.py")
 PREFLIGHT = _load_module("aoi_hazard_front_door_preflight", "check_second_site_public_geodata_preflight.py")
+BOOTSTRAP = _load_module("aoi_hazard_front_door_bootstrap", "bootstrap_aoi_manifest.py")
 AOI_ACQUISITION = _load_module("aoi_hazard_front_door_aoi_acquisition", "plan_swisstopo_aoi_acquisition.py")
 TERRAIN_PREP = _load_module("aoi_hazard_front_door_terrain_prep", "plan_aoi_terrain_preprocessing.py")
 RELEASE_CANDIDATES = _load_module("aoi_hazard_front_door_release_candidates", "plan_terrain_release_zone_candidates.py")
@@ -96,6 +100,24 @@ def main(argv: list[str] | None = None) -> int:
             smoke_output_root=args.smoke_output_root,
         )
         output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_status_text_report(report)
+    elif args.command == "workflow":
+        report = build_workflow_report(
+            site_config=args.site_config,
+            bounds=args.bounds,
+            site_id=args.site_id,
+            site_name=args.site_name,
+            workflow_output_root=args.workflow_output_root,
+            repo_root=args.repo_root,
+            release_polygon=args.release_polygon,
+            acquisition_package_path=args.acquisition_package_path,
+            artifact_root=args.artifact_root,
+            smoke_case_path=args.smoke_case_path,
+            smoke_output_root=args.smoke_output_root,
+            package_output_root=args.package_output_root,
+            review_output_root=args.review_output_root,
+            execute_safe_local_steps=args.execute_safe_local_steps,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_workflow_text_report(report)
     else:
         report = build_report(
             command=args.command,
@@ -118,7 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     print(output)
-    return status_exit_code(report) if args.command == "status" else (0 if not str(report["status"]).startswith("blocked") else 2)
+    if args.command == "status":
+        return status_exit_code(report)
+    return 0 if not str(report["status"]).startswith("blocked") else 2
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -129,8 +153,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--release-polygon", type=Path, default=None)
     parser.add_argument("--acquisition-package-path", type=Path, default=DEFAULT_ACQUISITION_PACKAGE)
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
+    parser.add_argument("--bounds", nargs=4, type=float, metavar=("XMIN", "YMIN", "XMAX", "YMAX"), default=None)
+    parser.add_argument("--site-id", type=str, default=None)
+    parser.add_argument("--site-name", type=str, default=None)
+    parser.add_argument("--workflow-output-root", type=Path, default=None)
     parser.add_argument("--smoke-case-path", type=Path, default=DEFAULT_LOCAL_SMOKE_CASE)
     parser.add_argument("--smoke-output-root", type=Path, default=DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT)
+    parser.add_argument("--package-output-root", type=Path, default=None)
+    parser.add_argument("--review-output-root", type=Path, default=None)
+    parser.add_argument("--execute-safe-local-steps", action="store_true")
     parser.add_argument("--prepared-pilot-report-path", type=Path, default=None)
     parser.add_argument("--prepared-pilot-output-root", type=Path, default=None)
     parser.add_argument("--validation-case-path", type=Path, default=DEFAULT_PREPARED_PILOT_VALIDATION_CASE)
@@ -210,6 +241,632 @@ def build_report(
             "gis_cog_schema_version": package_report.get("schema_version", ""),
         },
     }
+    return report
+
+
+def build_workflow_report(
+    *,
+    site_config: Path,
+    bounds: list[float] | None,
+    site_id: str | None,
+    site_name: str | None,
+    workflow_output_root: Path | None,
+    repo_root: Path,
+    release_polygon: Path | None = None,
+    acquisition_package_path: Path | None = None,
+    artifact_root: Path | None = None,
+    smoke_case_path: Path | None = None,
+    smoke_output_root: Path | None = None,
+    package_output_root: Path | None = None,
+    review_output_root: Path | None = None,
+    execute_safe_local_steps: bool = False,
+) -> dict[str, Any]:
+    try:
+        resolved_context = resolve_workflow_context(
+            site_config=site_config,
+            bounds=bounds,
+            site_id=site_id,
+            site_name=site_name,
+            workflow_output_root=workflow_output_root,
+            repo_root=repo_root,
+        )
+    except (BOOTSTRAP.BootstrapError, FrontDoorStatusInvalidSiteConfigError, FrontDoorStatusInvalidInputError, ValueError) as exc:
+        return build_workflow_failure_report(
+            status=STATUS_INVALID_INPUT,
+            current_stage="workflow",
+            blocked_reason=str(exc),
+            site_config=site_config,
+            workflow_output_root=workflow_output_root,
+            candidate_site_id=site_id or "",
+            candidate_site_name=site_name or "",
+        )
+    site_config = resolved_context["site_config"]
+    workflow_root = resolved_context["workflow_root"]
+    bootstrap_report = resolved_context["bootstrap_report"]
+    candidate_site_id = resolved_context["candidate_site_id"]
+    candidate_site_name = resolved_context["candidate_site_name"]
+
+    status_report = build_status_report(
+        command="status",
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+    )
+    prepare_report = build_prepare_report(site_config=site_config, repo_root=repo_root)
+    smoke_root = Path(smoke_output_root) if smoke_output_root is not None else workflow_root / "smoke"
+    package_root = Path(package_output_root) if package_output_root is not None else workflow_root / "package"
+    review_root = Path(review_output_root) if review_output_root is not None else workflow_root / "review"
+
+    status_command = build_workflow_command(
+        "status",
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+        workflow_output_root=workflow_root,
+    )
+    prepare_command = build_workflow_command(
+        "prepare",
+        site_config=site_config,
+        repo_root=repo_root,
+        release_polygon=release_polygon,
+        acquisition_package_path=acquisition_package_path,
+        artifact_root=artifact_root,
+        smoke_case_path=smoke_case_path,
+        smoke_output_root=smoke_output_root,
+        workflow_output_root=workflow_root,
+    )
+    smoke_command = build_workflow_command(
+        "run-local-smoke",
+        site_config=site_config,
+        repo_root=repo_root,
+        smoke_case_path=smoke_case_path or DEFAULT_LOCAL_SMOKE_CASE,
+        smoke_output_root=smoke_root,
+        workflow_output_root=workflow_root,
+    )
+    package_command = build_package_command(Path(smoke_root) / "hazard" / "results" / "probabilistic_phase1_smoke", package_root)
+    qa_review_command = build_qa_review_command(package_root, review_root)
+
+    workflow_steps: list[dict[str, Any]] = [
+        {
+            "step_id": "status",
+            "label": "AOI status check",
+            "status": status_report.get("workflow_status", STATUS_BLOCKED),
+            "blocked_reason": str((status_report.get("first_blocker") or {}).get("blocked_reason", "")),
+            "command": status_command,
+            "artifact_paths": flatten_workflow_paths(status_report.get("expected_paths", {})),
+        },
+        {
+            "step_id": "prepare",
+            "label": "AOI prepare gate",
+            "status": prepare_report.get("status", STATUS_BLOCKED),
+            "blocked_reason": str((prepare_report.get("first_blocker") or {}).get("blocked_reason", "")),
+            "command": prepare_command,
+            "artifact_paths": flatten_workflow_paths(prepare_report.get("expected_paths", {})),
+        },
+        {
+            "step_id": "run-local-smoke",
+            "label": "Local diagnostic smoke",
+            "status": "pending",
+            "blocked_reason": "",
+            "command": smoke_command,
+            "artifact_paths": [
+                str(smoke_root / "validation" / "results" / "probabilistic_phase1_smoke_manifest.json"),
+                str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke" / "probabilistic_phase1_smoke_map_package_manifest.json"),
+                str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke" / "probabilistic_phase1_smoke_pilot_gis_package_manifest.json"),
+            ],
+        },
+        {
+            "step_id": "package-map",
+            "label": "Package hazard map",
+            "status": "pending",
+            "blocked_reason": "",
+            "command": package_command,
+            "artifact_paths": [
+                str(package_root / "aoi_hazard_map_package_manifest.json"),
+                str(package_root / "aoi_hazard_map_package_summary.txt"),
+                str(package_root / "index.html"),
+            ],
+        },
+        {
+            "step_id": "qa-review",
+            "label": "QA review surface",
+            "status": "pending",
+            "blocked_reason": "",
+            "command": qa_review_command,
+            "artifact_paths": [
+                str(review_root / "aoi_map_qa_review_manifest.json"),
+                str(review_root / "index.html"),
+            ],
+        },
+    ]
+
+    if str(status_report.get("workflow_status") or "").startswith("blocked"):
+        first_blocker = dict(status_report.get("first_blocker") or {})
+        return assemble_workflow_report(
+            status=status_report.get("workflow_status", STATUS_BLOCKED),
+            current_stage="status",
+            next_action="prepare",
+            next_command=status_report.get("next_command", ""),
+            first_blocker=first_blocker,
+            workflow_steps=workflow_steps[:2],
+            command_sequence=[status_command, prepare_command],
+            generated_artifact_paths={
+                "workflow_output_root": str(workflow_root),
+                "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+                "site_config_path": str(site_config),
+                "status_expected_paths": status_report.get("expected_paths", {}),
+                "prepare_expected_paths": prepare_report.get("expected_paths", {}),
+            },
+            claim_boundaries=dict(status_report.get("claim_boundaries") or {}),
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            bootstrap_report=bootstrap_report,
+            status_report=status_report,
+            prepare_report=prepare_report,
+            smoke_report=None,
+            package_report=None,
+            review_report=None,
+        )
+
+    if str(prepare_report.get("status") or "") != "ready_for_planning":
+        first_blocker = dict(prepare_report.get("first_blocker") or {})
+        return assemble_workflow_report(
+            status=str(prepare_report.get("status") or STATUS_BLOCKED),
+            current_stage="prepare",
+            next_action=str(prepare_report.get("next_step") or "prepare"),
+            next_command=prepare_report.get("next_command", ""),
+            first_blocker=first_blocker,
+            workflow_steps=workflow_steps[:2],
+            command_sequence=[status_command, prepare_command],
+            generated_artifact_paths={
+                "workflow_output_root": str(workflow_root),
+                "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+                "site_config_path": str(site_config),
+                "status_expected_paths": status_report.get("expected_paths", {}),
+                "prepare_expected_paths": prepare_report.get("expected_paths", {}),
+            },
+            claim_boundaries=dict(prepare_report.get("claim_boundaries") or status_report.get("claim_boundaries") or {}),
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            bootstrap_report=bootstrap_report,
+            status_report=status_report,
+            prepare_report=prepare_report,
+            smoke_report=None,
+            package_report=None,
+            review_report=None,
+        )
+
+    if not execute_safe_local_steps:
+        return assemble_workflow_report(
+            status="ready_for_local_smoke",
+            current_stage="run-local-smoke",
+            next_action="run-local-smoke",
+            next_command=smoke_command,
+            first_blocker=None,
+            workflow_steps=workflow_steps,
+            command_sequence=[status_command, prepare_command, smoke_command, package_command, qa_review_command],
+            generated_artifact_paths={
+                "workflow_output_root": str(workflow_root),
+                "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+                "site_config_path": str(site_config),
+                "smoke_output_root": str(smoke_root),
+                "package_output_root": str(package_root),
+                "review_output_root": str(review_root),
+            },
+            claim_boundaries=dict(prepare_report.get("claim_boundaries") or status_report.get("claim_boundaries") or {}),
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            bootstrap_report=bootstrap_report,
+            status_report=status_report,
+            prepare_report=prepare_report,
+            smoke_report=None,
+            package_report=None,
+            review_report=None,
+        )
+
+    smoke_report = build_local_smoke_report(
+        repo_root=repo_root,
+        smoke_case_path=smoke_case_path or DEFAULT_LOCAL_SMOKE_CASE,
+        smoke_output_root=smoke_root,
+    )
+    workflow_steps[2] = {
+        **workflow_steps[2],
+        "status": smoke_report.get("status", STATUS_BLOCKED),
+        "blocked_reason": str((smoke_report.get("first_blocker") or {}).get("blocked_reason", "")),
+    }
+    if str(smoke_report.get("status") or "").startswith("blocked"):
+        first_blocker = dict(smoke_report.get("first_blocker") or {})
+        return assemble_workflow_report(
+            status=smoke_report.get("status", STATUS_BLOCKED),
+            current_stage="run-local-smoke",
+            next_action="run-local-smoke",
+            next_command=smoke_command,
+            first_blocker=first_blocker,
+            workflow_steps=workflow_steps[:3],
+            command_sequence=[status_command, prepare_command, smoke_command],
+            generated_artifact_paths={
+                "workflow_output_root": str(workflow_root),
+                "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+                "site_config_path": str(site_config),
+                "smoke_output_root": str(smoke_root),
+            },
+            claim_boundaries=dict(smoke_report.get("claim_boundaries") or {}),
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            bootstrap_report=bootstrap_report,
+            status_report=status_report,
+            prepare_report=prepare_report,
+            smoke_report=smoke_report,
+            package_report=None,
+            review_report=None,
+        )
+
+    package_report = PACKAGE_AOI.package_aoi_hazard_map(
+        Path(smoke_report["hazard_output_root"]),
+        package_root,
+        overwrite=True,
+    )
+    workflow_steps[3] = {
+        **workflow_steps[3],
+        "status": package_report.get("status", STATUS_BLOCKED),
+        "blocked_reason": "" if not str(package_report.get("status") or "").startswith("blocked") else str(
+            (package_report.get("cog_blockers") or package_report.get("missing_hazard_outputs") or ["map packaging failed"])[0]
+        ),
+    }
+    if str(package_report.get("status") or "").startswith("blocked"):
+        first_blocker = {
+            "step_id": "package-map",
+            "label": "Package hazard map",
+            "status": package_report.get("status", STATUS_BLOCKED),
+            "blocked_reason": str((package_report.get("cog_blockers") or package_report.get("missing_hazard_outputs") or ["map packaging failed"])[0]),
+            "missing_inputs": list(package_report.get("missing_hazard_outputs") or []),
+        }
+        return assemble_workflow_report(
+            status=package_report.get("status", STATUS_BLOCKED),
+            current_stage="package-map",
+            next_action="package-map",
+            next_command=package_command,
+            first_blocker=first_blocker,
+            workflow_steps=workflow_steps[:4],
+            command_sequence=[status_command, prepare_command, smoke_command, package_command],
+            generated_artifact_paths={
+                "workflow_output_root": str(workflow_root),
+                "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+                "site_config_path": str(site_config),
+                "smoke_output_root": str(smoke_root),
+                "package_output_root": str(package_root),
+            },
+            claim_boundaries=dict(package_report.get("claim_boundary") or smoke_report.get("claim_boundaries") or {}),
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            bootstrap_report=bootstrap_report,
+            status_report=status_report,
+            prepare_report=prepare_report,
+            smoke_report=smoke_report,
+            package_report=package_report,
+            review_report=None,
+        )
+
+    review_report = QA_REVIEW.build_review_surface(
+        input_root=package_root,
+        output_root=review_root,
+        overwrite=True,
+    )
+    workflow_steps[4] = {
+        **workflow_steps[4],
+        "status": review_report.get("status", STATUS_BLOCKED),
+        "blocked_reason": "" if str(review_report.get("status") or "").startswith("review_ready") else "QA review generation failed",
+    }
+    final_status = str(review_report.get("status") or package_report.get("status") or smoke_report.get("status") or "ready")
+    return assemble_workflow_report(
+        status=final_status,
+        current_stage="qa-review",
+        next_action="inspect qa review",
+        next_command="",
+        first_blocker=None,
+        workflow_steps=workflow_steps,
+        command_sequence=[status_command, prepare_command, smoke_command, package_command, qa_review_command],
+        generated_artifact_paths={
+            "workflow_output_root": str(workflow_root),
+            "bootstrap_output_root": bootstrap_report.get("output_root", ""),
+            "site_config_path": str(site_config),
+            "smoke_output_root": str(smoke_root),
+            "package_output_root": str(package_root),
+            "review_output_root": str(review_root),
+            "review_manifest": review_report.get("review_surface_paths", {}).get("manifest", ""),
+            "review_html": review_report.get("review_surface_paths", {}).get("html", ""),
+        },
+        claim_boundaries=dict(review_report.get("claim_boundary") or package_report.get("claim_boundary") or smoke_report.get("claim_boundaries") or {}),
+        candidate_site_id=candidate_site_id,
+        candidate_site_name=candidate_site_name,
+        bootstrap_report=bootstrap_report,
+        status_report=status_report,
+        prepare_report=prepare_report,
+        smoke_report=smoke_report,
+        package_report=package_report,
+        review_report=review_report,
+    )
+
+
+def build_workflow_failure_report(
+    *,
+    status: str,
+    current_stage: str,
+    blocked_reason: str,
+    site_config: Path,
+    workflow_output_root: Path | None,
+    candidate_site_id: str,
+    candidate_site_name: str,
+) -> dict[str, Any]:
+    workflow_root = resolve_workflow_output_root(workflow_output_root, candidate_site_id or site_config.stem or "guided_aoi")
+    first_blocker = {
+        "step_id": "workflow",
+        "label": "AOI guided workflow",
+        "status": status,
+        "blocked_reason": blocked_reason,
+        "expected_inputs": [str(site_config)] if site_config else [],
+        "expected_outputs": [],
+        "next_command": "",
+    }
+    return assemble_workflow_report(
+        status=status,
+        current_stage=current_stage,
+        next_action="fix input and rerun" if status.startswith("blocked") else "inspect qa review",
+        next_command="",
+        first_blocker=first_blocker,
+        workflow_steps=[],
+        command_sequence=[],
+        generated_artifact_paths={
+            "workflow_output_root": str(workflow_root),
+            "site_config_path": str(site_config),
+        },
+        claim_boundaries=default_claim_boundaries(),
+        candidate_site_id=candidate_site_id,
+        candidate_site_name=candidate_site_name,
+        bootstrap_report={"output_root": str(workflow_root / "bootstrap")},
+        status_report={},
+        prepare_report={},
+        smoke_report=None,
+        package_report=None,
+        review_report=None,
+    )
+
+
+def resolve_workflow_context(
+    *,
+    site_config: Path,
+    bounds: list[float] | None,
+    site_id: str | None,
+    site_name: str | None,
+    workflow_output_root: Path | None,
+    repo_root: Path,
+) -> dict[str, Any]:
+    if bounds is not None:
+        resolved_site_id = normalize_workflow_site_id(site_id, bounds)
+        resolved_site_name = (site_name or "Guided AOI").strip() or "Guided AOI"
+        resolved_workflow_root = resolve_workflow_output_root(workflow_output_root, resolved_site_id)
+        bootstrap_report = BOOTSTRAP.build_report(
+            output_root=resolved_workflow_root / "bootstrap",
+            site_id=resolved_site_id,
+            site_name=resolved_site_name,
+            crs="EPSG:2056",
+            vertical_datum="LN02",
+            bounds=list(bounds),
+        )
+        return {
+            "site_config": Path(bootstrap_report["site_config_path"]),
+            "workflow_root": resolved_workflow_root,
+            "bootstrap_report": bootstrap_report,
+            "candidate_site_id": str(bootstrap_report.get("candidate_site_id") or resolved_site_id),
+            "candidate_site_name": str(bootstrap_report.get("candidate_site_name") or resolved_site_name),
+        }
+
+    validate_site_config_for_status(site_config)
+    resolved_site_id = load_candidate_site_id(site_config)
+    resolved_workflow_root = resolve_workflow_output_root(workflow_output_root, resolved_site_id)
+    return {
+        "site_config": site_config,
+        "workflow_root": resolved_workflow_root,
+        "bootstrap_report": {
+            "site_config_path": str(site_config),
+            "output_root": str(resolved_workflow_root / "bootstrap"),
+        },
+        "candidate_site_id": resolved_site_id,
+        "candidate_site_name": load_candidate_site_name(site_config),
+    }
+
+
+def resolve_workflow_output_root(workflow_output_root: Path | None, site_id: str) -> Path:
+    if workflow_output_root is None:
+        return Path("/tmp/tb315_aoi_guided_workflow") / site_id
+    return workflow_output_root if workflow_output_root.is_absolute() else Path("/tmp") / workflow_output_root
+
+
+def normalize_workflow_site_id(site_id: str | None, bounds: list[float]) -> str:
+    if site_id:
+        token = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in site_id.strip().replace("-", "_"))
+        return token.strip("_") or "guided_aoi"
+    payload = ",".join(f"{value:.3f}" for value in bounds)
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:10]
+    return f"guided_aoi_{digest}"
+
+
+def load_candidate_site_id(site_config: Path) -> str:
+    try:
+        data = PREFLIGHT.load_site_config(site_config)
+    except Exception:
+        return site_config.stem or "guided_aoi"
+    if isinstance(data, dict):
+        value = PREFLIGHT.text_value(data.get("candidate_site_id"))
+        if value:
+            return value
+    return site_config.stem or "guided_aoi"
+
+
+def load_candidate_site_name(site_config: Path) -> str:
+    try:
+        data = PREFLIGHT.load_site_config(site_config)
+    except Exception:
+        return site_config.stem or "Guided AOI"
+    if isinstance(data, dict):
+        value = PREFLIGHT.text_value(data.get("candidate_site_name"))
+        if value:
+            return value
+    return site_config.stem or "Guided AOI"
+
+
+def build_workflow_command(
+    command: str,
+    *,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None = None,
+    acquisition_package_path: Path | None = None,
+    artifact_root: Path | None = None,
+    smoke_case_path: Path | None = None,
+    smoke_output_root: Path | None = None,
+    workflow_output_root: Path | None = None,
+) -> str:
+    base = [
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/run_aoi_hazard_workflow.py",
+        command,
+        "--site-config",
+        shlex.quote(str(site_config)),
+        "--repo-root",
+        shlex.quote(str(repo_root)),
+        "--acquisition-package-path",
+        shlex.quote(str(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)),
+        "--artifact-root",
+        shlex.quote(str(artifact_root or DEFAULT_ARTIFACT_ROOT)),
+    ]
+    if release_polygon is not None:
+        base.extend(["--release-polygon", shlex.quote(str(release_polygon))])
+    if smoke_case_path is not None:
+        base.extend(["--smoke-case-path", shlex.quote(str(smoke_case_path))])
+    if smoke_output_root is not None:
+        base.extend(["--smoke-output-root", shlex.quote(str(smoke_output_root))])
+    if workflow_output_root is not None:
+        base.extend(["--workflow-output-root", shlex.quote(str(workflow_output_root))])
+    base.extend(["--format", "json"])
+    return " ".join(base)
+
+
+def build_package_command(input_root: Path, output_root: Path) -> str:
+    return " ".join(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/package_aoi_hazard_map.py",
+            "--input-root",
+            shlex.quote(str(input_root)),
+            "--output-root",
+            shlex.quote(str(output_root)),
+            "--overwrite",
+            "--format",
+            "json",
+        ]
+    )
+
+
+def build_qa_review_command(input_root: Path, output_root: Path) -> str:
+    return " ".join(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/generate_aoi_map_qa_review.py",
+            "--input-root",
+            shlex.quote(str(input_root)),
+            "--output-root",
+            shlex.quote(str(output_root)),
+            "--overwrite",
+            "--format",
+            "json",
+        ]
+    )
+
+
+def flatten_workflow_paths(value: Any) -> list[str]:
+    paths: list[str] = []
+    if isinstance(value, str):
+        if value:
+            paths.append(value)
+        return paths
+    if isinstance(value, list):
+        for item in value:
+            paths.extend(flatten_workflow_paths(item))
+        return paths
+    if isinstance(value, dict):
+        for item in value.values():
+            paths.extend(flatten_workflow_paths(item))
+        for key in ("expected_input_path", "expected_output_path", "expected_staged_path", "path", "artifact_root"):
+            item = value.get(key)
+            if isinstance(item, str) and item:
+                paths.append(item)
+    return dedupe(paths)
+
+
+def assemble_workflow_report(
+    *,
+    status: str,
+    current_stage: str,
+    next_action: str,
+    next_command: str,
+    first_blocker: dict[str, Any] | None,
+    workflow_steps: list[dict[str, Any]],
+    command_sequence: list[str],
+    generated_artifact_paths: dict[str, Any],
+    claim_boundaries: dict[str, Any],
+    candidate_site_id: str,
+    candidate_site_name: str,
+    bootstrap_report: dict[str, Any],
+    status_report: dict[str, Any],
+    prepare_report: dict[str, Any],
+    smoke_report: dict[str, Any] | None,
+    package_report: dict[str, Any] | None,
+    review_report: dict[str, Any] | None,
+) -> dict[str, Any]:
+    report = {
+        "schema_version": WORKFLOW_SCHEMA_VERSION,
+        "command": "workflow",
+        "status": status,
+        "current_stage": current_stage,
+        "next_action": next_action,
+        "next_command": next_command,
+        "first_blocker": first_blocker,
+        "command_sequence": command_sequence,
+        "generated_artifact_paths": generated_artifact_paths,
+        "claim_boundaries": dict(claim_boundaries) if claim_boundaries else default_claim_boundaries(),
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "bootstrap_report": bootstrap_report,
+        "stage_reports": {
+            "status": status_report,
+            "prepare": prepare_report,
+        },
+        "workflow_steps": workflow_steps,
+    }
+    if smoke_report is not None:
+        report["stage_reports"]["run-local-smoke"] = smoke_report
+    if package_report is not None:
+        report["stage_reports"]["package-map"] = package_report
+    if review_report is not None:
+        report["stage_reports"]["qa-review"] = review_report
     return report
 
 
@@ -1447,6 +2104,44 @@ def render_status_text_report(report: dict[str, Any]) -> str:
     lines.extend(f"- {item}" for item in report.get("expected_outputs", []) or [])
     if not report.get("expected_outputs"):
         lines.append("- none")
+    lines.append("claim_boundaries:")
+    for key, value in sorted(report.get("claim_boundaries", {}).items()):
+        if key == "notes" and isinstance(value, list):
+            lines.append(f"- {key}:")
+            lines.extend(f"  - {item}" for item in value)
+        else:
+            lines.append(f"- {key}: {value}")
+    return "\n".join(lines)
+
+
+def render_workflow_text_report(report: dict[str, Any]) -> str:
+    lines = [
+        f"schema_version: {report['schema_version']}",
+        f"command: {report['command']}",
+        f"status: {report['status']}",
+        f"current_stage: {report['current_stage']}",
+        f"next_action: {report['next_action']}",
+        f"next_command: {report['next_command']}",
+        f"candidate_site_id: {report.get('candidate_site_id', '')}",
+        f"candidate_site_name: {report.get('candidate_site_name', '')}",
+        "first_blocker:",
+    ]
+    blocker = report.get("first_blocker")
+    if isinstance(blocker, dict) and blocker:
+        lines.append(f"- step_id: {blocker.get('step_id', '')}")
+        lines.append(f"- label: {blocker.get('label', '')}")
+        lines.append(f"- status: {blocker.get('status', '')}")
+        lines.append(f"- blocked_reason: {blocker.get('blocked_reason', '')}")
+    else:
+        lines.append("- none")
+    lines.append("command_sequence:")
+    if report.get("command_sequence"):
+        lines.extend(f"- {item}" for item in report.get("command_sequence", []))
+    else:
+        lines.append("- none")
+    lines.append("generated_artifact_paths:")
+    for key, value in sorted(report.get("generated_artifact_paths", {}).items()):
+        lines.append(f"- {key}: {value}")
     lines.append("claim_boundaries:")
     for key, value in sorted(report.get("claim_boundaries", {}).items()):
         if key == "notes" and isinstance(value, list):

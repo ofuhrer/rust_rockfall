@@ -148,6 +148,22 @@ clean-checkout-safe path from AOI bounds to a local diagnostic review bundle.
 Run the direct `scripts/*.py` entrypoints from the repository root with
 `PYTHONPATH=$PWD`; that keeps the sibling imports in these helpers visible.
 
+For a guided front door that reports the current stage, first blocker, next
+command, generated artifact paths, and claim boundaries in one place, start
+with:
+
+```bash
+PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+  workflow \
+  --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
+  --workflow-output-root /tmp/aoi_workflow \
+  --format json
+```
+
+Add `--execute-safe-local-steps` once the status and prepare gates are ready
+and you want the helper to run the local smoke, package-map, and QA-review
+steps for you.
+
 1. Bootstrap the AOI manifest from LV95 bounds.
 
    ```bash

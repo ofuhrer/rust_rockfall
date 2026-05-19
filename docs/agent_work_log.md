@@ -3045,3 +3045,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local/fixture ladder only; no live Balfrin submission, no Swiss-wide claim, no distributed execution, no physical credibility claim, and no operational claim.
 - Next task: `TB-315`
+
+### TB-315: User AOI Guided Pipeline Command
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a guided AOI front door that starts from bounds or a bootstrapped manifest and carries the user through status, prepare, local smoke, package-map, and QA-review steps without crossing the claim boundaries.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a new `workflow` command to the AOI front door that can bootstrap from bounds, report the current stage and first blocker, and emit the next command sequence with explicit artifact paths and claim boundaries.
+  - Wired the safe local smoke, packaging, and QA-review path into the guided report so the helper can either stop at one blocker or carry through to a local diagnostic review surface.
+  - Added focused unittest coverage for bootstrapped missing-geodata blocking, ready-fixture sequencing, the safe local smoke/package/review path, and invalid AOI bounds.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_command_bootstraps_bounds_and_reports_the_first_blocker tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_command_reports_ready_fixture_sequence_without_running_local_steps tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_command_executes_safe_local_smoke_package_and_review_path tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_command_rejects_invalid_aoi_input`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow`
+- Result/status: implemented_fixture_backed
+- Boundaries: local AOI workflow only; no network download, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy generated outputs committed.
+- Next task: `TB-316`

@@ -364,6 +364,239 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("run_aoi_hazard_workflow.py status", report["next_command"])
         self.assertEqual(workflow.status_exit_code(report), 64)
 
+    def test_workflow_command_bootstraps_bounds_and_reports_the_first_blocker(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workflow_root = Path(tmp) / "guided_workflow"
+
+            code, output = self._run_module_main(
+                workflow,
+                [
+                    "workflow",
+                    "--bounds",
+                    "2696376",
+                    "1167384",
+                    "2696476",
+                    "1167484",
+                    "--workflow-output-root",
+                    str(workflow_root),
+                    "--format",
+                    "json",
+                ],
+            )
+
+        report = json.loads(output)
+        self.assertEqual(code, 2)
+        self.assertEqual(report["command"], "workflow")
+        self.assertEqual(report["current_stage"], "status")
+        self.assertTrue(report["status"].startswith("blocked"))
+        self.assertTrue(report["first_blocker"])
+        self.assertIn("prepare", report["next_command"])
+        self.assertTrue(report["generated_artifact_paths"]["bootstrap_output_root"].endswith("/bootstrap"))
+        self.assertTrue(report["command_sequence"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_workflow_command_reports_ready_fixture_sequence_without_running_local_steps(self) -> None:
+        ready_status_report = {
+            "schema_version": "aoi_hazard_workflow_front_door_v1",
+            "command": "status",
+            "workflow_status": "ready_for_next_step",
+            "next_action": "run-local-smoke",
+            "first_blocker": None,
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --format json",
+            "expected_paths": {
+                "required_inputs": ["validation/cases/probabilistic_phase1_smoke.yaml"],
+                "case_skeleton_path": "",
+                "case_skeleton_paths": [],
+            },
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "candidate_site_id": "guided_fixture",
+            "candidate_site_name": "Guided Fixture",
+        }
+        ready_prepare_report = {
+            "schema_version": "aoi_hazard_prepare_front_door_v1",
+            "command": "prepare",
+            "status": "ready_for_planning",
+            "next_step": "release_candidate_planning",
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --format json",
+            "first_blocker": None,
+            "expected_paths": {
+                "site_config": "/tmp/guided_fixture/aoi_manifest.yaml",
+                "acquisition_manifest": "/tmp/guided_fixture/input/public_geodata_acquisition.yaml",
+            },
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "workflow_steps": [],
+            "workflow_summary": {"blocked_step_count": 0},
+        }
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workflow_root = Path(tmp) / "guided_workflow"
+            with mock.patch.object(workflow, "build_status_report", return_value=ready_status_report), mock.patch.object(
+                workflow,
+                "build_prepare_report",
+                return_value=ready_prepare_report,
+            ):
+                report = workflow.build_workflow_report(
+                    site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                    bounds=None,
+                    site_id=None,
+                    site_name=None,
+                    workflow_output_root=workflow_root,
+                    repo_root=ROOT,
+                    execute_safe_local_steps=False,
+                )
+
+        self.assertEqual(report["status"], "ready_for_local_smoke")
+        self.assertEqual(report["current_stage"], "run-local-smoke")
+        self.assertEqual(report["next_action"], "run-local-smoke")
+        self.assertIn("run-local-smoke", report["next_command"])
+        self.assertEqual(len(report["command_sequence"]), 5)
+        self.assertTrue(report["generated_artifact_paths"]["smoke_output_root"].endswith("/smoke"))
+        self.assertTrue(report["generated_artifact_paths"]["package_output_root"].endswith("/package"))
+        self.assertTrue(report["generated_artifact_paths"]["review_output_root"].endswith("/review"))
+
+    def test_workflow_command_executes_safe_local_smoke_package_and_review_path(self) -> None:
+        ready_status_report = {
+            "schema_version": "aoi_hazard_workflow_front_door_v1",
+            "command": "status",
+            "workflow_status": "ready_for_next_step",
+            "next_action": "run-local-smoke",
+            "first_blocker": None,
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --format json",
+            "expected_paths": {"required_inputs": []},
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "candidate_site_id": "guided_fixture",
+            "candidate_site_name": "Guided Fixture",
+        }
+        ready_prepare_report = {
+            "schema_version": "aoi_hazard_prepare_front_door_v1",
+            "command": "prepare",
+            "status": "ready_for_planning",
+            "next_step": "release_candidate_planning",
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --format json",
+            "first_blocker": None,
+            "expected_paths": {},
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "workflow_steps": [],
+            "workflow_summary": {"blocked_step_count": 0},
+        }
+        smoke_root = Path("/tmp") / "tb315_workflow_smoke"
+        package_root = Path("/tmp") / "tb315_workflow_package"
+        review_root = Path("/tmp") / "tb315_workflow_review"
+        smoke_report = {
+            "schema_version": "aoi_local_tiny_smoke_run_v1",
+            "status": "smoke_completed",
+            "validation_output_root": str(smoke_root / "validation" / "results"),
+            "hazard_output_root": str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke"),
+            "commands": {"validation": ["validate"], "hazard": ["hazard"]},
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+        }
+        package_report = {
+            "schema_version": "aoi_hazard_map_package_v1",
+            "status": "cog_blocked",
+            "claim_boundary": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "cog_blockers": ["reach_probability:blocked"],
+            "missing_hazard_outputs": [],
+            "review_surface_paths": {"manifest": str(package_root / "aoi_map_qa_review_manifest.json"), "html": str(package_root / "index.html")},
+        }
+        review_report = {
+            "schema_version": "aoi_map_qa_review_v1",
+            "status": "review_ready_with_warnings",
+            "review_surface_paths": {"manifest": str(review_root / "aoi_map_qa_review_manifest.json"), "html": str(review_root / "index.html")},
+            "claim_boundary": {
+                "operational_claims_allowed": False,
+                "annualized": False,
+            },
+        }
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workflow_root = Path(tmp) / "guided_workflow"
+            with mock.patch.object(workflow, "build_status_report", return_value=ready_status_report), mock.patch.object(
+                workflow,
+                "build_prepare_report",
+                return_value=ready_prepare_report,
+            ), mock.patch.object(
+                workflow,
+                "build_local_smoke_report",
+                return_value=smoke_report,
+            ), mock.patch.object(
+                workflow.PACKAGE_AOI,
+                "package_aoi_hazard_map",
+                return_value=package_report,
+            ), mock.patch.object(
+                workflow.QA_REVIEW,
+                "build_review_surface",
+                return_value=review_report,
+            ):
+                report = workflow.build_workflow_report(
+                    site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+                    bounds=None,
+                    site_id=None,
+                    site_name=None,
+                    workflow_output_root=workflow_root,
+                    repo_root=ROOT,
+                    execute_safe_local_steps=True,
+                )
+
+        self.assertEqual(report["current_stage"], "qa-review")
+        self.assertEqual(report["status"], "review_ready_with_warnings")
+        self.assertEqual(report["next_action"], "inspect qa review")
+        self.assertEqual(report["stage_reports"]["run-local-smoke"]["status"], "smoke_completed")
+        self.assertEqual(report["stage_reports"]["package-map"]["status"], "cog_blocked")
+        self.assertEqual(report["stage_reports"]["qa-review"]["status"], "review_ready_with_warnings")
+        self.assertTrue(report["generated_artifact_paths"]["review_html"].endswith("index.html"))
+        self.assertEqual(len(report["command_sequence"]), 5)
+
+    def test_workflow_command_rejects_invalid_aoi_input(self) -> None:
+        report = workflow.build_workflow_report(
+            site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+            bounds=[2696476.0, 1167484.0, 2696376.0, 1167384.0],
+            site_id="guided_invalid_bounds",
+            site_name="Guided Invalid",
+            workflow_output_root=Path("/tmp") / "tb315_invalid_workflow",
+            repo_root=ROOT,
+        )
+
+        self.assertEqual(report["status"], "blocked_invalid_input")
+        self.assertEqual(report["current_stage"], "workflow")
+        self.assertEqual(report["first_blocker"]["step_id"], "workflow")
+        self.assertIn("xmax", report["first_blocker"]["blocked_reason"])
+
     def test_documented_aoi_bounds_to_review_map_command_chain_smoke(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             work_root = Path(tmp)
