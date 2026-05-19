@@ -23,29 +23,52 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
         self.assertEqual(report["matrix_status"], "blocked_reducer_budget")
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
-        self.assertEqual(report["next_evidence_field"], "manifest_size_bytes")
+        self.assertEqual(report["next_evidence_field"], "target_area_metrics_completion")
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone"])
+        self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
+        self.assertEqual(report["failed_closed_tiers"], [])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
         self.assertEqual(report["scratch_local_tiers"], ["local_reducer_ladder"])
         self.assertEqual(report["projection_only_tiers"], ["projected_larger_aoi"])
         self.assertEqual(report["no_go_tiers"], ["projected_larger_aoi"])
         self.assertFalse(report["live_run_authorization_status"]["live_submission_authorized"])
         self.assertEqual(report["live_run_authorization_status"]["recommended_next_action"], "metrics_completion_rerun")
+        self.assertEqual(report["next_recommended_scaling_task"], "target_area_metrics_completion_rerun")
         self.assertEqual(
             report["evidence_label_order"],
-            ["measured_on_balfrin", "fixture_backed", "scratch_local", "projection_only", "blocked_pre_submit"],
+            [
+                "measured_on_balfrin",
+                "measured_on_balfrin_postproc_microbenchmark",
+                "fixture_backed",
+                "scratch_local",
+                "projection_only",
+                "blocked_pre_submit",
+                "failed_closed",
+            ],
         )
+        self.assertIn("measured_on_balfrin_postproc_microbenchmark", report["evidence_label_definitions"])
         self.assertIn("blocked_pre_submit", report["evidence_label_definitions"])
         self.assertIn("smallest_multi_zone", report["latest_output_budget_status"])
         self.assertIn("single_zone", report["latest_execution_efficiency_status"])
+        self.assertEqual(
+            report["latest_execution_efficiency_status"]["postproc_microbenchmark"],
+            "measured_postproc_shell_overhead_only",
+        )
+        self.assertEqual(report["latest_hazard_execution_status"]["postproc_microbenchmark"], "no_hazard_execution")
+        self.assertEqual(
+            report["postproc_efficiency_evidence"]["tb305_classification"],
+            "measured_on_balfrin_postproc_microbenchmark",
+        )
+        self.assertFalse(report["postproc_efficiency_evidence"]["hazard_execution_promoted"])
 
         tiers = {row["tier_id"]: row for row in report["tiers"]}
         self.assertEqual(
             {row["evidence_label"] for row in report["tiers"]},
             {
                 "measured_on_balfrin",
+                "measured_on_balfrin_postproc_microbenchmark",
                 "fixture_backed",
                 "scratch_local",
                 "projection_only",
@@ -75,6 +98,26 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["smallest_multi_zone"]["compact_reducer_sidecars"], 2)
         self.assertEqual(tiers["smallest_multi_zone"]["next_evidence_field"], "manifest_size_bytes")
         self.assertIn("manifest_size_bytes", tiers["smallest_multi_zone"]["blocker"])
+        self.assertNotIn("postproc_microbenchmark", report["measured_tiers"])
+        self.assertEqual(tiers["smallest_multi_zone"]["measurement_status"], "blocked_pre_submit")
+        self.assertEqual(
+            report["latest_execution_efficiency_status"]["smallest_multi_zone"],
+            "blocked_pre_submit_not_measured",
+        )
+
+        self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")
+        self.assertEqual(
+            tiers["postproc_microbenchmark"]["evidence_label"],
+            "measured_on_balfrin_postproc_microbenchmark",
+        )
+        self.assertEqual(tiers["postproc_microbenchmark"]["measurement_status"], "measured_postproc_shell_overhead")
+        self.assertEqual(tiers["postproc_microbenchmark"]["hazard_execution_status"], "no_hazard_execution")
+        self.assertEqual(tiers["postproc_microbenchmark"]["job_id"], "4339870")
+        self.assertEqual(tiers["postproc_microbenchmark"]["runtime_seconds"], 0.6338623960000405)
+        self.assertEqual(tiers["postproc_microbenchmark"]["cpu_seconds"], 0.048968283)
+        self.assertEqual(tiers["postproc_microbenchmark"]["memory_peak_kb"], 32624)
+        self.assertEqual(tiers["postproc_microbenchmark"]["file_count"], 154)
+        self.assertEqual(tiers["postproc_microbenchmark"]["bytes"], 89802)
 
         self.assertEqual(tiers["fixture_budget_gate"]["evidence_label"], "fixture_backed")
         self.assertEqual(tiers["fixture_budget_gate"]["classification"], "budget_regression_fixture")
@@ -98,6 +141,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("evidence_label: blocked_pre_submit", text)
         self.assertIn("single_zone", text)
         self.assertIn("smallest_multi_zone", text)
+        self.assertIn("postproc_microbenchmark", text)
+        self.assertIn("hazard_execution_status: no_hazard_execution", text)
         self.assertIn("manifest_size_bytes", text)
         self.assertIn("projected_larger_aoi", text)
 

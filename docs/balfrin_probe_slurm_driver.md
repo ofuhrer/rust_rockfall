@@ -114,6 +114,13 @@ scan, `0.2482742709980812` seconds for manifest scan,
 `docs/balfrin_postproc_microbenchmark_tb305.md` for checksums, logs, scheduler
 accounting, and the non-operational evidence boundary.
 
+TB-306 integrates that outcome into the worker-facing scale dashboard as
+`measured_on_balfrin_postproc_microbenchmark`. The label is deliberately
+separate from `measured_on_balfrin`: it updates post-processing efficiency
+status, but it is not a hazard execution, not a multi-zone measurement, and not
+a scale-capability upgrade. The next recommended action remains target-area
+metrics completion before any smallest two-zone hazard probe is reconsidered.
+
 ## Balfrin checkout and scratch boundary
 
 Run submission commands from the Balfrin checkout:

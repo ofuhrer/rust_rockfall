@@ -136,6 +136,18 @@ thresholds. It is embedded in the preservation-gate summary as measured
 run-root classification evidence, but it does not submit jobs, mutate remote
 files, authorize scale-up, or change the non-operational claim boundary.
 
+TB-305/TB-306 add a separate post-processing efficiency evidence lane. The
+bounded synthetic Balfrin `postproc` microbenchmark is classified as
+`measured_on_balfrin_postproc_microbenchmark`: job `4339870` completed with
+`0.6338623960000405` runner wall seconds, `0.048968283` CPU seconds, `32624`
+kbytes peak RSS, `154` files touched, and `89802` bytes touched. This evidence
+can inform post-processing overhead expectations, but it is not output-budget
+acceptance for a hazard run and it does not upgrade the smallest multi-zone
+hazard tier out of `blocked_pre_submit`. The next concrete scale-status action
+is target-area metrics completion; a smallest two-zone hazard probe remains
+downstream of the normal access, budget, authorization-record, and preservation
+gates.
+
 The bounded validation summary and multi-zone reducer-pressure reports now
 make the same split explicit at the report layer: replay-critical families are
 listed separately from diagnostic/debug fanout, and the reduced validation mode

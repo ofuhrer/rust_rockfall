@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-306: Postproc Efficiency Evidence Integration
-
-Goal: Integrate the measured or blocked TB-305 postproc microbenchmark outcome into the scale dashboard, output-budget docs, and Balfrin driver without promoting synthetic overhead evidence to hazard-scale capability.
-
-Capability gap reduced: Postproc efficiency evidence must become part of the worker-facing scale status before it can inform live multi-zone decisions.
-
-Why this outranks alternatives: Measured overhead is only useful if future workers see it in the same surfaces that guide Balfrin scale decisions.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Scale-dashboard and documentation updates that classify TB-305 as `measured_on_balfrin_postproc_microbenchmark`, `blocked_pre_submit`, or `failed_closed`.
-- Tests proving synthetic postproc measurements affect efficiency status but do not upgrade multi-zone hazard execution status.
-- A next-action recommendation for either target-area metrics completion, smallest two-zone probe, or further postproc cleanup.
-
-Definition of done:
-
-- Worker-facing scale status reflects the latest postproc overhead evidence and still distinguishes synthetic benchmark evidence from measured hazard execution.
-
-Boundaries: Evidence integration only; no live Balfrin submission, no new run, no scale-up claim, no annual/physical/risk semantics, and no operational claim.
-
 ### TB-307: Target-Area Metrics Completion Postproc Rerun
 
 Goal: Execute the bounded target-area metrics-completion postproc rerun now that standing `postproc` clearance exists, if all current preflight and preservation gates pass.

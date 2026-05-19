@@ -30,11 +30,26 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_scale_readiness_matrix_v1"
 EVIDENCE_LABELS = (
     "measured_on_balfrin",
+    "measured_on_balfrin_postproc_microbenchmark",
     "fixture_backed",
     "scratch_local",
     "projection_only",
     "blocked_pre_submit",
+    "failed_closed",
 )
+TB305_POSTPROC_MICROBENCHMARK = {
+    "job_id": "4339870",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin_postproc_microbenchmark_v1/tb305_20260519T190459Z",
+    "wall_seconds": 0.6338623960000405,
+    "cpu_seconds": 0.048968283,
+    "peak_rss_kb": 32624,
+    "files_touched": 154,
+    "bytes_touched": 89802,
+    "file_scan_seconds": 0.1271800529975735,
+    "manifest_scan_seconds": 0.2482742709980812,
+    "reducer_merge_seconds": 0.17694826799925067,
+    "package_seconds": 0.08144542599984561,
+}
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -351,6 +366,44 @@ def _smallest_multi_zone_row() -> dict[str, Any]:
     }
 
 
+def _postproc_microbenchmark_row() -> dict[str, Any]:
+    return {
+        "tier_id": "postproc_microbenchmark",
+        "tier_label": "TB-305 postproc microbenchmark",
+        "evidence_label": "measured_on_balfrin_postproc_microbenchmark",
+        "measurement_status": "measured_postproc_shell_overhead",
+        "classification": "synthetic_postproc_overhead_measured",
+        "output_budget_status": "synthetic_package_gate_ready",
+        "execution_efficiency_status": "measured_postproc_shell_overhead_only",
+        "hazard_execution_status": "no_hazard_execution",
+        "file_count": TB305_POSTPROC_MICROBENCHMARK["files_touched"],
+        "bytes": TB305_POSTPROC_MICROBENCHMARK["bytes_touched"],
+        "manifest_bytes": 65536,
+        "reducer_sidecars": 16,
+        "runtime_seconds": TB305_POSTPROC_MICROBENCHMARK["wall_seconds"],
+        "cpu_seconds": TB305_POSTPROC_MICROBENCHMARK["cpu_seconds"],
+        "memory_peak_kb": TB305_POSTPROC_MICROBENCHMARK["peak_rss_kb"],
+        "memory_peak_mb": round(TB305_POSTPROC_MICROBENCHMARK["peak_rss_kb"] / 1024, 3),
+        "run_root_preservation_status": "preserved_remote_run_root",
+        "replayability_status": "synthetic_package_checksummed",
+        "authorization_status": "standing_postproc_clearance_used",
+        "next_evidence_field": "target_area_metrics_completion",
+        "blocker": None,
+        "job_id": TB305_POSTPROC_MICROBENCHMARK["job_id"],
+        "run_root": TB305_POSTPROC_MICROBENCHMARK["run_root"],
+        "phase_seconds": {
+            "file_scan": TB305_POSTPROC_MICROBENCHMARK["file_scan_seconds"],
+            "manifest_scan": TB305_POSTPROC_MICROBENCHMARK["manifest_scan_seconds"],
+            "reducer_merge": TB305_POSTPROC_MICROBENCHMARK["reducer_merge_seconds"],
+            "package": TB305_POSTPROC_MICROBENCHMARK["package_seconds"],
+        },
+        "summary": (
+            "TB-305 measured bounded synthetic post-processing shell overhead on Balfrin postproc; "
+            "it informs efficiency status only and is not a hazard execution, multi-zone result, or scale capability upgrade."
+        ),
+    }
+
+
 def _fixture_budget_gate_row() -> dict[str, Any]:
     return {
         "tier_id": "fixture_budget_gate",
@@ -447,13 +500,18 @@ def build_report() -> dict[str, Any]:
         _single_zone_row(single_job_summary),
         _target_area_row(),
         _smallest_multi_zone_row(),
+        _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
         _scratch_local_reducer_row(),
         _projection_row(),
     ]
     measured = [row["tier_id"] for row in rows if row["evidence_label"] == "measured_on_balfrin"]
+    postproc_microbenchmarks = [
+        row["tier_id"] for row in rows if row["evidence_label"] == "measured_on_balfrin_postproc_microbenchmark"
+    ]
     blocked = [row["tier_id"] for row in rows if row["classification"].startswith("blocked")]
     blocked_pre_submit = [row["tier_id"] for row in rows if row["evidence_label"] == "blocked_pre_submit"]
+    failed_closed = [row["tier_id"] for row in rows if row["evidence_label"] == "failed_closed"]
     fixture_backed = [row["tier_id"] for row in rows if row["evidence_label"] == "fixture_backed"]
     scratch_local = [row["tier_id"] for row in rows if row["evidence_label"] == "scratch_local"]
     projected = [row["tier_id"] for row in rows if row["measurement_status"] == "projection_only"]
@@ -466,20 +524,27 @@ def build_report() -> dict[str, Any]:
         "dashboard_status": overall_status,
         "summary": (
             "Single-zone and target-area evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
-            "fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
+            "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
+            "and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
         "evidence_label_definitions": {
             "measured_on_balfrin": "Preservation-checked Balfrin run-root evidence with measured execution or output fields.",
+            "measured_on_balfrin_postproc_microbenchmark": (
+                "Preserved Balfrin postproc evidence from a synthetic overhead microbenchmark; efficiency signal only, not hazard execution."
+            ),
             "fixture_backed": "Regression or handoff evidence from fixtures; useful for guardrails but not live measured scale capability.",
             "scratch_local": "Local /tmp measurement or generated scratch evidence; useful for bottleneck discovery but not Balfrin evidence.",
             "projection_only": "Planner extrapolation from measured coefficients; not an executed scale tier.",
             "blocked_pre_submit": "A live path stopped before sbatch or live execution and promoted no measured run-root evidence.",
+            "failed_closed": "A bounded path failed or was stopped with a recorded blocker and no promoted measured capability.",
         },
         "tiers": rows,
         "measured_tiers": measured,
+        "postproc_microbenchmark_tiers": postproc_microbenchmarks,
         "blocked_tiers": blocked,
         "blocked_pre_submit_tiers": blocked_pre_submit,
+        "failed_closed_tiers": failed_closed,
         "fixture_backed_tiers": fixture_backed,
         "scratch_local_tiers": scratch_local,
         "projection_only_tiers": projected,
@@ -490,6 +555,22 @@ def build_report() -> dict[str, Any]:
         "latest_execution_efficiency_status": {
             row["tier_id"]: row["execution_efficiency_status"] for row in rows
         },
+        "latest_hazard_execution_status": {
+            row["tier_id"]: row.get("hazard_execution_status", row["execution_efficiency_status"]) for row in rows
+        },
+        "postproc_efficiency_evidence": {
+            "tb305_classification": "measured_on_balfrin_postproc_microbenchmark",
+            "status": "measured_postproc_shell_overhead",
+            "job_id": TB305_POSTPROC_MICROBENCHMARK["job_id"],
+            "run_root": TB305_POSTPROC_MICROBENCHMARK["run_root"],
+            "wall_seconds": TB305_POSTPROC_MICROBENCHMARK["wall_seconds"],
+            "cpu_seconds": TB305_POSTPROC_MICROBENCHMARK["cpu_seconds"],
+            "peak_rss_kb": TB305_POSTPROC_MICROBENCHMARK["peak_rss_kb"],
+            "files_touched": TB305_POSTPROC_MICROBENCHMARK["files_touched"],
+            "bytes_touched": TB305_POSTPROC_MICROBENCHMARK["bytes_touched"],
+            "hazard_execution_promoted": False,
+            "source_document": "docs/balfrin_postproc_microbenchmark_tb305.md",
+        },
         "live_run_authorization_status": {
             "live_submission_authorized": False,
             "decision_status": decision_report.get("decision_status"),
@@ -497,12 +578,12 @@ def build_report() -> dict[str, Any]:
             "recommended_next_action_status": recommended.get("status"),
             "blocked_reason": decision_report.get("blocked_reason"),
         },
-        "next_recommended_scaling_task": (
-            "resolve smallest_multi_zone blocked_pre_submit reducer-budget and authorization blockers before any live multi-zone measurement"
-            if blocked_pre_submit
-            else "refresh measured Balfrin evidence before considering a larger tier"
+        "next_recommended_scaling_task": "target_area_metrics_completion_rerun",
+        "next_recommended_scaling_task_reason": (
+            "TB-305 shows bounded synthetic postproc overhead is small enough to stop treating shell overhead as the next blocker, "
+            "but it does not replace the missing target-area memory/output metrics or measure a multi-zone hazard run."
         ),
-        "next_evidence_field": "manifest_size_bytes",
+        "next_evidence_field": "target_area_metrics_completion",
         "blocked_reason": "smallest_multi_zone.manifest_size_bytes",
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -518,6 +599,7 @@ def build_report() -> dict[str, Any]:
             "scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py",
             "scripts/summarize_balfrin_next_live_run_decision_gate.py",
             "scripts/estimate_swiss_wide_execution_envelope.py",
+            "docs/balfrin_postproc_microbenchmark_tb305.md",
         ],
     }
 
@@ -534,6 +616,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"measured_tiers: {', '.join(report.get('measured_tiers', []))}",
         f"blocked_tiers: {', '.join(report.get('blocked_tiers', []))}",
         f"blocked_pre_submit_tiers: {', '.join(report.get('blocked_pre_submit_tiers', []))}",
+        f"postproc_microbenchmark_tiers: {', '.join(report.get('postproc_microbenchmark_tiers', []))}",
+        f"failed_closed_tiers: {', '.join(report.get('failed_closed_tiers', []))}",
         f"fixture_backed_tiers: {', '.join(report.get('fixture_backed_tiers', []))}",
         f"scratch_local_tiers: {', '.join(report.get('scratch_local_tiers', []))}",
         f"projection_only_tiers: {', '.join(report.get('projection_only_tiers', []))}",
@@ -551,6 +635,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  measurement_status: {row.get('measurement_status')}",
                 f"  output_budget_status: {row.get('output_budget_status')}",
                 f"  execution_efficiency_status: {row.get('execution_efficiency_status')}",
+                f"  hazard_execution_status: {row.get('hazard_execution_status')}",
                 f"  file_count: {row.get('file_count')}",
                 f"  bytes: {row.get('bytes')}",
                 f"  manifest_bytes: {row.get('manifest_bytes')}",
@@ -568,6 +653,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         if row.get("tier_id") == "smallest_multi_zone":
             lines.append(f"  compact_manifest_bytes: {row.get('compact_manifest_bytes')}")
             lines.append(f"  compact_reducer_sidecars: {row.get('compact_reducer_sidecars')}")
+        if row.get("tier_id") == "postproc_microbenchmark":
+            lines.append(f"  job_id: {row.get('job_id')}")
+            lines.append(f"  cpu_seconds: {row.get('cpu_seconds')}")
+            lines.append(f"  memory_peak_kb: {row.get('memory_peak_kb')}")
         if row.get("tier_id") == "projected_larger_aoi":
             lines.append(f"  planner_decision: {row.get('planner_decision')}")
             lines.append(f"  planner_reason: {row.get('planner_reason')}")

@@ -95,7 +95,15 @@ untracked checkout clutter in
 `/users/olifu/work/tb304_remote_checkout_cleanup_20260519T185745Z.tgz`,
 removed only those stale generated checkout files, and reran the access
 preflight to `ready_for_read_only_collection`. No measured multi-zone result has
-been promoted. The physical-evidence path now has an
+been promoted. TB-305 then measured the exact bounded synthetic postproc
+microbenchmark on Balfrin `postproc` as job `4339870`; TB-306 classifies it in
+the scale dashboard as `measured_on_balfrin_postproc_microbenchmark`, an
+efficiency-only label that does not count as measured hazard execution or
+multi-zone scale capability. The runner-side measurement was `0.6338623960000405`
+wall seconds, `0.048968283` CPU seconds, `32624` kbytes peak RSS, `154` files
+touched, and `89802` bytes touched. The next scale-status action remains
+target-area metrics completion before a smallest two-zone hazard probe is
+reconsidered. The physical-evidence path now has an
 explicit release/scenario physical-meaning firewall, an observed
 runout/deposition acquisition blocker matrix, a template-only operator
 acquisition package, fixture-backed intake acceptance smoke tests, a

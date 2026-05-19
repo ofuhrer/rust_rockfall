@@ -2821,3 +2821,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exact synthetic postproc microbenchmark only; no physics simulation, no hazard result, no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no scientific/operational claim upgrade, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-306`
+
+### TB-306: Postproc Efficiency Evidence Integration
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: integrate the TB-305 postproc microbenchmark outcome into worker-facing scale status without promoting synthetic overhead evidence to hazard-scale capability.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated `postproc_microbenchmark` row to the Balfrin scale-readiness matrix with evidence label `measured_on_balfrin_postproc_microbenchmark`, job `4339870`, preserved run root, wall/CPU/RSS metrics, files/bytes touched, and phase timings from TB-305.
+  - Kept measured hazard tiers limited to `single_zone` and `target_area`; the smallest multi-zone tier remains `blocked_pre_submit`, and the postproc row carries `hazard_execution_status: no_hazard_execution`.
+  - Updated worker-facing docs to classify TB-305 as efficiency-only evidence and recommend target-area metrics completion before reconsidering the smallest two-zone hazard probe.
+  - Removed TB-306 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb306_scale_dashboard.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format text > /tmp/tb306_scale_dashboard.txt`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: evidence integration only; no Balfrin submission, no remote mutation, no new run, no hazard execution, no synthetic-to-hazard promotion, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-307`
