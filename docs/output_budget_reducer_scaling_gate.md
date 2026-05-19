@@ -127,6 +127,13 @@ the required replay-critical families
 `probe_manifest_sha256`, `command_plan_sha256`, and `output_manifest_sha256`
 hashes.
 
+The bounded validation summary and multi-zone reducer-pressure reports now
+make the same split explicit at the report layer: replay-critical families are
+listed separately from diagnostic/debug fanout, and the reduced validation mode
+is named directly rather than inferred from the absence of debug files. That
+keeps the replay contract auditable without pretending that summary-only output
+is equivalent to the rebuildable reduced path.
+
 ## Summary-Only Conditional Curves
 
 Scalable runs must keep conditional curves summary-only.

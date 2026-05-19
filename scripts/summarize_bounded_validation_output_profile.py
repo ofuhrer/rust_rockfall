@@ -31,6 +31,22 @@ DEFAULT_LOCAL_MANIFESTS = (
 )
 
 SUMMARY_SCHEMA_VERSION = "bounded_validation_output_profile_v1"
+VALIDATION_OUTPUT_DEFAULT_MODE = "rebuildable_reduced_output"
+REPLAY_CRITICAL_OUTPUT_CLASSES = [
+    "manifest_json",
+    "diagnostics_json",
+    "trajectory_csv",
+    "trajectory_metadata_csv",
+    "ensemble_deposition_csv",
+    "impact_events_csv",
+    "stop_state_summary_csv",
+]
+DEBUG_OUTPUT_CLASSES = [
+    "ensemble_trajectories_dir",
+    "ensemble_impact_events_dir",
+    "ensemble_impact_events_parquet",
+    "ensemble_impact_terrain_material_dir",
+]
 
 
 class BoundedValidationOutputProfileError(ValueError):
@@ -270,6 +286,7 @@ def build_summary(
         baseline_manifest_path=validation_output_baseline_manifest_path,
         reduced_manifest_path=validation_output_reduced_manifest_path,
     )
+    validation_output_inventory = build_validation_output_inventory(validation_output_comparison)
     local_output_audit = summarize_local_outputs(current_evidence)
 
     acceptance_classification = classify_acceptance(
@@ -425,6 +442,7 @@ def build_summary(
         },
         "local_output_audit": local_output_audit,
         "validation_output_comparison": validation_output_comparison,
+        "validation_output_inventory": validation_output_inventory,
         "provenance": {
             "current_pressure_record_path": str(current_pressure_record_path),
             "bounded_profile_record_path": str(bounded_profile_record_path),
@@ -725,6 +743,36 @@ def summarize_validation_output_manifest(manifest: dict[str, Any], manifest_path
     }
 
 
+def build_validation_output_inventory(validation_output_comparison: dict[str, Any]) -> dict[str, Any]:
+    reduced_families = {family["family"]: family for family in validation_output_comparison.get("reduced", {}).get("families", [])}
+    baseline_families = {family["family"]: family for family in validation_output_comparison.get("baseline", {}).get("families", [])}
+    replay_critical_budgets = {
+        family: {
+            "file_count": int(reduced_families.get(family, {}).get("file_count", 0) or 0),
+            "bytes": int(reduced_families.get(family, {}).get("total_bytes", 0) or 0),
+            "present_in_reduced_manifest": family in reduced_families,
+        }
+        for family in REPLAY_CRITICAL_OUTPUT_CLASSES
+    }
+    debug_family_budgets = {
+        family: {
+            "file_count": int(baseline_families.get(family, {}).get("file_count", 0) or 0),
+            "bytes": int(baseline_families.get(family, {}).get("total_bytes", 0) or 0),
+            "suppressed_in_reduced_manifest": family not in reduced_families,
+        }
+        for family in DEBUG_OUTPUT_CLASSES
+    }
+    return {
+        "validation_output_mode": VALIDATION_OUTPUT_DEFAULT_MODE,
+        "comparison_validation_output_mode": validation_output_comparison.get("validation_output_mode"),
+        "replay_critical_output_classes": REPLAY_CRITICAL_OUTPUT_CLASSES,
+        "debug_output_classes": DEBUG_OUTPUT_CLASSES,
+        "replay_critical_family_budgets": replay_critical_budgets,
+        "debug_family_budgets": debug_family_budgets,
+        "reduced_inventory_present": bool(reduced_families),
+    }
+
+
 def classify_validation_output_family(entry: dict[str, Any]) -> str:
     kind = require_text(entry.get("kind"), "validation_manifest.output.kind")
     format_name = require_text(entry.get("format"), "validation_manifest.output.format")
@@ -830,6 +878,19 @@ def render_markdown(summary: dict[str, Any]) -> str:
     lines.append("")
     lines.append("Excluded output classes:")
     lines.extend(f"- `{value}`" for value in bounded["excluded_output_classes"])
+    validation_inventory = summary["validation_output_inventory"]
+    lines.extend(
+        [
+            "",
+            "Validation output inventory:",
+            f"- Validation output mode: `{validation_inventory['validation_output_mode']}`",
+            f"- Comparison validation output mode: `{validation_inventory['comparison_validation_output_mode']}`",
+            "- Replay-critical output classes:",
+        ]
+    )
+    lines.extend(f"- `{value}`" for value in validation_inventory["replay_critical_output_classes"])
+    lines.append("- Debug output classes:")
+    lines.extend(f"- `{value}`" for value in validation_inventory["debug_output_classes"])
     lines.extend(
         [
             "",

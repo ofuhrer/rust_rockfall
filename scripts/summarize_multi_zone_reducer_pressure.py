@@ -44,6 +44,25 @@ DEFAULT_OUTPUT_FAMILY_MIX = (
     "map_package_manifest",
     "pilot_gis_package_manifest",
 )
+VALIDATION_OUTPUT_MODE = "rebuildable_reduced_output"
+REPLAY_CRITICAL_OUTPUT_FAMILIES = (
+    "trajectory_csv",
+    "deposition_csv",
+    "impact_events_csv",
+    "trajectory_execution_plan",
+    "trajectory_execution_index",
+    "trajectory_merge_state",
+    "reducer_execution_plan",
+    "reducer_execution_index",
+    "reducer_merge_state",
+    "diagnostics_json",
+    "map_package_manifest",
+    "pilot_gis_package_manifest",
+)
+DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES = (
+    "trajectory_chunk_manifest",
+    "reducer_chunk_manifest",
+)
 PRIMARY_OUTPUT_FAMILIES = (
     "trajectory_csv",
     "deposition_csv",
@@ -341,6 +360,11 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "primary_output_family_bytes": budget_totals["primary_output_family_bytes"],
         "output_family_file_counts": output_family_file_counts,
         "output_family_bytes": output_family_bytes,
+        "validation_output_inventory": build_validation_output_inventory(
+            output_family_mix=output_family_mix,
+            output_family_file_counts=output_family_file_counts,
+            output_family_bytes=output_family_bytes,
+        ),
         "largest_output_families_by_bytes": largest_families(output_family_bytes, output_family_file_counts),
         "bottleneck_classification": bottleneck_labels["probe_blocker"]["label"],
         "bottleneck_labels": bottleneck_labels,
@@ -374,6 +398,31 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         ),
     }
     return report
+
+
+def build_validation_output_inventory(
+    *,
+    output_family_mix: tuple[str, ...],
+    output_family_file_counts: dict[str, int],
+    output_family_bytes: dict[str, int],
+) -> dict[str, Any]:
+    output_family_mix_set = set(output_family_mix)
+    replay_critical = [family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family in output_family_mix_set]
+    debug_families = [family for family in DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES if family in output_family_mix_set]
+    family_budgets = {
+        family: {
+            "file_count": output_family_file_counts.get(family, 0),
+            "bytes": output_family_bytes.get(family, 0),
+        }
+        for family in replay_critical + debug_families
+    }
+    return {
+        "validation_output_mode": VALIDATION_OUTPUT_MODE,
+        "replay_critical_output_families": replay_critical,
+        "diagnostic_debug_output_families": debug_families,
+        "family_budgets": family_budgets,
+        "output_family_mix": list(output_family_mix),
+    }
 
 
 def build_release_zones(release_zone_count: int) -> list[dict[str, Any]]:
@@ -1625,6 +1674,13 @@ def render_text(report: dict[str, Any]) -> str:
     ]
     for kind, total_bytes in sorted(report["output_family_bytes"].items(), key=lambda item: item[1], reverse=True):
         lines.append(f"- {kind}: bytes={total_bytes}, files={report['output_family_file_counts'].get(kind, 0)}")
+    inventory = report.get("validation_output_inventory", {})
+    lines.append("validation_output_inventory:")
+    lines.append(f"- validation_output_mode: {inventory.get('validation_output_mode')}")
+    lines.append("- replay_critical_output_families:")
+    lines.extend(f"  - {family}" for family in inventory.get("replay_critical_output_families", []))
+    lines.append("- diagnostic_debug_output_families:")
+    lines.extend(f"  - {family}" for family in inventory.get("diagnostic_debug_output_families", []))
     lines.append("bottleneck_labels:")
     for key in ("merge_order", "manifest_size", "output_pressure", "reducer_runtime", "probe_blocker"):
         label = report["bottleneck_labels"].get(key, {})
@@ -1636,6 +1692,7 @@ def render_text(report: dict[str, Any]) -> str:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+    inventory = report.get("validation_output_inventory", {})
     return "\n".join(
         [
             "# Multi-Zone Reducer Pressure Probe",
@@ -1666,6 +1723,13 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"- `{kind}`: `{report['output_family_file_counts'].get(kind, 0)}` files / `{total_bytes}` bytes"
                 for kind, total_bytes in sorted(report["output_family_bytes"].items(), key=lambda item: item[1], reverse=True)
             ],
+            "",
+            "## Validation Output Inventory",
+            f"- Validation output mode: `{inventory.get('validation_output_mode')}`",
+            "- Replay-critical output families:",
+            *[f"  - `{family}`" for family in inventory.get("replay_critical_output_families", [])],
+            "- Diagnostic debug output families:",
+            *[f"  - `{family}`" for family in inventory.get("diagnostic_debug_output_families", [])],
             "",
             "## Bottleneck Labels",
             *[

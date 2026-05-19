@@ -145,6 +145,15 @@ class PilotCommandPlanTest(unittest.TestCase):
             "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
             native_reduced_command["command"],
         )
+        self.assertEqual(native_reduced_command["validation_output_inventory"]["validation_output_mode"], "rebuildable_reduced_output")
+        self.assertIn(
+            "trajectory_csv",
+            native_reduced_command["validation_output_inventory"]["replay_critical_output_classes"],
+        )
+        self.assertIn(
+            "ensemble_impact_events_dir",
+            native_reduced_command["validation_output_inventory"]["debug_output_classes"],
+        )
         self.assertIn(
             "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
             native_reduced_command["expected_inputs"],
@@ -171,6 +180,19 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn(
             "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
             probe_template_command["command"],
+        )
+        self.assertEqual(
+            probe_template_command["validation_output_inventory"]["validation_output_mode"],
+            "rebuildable_reduced_output",
+        )
+
+        summary_only_command = next(
+            command for command in report["commands"] if command["id"] == "tschamut_target_summary_only_validation"
+        )
+        self.assertEqual(summary_only_command["validation_output_inventory"]["validation_output_mode"], "summary_only")
+        self.assertIn(
+            "trajectory_metadata_csv",
+            summary_only_command["validation_output_inventory"]["replay_critical_output_classes"],
         )
 
         handoff_command = next(

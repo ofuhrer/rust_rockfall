@@ -2686,3 +2686,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: planning/profile enforcement only; no live Balfrin submission, no `sbatch`, no simulation execution, no output data deletion, no operational claim, no scale-up authorization, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-300`
+
+### TB-300: Validation Output Budget Reduction Plan
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: measure and reduce validation-output fanout for target-area and multi-zone workflows while preserving replayability and required scientific diagnostics.
+- Files changed: `scripts/generate_pilot_command_plan.py`, `scripts/summarize_bounded_validation_output_profile.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `docs/output_budget_reducer_scaling_gate.md`, `tests/test_bounded_validation_output_profile.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit validation-output inventories for the bounded target-area summary and multi-zone reducer-pressure report, separating replay-critical families from diagnostic/debug fanout and naming the reduced validation mode directly.
+  - Threaded the same inventory metadata into the portable pilot command plan for the reduced-validation commands so the plan surfaces replay-critical and debug classes instead of requiring inference from the output tree.
+  - Kept the replayability proof anchored in the existing Rust validation test for the native `rebuildable_reduced_output` mode while adding Python coverage for the inventory shape and budget split.
+  - Documented the report-layer split in the output-budget gate and removed TB-300 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_validation_output_profile tests.test_multi_zone_reducer_pressure_gate tests.test_pilot_command_plan`
+  - `PYENV_VERSION=system cargo test validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outputs -- --nocapture`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: validation output budgeting only; no physics change, no metric suppression without replacement summary evidence, no live Balfrin submission, no claim upgrade, no operational claim, no annual-frequency claim, no physical-probability claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-301`

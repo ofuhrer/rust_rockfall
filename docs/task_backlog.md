@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-300: Validation Output Budget Reduction Plan
-
-Goal: Measure and reduce validation-output file fanout for target-area and multi-zone workflows while preserving replayability and required scientific diagnostics.
-
-Capability gap reduced: Validation output has historically dominated file count and bytes, and can overwhelm useful hazard artifacts before Swiss-scale execution.
-
-Why this outranks alternatives: Output size control is not complete until validation debug outputs are budgeted as strictly as hazard outputs.
-
-Inspect first:
-
-- `src/validation.rs`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/check_hazard_output_profile.py`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_bounded_validation_output_profile.py`
-
-Deliverables:
-
-- A validation-output inventory for target-area and multi-zone plans, separating replay-critical files from diagnostic/debug files.
-- A reduced validation-output mode or plan-level defaults that preserve manifests, hashes, summaries, and required trajectories while suppressing nonessential debug fanout.
-- Tests proving reduced validation outputs remain replayable and evidence-preserving.
-
-Definition of done:
-
-- The largest validation-output families have explicit budgets and a reduced mode suitable for scalable AOI/Balfrin plans.
-
-Boundaries: Validation output budgeting only; no physics change, no metric suppression without replacement summary evidence, no live Balfrin submission, no claim upgrade, and no operational claim.
-
 ### TB-301: Multi-Zone Local Scaling Ladder
 
 Goal: Run a deterministic local scaling ladder over increasing zone/scenario counts to measure output, reducer, manifest, and hazard-builder timing before another live Balfrin scale step.

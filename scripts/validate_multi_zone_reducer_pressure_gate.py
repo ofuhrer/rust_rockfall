@@ -412,6 +412,7 @@ def build_report(
         "threshold_provenance": "fixture_backed",
         "target_root": str(target_root),
         "target_profile": target_profile,
+        "validation_output_inventory": target_report.get("validation_output_inventory", {}),
         "thresholds": thresholds,
         "budget_checks": budget_checks,
         "family_count_checks": family_count_checks,

@@ -66,6 +66,20 @@ REDUCED_PROFILE = load_repo_script_module(
     error_message="unable to load helper module from",
 )
 REDUCED_VALIDATION_CASE = ROOT / "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+VALIDATION_OUTPUT_REPLAY_CRITICAL_CLASSES = [
+    "manifest_json",
+    "diagnostics_json",
+    "trajectory_csv",
+    "trajectory_metadata_csv",
+    "ensemble_deposition_csv",
+    "impact_events_csv",
+    "stop_state_summary_csv",
+]
+VALIDATION_OUTPUT_DEBUG_CLASSES = [
+    "ensemble_trajectories_dir",
+    "ensemble_impact_events_dir",
+    "ensemble_impact_events_parquet",
+]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -314,6 +328,9 @@ def build_tschamut_site_plan(
                 read_only=False,
                 may_produce_ignored_outputs=True,
                 ignored_output_paths=["validation/private/tschamut_public_pilot/target_gate_v1_summary_only"],
+                extra_fields={
+                    "validation_output_inventory": validation_output_inventory(mode="summary_only"),
+                },
             ),
             command_entry(
                 site="tschamut_same_scale",
@@ -659,6 +676,9 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[rel(reduced_root)],
+            extra_fields={
+                "validation_output_inventory": validation_output_inventory(mode="rebuildable_reduced_output"),
+            },
         ),
         command_entry(
             site="tschamut_same_scale",
@@ -681,6 +701,9 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             may_produce_ignored_outputs=True,
             blocked_reason="execution deferred until explicitly authorized",
             ignored_output_paths=[rel(reduced_root)],
+            extra_fields={
+                "validation_output_inventory": validation_output_inventory(mode="rebuildable_reduced_output"),
+            },
         ),
         command_entry(
             site="tschamut_same_scale",
@@ -703,6 +726,9 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             read_only=False,
             may_produce_ignored_outputs=False,
             output_profile_policy=rebuild_policy,
+            extra_fields={
+                "validation_output_inventory": validation_output_inventory(mode="rebuildable_reduced_output"),
+            },
         ),
         command_entry(
             site="tschamut_same_scale",
@@ -725,6 +751,9 @@ def build_rebuildable_reduced_output_commands() -> list[dict[str, Any]]:
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[rel(reduced_root)],
+            extra_fields={
+                "validation_output_inventory": validation_output_inventory(mode="rebuildable_reduced_output"),
+            },
         ),
     ]
 
@@ -1465,7 +1494,13 @@ def command_entry(
     blocked_reason: str = "",
     ignored_output_paths: list[str] | None = None,
     output_profile_policy: dict[str, Any] | None = None,
+    extra_fields: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    merged_extra_fields: dict[str, Any] = {}
+    if extra_fields:
+        merged_extra_fields.update(extra_fields)
+    if cog_scope_intent is not None:
+        merged_extra_fields["cog_scope_intent"] = cog_scope_intent
     return COMMAND_PLAN.build_command_record(
         site=site,
         group=group,
@@ -1479,9 +1514,47 @@ def command_entry(
         blocked_reason=blocked_reason,
         ignored_output_paths=ignored_output_paths,
         output_profile_policy=output_profile_policy,
-        extra_fields={"cog_scope_intent": cog_scope_intent},
-        include_none_extra_fields=("cog_scope_intent",),
+        extra_fields=merged_extra_fields,
+        include_none_extra_fields=tuple(
+            field_name for field_name, value in (("cog_scope_intent", cog_scope_intent),) if value is None
+        ),
     )
+
+
+def validation_output_inventory(*, mode: str) -> dict[str, Any]:
+    if mode == "rebuildable_reduced_output":
+        return {
+            "validation_output_mode": mode,
+            "replay_critical_output_classes": list(VALIDATION_OUTPUT_REPLAY_CRITICAL_CLASSES),
+            "debug_output_classes": list(VALIDATION_OUTPUT_DEBUG_CLASSES),
+            "notes": [
+                "replay-critical families stay committed to the manifest and builder-facing outputs",
+                "debug fanout is suppressed in the reduced path",
+            ],
+        }
+    if mode == "summary_only":
+        return {
+            "validation_output_mode": mode,
+            "replay_critical_output_classes": [
+                "manifest_json",
+                "diagnostics_json",
+                "trajectory_metadata_csv",
+                "ensemble_deposition_csv",
+                "stop_state_summary_csv",
+            ],
+            "debug_output_classes": [
+                "trajectory_csv",
+                "impact_events_csv",
+                "ensemble_trajectories_dir",
+                "ensemble_impact_events_dir",
+                "ensemble_impact_events_parquet",
+            ],
+            "notes": [
+                "summary-only output is not replayable without the frozen full or rebuildable-reduced case",
+                "use the rebuildable reduced mode when required trajectories must remain available",
+            ],
+        }
+    raise ValueError(f"unsupported validation output inventory mode: {mode}")
 
 
 def group_summaries(
