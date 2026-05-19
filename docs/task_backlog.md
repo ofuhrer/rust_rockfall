@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-319: Post-Demonstration Capability And Gap Refresh
-
-Goal: Refresh the maturity snapshot, README, scale dashboard, and backlog recommendations after the next Balfrin and user-AOI demonstration tasks complete.
-
-Capability gap reduced: Once measured scale and frontend evidence changes, the repository needs one authoritative synthesis that prevents workers from following stale blocked paths.
-
-Why this outranks alternatives: This should come after new measurements and user-facing demonstrations, not before them.
-
-Inspect first:
-
-- `README.md`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/print_agent_task_context.py`
-
-Deliverables:
-
-- Updated status docs and task-context summaries reflecting measured Balfrin runs, output/efficiency status, user-AOI frontend capability, and remaining scientific boundaries.
-- Removal or correction of stale blockers that have been superseded by measured evidence, while preserving failed-closed branches as history.
-- A short next-backlog recommendation list that favors execution, acquisition, optimization, or explicit deferral over further synthesis.
-
-Definition of done:
-
-- The repository tells one current story about scale, Balfrin readiness, user-defined AOI workflow, and remaining gaps after the new evidence lands.
-
-Boundaries: Synthesis after evidence changes only; no live Balfrin submission, no new run, no claim upgrade beyond measured capability, no annual/physical/risk semantics, and no operational claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

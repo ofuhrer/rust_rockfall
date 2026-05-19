@@ -10,29 +10,34 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-303 have now completed the latest
+primarily swisstopo. TB-222 through TB-319 have now completed the latest
 post-review queue: Balfrin next-action and metrics-completion preflights were
 sharpened; read-only target-area metric and spatial-artifact recovery paths
 were added; multi-zone handoff budgets and authorization gates were refreshed;
 blocked metrics-completion and multi-zone Balfrin attempts were integrated
-without promoting them as measured evidence; the Chant Sura real-input gate now
-distinguishes real, fixture-backed, partial, missing, and metadata-mismatched
-inputs; the prepared-pilot dry run fails closed unless real core inputs are
-ready; and physical-evidence intake now separates observed benchmark
-candidates, accepted/rejected intake packages, release-zone provenance,
-block-population evidence, calibration inputs, holdout evidence, and
-source-frequency records. The later TB-299 through TB-303 pass tightened the
-scale-control layer: scalable command plans fail closed on full grid CSV, full
-conditional-curve output, missing reduced-output flags, excessive sidecars, or
-missing rebuildability artifacts; validation-output summaries separate
-replay-critical families from diagnostic/debug fanout; a local 1/2/4/8/12-zone
-ladder records fixture-backed breakpoints; preserved Balfrin run roots can be
+without promoting them as measured evidence; the TB-307 target-area
+metrics-completion rerun measured peak memory and split validation/hazard
+outputs; TB-312 measured an exact four-zone post-processing/reducer package on
+Balfrin `postproc`; TB-313 rejected the accumulator micro-optimization; TB-314
+refreshed the local 1/2/4/8/12-zone ladder; TB-315 through TB-318 built and
+polished the user-AOI guided review path; and TB-319 refreshed the
+authoritative status surfaces after those evidence changes. The Chant Sura
+real-input gate distinguishes real, fixture-backed, partial, missing, and
+metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
+core inputs are ready; and physical-evidence intake separates observed
+benchmark candidates, accepted/rejected intake packages, release-zone
+provenance, block-population evidence, calibration inputs, holdout evidence,
+and source-frequency records. The scale-control layer now fails closed on full
+grid CSV, full conditional-curve output, missing reduced-output flags,
+excessive sidecars, missing rebuildability artifacts, or submit-package
+contract mismatches; validation-output summaries separate replay-critical
+families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. The active backlog is
-currently empty and
-`scripts/print_agent_task_context.py` reports `backlog_refill_needed=true`;
-the next action should therefore be a scoped gap-analysis/backlog-refill pass,
-not ad hoc implementation. The
+matrix gives workers one compact evidence dashboard. After TB-319 removes the
+last active task, `scripts/print_agent_task_context.py` should report
+`backlog_refill_needed=true`; the next action should be a scoped refill that
+selects execution, acquisition, optimization from measured bottlenecks, or
+explicit deferral rather than another synthesis-only pass. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -114,8 +119,14 @@ failed closed before `sbatch` because the reviewed two-zone submit command used
 the target-area wrapper manifest instead of the executable
 `public_real_site_conditional_pilot_run_v1` contract. The scaling frontier now
 treats that as a two-zone failed-closed branch, not measured multi-zone
-evidence, and the next safe action is a remote cleanup / package-regeneration
-rerun rather than a live scale step. The
+evidence, and the next safe action is submit-contract repair or package
+regeneration rather than a live scale step. TB-312 later measured the exact compact
+four-zone post-processing/reducer package on Balfrin `postproc` as efficiency
+evidence only, and TB-314 confirmed the local scratch ladder still first
+blocks at 8 zones on `accumulation_seconds`. TB-315 through TB-318 then moved
+the AOI path from scattered dry-run commands to a guided, fixture-backed
+bounds-to-review-map workflow with map packaging and a polished static QA
+surface. The
 physical-evidence path now has an
 explicit release/scenario physical-meaning firewall, an observed
 runout/deposition acquisition blocker matrix, a template-only operator
@@ -155,16 +166,17 @@ readiness, authorization-record/audit, output-budget, preservation, or post-run
 evidence gates, and it does not authorize non-postproc partitions, distributed
 execution, scale-up claims, or scientific/operational claim upgrades.
 
-Post-TB-303, the AOI-to-map and scale-status front doors are stronger but
+Post-TB-319, the AOI-to-map and scale-status front doors are stronger but
 still bounded. The
 workflow now has an AOI hazard-map packager that emits a compact review package
 with raster inventory, checksums, release/scenario overlays, COG-ready or
 `cog_blocked` classification, and explicit claim boundaries. It also has a
 static AOI map QA review surface that exposes terrain, release-zone, scenario,
-hazard-layer, context, COG, fixture-backed, conditional-only, and
-non-operational warnings. A fixture-backed end-to-end regression now exercises
-the AOI dry-run planner, prepared-input contract, tiny hazard build, map/pilot
-GIS manifests, and GIS/COG audit under `/tmp`. Optional observed
+hazard-layer, context, COG, fixture-backed, conditional-only, observed-overlay,
+first-blocker, next-command, and non-operational warnings. A fixture-backed
+end-to-end regression now exercises explicit AOI bounds, staged input
+verification, guided workflow status, prepared-pilot local execution, map
+packaging, and QA review under `/tmp`. Optional observed
 runout/deposition and field-supported release-zone provenance overlays can be
 attached to AOI map packages, but only through accepted real-input-ready
 evidence; fixture-only or ambiguous-role evidence is blocked and cannot appear
@@ -495,7 +507,7 @@ objective are:
     prepared-pilot dry-run report emits `blocked_missing_real_core_inputs`
     rather than treating fixture scaffolding as real workflow evidence.
 14. Backlog and worker-context hygiene have improved materially. TB-181 through
-    TB-303 completed the post-TB-179 execution queues: deterministic
+    TB-319 completed the post-TB-179 execution queues: deterministic
     release-candidate stress evidence, multi-zone reducer pressure,
     second-site dry-run realism, shared validator helpers, dependency
     guidance, calibration failure diagnostics, runtime-facing panic-path
@@ -516,9 +528,13 @@ objective are:
     deterministic real-input intake acceptance/rejection, physical-evidence
     triage for release-zone provenance, block-population evidence, and
     source-frequency records, blocked live-run integration without claim
-    promotion, and a fixture-backed AOI-to-map review path with optional
-    real-evidence overlays. No active implementation tasks remain; the backlog
-    now needs a new prioritized refill before further worker execution.
+    promotion, a fixture-backed AOI-to-map review path with optional
+    real-evidence overlays, measured target-area metrics completion, measured
+    four-zone postproc/reducer evidence, rejected accumulator optimization
+    evidence, refreshed local scaling-ladder status, and this
+    post-demonstration synthesis. No active implementation tasks remain after
+    TB-319; the backlog now needs a new prioritized refill before further
+    worker execution.
 
 ## Backlog Quality Assessment
 
@@ -546,29 +562,35 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-303:
+Current high-value work after TB-319:
 
-- run a scoped gap-analysis/backlog-refill pass before launching another
-  implementation worker, using the backlog capability filter to reject tasks
-  that mainly add wrappers around known blocked states;
-- use the standing Balfrin postproc clearance to run the next measured action
-  only when GPT-5.5 worker routing, active monitoring, access,
-  remote-cleanliness, output-budget, authorization-record/audit, and
-  preservation conditions pass; the current candidates remain another
-  metrics-completion attempt or the smallest bounded multi-zone measurement;
+- run a scoped backlog-refill pass before launching another implementation
+  worker, using the capability filter to reject tasks that mainly add wrappers
+  around known blocked states;
+- repair or regenerate the failed-closed two-zone submit contract before any
+  new live multi-zone scale step; the current blocker is the TB-309
+  `public_real_site_conditional_pilot_run_v1` manifest-contract mismatch, not
+  missing standing `postproc` authorization and not target-area metrics
+  completion;
+- use the standing Balfrin `postproc` clearance only when GPT-5.5 worker
+  routing, active monitoring, access, remote-cleanliness, output-budget,
+  authorization-record/audit, preservation, and post-run evidence gates pass;
+  the clearance does not itself promote any failed-closed branch into measured
+  evidence;
 - keep using the Balfrin remote-access preflight, worker-routing metadata,
-  metrics-completion preflight, smallest multi-zone preflight, and post-run
+  smallest multi-zone preflight, run-root output-budget auditor, and post-run
   collector rehearsal before treating any future run as evidence;
-- treat TB-264 and TB-267 as failed-closed pre-submission branches, not as
-  measured evidence; their prior authorization blockers are superseded by the
-  standing postproc clearance, but their technical pre-submit blockers still
-  matter until rerun through the current gates;
+- advance the user-defined AOI path from fixtures to real staged public
+  geodata through the explicit dry-run/local-copy/download-gated acquisition
+  driver, then rerun the guided bounds-to-review-map workflow without
+  committing generated outputs;
 - treat the rejected accumulator optimization as evidence against broad
   performance churn and require a new measured hypothesis before touching the
   hazard accumulator again;
 - advance Chant Sura only from real staged inputs named by the frozen
   acquisition package and prepared-pilot gate, not from fixtures; use the
-  TB-250 handoff recommendation before attempting a real-input dry run;
+  acquisition/staging driver and TB-250 handoff recommendation before
+  attempting a real-input dry run;
 - use the observed runout/deposition operator package, candidate-acquisition
   report, and real-input intake acceptance/rejection logic as
   acquisition/schema machinery only, not physical validation;

@@ -23,7 +23,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
-        self.assertEqual(report["next_evidence_field"], "remote_cleanup_rerun")
+        self.assertEqual(report["next_evidence_field"], "repair_two_zone_submit_contract_or_regenerate_package")
         self.assertIn("TB-314 refreshed the local scratch ladder", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone"])
@@ -35,8 +35,25 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["projection_only_tiers"], ["projected_larger_aoi"])
         self.assertEqual(report["no_go_tiers"], ["projected_larger_aoi"])
         self.assertFalse(report["live_run_authorization_status"]["live_submission_authorized"])
-        self.assertEqual(report["live_run_authorization_status"]["recommended_next_action"], "remote_cleanup_rerun")
-        self.assertEqual(report["next_recommended_scaling_task"], "remote_cleanup_rerun")
+        self.assertTrue(report["live_run_authorization_status"]["standing_postproc_clearance_active"])
+        self.assertEqual(
+            report["live_run_authorization_status"]["recommended_next_action"],
+            "repair_two_zone_submit_contract_or_regenerate_package",
+        )
+        self.assertEqual(
+            report["next_recommended_scaling_task"],
+            "repair_two_zone_submit_contract_or_regenerate_package",
+        )
+        self.assertEqual(
+            [item["action_id"] for item in report["next_backlog_recommendations"]],
+            [
+                "repair_two_zone_submit_contract_or_regenerate_package",
+                "stage_real_public_context_for_user_aoi",
+                "optimize_only_from_new_measured_bottleneck",
+                "defer_physical_frequency_and_operational_claims",
+            ],
+        )
+        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "execution_unblock")
         self.assertEqual(
             report["evidence_label_order"],
             [

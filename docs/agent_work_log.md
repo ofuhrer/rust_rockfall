@@ -3116,3 +3116,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: frontend/review-surface metadata only; no hazard-value changes, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy outputs committed.
 - Next task: `TB-319`
+
+### TB-319: Post-Demonstration Capability And Gap Refresh
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: refresh the maturity snapshot, README, scale dashboard, and worker task-context surface after the Balfrin metrics/postproc evidence and user-AOI demonstration work landed.
+- Files changed: `README.md`, `docs/current_maturity_snapshot.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/print_agent_task_context.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the front-door status docs so target-area metrics completion is measured and no longer ranked, TB-309 remains failed closed before `sbatch`, TB-312 remains postproc/reducer efficiency evidence rather than hazard scale evidence, and the AOI guided review path is fixture-backed but user-facing.
+  - Added next-backlog recommendations to the scale dashboard that favor two-zone submit-contract repair, real public-geodata acquisition for a user AOI, optimization only from a new measured bottleneck, and explicit deferral of physical-frequency/operational semantics.
+  - Refreshed the empty-backlog task-context message and removed TB-319 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json >/tmp/tb319_scale_matrix.json`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json --no-live-checks >/tmp/tb319_task_context_after.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: synthesis/docs/helper refresh only; no live Balfrin submission, no new simulation, no generated artifact commit, no scale-up claim, no annual/physical/risk semantics, and no operational claim.
+- Next task: backlog refill required.

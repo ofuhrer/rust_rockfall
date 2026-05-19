@@ -19,16 +19,22 @@ authorized target-area probe. That bounded target-area probe completed on
 Balfrin as SLURM job `4329024` under
 `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
 It provides measured runtime/output evidence for the frozen target-area
-contract. Peak-memory and split validation/hazard output metrics were later
-recovered from preserved/read-only sources; the attempted metrics-completion
-rerun and the smallest multi-zone probe both failed closed before submission.
-The current scale surface also includes reduced-output command-plan
+contract. Peak-memory and split validation/hazard output metrics were then
+measured by the TB-307 metrics-completion rerun on `postproc` as SLURM job
+`4339889`; the earlier blocked/failed-closed attempts remain history, not
+current blockers. The smallest two-zone submit path still has no measured
+multi-zone hazard result: TB-309 failed closed before `sbatch` because the
+reviewed submit package did not match the executable pilot-run contract. The
+current scale surface also includes reduced-output command-plan
 enforcement, validation-output replay/debug budget inventories, a local
-1/2/4/8/12-zone scaling ladder, a read-only Balfrin run-root output-budget
+1/2/4/8/12-zone scaling ladder, a measured four-zone post-processing/reducer
+package on Balfrin `postproc`, a read-only Balfrin run-root output-budget
 auditor, and a compact scale evidence dashboard for workers. These surfaces
-distinguish `measured_on_balfrin`, `fixture_backed`, `scratch_local`,
-`projection_only`, and `blocked_pre_submit` evidence so blocked or local
-projections are not promoted to measured scale capability.
+distinguish `measured_on_balfrin`,
+`measured_on_balfrin_postproc_microbenchmark`, `fixture_backed`,
+`scratch_local`, `projection_only`, `blocked_pre_submit`, and `failed_closed`
+evidence so blocked, local, synthetic, or failed-closed branches are not
+promoted to measured hazard scale capability.
 The user has granted standing clearance for GPT-5.5 workers to submit and
 actively monitor Balfrin jobs on the `postproc` partition, including multiple
 concurrent jobs and filling that partition. If the work would keep `postproc`
@@ -40,18 +46,28 @@ or operational claim upgrades.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
 dry-run helpers for AOI product discovery, public-geodata cache verification,
-AOI terrain preprocessing from staged tiles, terrain-driven release-zone
-candidate stability checks, generic candidate-source-zone scenario generation,
-second-site acquisition planning, site-level case-skeleton handoff, and
-planning-only GIS scope summaries. Post-TB-303, the AOI-to-map user path also
-has a fixture-backed regression from AOI dry run to tiny hazard map, an AOI
-hazard-map packager, a static QA review surface, and an optional observed
-evidence overlay hook. It does not yet download all public inputs, run
-arbitrary real AOIs end to end, execute second-site ensembles, or generate
-physically annualized intensity-frequency products.
+mode-gated public-geodata staging, AOI terrain preprocessing from staged
+tiles, terrain-driven release-zone candidate stability checks, generic
+candidate-source-zone scenario generation, second-site acquisition planning,
+site-level case-skeleton handoff, and planning-only GIS scope summaries. The
+AOI-to-map user path now has a guided front door, a fixture-backed
+bounds-to-review-map regression, an AOI hazard-map packager, and a static QA
+review surface that exposes layer inventory, warnings, provenance, observed
+overlay status, and the next recommended command. It does not yet download all
+public inputs by default, run arbitrary real AOIs end to end, execute
+second-site ensembles, or generate physically annualized intensity-frequency
+products.
 
 The user-facing AOI bounds-to-review-map walkthrough now lives in
 `docs/public_real_site_geodata_preparation.md`.
+
+Current next-backlog recommendations are deliberately execution- or
+acquisition-oriented: repair/regenerate the failed-closed two-zone submit
+contract before any live multi-zone scale step, stage real public geodata for a
+user AOI through the explicit acquisition driver, pursue optimization only
+from a new measured bottleneck, and explicitly defer physical-frequency,
+risk/exposure/vulnerability, and operational claims until the missing evidence
+exists.
 
 The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
 normalized `workflow_status`, `first_blocker`, `next_command`,

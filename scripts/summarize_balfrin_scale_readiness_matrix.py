@@ -130,6 +130,7 @@ def _ready_access_report() -> dict[str, Any]:
         },
         "read_only": True,
         "live_submission_authorized": False,
+        "standing_postproc_clearance_active": True,
         "checked_commands": [{"name": "ssh_availability", "status": "pass", "returncode": 0}],
     }
 
@@ -635,9 +636,52 @@ def build_report() -> dict[str, Any]:
     overall_status = "failed_closed" if failed_closed else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
     next_recommended_scaling_task = (
-        "remote_cleanup_rerun" if failed_closed else recommended.get("action_id") or recommended.get("option_id")
+        "repair_two_zone_submit_contract_or_regenerate_package"
+        if failed_closed
+        else recommended.get("action_id") or recommended.get("option_id")
     )
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
+    next_backlog_recommendations = [
+        {
+            "rank": 1,
+            "action_id": "repair_two_zone_submit_contract_or_regenerate_package",
+            "category": "execution_unblock",
+            "status": "recommended_next",
+            "reason": (
+                "TB-309 failed closed before sbatch because the reviewed two-zone submit path used the wrong manifest contract; "
+                "repair the package/submit contract before any new live scale step."
+            ),
+        },
+        {
+            "rank": 2,
+            "action_id": "stage_real_public_context_for_user_aoi",
+            "category": "acquisition",
+            "status": "ready_for_operator_choice",
+            "reason": (
+                "The AOI review surface is fixture-backed and usable, but real AOI progress now depends on staged public geodata "
+                "through the dry-run/local-copy/download-gated acquisition driver."
+            ),
+        },
+        {
+            "rank": 3,
+            "action_id": "optimize_only_from_new_measured_bottleneck",
+            "category": "optimization",
+            "status": "defer_until_hypothesis_measured",
+            "reason": (
+                "TB-313 rejected the accumulator micro-optimization, so further performance work should start from a new measured "
+                "bottleneck and acceptance floor rather than broad churn."
+            ),
+        },
+        {
+            "rank": 4,
+            "action_id": "defer_physical_frequency_and_operational_claims",
+            "category": "explicit_deferral",
+            "status": "deferred_boundary",
+            "reason": (
+                "Observed evidence, calibration, source-frequency semantics, exposure, vulnerability, and operational approval remain absent."
+            ),
+        },
+    ]
     return {
         "schema_version": SCHEMA_VERSION,
         "matrix_status": overall_status,
@@ -694,6 +738,11 @@ def build_report() -> dict[str, Any]:
         },
         "live_run_authorization_status": {
             "live_submission_authorized": False,
+            "standing_postproc_clearance_active": True,
+            "standing_postproc_clearance_scope": (
+                "GPT-5.5 workers may submit and actively monitor Balfrin postproc jobs after the exact package, access, "
+                "readiness, output-budget, authorization-record/audit, preservation, and evidence gates pass."
+            ),
             "decision_status": decision_report.get("decision_status"),
             "recommended_next_action": live_recommended_next_action,
             "recommended_next_action_status": recommended.get("status"),
@@ -701,9 +750,10 @@ def build_report() -> dict[str, Any]:
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, so the next safe action is to repair or rerun the package before any new live scale step."
+            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, so the next safe action is to repair or regenerate the package before any new live scale step."
         ),
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
+        "next_backlog_recommendations": next_backlog_recommendations,
         "blocked_reason": "two_zone_failed_closed.submit_manifest_schema",
         "claim_boundaries": {
             "operational_claims_allowed": False,

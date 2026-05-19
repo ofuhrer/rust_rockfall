@@ -118,8 +118,23 @@ TB-306 integrates that outcome into the worker-facing scale dashboard as
 `measured_on_balfrin_postproc_microbenchmark`. The label is deliberately
 separate from `measured_on_balfrin`: it updates post-processing efficiency
 status, but it is not a hazard execution, not a multi-zone measurement, and not
-a scale-capability upgrade. The next recommended action remains target-area
-metrics completion before any smallest two-zone hazard probe is reconsidered.
+a scale-capability upgrade.
+
+TB-307 then completed the target-area metrics-completion rerun on `postproc` as
+job `4339889`, exit `0:0`, elapsed `00:00:29`, with `memory_peak_mb=5.4375`,
+`130` validation files / `34,565,498` validation bytes, and `99` hazard files /
+`273,194,249` hazard bytes preserved under
+`/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1`.
+TB-308 integrated those measured metrics into the evidence and dashboard
+surfaces, so target-area metrics completion is no longer the ranked next
+action.
+
+TB-309 later failed closed before `sbatch` on the reviewed two-zone submit path
+because the reviewed command supplied the target-area wrapper manifest instead
+of the executable `public_real_site_conditional_pilot_run_v1` contract. The
+next safe scale action is therefore package/submit-contract repair or
+regeneration, followed by the normal access, output-budget, preservation, and
+post-run evidence gates before any new live submission.
 
 ## Balfrin checkout and scratch boundary
 
@@ -306,9 +321,11 @@ The TB-168 authorized target-area probe used:
 - `output_bytes=192,350,243`
 - `conditional_curve_row_count=729600`
 
-The probe was measured, but the metrics contract still reports missing peak
-memory and split validation/hazard output counts and bytes. Those completeness
-gaps are intentionally left to the next metrics task rather than backfilled.
+The original probe was measured. Its later metrics-completion rerun measured
+the previously missing peak memory and split validation/hazard output counts
+and bytes. The older missing-metrics branch remains useful history, but it is
+not the current blocker and must not be used to request another metrics
+completion run.
 
 ## TB-287 smallest multi-zone fail-closed result
 
@@ -383,8 +400,9 @@ the required metrics, preserved run-root files, SLURM accounting fields,
 output-family summaries, and declared GIS artifact paths for the next
 authorized live run.
 
-For the metrics-completion rerun package that closes only the missing
-target-area peak-memory and split validation/hazard output metrics, use
+For historical review of the metrics-completion rerun package that closed only
+the missing target-area peak-memory and split validation/hazard output metrics,
+use
 `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`.
 It stays read-only, emits the dry-run rerun plan and SBATCH package, and keeps
 the comparison against the recorded target-area run separate from any live
@@ -395,7 +413,7 @@ Only a submitted run that later passes the preservation gate may promote
 measured evidence; blocked, unauthorized, or failed-closed states remain
 planning or failure evidence with one exact remaining precondition.
 
-Before requesting that rerun, use
+Before requesting any future rerun, use
 `scripts/recover_balfrin_target_area_metrics_from_run_root.py` with the TB-223
 access preflight JSON. The recovery helper targets the existing authorized
 target-area run root, runs only read-only collection, and reports whether each
