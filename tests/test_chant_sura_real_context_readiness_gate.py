@@ -197,13 +197,13 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             self._stage_minimal_inputs(repo_root)
-            self._write_real_core_inputs(repo_root, {"terrain_crop", "terrain_metadata", "aoi_tile_catalog"})
+            self._write_real_core_inputs(repo_root, {"terrain_crop"})
             package_path = self._write_acquisition_package(
                 repo_root,
                 classification_map={
                     "terrain_crop": "real_staged",
-                    "terrain_metadata": "real_staged",
-                    "aoi_tile_catalog": "real_staged",
+                    "terrain_metadata": "fixture_backed",
+                    "aoi_tile_catalog": "fixture_backed",
                     "source_zone_metadata": "fixture_backed",
                     "scenario_table": "fixture_backed",
                     "source_scenario_policy": "fixture_backed",
@@ -225,12 +225,13 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         checklist = report["real_context_staging_checklist"]
         self.assertEqual(report["real_context_readiness_gate_status"], "blocked_partial_real_inputs")
         self.assertEqual(report["prepared_pilot_input_classification"], "partial_real")
-        self.assertEqual(report["first_missing_real_input_category"], "")
-        self.assertEqual(report["first_missing_real_input_classification"], "")
-        self.assertEqual(report["first_missing_real_input_path"], "")
-        self.assertEqual(report["first_fixture_backed_real_input_category"], "source_zone_metadata")
+        self.assertEqual(report["first_missing_real_input_category"], "terrain_metadata")
+        self.assertEqual(report["first_missing_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(report["first_missing_real_input_path"]).endswith("terrain_metadata.yaml"))
+        self.assertEqual(report["first_missing_real_input_missing_fields"], [])
+        self.assertEqual(report["first_fixture_backed_real_input_category"], "terrain_metadata")
         self.assertEqual(report["first_fixture_backed_real_input_classification"], "fixture_backed")
-        self.assertTrue(str(report["first_fixture_backed_real_input_path"]).endswith("source_zone_metadata.yaml"))
+        self.assertTrue(str(report["first_fixture_backed_real_input_path"]).endswith("terrain_metadata.yaml"))
         self.assertEqual(readiness["readiness_status"], "metadata_mismatch")
         self.assertEqual(readiness["ready_product_count"], 8)
         self.assertEqual(readiness["missing_product_count"], 2)
@@ -242,20 +243,21 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(checklist["missing_product_count"], 2)
         self.assertEqual(checklist["deferred_product_count"], 0)
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["input_classification"], "partial_real")
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "")
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_classification"], "")
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_path"], "")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_category"], "terrain_metadata")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_classification"], "fixture_backed")
+        self.assertTrue(str(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_path"]).endswith("terrain_metadata.yaml"))
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_real_input_missing_fields"], [])
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_category"], "source_zone_metadata")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_category"], "terrain_metadata")
         self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_classification"], "fixture_backed")
-        self.assertTrue(str(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_path"]).endswith("source_zone_metadata.yaml"))
-        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_non_synthetic_input"], {})
+        self.assertTrue(str(report["prepared_pilot_real_input_readiness"]["first_fixture_backed_real_input_path"]).endswith("terrain_metadata.yaml"))
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_non_synthetic_input"]["category"], "terrain_metadata")
+        self.assertEqual(report["prepared_pilot_real_input_readiness"]["first_missing_non_synthetic_input"]["classification"], "fixture_backed")
         row_states = {
             entry["category"]: entry["classification"] for entry in report["prepared_pilot_real_input_readiness"]["required_real_inputs"]
         }
         self.assertEqual(row_states["terrain_crop"], "real_staged")
-        self.assertEqual(row_states["terrain_metadata"], "real_staged")
-        self.assertEqual(row_states["aoi_tile_catalog"], "real_staged")
+        self.assertEqual(row_states["terrain_metadata"], "fixture_backed")
+        self.assertEqual(row_states["aoi_tile_catalog"], "fixture_backed")
         self.assertEqual(row_states["source_zone_metadata"], "fixture_backed")
         self.assertEqual(row_states["scenario_table"], "fixture_backed")
         self.assertEqual(row_states["source_scenario_policy"], "fixture_backed")

@@ -352,3 +352,10 @@ records, the helper switches to `stage_local_existing_input` for
 `terrain_metadata`, `aoi_tile_catalog`, `source_zone_metadata`,
 `scenario_table`, or `source_scenario_policy`. If every real core input is
 present, the recommendation becomes `ready_no_handoff_needed`.
+
+In the current repo state, `terrain.asc` is real-staged while
+`terrain_metadata.yaml` and `aoi_tile_catalog.yaml` remain fixture-backed.
+The readiness gate now preserves that ambiguity explicitly by naming
+`terrain_metadata` as the first unresolved real core input and keeping the
+next action as `stage_local_existing_input` until a real-staged metadata record
+replaces the fixture-backed one.

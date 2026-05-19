@@ -393,6 +393,8 @@ def build_prepared_pilot_real_input_readiness(
         classification = "fixture_backed"
     else:
         classification = "missing"
+    if classification == "partial_real" and first_missing_non_synthetic_input is None:
+        first_missing_non_synthetic_input = first_fixture_backed_input
 
     report = {
         "schema_version": PREPARED_PILOT_REAL_INPUT_READINESS_SCHEMA_VERSION,

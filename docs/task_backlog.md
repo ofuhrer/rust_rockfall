@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-288: Real Chant Sura Core Input Staging Pass
-
-Goal: Stage or reject the first missing real Chant Sura / Fluelapass core inputs named by the readiness gate, beginning with terrain metadata and AOI tile catalog.
-
-Capability gap reduced: Second-site portability remains blocked because real staged inputs and metadata are missing or incomplete.
-
-Why this outranks alternatives: The fastest way to reduce Tschamut coupling is to advance one real second-site input row at a time through the existing fail-closed gate.
-
-Inspect first:
-
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`
-- `tests/test_chant_sura_real_context_readiness_gate.py`
-
-Deliverables:
-
-- A staging pass for the first unresolved real core input named by the gate, with checksum/provenance metadata where available.
-- If the local input is unavailable or ambiguous, a blocked acquisition record naming the exact missing file, metadata fields, and next action.
-- Focused tests or fixture updates only if schema behavior changes.
-
-Definition of done:
-
-- The Chant Sura readiness gate advances past at least one real-input blocker or preserves an exact acquisition blocker that removes ambiguity.
-
-Boundaries: Real-input staging/rejection only; no synthetic upgrade to real readiness, no second-site ensemble execution, no live Balfrin submission, no physical validation claim, and no operational claim.
-
 ### TB-289: Physical Evidence Overlay Acquisition Pass
 
 Goal: Acquire, stage, or reject one real observed runout/deposition or field-supported release-zone provenance package for use as an AOI map overlay.

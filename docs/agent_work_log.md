@@ -2428,3 +2428,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: exact smallest two-zone probe gate only; no `sbatch`, no live Balfrin submission, no retry, no larger ensemble, no remote cleanup, no scale-up, no distributed execution, no annual-frequency semantics, no physical-probability claim, no operational claim, and no risk/exposure/vulnerability product.
 - Next task: `TB-288`
+
+### TB-288: Real Chant Sura Core Input Staging Pass
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: preserve the first unresolved real Chant Sura core-input blocker in the readiness gate, starting from the live terrain metadata / AOI catalog row order, and keep the acquisition handoff fail-closed without inventing staged evidence.
+- Files changed: `scripts/check_chant_sura_real_context_readiness_gate.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the Chant Sura readiness gate so partial-real core-input states preserve the first unresolved local row instead of collapsing to a vague `defer_second_site` handoff.
+  - The live repo-root report now names `terrain_metadata.yaml` as the first unresolved real core input, marks it `fixture_backed`, and keeps the next action as `stage_local_existing_input` with the expected metadata contract.
+  - Aligned the focused gate test fixture with the live partial-real shape by staging only the terrain crop and leaving terrain metadata and the AOI catalog fixture-backed, which keeps the blocker order deterministic.
+  - Recorded the blocker explicitly in the Chant Sura acquisition decision note and removed TB-288 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-288 --format json`
+  - `rg -n "^### TB-288:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate.ChantSuraRealContextReadinessGateTests.test_partial_real_inputs_block_second_site_readiness tests.test_chant_sura_real_context_readiness_gate.ChantSuraRealContextReadinessGateTests.test_fixture_backed_minimal_inputs_block_second_site_readiness`
+- Result/status: implemented_blocked_report
+- Boundaries: real-input staging/rejection only; no synthetic upgrade to real readiness, no second-site ensemble execution, no live Balfrin submission, no physical validation claim, and no operational claim.
+- Next task: `TB-289`
