@@ -2059,7 +2059,7 @@ scan thousands of lines of completed history.
 ### TB-271: Adaptive AOI Ensemble Convergence Controller
 
 - Date: 2026-05-19
-- Commit: `pending`
+- Commit: `72e480d`
 - Objective: add a bounded adaptive AOI convergence controller that recommends the next trajectory-count step from measured convergence and output-budget evidence instead of fixed guesses.
 - Files changed: `scripts/summarize_adaptive_aoi_ensemble_convergence_controller.py`, `tests/test_adaptive_aoi_ensemble_convergence_controller.py`, `docs/task_backlog.md`, `docs/script_inventory.md`, `docs/agent_work_log.md`
 - Implementation summary:
