@@ -237,7 +237,7 @@ steps for you.
    The claim boundary stays diagnostic-only: no annualized product, no risk
    map, and no operational map.
 
-5. Package the smoke hazard root and write the review surface.
+5. Package the smoke hazard root and open the review surface first.
 
    ```bash
    PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py \
@@ -253,6 +253,10 @@ steps for you.
    `/tmp/aoi_review/aoi_hazard_map_package_summary.txt`,
    `/tmp/aoi_review/index.html`, and
    `/tmp/aoi_review/aoi_map_qa_review_manifest.json`.
+   Open `/tmp/aoi_review/index.html` first: it is the primary local output for
+   inspecting the layer inventory, legend, conditional semantics, warnings,
+   provenance, observed-overlay status, first blocker, and next recommended
+   command without opening raw JSON manifests.
    Optional observed-evidence overlays remain blocked unless real accepted
    observed runout/deposition evidence or field-supported release-zone
    provenance is staged. Fixture-only, ambiguous-role, or schema-gap inputs

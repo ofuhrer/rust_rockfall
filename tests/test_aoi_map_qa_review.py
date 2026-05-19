@@ -50,18 +50,27 @@ class AoiMapQaReviewTests(unittest.TestCase):
             report = review.build_review_surface(input_root=output_root, output_root=review_root)
 
             self.assertEqual(report["status"], "review_ready_with_warnings")
+            self.assertEqual(report["layer_inventory"]["status"], "parity_match")
             self.assertTrue(report["layer_presence"]["release_zone"]["present"])
             self.assertTrue(report["layer_presence"]["scenario_metadata"]["present"])
             self.assertEqual(report["layer_presence"]["hazard_layers"]["count"], len(package_report["raster_outputs"]))
             self.assertGreaterEqual(len(report["vector_overlays"]), 2)
             self.assertIn("missing context layers", "\n".join(report["warnings"]))
+            self.assertIn("conditional-only weights", "\n".join(report["warnings"]))
             self.assertIn("non-operational status", "\n".join(report["warnings"]))
+            self.assertEqual(report["first_blocker"]["code"], "missing_context_layers")
+            self.assertEqual(
+                report["next_recommended_command"]["command"],
+                "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json",
+            )
             self.assertEqual(report["diagnostic_hazard_outputs"]["status"], "present")
             self.assertEqual(report["observed_evidence_overlays"]["status"], "blocked_missing_evidence")
             self.assertTrue((review_root / "index.html").exists())
             self.assertTrue((review_root / "aoi_map_qa_review_manifest.json").exists())
             html = (review_root / "index.html").read_text(encoding="utf-8")
             self.assertIn("AOI Map QA Review", html)
+            self.assertIn("Layer inventory", html)
+            self.assertIn("Conditional semantics", html)
             self.assertIn("Diagnostic hazard layers", html)
             self.assertIn("Release and scenario overlays", html)
             self.assertIn("Optional observed evidence", html)
@@ -70,8 +79,12 @@ class AoiMapQaReviewTests(unittest.TestCase):
             self.assertIn("single openable bundle", html)
             self.assertIn("release zone metadata", html.lower())
             self.assertIn("data-toggle-target", html)
+            self.assertIn("Next recommended command", html)
+            self.assertIn("inspect_tschamut_public_context_layers.py", html)
             self.assertEqual(package_report["review_surface_status"], "review_ready_with_warnings")
             self.assertEqual(package_report["review_surface_paths"]["entrypoint"], str(output_root / "index.html"))
+            self.assertEqual(package_report["review_surface_first_blocker"]["code"], "missing_context_layers")
+            self.assertIn("inspect_tschamut_public_context_layers.py", package_report["review_surface_next_recommended_command"]["command"])
 
     def test_blocked_missing_map_package_behavior(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -130,7 +143,53 @@ class AoiMapQaReviewTests(unittest.TestCase):
 
             self.assertEqual(report["status"], "blocked_missing_map_package")
             self.assertIn("missing map package manifest", "\n".join(report["warnings"]))
+            self.assertEqual(report["first_blocker"]["code"], "missing_map_package")
+            self.assertIn("package_aoi_hazard_map.py", report["next_recommended_command"]["command"])
             self.assertTrue((work / "review" / "index.html").exists())
+
+    def test_missing_layer_inventory_surfaces_first_blocker_and_package_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            output_root = work / "package"
+            review_root = work / "review"
+
+            def fake_cog_conversion_ready(input_path: Path, output_path: Path, *, overwrite: bool = False) -> dict[str, object]:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(f"converted:{input_path.name}".encode("utf-8"))
+                return {
+                    "status": "cog_conversion_sample_ready",
+                    "input_path": str(input_path),
+                    "output_path": str(output_path),
+                    "verification": {
+                        "status": "ok",
+                        "sample_raster_tiled": True,
+                        "sample_raster_overviews": True,
+                        "sample_raster_cog_layout": True,
+                    },
+                    "output_exists": True,
+                    "output_bytes": output_path.stat().st_size,
+                    "blockers": [],
+                }
+
+            with unittest.mock.patch("scripts.package_aoi_hazard_map.convert_to_cog", side_effect=fake_cog_conversion_ready):
+                packager.package_aoi_hazard_map(FIXTURE_ROOT, output_root, overwrite=True)
+
+            manifest_path = output_root / "aoi_hazard_map_package_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["missing_layer_names"] = ["reach_probability"]
+            manifest["extra_layer_names"] = []
+            manifest["layer_inventory_status"] = "scope_reduced"
+            manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            report = review.build_review_surface(input_root=output_root, output_root=review_root)
+
+            self.assertEqual(report["layer_inventory"]["status"], "scope_reduced")
+            self.assertEqual(report["first_blocker"]["code"], "layer_inventory_mismatch")
+            self.assertIn("reach_probability", report["first_blocker"]["message"])
+            self.assertIn("package_aoi_hazard_map.py", report["next_recommended_command"]["command"])
+            html = (review_root / "index.html").read_text(encoding="utf-8")
+            self.assertIn("Missing declared layers", html)
+            self.assertIn("reach_probability", html)
 
     def artifact(
         self,

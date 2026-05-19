@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-318: AOI Frontend Review Surface Polish
-
-Goal: Improve the generated AOI review surface so users can inspect layers, warnings, provenance, and next actions without reading raw JSON manifests.
-
-Capability gap reduced: The map package is reviewable, but the user-facing frontend is still mainly a static diagnostic bundle rather than a clear map workflow surface.
-
-Why this outranks alternatives: The project goal includes producing a hazard map for a region; the review surface is the user's primary artifact.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/hazard_map_semantics.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_hazard_map_packager.py`
-- `tests/test_aoi_map_qa_review.py`
-
-Deliverables:
-
-- A clearer static review page with layer inventory, legend, conditional semantics, warnings, provenance, observed-overlay status, first blocker, and next recommended command.
-- Tests for missing layers, COG-blocked outputs, observed-evidence overlays, conditional-only labels, and non-operational warnings.
-- Documentation update that points users to the generated review surface as the primary local output.
-
-Definition of done:
-
-- A user can open the generated review surface and understand what was produced, what is missing, and what the map is allowed to mean.
-
-Boundaries: Frontend/review surface only; no hazard-value changes, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy outputs committed.
-
 ### TB-319: Post-Demonstration Capability And Gap Refresh
 
 Goal: Refresh the maturity snapshot, README, scale dashboard, and backlog recommendations after the next Balfrin and user-AOI demonstration tasks complete.

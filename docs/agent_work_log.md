@@ -3096,3 +3096,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local bounded AOI demonstration only; no live Balfrin submission, no Swiss-wide claim, no physical-probability semantics, no annual-frequency product, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-318`
+
+### TB-318: AOI Frontend Review Surface Polish
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: make the generated AOI review surface expose layer inventory, legend, conditional semantics, warnings, provenance, observed-overlay status, the first blocker, and the next recommended command without forcing users through raw JSON manifests.
+- Files changed: `scripts/generate_aoi_map_qa_review.py`, `scripts/package_aoi_hazard_map.py`, `docs/public_real_site_geodata_preparation.md`, `tests/test_aoi_map_qa_review.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added structured review metadata for the static AOI review surface, including explicit layer-inventory counts and missing/extra layer lists, conditional-semantics guidance, observed-overlay status, first-blocker details, and a deterministic next-command suggestion.
+  - Kept the review page diagnostic and non-operational while surfacing the package/provenance context, warnings, and claim boundaries in the HTML entrypoint and the text/JSON report paths.
+  - Updated the AOI packaging report to preserve the new review-surface guidance, refreshed the public geodata preparation guide to point at the review HTML as the primary local output, and removed TB-318 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager tests.test_aoi_map_qa_review`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: frontend/review-surface metadata only; no hazard-value changes, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy outputs committed.
+- Next task: `TB-319`

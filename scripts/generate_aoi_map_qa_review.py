@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import shlex
 import shutil
 import sys
 from pathlib import Path
@@ -109,6 +110,18 @@ def blocked_report(
     warnings = [f"blocked_missing_map_package: {reason}"]
     if missing_paths:
         warnings.append(f"missing_paths: {', '.join(missing_paths)}")
+    first_blocker = {
+        "code": "missing_map_package",
+        "severity": "blocked",
+        "section": "Provenance",
+        "message": warnings[0],
+    }
+    next_recommended_command = build_next_recommended_command(
+        input_root=input_root,
+        output_root=output_root,
+        map_manifest={"input_root": str(input_root)},
+        first_blocker=first_blocker,
+    )
     report = {
         "schema_version": SCHEMA_VERSION,
         "status": "blocked_missing_map_package",
@@ -128,6 +141,8 @@ def blocked_report(
         "layers": [],
         "warnings": warnings,
         "warning_details": [{"code": "missing_map_package", "severity": "blocked", "message": warnings[0]}],
+        "first_blocker": first_blocker,
+        "next_recommended_command": next_recommended_command,
         "diagnostic_hazard_outputs": {
             "schema_version": SCHEMA_VERSION,
             "role": "diagnostic_hazard_outputs",
@@ -210,6 +225,17 @@ def assemble_report(
             message="missing context layers: no source-zone context overlays were recorded in the pilot GIS package",
         )
 
+    inventory_summary = summarize_layer_inventory(layers, map_manifest)
+    if inventory_summary["status"] != "parity_match":
+        missing_text = ", ".join(inventory_summary["missing_layer_names"]) or "none"
+        extra_text = ", ".join(inventory_summary["extra_layer_names"]) or "none"
+        add_warning(
+            warnings,
+            warning_details,
+            code="layer_inventory_mismatch",
+            message=f"layer inventory mismatch: missing layers [{missing_text}] and extra layers [{extra_text}]",
+        )
+
     cog_blocked = [layer["layer_name"] for layer in layers if layer.get("format") == "geotiff" and not layer.get("cloud_optimized", False)]
     if cog_blocked:
         add_warning(
@@ -266,6 +292,19 @@ def assemble_report(
 
     status = "review_ready_with_warnings" if warnings else "review_ready"
     hazard_layer_inventory = [layer for layer in layers if layer.get("kind") == "hazard_layer"]
+    first_blocker = build_first_blocker(
+        warnings=warnings,
+        warning_details=warning_details,
+        inventory_summary=inventory_summary,
+        observed_overlays_section=map_manifest.get("observed_evidence_overlays") or {},
+        hazard_manifest=hazard_manifest,
+    )
+    next_recommended_command = build_next_recommended_command(
+        input_root=input_root,
+        output_root=output_root,
+        map_manifest=map_manifest,
+        first_blocker=first_blocker,
+    )
     report = {
         "schema_version": SCHEMA_VERSION,
         "status": status,
@@ -277,6 +316,16 @@ def assemble_report(
         "hazard_manifest_path": str((hazard_manifest or {}).get("path")) if isinstance(hazard_manifest, dict) and hazard_manifest.get("path") else None,
         "layer_presence": layer_presence,
         "layers": layers,
+        "layer_inventory": {
+            "status": inventory_summary["status"],
+            "hazard_layer_count": inventory_summary["hazard_layer_count"],
+            "overlay_count": inventory_summary["overlay_count"],
+            "observed_evidence_overlay_count": inventory_summary["observed_evidence_overlay_count"],
+            "context_layer_count": inventory_summary["context_layer_count"],
+            "missing_layer_names": inventory_summary["missing_layer_names"],
+            "extra_layer_names": inventory_summary["extra_layer_names"],
+            "layer_names": inventory_summary["layer_names"],
+        },
         "diagnostic_hazard_outputs": {
             "schema_version": SCHEMA_VERSION,
             "role": "diagnostic_hazard_outputs",
@@ -311,6 +360,8 @@ def assemble_report(
         },
         "warnings": warnings,
         "warning_details": warning_details,
+        "first_blocker": first_blocker,
+        "next_recommended_command": next_recommended_command,
         "claim_boundary": claim_boundary(map_manifest, pilot_manifest),
         "review_surface_paths": {},
     }
@@ -418,6 +469,35 @@ def classify_context_presence(pilot_manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_layer_inventory(layers: list[dict[str, Any]], map_manifest: dict[str, Any]) -> dict[str, Any]:
+    hazard_layers = [layer for layer in layers if layer.get("kind") == "hazard_layer"]
+    overlay_layers = [layer for layer in layers if layer.get("kind") == "vector_overlay"]
+    observed_evidence_layers = [layer for layer in layers if layer.get("kind") == "observed_evidence_overlay"]
+    context_layer_count = len([entry for entry in list(map_manifest.get("source_zone_context") or []) if isinstance(entry, dict)])
+    source_layer_names = [str(entry.get("layer_name") or "") for entry in list(map_manifest.get("raster_outputs") or []) if isinstance(entry, dict) and entry.get("layer_name")]
+    packaged_layer_names = [str(layer.get("layer_name") or "") for layer in hazard_layers if layer.get("layer_name")]
+    missing_layer_names = list(map_manifest.get("missing_layer_names") or [name for name in source_layer_names if name not in packaged_layer_names])
+    extra_layer_names = list(map_manifest.get("extra_layer_names") or [name for name in packaged_layer_names if name not in source_layer_names])
+    if missing_layer_names and extra_layer_names:
+        status = "inventory_mismatch"
+    elif missing_layer_names:
+        status = "scope_reduced"
+    elif extra_layer_names:
+        status = "scope_extended"
+    else:
+        status = "parity_match"
+    return {
+        "status": status,
+        "hazard_layer_count": len(hazard_layers),
+        "overlay_count": len(overlay_layers),
+        "observed_evidence_overlay_count": len(observed_evidence_layers),
+        "context_layer_count": context_layer_count,
+        "missing_layer_names": missing_layer_names,
+        "extra_layer_names": extra_layer_names,
+        "layer_names": packaged_layer_names,
+    }
+
+
 def collect_fixture_inputs(*manifests: dict[str, Any]) -> list[str]:
     fixture_paths: list[str] = []
     for manifest in manifests:
@@ -474,6 +554,111 @@ def claim_boundary(map_manifest: dict[str, Any], pilot_manifest: dict[str, Any])
     }
 
 
+def build_first_blocker(
+    *,
+    warnings: list[str],
+    warning_details: list[dict[str, Any]],
+    inventory_summary: dict[str, Any],
+    observed_overlays_section: dict[str, Any],
+    hazard_manifest: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if inventory_summary.get("status") != "parity_match":
+        missing_layers = inventory_summary.get("missing_layer_names") or []
+        extra_layers = inventory_summary.get("extra_layer_names") or []
+        return {
+            "code": "layer_inventory_mismatch",
+            "severity": "blocked",
+            "section": "Layer inventory",
+            "message": "missing layers: "
+            + (", ".join(missing_layers) if missing_layers else "none")
+            + "; extra layers: "
+            + (", ".join(extra_layers) if extra_layers else "none"),
+        }
+    if warning_details:
+        first_warning = warning_details[0]
+        return {
+            "code": first_warning.get("code") or "warning",
+            "severity": first_warning.get("severity") or "warning",
+            "section": first_warning_section(first_warning.get("code")),
+            "message": first_warning.get("message") or (warnings[0] if warnings else "review warning"),
+        }
+    observed_status = str(observed_overlays_section.get("status") or "")
+    if observed_status.startswith("blocked_"):
+        blockers = observed_overlays_section.get("blockers") or {}
+        blocker_items = []
+        for key in ("observed_runout_deposition", "release_zone_provenance"):
+            blocker_items.extend(str(item) for item in list(blockers.get(key) or []))
+        return {
+            "code": "observed_evidence_blocked",
+            "severity": "warning",
+            "section": "Observed evidence",
+            "message": "optional observed evidence overlays are blocked: " + (", ".join(blocker_items) if blocker_items else observed_status),
+        }
+    if hazard_manifest is None:
+        return {
+            "code": "missing_hazard_manifest",
+            "severity": "blocked",
+            "section": "Provenance",
+            "message": "missing hazard manifest: no run-manifest cellwise layer inventory could be loaded",
+        }
+    return {
+        "code": "none",
+        "severity": "info",
+        "section": "Overview",
+        "message": "No blocker recorded for this review surface.",
+    }
+
+
+def first_warning_section(code: Any) -> str:
+    return {
+        "missing_context_layers": "Context",
+        "layer_inventory_mismatch": "Layer inventory",
+        "cog_blocked_rasters": "Diagnostic hazard layers",
+        "fixture_backed_inputs": "Provenance",
+        "conditional_only_weights": "Conditional semantics",
+        "non_operational_status": "Claim boundaries",
+        "missing_hazard_manifest": "Provenance",
+    }.get(str(code), "Warnings")
+
+
+def build_next_recommended_command(
+    *,
+    input_root: Path,
+    output_root: Path,
+    map_manifest: dict[str, Any],
+    first_blocker: dict[str, Any],
+) -> dict[str, Any]:
+    blocker_code = str(first_blocker.get("code") or "")
+    package_input_root = str(map_manifest.get("input_root") or input_root)
+    package_output_root = str(input_root)
+    review_output_root = str(output_root)
+    if blocker_code == "missing_context_layers":
+        command = "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json"
+        reason = "review the staged public context layers before repackaging"
+    elif blocker_code in {"missing_map_package", "layer_inventory_mismatch", "cog_blocked_rasters", "missing_hazard_manifest"}:
+        command = (
+            "PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py "
+            f"--input-root {shlex.quote(package_input_root)} --output-root {shlex.quote(package_output_root)} "
+            "--overwrite --format json"
+        )
+        reason = "rebuild the package root after the upstream hazard outputs or COG conversion are corrected"
+    elif blocker_code == "observed_evidence_blocked":
+        command = "PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json"
+        reason = "inspect the observed-evidence intake contract before attaching review-only evidence overlays"
+    else:
+        command = (
+            "PYENV_VERSION=system uv run python scripts/generate_aoi_map_qa_review.py "
+            f"--input-root {shlex.quote(package_output_root)} --output-root {shlex.quote(review_output_root)} "
+            "--overwrite --format json"
+        )
+        reason = "refresh the review surface after the package root changes"
+    return {
+        "command": command,
+        "reason": reason,
+        "blocked_by": blocker_code or "none",
+    }
+
+
 def load_hazard_manifest(
     map_manifest: dict[str, Any],
     pilot_manifest: dict[str, Any],
@@ -500,11 +685,17 @@ def write_review_surface(output_root: Path, report: dict[str, Any]) -> dict[str,
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    first_blocker = report.get("first_blocker") or {}
+    next_recommended_command = report.get("next_recommended_command") or {}
     lines = [
         f"aoi map qa review status: {report.get('status')}",
         f"input_root: {report.get('input_root')}",
         f"output_root: {report.get('output_root')}",
         f"package_id: {report.get('package_id')}",
+        f"layer_inventory_status: {(report.get('layer_inventory') or {}).get('status')}",
+        f"observed_evidence_status: {(report.get('observed_evidence_overlays') or {}).get('status')}",
+        f"first_blocker: {first_blocker.get('code')} {first_blocker.get('message')}",
+        f"next_recommended_command: {next_recommended_command.get('command')}",
         f"warnings: {len(report.get('warnings') or [])}",
     ]
     for warning in report.get("warnings") or []:
@@ -514,11 +705,14 @@ def render_text_report(report: dict[str, Any]) -> str:
 
 def render_html_report(report: dict[str, Any]) -> str:
     layer_presence = report.get("layer_presence") or {}
+    layer_inventory = report.get("layer_inventory") or {}
     package_details = report.get("package_manifest_details") or {}
     diagnostic_hazard_outputs = report.get("diagnostic_hazard_outputs") or {"items": []}
     vector_overlays = report.get("vector_overlays") or []
     observed_overlays_section = report.get("observed_evidence_overlays") or {"items": [], "blockers": {}}
     observed_overlays = observed_overlays_section.get("items") or []
+    first_blocker = report.get("first_blocker") or {}
+    next_recommended_command = report.get("next_recommended_command") or {}
     missing_context_paths = layer_presence.get("context_layers", {}).get("paths") or []
     warning_items = report.get("warning_details") or []
     if not warning_items and report.get("warnings"):
@@ -567,6 +761,11 @@ def render_html_report(report: dict[str, Any]) -> str:
     claim = report.get("claim_boundary") or {}
     claim_current = "".join(f"<li>{html.escape(str(label))}</li>" for label in claim.get("current_allowed_product_labels") or [])
     claim_future = "".join(f"<li>{html.escape(str(label))}</li>" for label in claim.get("future_unsupported_product_labels") or [])
+    inventory_missing = "".join(f"<li>{html.escape(str(item))}</li>" for item in layer_inventory.get("missing_layer_names") or []) or "<li>None recorded</li>"
+    inventory_extra = "".join(f"<li>{html.escape(str(item))}</li>" for item in layer_inventory.get("extra_layer_names") or []) or "<li>None recorded</li>"
+    conditional_summary = (
+        "Current labels remain conditional and diagnostic only; sampling weights and normalized counts stay conditioned on the documented filter or scenario set."
+    )
     vector_overlays_summary = render_overlay_summary(vector_overlays)
     observed_overlays_summary = render_overlay_summary(observed_overlays)
     diagnostic_summary = render_overlay_summary(diagnostic_hazard_outputs.get("items") or [])
@@ -653,13 +852,63 @@ def render_html_report(report: dict[str, Any]) -> str:
   </section>
 
   <div class="togglebar">
+    <label><input type="checkbox" checked data-toggle-target="inventory-panel">Layer inventory</label>
+    <label><input type="checkbox" checked data-toggle-target="semantics-panel">Conditional semantics</label>
     <label><input type="checkbox" checked data-toggle-target="diagnostic-panel">Diagnostic hazard layers</label>
     <label><input type="checkbox" checked data-toggle-target="overlay-panel">Release and scenario overlays</label>
     <label><input type="checkbox" checked data-toggle-target="evidence-panel">Optional observed evidence</label>
     <label><input type="checkbox" checked data-toggle-target="context-panel">Missing context</label>
     <label><input type="checkbox" checked data-toggle-target="provenance-panel">Provenance and package manifest</label>
+    <label><input type="checkbox" checked data-toggle-target="blocker-panel">First blocker</label>
+    <label><input type="checkbox" checked data-toggle-target="command-panel">Next recommended command</label>
     <label><input type="checkbox" checked data-toggle-target="boundary-panel">Claim boundaries</label>
   </div>
+
+  <details id="inventory-panel" open>
+    <summary>Layer inventory</summary>
+    <div class="inner">
+      <p class="section-note">The inventory keeps declared hazard layers, overlays, and evidence surfaces together so the review can answer what was produced and what the package still says is missing.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Counts</h3>
+          <ul>
+            <li>Hazard layers: <code>{html.escape(str(layer_inventory.get("hazard_layer_count", 0)))}</code></li>
+            <li>Overlay layers: <code>{html.escape(str(layer_inventory.get("overlay_count", 0)))}</code></li>
+            <li>Observed evidence overlays: <code>{html.escape(str(layer_inventory.get("observed_evidence_overlay_count", 0)))}</code></li>
+            <li>Context layers recorded: <code>{html.escape(str(layer_inventory.get("context_layer_count", 0)))}</code></li>
+            <li>Inventory status: <code>{html.escape(str(layer_inventory.get("status") or "unknown"))}</code></li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Missing declared layers</h3>
+          <ul>{inventory_missing}</ul>
+        </div>
+        <div class="panel">
+          <h3>Extra packaged layers</h3>
+          <ul>{inventory_extra}</ul>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Layer</th><th>Source</th><th>Format</th><th>Path</th><th>COG</th><th>Weighted</th></tr></thead>
+        <tbody>{hazard_rows or '<tr><td colspan="6">No diagnostic hazard layers recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="semantics-panel" open>
+    <summary>Conditional semantics</summary>
+    <div class="inner">
+      <p class="section-note">{html.escape(conditional_summary)}</p>
+      <table>
+        <tbody>
+          <tr><th>Probability mode</th><td>{render_value(package_details.get("probability_mode"))}</td></tr>
+          <tr><th>Normalization scope</th><td>{render_value(package_details.get("normalization_scope"))}</td></tr>
+          <tr><th>Current allowed labels</th><td><ul>{claim_current or '<li>None recorded</li>'}</ul></td></tr>
+          <tr><th>Deferred or unsupported labels</th><td><ul>{claim_future or '<li>None recorded</li>'}</ul></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
 
   <details id="diagnostic-panel" open>
     <summary>Diagnostic hazard layers</summary>
@@ -686,7 +935,8 @@ def render_html_report(report: dict[str, Any]) -> str:
   <details id="evidence-panel" open>
     <summary>Optional observed evidence</summary>
     <div class="inner">
-      <p class="section-note">{html.escape(observed_overlays_summary)}</p>
+      <p class="section-note">Status: <code>{html.escape(str(observed_overlays_section.get("status") or "blocked_missing_evidence"))}</code>. {html.escape(observed_overlays_summary)}</p>
+      <p class="section-note">Blockers: {html.escape(str(observed_overlays_section.get("blockers") or {}))}</p>
       <table>
         <thead><tr><th>Evidence</th><th>Role</th><th>Path</th><th>Claim boundary</th></tr></thead>
         <tbody>{observed_rows or '<tr><td colspan="4">No observed evidence overlays recorded.</td></tr>'}</tbody>
@@ -715,6 +965,29 @@ def render_html_report(report: dict[str, Any]) -> str:
         <tbody>{package_rows_html}</tbody>
       </table>
       <p class="section-note">The manifest details are shown here so the bundle can be reviewed without opening raw JSON first.</p>
+    </div>
+  </details>
+
+  <details id="blocker-panel" open>
+    <summary>First blocker</summary>
+    <div class="inner warning-block">
+      <table>
+        <tbody>
+          <tr><th>Code</th><td><code>{html.escape(str(first_blocker.get("code") or "none"))}</code></td></tr>
+          <tr><th>Severity</th><td><code>{html.escape(str(first_blocker.get("severity") or "info"))}</code></td></tr>
+          <tr><th>Section</th><td>{render_value(first_blocker.get("section"))}</td></tr>
+          <tr><th>Message</th><td>{render_value(first_blocker.get("message"))}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="command-panel" open>
+    <summary>Next recommended command</summary>
+    <div class="inner">
+      <p class="section-note">Run the command below after fixing the blocker above. It is a local, review-only suggestion and does not change hazard values by itself.</p>
+      <pre><code>{html.escape(str(next_recommended_command.get("command") or "No command recorded"))}</code></pre>
+      <p class="section-note"><strong>Why this command:</strong> {html.escape(str(next_recommended_command.get("reason") or "No reason recorded"))}</p>
     </div>
   </details>
 

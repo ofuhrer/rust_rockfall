@@ -231,6 +231,8 @@ def package_aoi_hazard_map(
     review_report = qa_review.build_review_surface(input_root=output_root, output_root=output_root)
     report["review_surface_status"] = review_report.get("status")
     report["review_surface_paths"] = review_report.get("review_surface_paths") or {}
+    report["review_surface_first_blocker"] = review_report.get("first_blocker") or {}
+    report["review_surface_next_recommended_command"] = review_report.get("next_recommended_command") or {}
     file_count, byte_count = count_files_and_bytes(output_root)
     report["package_file_count"] = file_count
     report["package_byte_count"] = byte_count
@@ -747,6 +749,8 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "cog_blockers": report["cog_blockers"],
         "missing_hazard_outputs": report["missing_hazard_outputs"],
         "review_surface_status": report.get("review_surface_status"),
+        "review_surface_first_blocker": report.get("review_surface_first_blocker"),
+        "review_surface_next_recommended_command": report.get("review_surface_next_recommended_command"),
         "review_surface_paths": report.get("review_surface_paths", {}),
         "package_manifest_path": report["package_manifest_path"],
         "summary_path": report["summary_path"],
@@ -770,6 +774,8 @@ def write_summary(path: Path, report: dict[str, Any]) -> None:
         f"observed_evidence_overlay_count\t{len(report['observed_evidence_overlays']['items'])}",
         f"review_entrypoint\t{report.get('review_surface_paths', {}).get('entrypoint')}",
         f"review_surface_status\t{report.get('review_surface_status')}",
+        f"review_surface_first_blocker\t{report.get('review_surface_first_blocker', {}).get('code')}",
+        f"review_surface_next_recommended_command\t{report.get('review_surface_next_recommended_command', {}).get('command')}",
         f"package_file_count\t{report['package_file_count']}",
         f"package_byte_count\t{report['package_byte_count']}",
         f"raster_count\t{len(report['raster_outputs'])}",
@@ -864,6 +870,8 @@ def render_text(report: dict[str, Any]) -> str:
         f"observed_evidence_overlay_hook_status\t{report.get('observed_evidence_overlay_hook', {}).get('hook_status')}",
         f"cog_blockers\t{report.get('cog_blockers', [])}",
         f"missing_hazard_outputs\t{report.get('missing_hazard_outputs', [])}",
+        f"review_surface_first_blocker\t{report.get('review_surface_first_blocker', {}).get('code')}",
+        f"review_surface_next_recommended_command\t{report.get('review_surface_next_recommended_command', {}).get('command')}",
     ]
     if report.get("error"):
         lines.append(f"error\t{report['error']}")
