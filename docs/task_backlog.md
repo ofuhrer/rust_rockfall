@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-289: Physical Evidence Overlay Acquisition Pass
-
-Goal: Acquire, stage, or reject one real observed runout/deposition or field-supported release-zone provenance package for use as an AOI map overlay.
-
-Capability gap reduced: AOI maps can carry optional evidence overlays, but the repository still lacks an accepted real overlay package that changes review usefulness.
-
-Why this outranks alternatives: Physical credibility is the largest scientific gap, and one accepted overlay package is a concrete step that does not overclaim calibration.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `tests/test_aoi_hazard_map_packager.py`
-
-Deliverables:
-
-- A staged real evidence candidate or explicit rejection report with geometry, provenance, licensing, uncertainty, role, and claim-boundary fields.
-- Integration smoke showing the AOI map packager accepts only `real_input_ready` evidence and blocks fixture-only or ambiguous-role packages.
-- Documentation update only if a real accepted package is added.
-
-Definition of done:
-
-- The optional overlay path is exercised with either accepted real evidence or a precise acquisition blocker, without implying calibration or operational validity.
-
-Boundaries: Evidence overlay acquisition/intake only; no calibration, no parameter fitting, no physical-probability product, no annual-frequency semantics, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-290: AOI End-To-End User Documentation Smoke
 
 Goal: Write and test a short user-facing walkthrough from AOI bounds to review map using only supported commands and documented blocked states.

@@ -71,6 +71,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "next_action_recommendation",
             "physical_credibility_gap_update",
             "candidate_acquisition_report",
+            "acquisition_review_report",
             "real_input_intake_report",
             "fixture_acceptance_smoke",
             "dataset_role_classification",
@@ -94,6 +95,15 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("runout_endpoint_error_m", contract["objective_function_placeholders"]["required_fields"])
         self.assertEqual(contract["objective_function_placeholders"]["objective_status"], "placeholder_only")
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
+        self.assertEqual(report["acquisition_review_report"]["review_status"], "rejected")
+        self.assertEqual(report["acquisition_review_report"]["blocked_reason"], report["real_input_intake_report"]["blocked_reason"])
+        self.assertEqual(report["acquisition_review_report"]["geometry"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_review_report"]["provenance"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_review_report"]["uncertainty"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_review_report"]["role"]["status"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_review_report"]["license"]["status_classification"], "blocked_missing_inputs")
+        self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["calibration_claims_allowed"])
+        self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["physical_probability_claims_allowed"])
         self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "blocked_missing_inputs")
         self.assertIn("missing_manifest", report["real_input_intake_report"]["blocking_reasons"])
         self.assertIn("missing_geometry", report["real_input_intake_report"]["blocking_reasons"])
@@ -260,6 +270,12 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(report["observed_runout_deposition_intake_status"], "ready")
         self.assertIsNone(report["blocked_reason"])
         self.assertEqual(report["missing_inputs"], [])
+        self.assertEqual(report["acquisition_review_report"]["review_status"], "accepted")
+        self.assertEqual(report["acquisition_review_report"]["geometry"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["provenance"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["uncertainty"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["role"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["license"]["status_classification"], "reviewable")
         self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "ready")
         self.assertEqual(report["real_input_intake_report"]["geometry_classification"]["status"], "ready")
         self.assertEqual(report["real_input_intake_report"]["provenance_classification"]["status"], "ready")
@@ -364,6 +380,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("benchmark_intake_manifest:", text)
         self.assertIn("real_input_intake_report:", text)
         self.assertIn("real_input_intake_status: blocked_missing_inputs", text)
+        self.assertIn("acquisition_review_report:", text)
+        self.assertIn("review_status: rejected", text)
         self.assertIn("fixture_acceptance_smoke:", text)
         self.assertIn("physical_credibility_gap_update:", text)
         self.assertIn("candidate_acquisition_report:", text)

@@ -420,6 +420,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     field_requirement_map = build_field_requirement_map()
     physical_credibility_gap_update = build_physical_credibility_gap_update()
     real_input_intake_report = build_real_input_intake_report()
+    acquisition_review_report = build_acquisition_review_report(real_input_intake_report)
     current_state = build_current_state(real_input_intake_report=real_input_intake_report)
     acquisition_blocker_matrix = build_acquisition_blocker_matrix(current_state=current_state)
     next_action_recommendation = build_next_action_recommendation(acquisition_blocker_matrix)
@@ -454,6 +455,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "physical_credibility_gap_update": physical_credibility_gap_update,
                 "candidate_acquisition_report": candidate_acquisition_report,
                 "dataset_role_classification": dataset_role_classification,
+                "acquisition_review_report": acquisition_review_report,
                 "fixture_acceptance_smoke": fixture_acceptance_smoke,
                 "real_input_intake_report": real_input_intake_report,
                 "claim_boundaries": claim_boundaries(),
@@ -475,6 +477,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "physical_credibility_gap_update": physical_credibility_gap_update,
             "candidate_acquisition_report": candidate_acquisition_report,
             "dataset_role_classification": dataset_role_classification,
+            "acquisition_review_report": acquisition_review_report,
             "fixture_acceptance_smoke": fixture_acceptance_smoke,
             "real_input_intake_report": real_input_intake_report,
             "claim_boundaries": claim_boundaries(),
@@ -689,6 +692,23 @@ def build_benchmark_intake_manifest(
             "No real benchmark data, calibration fit, or operational claim is encoded here.",
             f"Real-input intake report status: {real_input_intake_report['real_input_intake_status']}.",
         ],
+    }
+
+
+def build_acquisition_review_report(real_input_intake_report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": REAL_INPUT_INTAKE_REPORT_SCHEMA_VERSION,
+        "review_status": "accepted" if real_input_intake_report["real_input_intake_status"] == "ready" else "rejected",
+        "real_input_intake_status": real_input_intake_report["real_input_intake_status"],
+        "blocked_reason": real_input_intake_report["blocked_reason"],
+        "blocking_reasons": list(real_input_intake_report["blocking_reasons"]),
+        "geometry": dict(real_input_intake_report["geometry_classification"]),
+        "provenance": dict(real_input_intake_report["provenance_classification"]),
+        "uncertainty": dict(real_input_intake_report["uncertainty_classification"]),
+        "role": dict(real_input_intake_report["role_classification"]),
+        "license": dict(real_input_intake_report["license_classification"]),
+        "claim_boundaries": dict(real_input_intake_report["claim_boundaries"]),
+        "claim_boundary": "observed evidence only; no calibration, physical probability, annual frequency, risk, or operational claim",
     }
 
 
@@ -2177,6 +2197,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
     benchmark_manifest = report["benchmark_intake_manifest"]
     real_input_report = report["real_input_intake_report"]
+    acquisition_review_report = report["acquisition_review_report"]
     current_state = report["current_repo_state"]
     candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
@@ -2209,6 +2230,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- calibration_role.status: {real_input_report['calibration_role_classification']['status']}",
         f"- validation_role.status: {real_input_report['validation_role_classification']['status']}",
         f"- holdout_eligibility.status: {real_input_report['holdout_eligibility_classification']['status']}",
+        "",
+        "acquisition_review_report:",
+        f"- review_status: {acquisition_review_report['review_status']}",
+        f"- blocked_reason: {acquisition_review_report['blocked_reason']}",
+        f"- geometry.status: {acquisition_review_report['geometry']['status']}",
+        f"- provenance.status: {acquisition_review_report['provenance']['status']}",
+        f"- uncertainty.status: {acquisition_review_report['uncertainty']['status']}",
+        f"- role.status: {acquisition_review_report['role']['status']}",
+        f"- license.status: {acquisition_review_report['license']['status_classification']}",
+        f"- claim_boundary: {acquisition_review_report['claim_boundary']}",
         "",
         "fixture_acceptance_smoke:",
         f"- fixture_path: {report['fixture_acceptance_smoke']['fixture_path']}",
