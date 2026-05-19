@@ -2560,3 +2560,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: budget contract only; no compression implementation, no live Balfrin submission, no scale-up authorization, no dropped replayability, no distributed execution, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-294`
+
+### TB-294: Replay-Preserving Manifest Slimming Prototype
+
+- Date: 2026-05-19
+- Commit: `0761a38`
+- Objective: Prototype a replay-preserving compact manifest representation for the smallest multi-zone handoff while preserving deterministic replay, hashes, merge order, and provenance.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a compact replay-preserving output-manifest mode that deduplicates path prefixes, shared output-family metadata, and command-plan-related manifest fields while canonicalization restores the replay-critical view for downstream consumers.
+  - Wired the handoff projection and pressure gate to materialize compact mode, which brings the smallest multi-zone probe below the 11,000-byte manifest threshold while keeping merge order and retained replay families explicit.
+  - Added regression coverage for compact-manifest decoding and direct before/after size comparison, and updated the output-budget contract to reflect the new compact threshold status.
+  - Removed TB-294 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: manifest/package representation only; no live Balfrin submission, no reducer math change, no output deletion, no scale-up authorization, and no operational claim.
+- Next task: `TB-295`
