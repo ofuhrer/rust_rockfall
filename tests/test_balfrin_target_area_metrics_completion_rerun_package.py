@@ -27,6 +27,18 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
             "schema_version": "balfrin_remote_access_preflight_v1",
             "status": "ready_for_read_only_collection",
             "ready_for_read_only_collection": True,
+            "ready_for_pre_submit": True,
+            "remote_head": "abc123",
+            "remote_checkout_hygiene": {
+                "status": "pass",
+                "remote_head": "abc123",
+                "tracked_modifications": [],
+                "untracked_generated_files": [],
+                "stale_submission_packages": [],
+                "stale_logs": [],
+                "dirty_path_count": 0,
+                "safe_cleanup_commands": ["git -C /users/olifu/work/rust_rockfall status --short --untracked-files=all"],
+            },
             "read_only": True,
             "live_submission_authorized": False,
             "checked_commands": [
@@ -65,6 +77,8 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
             report["balfrin_access_preflight_requirement"]["consumed_status"],
             "ready_for_read_only_collection",
         )
+        self.assertTrue(report["balfrin_access_preflight_requirement"]["ready_for_pre_submit"])
+        self.assertEqual(report["balfrin_access_preflight_requirement"]["remote_checkout_hygiene"]["status"], "pass")
         self.assertIn("check_balfrin_remote_access_preflight.py", report["balfrin_access_preflight_requirement"]["command"])
         self.assertEqual(report["package_provenance_status"], "mixed_provenance")
         self.assertEqual(report["preservation_checklist"]["status"], "complete")
@@ -214,6 +228,37 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
             "blocked_ssh_unavailable",
         )
         self.assertFalse(report["authorization_request_preflight"]["live_submission_authorized"])
+
+    def test_dirty_remote_checkout_fails_closed_with_hygiene_cleanup_actions(self) -> None:
+        access = self._ready_access()
+        access["status"] = "blocked_dirty_remote_checkout"
+        access["ready_for_read_only_collection"] = False
+        access["ready_for_pre_submit"] = False
+        access["remote_checkout_hygiene"] = {
+            "status": "fail",
+            "remote_head": "deadbeef",
+            "tracked_modifications": ["M scripts/submit_balfrin_probe.py"],
+            "untracked_generated_files": ["validation/private/tb264/balfrin_submission_package.json"],
+            "stale_submission_packages": ["validation/private/tb264/balfrin_submission_package.json"],
+            "stale_logs": ["logs/slurm-123.err"],
+            "dirty_path_count": 3,
+            "safe_cleanup_commands": [
+                "git -C /users/olifu/work/rust_rockfall status --short --untracked-files=all",
+                "git -C /users/olifu/work/rust_rockfall clean -n -- validation/private/tb264/balfrin_submission_package.json logs/slurm-123.err",
+            ],
+        }
+
+        report = MODULE.build_report({"balfrin_access_preflight": access})
+
+        self.assertEqual(report["preflight_status"], "blocked_dirty_remote_checkout")
+        requirement = report["balfrin_access_preflight_requirement"]
+        self.assertFalse(requirement["ready_for_pre_submit"])
+        self.assertEqual(requirement["remote_checkout_hygiene"]["remote_head"], "deadbeef")
+        self.assertIn("clean -n", requirement["remote_checkout_hygiene"]["safe_cleanup_commands"][1])
+        self.assertIn(
+            "balfrin_access:blocked_dirty_remote_checkout",
+            report["authorization_request_preflight"]["blocked_reasons"],
+        )
 
     def test_missing_package_inputs_return_a_fail_closed_report(self) -> None:
         report = MODULE.build_report(

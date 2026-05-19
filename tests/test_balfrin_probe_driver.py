@@ -61,12 +61,25 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             check_name = {
                 "true": "ssh_availability",
                 access_preflight._remote_clone_check(access_preflight.DEFAULT_REMOTE_REPO_ROOT): "remote_clone",
+                access_preflight._remote_checkout_hygiene_command(access_preflight.DEFAULT_REMOTE_REPO_ROOT): "remote_checkout_hygiene",
                 access_preflight._remote_test_directory(access_preflight.DEFAULT_RUN_ROOT): "run_root_visibility",
                 access_preflight.DEFAULT_SCHEDULER_QUERY_COMMAND: "scheduler_query",
             }[remote_command]
             returncode = 1 if check_name == failed_check else 0
             stderr = f"{check_name} failed" if returncode else ""
-            return subprocess.CompletedProcess(command, returncode, stdout="", stderr=stderr)
+            stdout = ""
+            if check_name == "remote_checkout_hygiene" and returncode == 0:
+                stdout = "\n".join(
+                    [
+                        "__REMOTE_HEAD__",
+                        "main",
+                        "abc123",
+                        "__REMOTE_STATUS__",
+                        "__STALE_SUBMISSION_PACKAGES__",
+                        "__STALE_LOGS__",
+                    ]
+                )
+            return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=stderr)
 
         return _runner
 
@@ -84,8 +97,11 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         )
         self.assertEqual(
             [check["name"] for check in report["checked_commands"]],
-            ["ssh_availability", "remote_clone", "run_root_visibility", "scheduler_query"],
+            ["ssh_availability", "remote_clone", "remote_checkout_hygiene", "run_root_visibility", "scheduler_query"],
         )
+        self.assertTrue(report["ready_for_pre_submit"])
+        self.assertEqual(report["remote_head"], "abc123")
+        self.assertEqual(report["remote_checkout_hygiene"]["dirty_path_count"], 0)
         self.assertIn("squeue", report["scheduler_query_command"])
 
     def test_remote_access_preflight_fails_closed_when_ssh_is_unavailable(self) -> None:
@@ -103,13 +119,53 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertEqual([check["name"] for check in report["checked_commands"]], ["ssh_availability", "remote_clone"])
         self.assertIn(access_preflight.DEFAULT_REMOTE_REPO_ROOT, report["checked_commands"][-1]["remote_command"])
 
+    def test_remote_access_preflight_blocks_dirty_remote_checkout_with_cleanup_commands(self) -> None:
+        def runner(command: list[str], **_kwargs: object):
+            remote_command = command[-1]
+            if remote_command == "true" or remote_command == access_preflight._remote_clone_check(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if remote_command == access_preflight._remote_checkout_hygiene_command(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+                stdout = "\n".join(
+                    [
+                        "__REMOTE_HEAD__",
+                        "main",
+                        "deadbeef",
+                        "__REMOTE_STATUS__",
+                        " M scripts/submit_balfrin_probe.py",
+                        "?? validation/private/tb264/balfrin_submission_package.json",
+                        "?? scratch-note.txt",
+                        "__STALE_SUBMISSION_PACKAGES__",
+                        "validation/private/tb264/balfrin_submission_package.json",
+                        "__STALE_LOGS__",
+                        "logs/slurm-123.err",
+                    ]
+                )
+                return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+            raise AssertionError(f"unexpected remote command: {remote_command}")
+
+        report = access_preflight.collect_preflight_report(runner=runner)
+
+        self.assertEqual(report["status"], "blocked_dirty_remote_checkout")
+        self.assertFalse(report["ready_for_pre_submit"])
+        self.assertEqual(
+            [check["name"] for check in report["checked_commands"]],
+            ["ssh_availability", "remote_clone", "remote_checkout_hygiene"],
+        )
+        hygiene = report["remote_checkout_hygiene"]
+        self.assertEqual(hygiene["remote_head"], "deadbeef")
+        self.assertIn(" M scripts/submit_balfrin_probe.py", hygiene["tracked_modifications"])
+        self.assertIn("validation/private/tb264/balfrin_submission_package.json", hygiene["untracked_generated_files"])
+        self.assertIn("logs/slurm-123.err", hygiene["stale_logs"])
+        self.assertTrue(any("git -C /users/olifu/work/rust_rockfall restore" in command for command in hygiene["safe_cleanup_commands"]))
+        self.assertTrue(any("git -C /users/olifu/work/rust_rockfall clean -n" in command for command in hygiene["safe_cleanup_commands"]))
+
     def test_remote_access_preflight_reports_missing_run_root(self) -> None:
         report = access_preflight.collect_preflight_report(runner=self._preflight_runner("run_root_visibility"))
 
         self.assertEqual(report["status"], "blocked_missing_run_root")
         self.assertEqual(
             [check["name"] for check in report["checked_commands"]],
-            ["ssh_availability", "remote_clone", "run_root_visibility"],
+            ["ssh_availability", "remote_clone", "remote_checkout_hygiene", "run_root_visibility"],
         )
         self.assertIn(access_preflight.DEFAULT_RUN_ROOT, report["checked_commands"][-1]["remote_command"])
 

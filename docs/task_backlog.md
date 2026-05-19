@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-282: Balfrin Remote Checkout Hygiene Gate
-
-Goal: Add a Balfrin pre-submit hygiene gate that detects dirty remote checkout state and reports exact safe cleanup actions before any future SLURM attempt.
-
-Capability gap reduced: TB-264 failed before submission because the remote checkout had untracked generated files; this should be caught and explained before packaging or submission.
-
-Why this outranks alternatives: The next ranked Balfrin action is metrics completion, but it should not be retried until remote cleanliness is executable and auditable.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
-
-Deliverables:
-
-- A read-only remote hygiene gate that reports tracked modifications, untracked generated files, stale submission packages, stale logs, remote HEAD, and expected safe cleanup commands.
-- Integration into the metrics-completion and multi-zone preflight reports as a required pre-submit condition.
-- Tests using synthetic remote-status fixtures.
-
-Definition of done:
-
-- Future Balfrin pre-submit reports fail closed on dirty remote state and tell the operator exactly what must be cleaned or preserved before continuing.
-
-Boundaries: Read-only hygiene/preflight only; no remote deletion, no live Balfrin submission, no SLURM job, no scale-up authorization, and no claim upgrade.
-
 ### TB-283: Balfrin Metrics-Completion Rerun Reattempt Package
 
 Goal: Rebuild the exact target-area metrics-completion rerun package after remote hygiene is ready and preserve either the authorized submission result or the exact fail-closed blocker.

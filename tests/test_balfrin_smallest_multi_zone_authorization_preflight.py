@@ -35,6 +35,18 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "schema_version": "balfrin_remote_access_preflight_v1",
             "status": "ready_for_read_only_collection",
             "ready_for_read_only_collection": True,
+            "ready_for_pre_submit": True,
+            "remote_head": "abc123",
+            "remote_checkout_hygiene": {
+                "status": "pass",
+                "remote_head": "abc123",
+                "tracked_modifications": [],
+                "untracked_generated_files": [],
+                "stale_submission_packages": [],
+                "stale_logs": [],
+                "dirty_path_count": 0,
+                "safe_cleanup_commands": ["git -C /users/olifu/work/rust_rockfall status --short --untracked-files=all"],
+            },
             "read_only": True,
             "live_submission_authorized": False,
             "checked_commands": [{"name": "ssh_availability", "status": "pass"}],
@@ -209,6 +221,8 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertFalse(report["authorization_granted_by_preflight"])
         self.assertFalse(report["live_submission_authorized"])
         self.assertEqual(report["balfrin_access_status"], "ready_for_read_only_collection")
+        self.assertTrue(report["balfrin_access_preflight_requirement"]["ready_for_pre_submit"])
+        self.assertEqual(report["balfrin_access_preflight_requirement"]["remote_checkout_hygiene"]["status"], "pass")
         self.assertEqual(report["reducer_budget_status"], "ready")
         self.assertEqual(report["output_profile_status"], "ready")
         self.assertEqual(report["smallest_multi_zone_run_shape"]["release_zone_count"], 2)
@@ -264,6 +278,44 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "blocked_ssh_unavailable",
         )
         self.assertIn("blocked_ssh_unavailable", report["blocked_reason"])
+
+    def test_dirty_remote_checkout_blocks_multi_zone_pre_submit_gate(self) -> None:
+        access = self._ready_access()
+        access["status"] = "blocked_dirty_remote_checkout"
+        access["ready_for_read_only_collection"] = False
+        access["ready_for_pre_submit"] = False
+        access["remote_checkout_hygiene"] = {
+            "status": "fail",
+            "remote_head": "deadbeef",
+            "tracked_modifications": ["M scripts/submit_balfrin_probe.py"],
+            "untracked_generated_files": ["validation/private/tb264/balfrin_submission_package.json"],
+            "stale_submission_packages": ["validation/private/tb264/balfrin_submission_package.json"],
+            "stale_logs": ["logs/slurm-123.out"],
+            "dirty_path_count": 3,
+            "safe_cleanup_commands": [
+                "git -C /users/olifu/work/rust_rockfall status --short --untracked-files=all",
+                "git -C /users/olifu/work/rust_rockfall clean -n -- validation/private/tb264/balfrin_submission_package.json logs/slurm-123.out",
+            ],
+        }
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            package_sha = self._write_package(package)
+            self._write_authorization(auth, package, package_sha)
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=access,
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_access")
+        self.assertIn("blocked_dirty_remote_checkout", report["blocked_reason"])
+        requirement = report["balfrin_access_preflight_requirement"]
+        self.assertFalse(requirement["ready_for_pre_submit"])
+        self.assertEqual(requirement["remote_checkout_hygiene"]["remote_head"], "deadbeef")
 
     def test_reducer_budget_blocked_path_blocks_submission_gate(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

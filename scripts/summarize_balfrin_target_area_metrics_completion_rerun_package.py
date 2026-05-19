@@ -795,12 +795,15 @@ def _build_access_preflight_requirement(access_report: dict[str, Any], source: s
         "source": source,
         "command": ACCESS_PREFLIGHT_COMMAND,
         "ready_for_read_only_collection": bool(access_report.get("ready_for_read_only_collection")),
+        "ready_for_pre_submit": bool(access_report.get("ready_for_pre_submit", access_report.get("ready_for_read_only_collection"))),
+        "remote_head": access_report.get("remote_head"),
+        "remote_checkout_hygiene": access_report.get("remote_checkout_hygiene", {}),
         "read_only": bool(access_report.get("read_only", True)),
         "live_submission_authorized": bool(access_report.get("live_submission_authorized", False)),
         "checked_commands": access_report.get("checked_commands", []),
         "boundary_note": (
-            "The TB-223 preflight is an access/read-only artifact check only; it does not grant "
-            "Balfrin execution authorization."
+            "The Balfrin access preflight is an access/read-only artifact and remote-checkout hygiene "
+            "check only; it does not grant Balfrin execution authorization."
         ),
     }
 

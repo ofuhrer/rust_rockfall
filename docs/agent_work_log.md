@@ -2282,3 +2282,29 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: review artifact only; no hazard-value changes, no physical validation claim, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability semantics, and no heavy outputs committed.
 - Next task: `TB-282`
+
+### TB-282: Balfrin Remote Checkout Hygiene Gate
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a read-only Balfrin pre-submit hygiene gate that detects dirty remote checkout state before any future SLURM attempt.
+- Files changed: `scripts/check_balfrin_remote_access_preflight.py`, `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Balfrin access preflight with a read-only remote checkout hygiene check that records remote branch/HEAD, tracked modifications, untracked generated files, stale submission packages, stale logs, and exact preserve/inspect/clean commands.
+  - Kept the gate fail-closed as `blocked_dirty_remote_checkout` and propagated the hygiene payload into the target-area metrics-completion and smallest multi-zone authorization preflight requirements.
+  - Added synthetic remote-status regression coverage for clean, dirty, metrics-completion blocked, and multi-zone blocked pre-submit paths.
+- Checks run:
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-282 --format json`
+  - `rg -n "^### TB-282:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_balfrin_remote_access_preflight.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_target_area_metrics_completion_rerun_package tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: completed
+- Boundaries: read-only hygiene/preflight only; no remote deletion, no live Balfrin submission, no SLURM job, no scale-up authorization, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability product.
+- Next task: `TB-283`

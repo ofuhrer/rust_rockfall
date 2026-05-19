@@ -206,12 +206,18 @@ PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight
 
 The helper uses SSH `BatchMode=yes` and `ConnectTimeout=10` by default. It checks
 the `balfrin` SSH target, the expected checkout
-`/users/olifu/work/rust_rockfall`, the preserved non-git run root
+`/users/olifu/work/rust_rockfall`, remote checkout hygiene, the preserved
+non-git run root
 `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`,
-and read-only scheduler reachability through `squeue`. It reports
-`ready_for_read_only_collection`, `blocked_ssh_unavailable`,
-`blocked_missing_remote_clone`, `blocked_missing_run_root`, or
-`blocked_scheduler_unavailable`; it does not submit jobs or write remote files.
+and read-only scheduler reachability through `squeue`. The checkout-hygiene
+gate records the remote branch and HEAD, tracked modifications, untracked
+generated files, stale submission packages, stale SLURM/log files, and exact
+preserve/inspect/clean commands for an operator to run before any future
+package generation or submission. It reports `ready_for_read_only_collection`,
+`blocked_ssh_unavailable`, `blocked_missing_remote_clone`,
+`blocked_dirty_remote_checkout`, `blocked_missing_run_root`, or
+`blocked_scheduler_unavailable`; it does not submit jobs, delete files, or write
+remote files.
 
 Target-area public-geodata readiness for that frozen contract is currently
 `ready_for_frozen_target_area_demo` at the tracked contract level:

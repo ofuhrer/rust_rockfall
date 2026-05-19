@@ -346,6 +346,12 @@ def build_report(
             "source": balfrin_access_preflight_source,
             "consumed_status": access_report.get("status"),
             "ready_for_read_only_collection": access_report.get("ready_for_read_only_collection"),
+            "ready_for_pre_submit": access_report.get(
+                "ready_for_pre_submit",
+                access_report.get("ready_for_read_only_collection"),
+            ),
+            "remote_head": access_report.get("remote_head"),
+            "remote_checkout_hygiene": access_report.get("remote_checkout_hygiene", {}),
             "report": access_report,
         },
         "reducer_budget_requirement": reducer_budget,
