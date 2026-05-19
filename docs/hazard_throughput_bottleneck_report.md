@@ -373,3 +373,35 @@ Interpretation:
 - The next bounded target remains trajectory batching or vectorization only if
   a later measured slice can beat this baseline without changing hazard
   semantics.
+
+## TB-313 Accumulator Micro-Optimization Attempt
+
+TB-313 tested a narrow accumulator-local rewrite that stored per-trajectory
+cell sets as integer cell IDs instead of `(row, col)` tuples, converting back to
+row/column pairs only at commit time. The candidate preserved the public CLI,
+output schema, hazard semantics, and parity guardrails during the temporary
+benchmarking pass.
+
+Decision: reject and revert the change.
+
+Measured evidence:
+
+- best observed candidate slice improved one noisy run from about `0.0737` s to
+  about `0.0701` s for `accumulation_seconds`;
+- that was below the benchmark contract's required 10% speedup floor;
+- later reruns showed enough variance that the change could not be accepted as
+  a stable improvement;
+- final reverted baseline replay remained deterministic, with matching stable
+  manifest SHA-256 `0f42c8c20aa074357ff3f9b1b4e5ead01d73f4ec5437e64cc11d89d310c407aa`;
+- final reverted baseline `accumulation_seconds` was `0.10427025007084012` s,
+  with replay at `0.11710049991961569` s.
+
+Interpretation:
+
+- the current implementation remains unchanged after TB-313;
+- simple accumulator representation changes are not enough to clear the
+  accepted optimization floor;
+- the next credible optimization needs a more structural batching/vectorization
+  approach or a projected trajectory reader that reduces Python row-wise update
+  overhead while preserving reach, maxima, exceedance, weighting, and reducer
+  determinism.

@@ -39,43 +39,13 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-313: Hazard Accumulation Optimization From Measured Bottleneck
+### TB-314: Current Local Scaling Ladder Refresh
 
-Goal: Implement one targeted hazard-accumulation optimization only if the benchmark harness shows it improves the `accumulation_seconds` bottleneck without changing hazard outputs.
+Goal: Rerun the 1/2/4/8/12-zone local scaling ladder after TB-312 measured four-zone postproc evidence and TB-313 rejected the accumulator micro-optimization.
 
-Capability gap reduced: The local ladder identifies accumulation timing as the first 8-zone bottleneck, but no accepted optimization has reduced it yet.
+Capability gap reduced: The scale dashboard needs current ladder evidence after the latest measured Balfrin postproc point and the confirmed no-op optimization attempt.
 
-Why this outranks alternatives: Execution efficiency must improve at the measured bottleneck before larger local or Balfrin scale steps are credible.
-
-Inspect first:
-
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_hazard_accumulation_benchmark.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_multi_zone_scaling_ladder.py`
-
-Deliverables:
-
-- One bounded optimization to trajectory accumulation or grid update logic, selected from benchmark evidence and guarded by before/after measurements.
-- Output parity checks for hazard layers, manifests, checksums, and claim boundaries.
-- Updated benchmark report showing speedup, memory impact, and whether the 8-zone local rung remains blocked.
-
-Definition of done:
-
-- The accepted optimization improves the measured accumulation bottleneck under the existing acceptance thresholds without changing numerical outputs or public CLI semantics.
-
-Boundaries: One targeted optimization only; no physics changes, no output schema break, no live Balfrin submission, no distributed execution, no tuning, no annual/physical/risk semantics, and no operational claim.
-
-### TB-314: Post-Optimization Local Scaling Ladder Refresh
-
-Goal: Rerun the 1/2/4/8/12-zone local scaling ladder after any accepted accumulation optimization and update the first-blocked breakpoint.
-
-Capability gap reduced: Efficiency improvements need to translate into changed scale evidence, not just isolated benchmark wins.
-
-Why this outranks alternatives: The scale dashboard should guide live Balfrin actions from current measurements, not stale pre-optimization ladder data.
+Why this outranks alternatives: The next action should be based on the current implementation and measured four-zone evidence, not on an assumed optimization that was not accepted.
 
 Inspect first:
 
@@ -90,8 +60,8 @@ Inspect first:
 Deliverables:
 
 - Refreshed ladder measurements for 1, 2, 4, 8, and 12 zones with phase timing, manifest bytes, sidecars, output files, first bottleneck, and status changes.
-- Scale-dashboard updates that separate pre-optimization and post-optimization evidence.
-- A next-action recommendation for larger local ladder, four-zone live probe, or further optimization.
+- Scale-dashboard updates that separate measured four-zone postproc evidence from unchanged local hazard-accumulation behavior.
+- A next-action recommendation for larger local ladder, further accumulation architecture work, or AOI workflow progress.
 
 Definition of done:
 

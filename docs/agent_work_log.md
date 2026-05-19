@@ -3001,3 +3001,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exact four-zone `postproc` probe only; no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no Swiss-wide scale-up claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-313`
+
+### TB-313: Hazard Accumulation Optimization From Measured Bottleneck
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: test one bounded hazard-accumulation optimization from the measured `accumulation_seconds` bottleneck and retain it only if it clears the benchmark acceptance floor without output changes.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Launched a worker to test accumulator-local optimizations against `scripts/hazard_accumulation_benchmark.py` and parity guardrails.
+  - The worker tested and reverted a cell-ID accumulator rewrite because it did not clear the 10% speedup floor and reruns showed enough variance to reject the change.
+  - Recorded the rejected/no-op result in the throughput bottleneck report, removed TB-313 from the active backlog, and retitled TB-314 so the next ladder refresh reflects the actual current state rather than a nonexistent accepted optimization.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --benchmark-root /tmp/tb313_final_baseline --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/tb313_profile_before --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_noop
+- Boundaries: no accepted optimization was retained; no physics change, output schema change, live Balfrin submission, distributed execution, tuning, annual/physical/risk semantics, or operational claim was introduced.
+- Next task: `TB-314`
