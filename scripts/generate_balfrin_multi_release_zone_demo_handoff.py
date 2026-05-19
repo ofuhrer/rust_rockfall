@@ -53,6 +53,9 @@ DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_p
 SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT = 2
 SMALLEST_MULTI_ZONE_SCENARIO_COUNT = 2
 SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET = 1000
+FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT = 4
+FOUR_ZONE_REVIEW_SCENARIO_COUNT = 4
+FOUR_ZONE_REVIEW_TRAJECTORY_COUNT_TARGET = 2000
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
     "/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
@@ -511,7 +514,7 @@ def build_report(
     candidate_output_root: Path | None = None,
     target_area_output_root: Path | None = None,
     pressure_probe_root: Path = DEFAULT_PRESSURE_PROBE_ROOT,
-    requested_release_zone_batch_size: int = 2,
+    requested_release_zone_batch_size: int = FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
     requested_reducer_chunk_count: int = 2,
     requested_reducer_worker_count: int = 2,
 ) -> dict[str, Any]:
@@ -692,6 +695,21 @@ def build_report(
         pressure_artifact_dir=pressure_artifact_dir,
         pressure_probe_root=pressure_probe_root,
     )
+    review_only_four_zone_package = build_four_zone_review_package(
+        candidate_report=candidate_report,
+        output_profile_report=output_profile_report,
+        reducer_scaling_report=reducer_scaling_report,
+        single_job_report=single_job_report,
+        pressure_report=pressure_report,
+        constraint_pressure_report=constraint_pressure_report,
+        artifact_dir=artifact_dir,
+        candidate_output_root=candidate_output_root,
+        target_area_output_root=target_area_output_root,
+        pressure_artifact_dir=pressure_artifact_dir,
+        pressure_probe_root=pressure_probe_root,
+        requested_reducer_chunk_count=requested_reducer_chunk_count,
+        requested_reducer_worker_count=requested_reducer_worker_count,
+    )
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -714,7 +732,8 @@ def build_report(
         "package_summary": {
             "status": package_status,
             "summary": (
-                "The multi-release-zone Balfrin dry-run package is ready for review; live execution remains blocked "
+                "The four-zone Balfrin review package is "
+                f"{review_only_four_zone_package.get('readiness_classification')}; live execution remains blocked "
                 "until new human authorization is granted. "
                 f"Constraint gate status: {constraint_pressure_report['status']}."
             ),
@@ -758,6 +777,9 @@ def build_report(
         "handoff_output_budget_projection": handoff_output_budget_projection,
         "manifest_pruning": manifest_pruning_report,
         "constraint_pressure": constraint_pressure_report,
+        "review_only_four_zone_package": review_only_four_zone_package,
+        "review_readiness_classification": review_only_four_zone_package.get("readiness_classification"),
+        "review_readiness_reason": review_only_four_zone_package.get("readiness_reason"),
         "uncertainty_post_processing": build_uncertainty_post_processing(
             single_job_report=single_job_report,
             target_area_contract=target_area_contract,
@@ -2522,11 +2544,15 @@ def build_authorized_submit_command(*, reviewed_handoff_package_path: Path, auth
     )
 
 
-def build_smallest_multi_zone_run_estimates(pressure_report: dict[str, Any]) -> dict[str, Any]:
+def build_multi_zone_run_estimates(
+    pressure_report: dict[str, Any],
+    *,
+    target_release_zone_count: int,
+) -> dict[str, Any]:
     measured_release_zone_count = positive_int(
         pressure_report.get("release_zone_count", 1), "measured multi-zone release zone count"
     )
-    scale = SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT / measured_release_zone_count
+    scale = target_release_zone_count / measured_release_zone_count
     estimated_runtime_seconds = round(_number_or_zero(pressure_report.get("reducer_wall_time_seconds")) * scale, 3)
     estimated_storage_bytes = max(1, int(round(_number_or_zero(pressure_report.get("output_byte_count")) * scale)))
     estimated_file_count = max(1, int(round(_number_or_zero(pressure_report.get("output_file_count")) * scale)))
@@ -2541,6 +2567,13 @@ def build_smallest_multi_zone_run_estimates(pressure_report: dict[str, Any]) -> 
         "estimated_file_count": estimated_file_count,
         "estimated_manifest_pressure_bytes": estimated_manifest_pressure_bytes,
     }
+
+
+def build_smallest_multi_zone_run_estimates(pressure_report: dict[str, Any]) -> dict[str, Any]:
+    return build_multi_zone_run_estimates(
+        pressure_report,
+        target_release_zone_count=SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
+    )
 
 
 def build_smallest_multi_zone_preservation_checklist(
@@ -2736,6 +2769,151 @@ def build_follow_up_recommendation(
             "Review the package, then seek a new human authorization before any live multi-zone Balfrin job."
         ),
         "blocked_reason": "blocked_pending_authorization: review the exact later-submit command before any live run",
+    }
+
+
+def build_four_zone_review_package(
+    *,
+    candidate_report: dict[str, Any],
+    output_profile_report: dict[str, Any],
+    reducer_scaling_report: dict[str, Any],
+    single_job_report: dict[str, Any],
+    pressure_report: dict[str, Any],
+    constraint_pressure_report: dict[str, Any],
+    artifact_dir: Path,
+    candidate_output_root: Path,
+    target_area_output_root: Path,
+    pressure_artifact_dir: Path,
+    pressure_probe_root: Path,
+    requested_reducer_chunk_count: int,
+    requested_reducer_worker_count: int,
+) -> dict[str, Any]:
+    review_artifact_dir = pressure_artifact_dir / "four_zone_review_only"
+    review_command_plan = build_command_plan(
+        artifact_dir=artifact_dir,
+        candidate_output_root=candidate_output_root,
+        target_area_output_root=target_area_output_root,
+        pressure_probe_root=pressure_probe_root,
+        pressure_artifact_dir=review_artifact_dir,
+        requested_release_zone_batch_size=FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+        requested_reducer_chunk_count=min(2, requested_reducer_chunk_count),
+        requested_reducer_worker_count=min(2, requested_reducer_worker_count),
+    )
+    review_projection = build_handoff_output_budget_projection(
+        command_plan=review_command_plan,
+        pressure_artifact_dir=review_artifact_dir,
+        manifest_mode="compact",
+    )
+    review_manifest_pruning = build_manifest_pruning_report(
+        command_plan=review_command_plan,
+        pressure_artifact_dir=review_artifact_dir,
+    )
+    review_constraint_pressure = build_constraint_pressure_report(
+        pressure_report=pressure_report,
+        requested_release_zone_batch_size=FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+        requested_reducer_chunk_count=requested_reducer_chunk_count,
+        requested_reducer_worker_count=requested_reducer_worker_count,
+        handoff_output_budget_projection=review_projection,
+    )
+    review_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export="summary-only",
+        grid_csv_export="none",
+        no_plots=True,
+        label="four_zone_review_only_package",
+    )
+    review_estimates = build_multi_zone_run_estimates(
+        pressure_report=pressure_report,
+        target_release_zone_count=FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+    )
+    candidate_readiness = dict(candidate_report.get("candidate_sweep_summary", {}).get("multi_zone_stress_test_readiness") or {})
+    output_budget_validation = dict(review_projection.get("budget_acceptance_validation") or {})
+    if candidate_readiness.get("status") not in {"ready", "ready_for_review"}:
+        readiness_classification = "blocked_by_two_zone_evidence"
+        readiness_reason = (
+            candidate_readiness.get("summary")
+            or candidate_readiness.get("blocked_reason")
+            or "two-zone evidence is not yet ready"
+        )
+    elif output_budget_validation.get("status") != "accepted" or review_manifest_pruning.get("status") != "budget_passes_no_reduction_needed":
+        readiness_classification = "blocked_output_budget"
+        readiness_reason = (
+            output_budget_validation.get("summary")
+            or review_manifest_pruning.get("summary")
+            or "four-zone review package remains blocked by output budget"
+        )
+    elif (
+        not single_job_report.get("single_job_sufficient_for_next_step")
+        or reducer_scaling_report.get("reducer_scaling_status") not in {"measured_existing_artifacts", "ready"}
+    ):
+        readiness_classification = "blocked_efficiency"
+        readiness_reason = (
+            "single-job sufficiency or reducer scaling is not yet ready for the four-zone review package"
+        )
+    else:
+        readiness_classification = "ready_for_review"
+        readiness_reason = (
+            "four-zone review package is ready for review with compact manifests, reduced-output defaults, "
+            "objective budget validation, and replay-critical families retained"
+        )
+    return {
+        "status": readiness_classification,
+        "readiness_classification": readiness_classification,
+        "readiness_reason": readiness_reason,
+        "release_zone_count": FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+        "scenario_count": FOUR_ZONE_REVIEW_SCENARIO_COUNT,
+        "trajectory_count_target": FOUR_ZONE_REVIEW_TRAJECTORY_COUNT_TARGET,
+        "requested_release_zone_batch_size": FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+        "requested_reducer_chunk_count": requested_reducer_chunk_count,
+        "requested_reducer_worker_count": requested_reducer_worker_count,
+        "output_profile_policy": review_output_profile_policy,
+        "reduced_output_defaults": {
+            "conditional_curve_export": "summary-only",
+            "grid_csv_export": "none",
+            "no_plots": True,
+        },
+        "expected_runtime_seconds": review_estimates["estimated_runtime_seconds"],
+        "expected_storage_bytes": review_estimates["estimated_storage_bytes"],
+        "expected_file_count": review_estimates["estimated_file_count"],
+        "expected_manifest_pressure_bytes": review_estimates["estimated_manifest_pressure_bytes"],
+        "output_budget_acceptance_threshold_profile_id": output_budget_validation.get("threshold_profile_id"),
+        "output_budget_acceptance_status": output_budget_validation.get("status"),
+        "output_budget_acceptance_validation": output_budget_validation,
+        "output_budget_acceptance_thresholds": dict(review_projection.get("budget_acceptance_thresholds") or {}),
+        "budget_recheck_status": dict(review_projection.get("budget_recheck") or {}).get("status"),
+        "budget_recheck_reason": dict(review_projection.get("budget_recheck") or {}).get("reason"),
+        "manifest_pruning_status": review_manifest_pruning.get("status"),
+        "manifest_pruning_summary": review_manifest_pruning.get("summary"),
+        "manifest_pruning": review_manifest_pruning,
+        "projection": review_projection,
+        "replay_critical_families": list(review_projection.get("replay_critical_retained_output_families") or []),
+        "replay_critical_field_inventory": dict(review_projection.get("replay_critical_field_inventory") or {}),
+        "constraint_pressure": review_constraint_pressure,
+        "constraint_status": review_constraint_pressure.get("status"),
+        "constraint_summary": review_constraint_pressure.get("summary"),
+        "candidate_readiness": candidate_readiness,
+        "pressure_reference": {
+            "release_zone_count": pressure_report.get("release_zone_count"),
+            "scenario_count": pressure_report.get("scenario_count"),
+            "manifest_size_bytes": pressure_report.get("manifest_size_bytes"),
+            "output_file_count": pressure_report.get("output_file_count"),
+            "output_byte_count": pressure_report.get("output_byte_count"),
+            "reducer_wall_time_seconds": pressure_report.get("reducer_wall_time_seconds"),
+            "blocked_reason": pressure_report.get("blocked_reason"),
+        },
+        "promotion_status": "blocked_pending_later_task",
+        "promotion_reason": (
+            "The four-zone package is review-only and cannot be promoted to live submission without a later task and fresh gate evidence."
+        ),
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+            "review_only": True,
+            "live_submission_authorized": False,
+        },
     }
 
 
@@ -3002,6 +3180,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     constraint_source = dict(constraint_pressure.get("constraint_source") or {})
     output_budget_projection = dict(report.get("handoff_output_budget_projection") or {})
     first_bottleneck_labels = dict(output_budget_projection.get("first_bottleneck_labels") or {})
+    review_package = dict(report.get("review_only_four_zone_package") or {})
+    review_projection = dict(review_package.get("projection") or {})
     lines = [
         "Balfrin Multi-Release-Zone Demo Package",
         "",
@@ -3051,6 +3231,25 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Measured root file count max: `{measured_constraints.get('root_file_count_max')}`",
         f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
         f"- Constraint source: `{constraint_source.get('source_document')}`",
+        "",
+        "## Four-Zone Review Package",
+        "",
+        f"- Review readiness: `{report.get('review_readiness_classification')}`",
+        f"- Review readiness reason: {report.get('review_readiness_reason')}",
+        f"- Review output profile: `{review_package.get('output_profile_policy', {}).get('classification')}`",
+        f"- Review reduced-output defaults: `{review_package.get('reduced_output_defaults', {})}`",
+        f"- Review release zones: `{review_package.get('release_zone_count')}`",
+        f"- Review scenarios: `{review_package.get('scenario_count')}`",
+        f"- Review trajectory target: `{review_package.get('trajectory_count_target')}`",
+        f"- Expected runtime seconds: `{review_package.get('expected_runtime_seconds')}`",
+        f"- Expected storage bytes: `{review_package.get('expected_storage_bytes')}`",
+        f"- Expected file count: `{review_package.get('expected_file_count')}`",
+        f"- Expected manifest pressure bytes: `{review_package.get('expected_manifest_pressure_bytes')}`",
+        f"- Output-budget acceptance status: `{review_package.get('output_budget_acceptance_status')}`",
+        f"- Output-budget acceptance profile: `{review_package.get('output_budget_acceptance_threshold_profile_id')}`",
+        f"- Manifest pruning status: `{review_package.get('manifest_pruning_status')}`",
+        f"- Replay-critical families: `{review_package.get('replay_critical_families', [])}`",
+        f"- Promotion status: `{review_package.get('promotion_status')}`",
         "",
         "## Manifest Pruning",
         "",

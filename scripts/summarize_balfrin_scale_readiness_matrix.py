@@ -20,6 +20,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
+from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
 from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
 from scripts import summarize_balfrin_single_job_execution as single_job  # noqa: E402
@@ -387,6 +388,49 @@ def _smallest_multi_zone_row() -> dict[str, Any]:
     }
 
 
+def _four_zone_review_package_row() -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+        artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
+        report = handoff.build_report(artifact_dir=artifact_dir)
+
+    review = dict(report.get("review_only_four_zone_package") or {})
+    projection = dict(review.get("projection") or {})
+    constraint = dict(review.get("constraint_pressure") or {})
+    return {
+        "tier_id": "four_zone_review_package",
+        "tier_label": "four-zone review package",
+        "evidence_label": "projection_only",
+        "measurement_status": "projection_only",
+        "classification": review.get("readiness_classification") or "blocked_output_budget",
+        "output_budget_status": review.get("output_budget_acceptance_status") or "blocked_output_budget",
+        "execution_efficiency_status": review.get("readiness_classification") or "blocked_efficiency",
+        "file_count": review.get("expected_file_count"),
+        "bytes": review.get("expected_storage_bytes"),
+        "manifest_bytes": review.get("expected_manifest_pressure_bytes"),
+        "reducer_sidecars": projection.get("sidecar_file_count"),
+        "runtime_seconds": review.get("expected_runtime_seconds"),
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "review_only",
+        "replayability_status": "replay_critical_retained",
+        "authorization_status": "blocked_pending_later_task",
+        "next_evidence_field": "current_gate_evidence_and_later_task",
+        "blocker": review.get("promotion_status"),
+        "summary": (
+            "The four-zone review-only package keeps compact manifests and reduced-output defaults explicit; "
+            "promotion to live submission remains blocked until a later task and current gate evidence are present."
+        ),
+        "review_readiness_status": review.get("readiness_classification"),
+        "review_readiness_reason": review.get("readiness_reason"),
+        "output_profile_policy": review.get("output_profile_policy", {}),
+        "output_budget_acceptance_threshold_profile_id": review.get("output_budget_acceptance_threshold_profile_id"),
+        "output_budget_acceptance_validation": review.get("output_budget_acceptance_validation", {}),
+        "manifest_pruning_status": review.get("manifest_pruning_status"),
+        "promotion_status": review.get("promotion_status"),
+        "promotion_reason": review.get("promotion_reason"),
+        "constraint_status": constraint.get("status"),
+    }
+
+
 def _two_zone_failed_closed_row() -> dict[str, Any]:
     return {
         "tier_id": "two_zone_failed_closed",
@@ -538,6 +582,7 @@ def build_report() -> dict[str, Any]:
         _single_zone_row(single_job_summary),
         _target_area_row(),
         _smallest_multi_zone_row(),
+        _four_zone_review_package_row(),
         _two_zone_failed_closed_row(),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),

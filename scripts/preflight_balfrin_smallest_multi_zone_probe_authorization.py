@@ -110,11 +110,27 @@ def _missing_access_report() -> dict[str, Any]:
 
 
 def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
+    review_only = dict(package.get("review_only_four_zone_package") or {})
     follow_up = dict(package.get("follow_up_recommendation") or {})
-    minimum = dict(follow_up.get("minimum_measured_multi_zone_run") or package.get("smallest_measured_multi_zone_run") or {})
-    reducer_pressure = dict(minimum.get("reducer_pressure") or package.get("constraint_pressure") or {})
-    output_profile_policy = dict(minimum.get("output_profile_policy") or {})
+    minimum = dict(
+        review_only
+        or follow_up.get("minimum_measured_multi_zone_run")
+        or package.get("smallest_measured_multi_zone_run")
+        or {}
+    )
+    reducer_pressure = dict(
+        review_only.get("constraint_pressure")
+        or minimum.get("reducer_pressure")
+        or package.get("constraint_pressure")
+        or {}
+    )
+    output_profile_policy = dict(
+        review_only.get("output_profile_policy")
+        or minimum.get("output_profile_policy")
+        or {}
+    )
     return {
+        "review_package": review_only,
         "release_zone_count": minimum.get("release_zone_count"),
         "scenario_count": minimum.get("scenario_count"),
         "trajectory_count_target": minimum.get("trajectory_count_target"),
@@ -127,22 +143,29 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         or reducer_pressure.get("requested_reducer_chunk_count"),
         "release_zone_batch_size": reducer_pressure.get("requested_release_zone_batch_size")
         or minimum.get("release_zone_count"),
+        "review_readiness_status": review_only.get("readiness_classification"),
+        "review_readiness_reason": review_only.get("readiness_reason"),
+        "promotion_status": review_only.get("promotion_status"),
+        "promotion_reason": review_only.get("promotion_reason"),
         "output_profile": {
             "output_mode": minimum.get("output_mode"),
-            "conditional_curve_export": minimum.get("conditional_curve_export"),
-            "grid_csv_export": minimum.get("grid_csv_export"),
+            "conditional_curve_export": review_only.get("reduced_output_defaults", {}).get("conditional_curve_export")
+            or minimum.get("conditional_curve_export"),
+            "grid_csv_export": review_only.get("reduced_output_defaults", {}).get("grid_csv_export")
+            or minimum.get("grid_csv_export"),
             "export_geotiff": minimum.get("export_geotiff"),
             "pilot_gis_package": minimum.get("pilot_gis_package"),
             "classification": output_profile_policy.get("classification"),
             "policy": output_profile_policy,
         },
         "estimates": {
-            "runtime_seconds": minimum.get("estimated_runtime_seconds"),
-            "storage_bytes": minimum.get("estimated_storage_bytes"),
-            "file_count": minimum.get("estimated_file_count"),
-            "manifest_pressure_bytes": minimum.get("estimated_manifest_pressure_bytes"),
+            "runtime_seconds": review_only.get("expected_runtime_seconds") or minimum.get("estimated_runtime_seconds"),
+            "storage_bytes": review_only.get("expected_storage_bytes") or minimum.get("estimated_storage_bytes"),
+            "file_count": review_only.get("expected_file_count") or minimum.get("estimated_file_count"),
+            "manifest_pressure_bytes": review_only.get("expected_manifest_pressure_bytes")
+            or minimum.get("estimated_manifest_pressure_bytes"),
         },
-        "preservation_checklist": list(minimum.get("preservation_gate_checklist") or []),
+        "preservation_checklist": list(minimum.get("preservation_gate_checklist") or review_only.get("preservation_gate_checklist") or []),
         "output_roots": dict(minimum.get("output_roots") or {}),
         "reviewed_handoff_package_path": minimum.get("reviewed_handoff_package_path"),
         "authorization_record_path": minimum.get("authorization_record_path"),
@@ -156,18 +179,24 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
 
 
 def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -> dict[str, Any]:
+    review_only = dict(package.get("review_only_four_zone_package") or {})
     constraint = dict(package.get("constraint_pressure") or package.get("package_constraint_summary") or {})
     status = str(constraint.get("status") or package.get("package_constraint_status") or "")
     handoff_projection = dict(
-        constraint.get("handoff_output_budget_projection") or package.get("handoff_output_budget_projection") or {}
+        review_only.get("projection")
+        or review_only.get("constraint_pressure", {}).get("handoff_output_budget_projection")
+        or constraint.get("handoff_output_budget_projection")
+        or package.get("handoff_output_budget_projection")
+        or {}
     )
     budget_recheck = dict(handoff_projection.get("budget_recheck") or {})
     output_budget_acceptance_validation = dict(
-        handoff_projection.get("budget_acceptance_validation")
+        review_only.get("output_budget_acceptance_validation")
+        or handoff_projection.get("budget_acceptance_validation")
         or package.get("output_budget_acceptance_validation")
         or {}
     )
-    manifest_pruning = dict(package.get("manifest_pruning") or {})
+    manifest_pruning = dict(review_only.get("manifest_pruning") or package.get("manifest_pruning") or {})
     blocked_reasons: list[str] = []
 
     def add_blocked_reason(reason: Any) -> None:
@@ -177,6 +206,13 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
 
     if status in {"blocked", "blocked_missing_inputs"}:
         add_blocked_reason(constraint.get("blocked_reason") or constraint.get("summary") or status)
+    review_readiness = str(review_only.get("readiness_classification") or package.get("review_readiness_classification") or "")
+    if review_readiness == "blocked_by_two_zone_evidence":
+        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
+    if review_readiness == "blocked_output_budget":
+        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
+    if review_readiness == "blocked_efficiency":
+        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
     for check in constraint.get("constraint_checks") or []:
         if isinstance(check, dict) and check.get("status") == "blocked":
             add_blocked_reason(check.get("reason") or check.get("label") or "blocked reducer check")
@@ -192,6 +228,8 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         add_blocked_reason("smallest run output profile policy is missing")
     return {
         "status": STATUS_BLOCKED_REDUCER_BUDGET if blocked_reasons else "ready",
+        "review_readiness_status": review_readiness or review_only.get("status") or package.get("review_readiness_classification"),
+        "review_readiness_reason": review_only.get("readiness_reason") or package.get("review_readiness_reason"),
         "package_constraint_status": status,
         "constraint_summary": constraint.get("summary"),
         "constraint_source": constraint.get("constraint_source", {}),
@@ -224,6 +262,7 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
 
 
 def _output_profile_status(run_shape: dict[str, Any]) -> dict[str, Any]:
+    review_only = dict(run_shape.get("review_package") or {})
     output_profile = dict(run_shape.get("output_profile") or {})
     classification = str(output_profile.get("classification") or "").strip()
     blocked_reasons: list[str] = []
@@ -233,6 +272,10 @@ def _output_profile_status(run_shape: dict[str, Any]) -> dict[str, Any]:
         blocked_reasons.append("smallest run must keep summary-only conditional curves")
     if output_profile.get("grid_csv_export") != "none":
         blocked_reasons.append("smallest run must keep grid CSV export disabled")
+    if review_only.get("readiness_classification") == "blocked_output_budget":
+        blocked_reasons.append(review_only.get("readiness_reason") or "four-zone review package remains blocked by output budget")
+    if review_only.get("readiness_classification") == "blocked_efficiency":
+        blocked_reasons.append(review_only.get("readiness_reason") or "four-zone review package remains blocked by efficiency")
     return {
         "status": "ready" if not blocked_reasons else "blocked_output_profile",
         "classification": classification or None,
@@ -360,6 +403,8 @@ def build_report(
         "authorization_status": authorization_requirement.get("authorization_status"),
         "reviewed_handoff_package_status": package_review.get("status"),
         "authorization_record_status": authorization_requirement.get("authorization_record_status"),
+        "review_readiness_status": run_shape.get("review_readiness_status"),
+        "review_readiness_reason": run_shape.get("review_readiness_reason"),
         "reviewed_handoff_package_sha256": package_review.get("sha256")
         or authorization_requirement.get("reviewed_handoff_package_sha256"),
         "authorization_record_sha256": authorization_requirement.get("authorization_record_sha256"),
@@ -417,6 +462,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Preflight grants authorization: `{report.get('authorization_granted_by_preflight')}`",
         f"- Live submission authorized by preflight: `{report.get('live_submission_authorized')}`",
         f"- Blocked reason: {report.get('blocked_reason') or 'none'}",
+        f"- Review readiness: `{report.get('review_readiness_status')}`",
+        f"- Review readiness reason: {report.get('review_readiness_reason') or 'none'}",
         f"- Reviewed package: `{report.get('reviewed_handoff_package_path')}`",
         f"- Reviewed package SHA-256: `{report.get('reviewed_handoff_package_sha256')}`",
         f"- Authorization record: `{report.get('authorization_record_path')}`",

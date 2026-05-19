@@ -31,7 +31,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
         self.assertEqual(report["scratch_local_tiers"], ["local_reducer_ladder"])
-        self.assertEqual(report["projection_only_tiers"], ["projected_larger_aoi"])
+        self.assertEqual(report["projection_only_tiers"], ["four_zone_review_package", "projected_larger_aoi"])
         self.assertEqual(report["no_go_tiers"], ["projected_larger_aoi"])
         self.assertFalse(report["live_run_authorization_status"]["live_submission_authorized"])
         self.assertEqual(report["live_run_authorization_status"]["recommended_next_action"], "remote_cleanup_rerun")
@@ -109,6 +109,11 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             report["latest_execution_efficiency_status"]["smallest_multi_zone"],
             "blocked_pre_submit_not_measured",
         )
+        self.assertEqual(tiers["four_zone_review_package"]["classification"], "ready_for_review")
+        self.assertEqual(tiers["four_zone_review_package"]["evidence_label"], "projection_only")
+        self.assertEqual(tiers["four_zone_review_package"]["output_budget_status"], "accepted")
+        self.assertEqual(tiers["four_zone_review_package"]["review_readiness_status"], "ready_for_review")
+        self.assertIn("four-zone review-only package keeps compact manifests", tiers["four_zone_review_package"]["summary"])
 
         self.assertEqual(tiers["two_zone_failed_closed"]["classification"], "failed_closed_submit_contract_mismatch")
         self.assertEqual(tiers["two_zone_failed_closed"]["evidence_label"], "failed_closed")

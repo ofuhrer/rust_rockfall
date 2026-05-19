@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-311: Four-Zone Balfrin Review Package
-
-Goal: Generate a review-only four-zone Balfrin package using the post-TB-309 evidence and current output-budget thresholds.
-
-Capability gap reduced: The project needs a measured path from two-zone evidence to the next bounded scale step without jumping directly to Swiss-wide or distributed execution.
-
-Why this outranks alternatives: A four-zone review package is the smallest logical follow-on once two-zone evidence is integrated and local 4-zone rungs are fixture-ready.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- A four-zone review-only package with compact manifests, reduced-output defaults, objective budget-threshold validation, expected runtime/output projection, and explicit replay-critical families.
-- A readiness classification that distinguishes `ready_for_review`, `blocked_by_two_zone_evidence`, `blocked_output_budget`, and `blocked_efficiency`.
-- Tests proving the package cannot be promoted to live submission without a later task and current gate evidence.
-
-Definition of done:
-
-- The next-larger Balfrin scale step is reviewable and budget-classified without authorizing or submitting it.
-
-Boundaries: Review package only; no live Balfrin submission, no scale-up authorization, no distributed execution, no Swiss-wide claim, no annual/physical/risk semantics, and no operational claim.
-
 ### TB-312: Four-Zone Balfrin Postproc Probe
 
 Goal: Execute the four-zone `postproc` probe only if TB-311 and the latest scale dashboard show the package is ready and the run will not keep `postproc` fully busy for more than 6 hours.

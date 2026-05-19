@@ -95,14 +95,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["gate_status"], "fixture_backed_ready")
         self.assertEqual(output_budget_projection["projection_provenance"], "handoff_command_plan")
         self.assertEqual(output_budget_projection["projection_mode"], "full")
-        self.assertEqual(output_budget_projection["release_zone_count"], 2)
+        self.assertEqual(output_budget_projection["release_zone_count"], 4)
         self.assertEqual(output_budget_projection["reducer_chunk_count"], 2)
         self.assertEqual(output_budget_projection["reducer_worker_count"], 2)
-        self.assertEqual(output_budget_projection["primary_output_file_count"], 6)
-        self.assertEqual(output_budget_projection["sidecar_file_count"], 11)
+        self.assertEqual(output_budget_projection["primary_output_file_count"], 12)
+        self.assertEqual(output_budget_projection["sidecar_file_count"], 13)
         self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 2)
-        self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 394)
-        self.assertEqual(output_budget_projection["output_file_count"], 20)
+        self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 438)
+        self.assertEqual(output_budget_projection["output_file_count"], 28)
         self.assertEqual(
             output_budget_projection["replay_critical_retained_output_families"],
             ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
@@ -120,7 +120,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["budget_acceptance_validation"]["status"], "accepted")
         self.assertEqual(
             output_budget_projection["budget_acceptance_validation"]["threshold_profile_id"],
-            "smallest_live_two_zone_probe",
+            "next_larger_four_zone_review_only_probe",
         )
         self.assertEqual(output_budget_projection["budget_acceptance_validation"]["failures"], [])
         self.assertEqual(first["output_budget_acceptance_validation"]["status"], "accepted")
@@ -183,14 +183,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             manifest_pruning["after"]["manifest_size_bytes"],
             first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"],
         )
-        self.assertEqual(manifest_pruning["before"]["sidecar_file_count"], 11)
-        self.assertEqual(manifest_pruning["after"]["sidecar_file_count"], 11)
-        self.assertEqual(manifest_pruning["before"]["output_file_count"], 20)
-        self.assertEqual(manifest_pruning["after"]["output_file_count"], 20)
+        self.assertEqual(manifest_pruning["before"]["sidecar_file_count"], 13)
+        self.assertEqual(manifest_pruning["after"]["sidecar_file_count"], 13)
+        self.assertEqual(manifest_pruning["before"]["output_file_count"], 28)
+        self.assertEqual(manifest_pruning["after"]["output_file_count"], 28)
         self.assertEqual(manifest_pruning["before"]["reducer_manifest_file_count"], 2)
         self.assertEqual(manifest_pruning["after"]["reducer_manifest_file_count"], 2)
-        self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 394)
-        self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 394)
+        self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 438)
+        self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 438)
         self.assertNotIn("exact_blocking_fields", manifest_pruning)
         self.assertEqual(
             manifest_pruning["replay_critical_output_families"],
@@ -214,6 +214,22 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(manifest_pruning["retained_output_families"], list(output_budget_projection["output_family_mix"]))
         self.assertEqual(first["command_plan"]["output_profile_policy"]["classification"], "blocked_unscalable_default")
+        review_package = first["review_only_four_zone_package"]
+        self.assertEqual(review_package["readiness_classification"], "ready_for_review")
+        self.assertEqual(review_package["output_budget_acceptance_status"], "accepted")
+        self.assertEqual(review_package["output_budget_acceptance_threshold_profile_id"], "next_larger_four_zone_review_only_probe")
+        self.assertEqual(review_package["release_zone_count"], 4)
+        self.assertEqual(review_package["scenario_count"], 4)
+        self.assertEqual(review_package["output_profile_policy"]["classification"], "scalable_default")
+        self.assertEqual(review_package["reduced_output_defaults"], {
+            "conditional_curve_export": "summary-only",
+            "grid_csv_export": "none",
+            "no_plots": True,
+        })
+        self.assertEqual(review_package["manifest_pruning_status"], "budget_passes_no_reduction_needed")
+        self.assertEqual(review_package["promotion_status"], "blocked_pending_later_task")
+        self.assertEqual(first["review_readiness_classification"], "ready_for_review")
+        self.assertIn("four-zone review package is ready for review", first["review_readiness_reason"])
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]
@@ -242,7 +258,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         pressure_command = next(
             command["command"] for command in command_plan["commands"] if command["id"] == "multi_zone_reducer_pressure_summary"
         )
-        self.assertIn("--release-zone-count 2", pressure_command)
+        self.assertIn("--release-zone-count 4", pressure_command)
         self.assertIn("--reducer-workers 2", pressure_command)
         self.assertIn("--reducer-chunk-count 2", pressure_command)
         self.assertIn("--output-family-mix", pressure_command)
@@ -279,6 +295,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("summarize_multi_zone_reducer_pressure.py", sbatch_script)
         rendered = MODULE.render_text_report(package)
         self.assertIn("Balfrin Multi-Release-Zone Demo Package", rendered)
+        self.assertIn("## Four-Zone Review Package", rendered)
         self.assertIn("## Smallest Run Estimates", rendered)
         self.assertIn("Blocked classification: `blocked_pending_authorization`", rendered)
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
