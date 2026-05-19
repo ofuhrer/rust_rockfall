@@ -90,8 +90,12 @@ clearance for GPT-5.5 workers to submit and actively monitor Balfrin `postproc`
 jobs, including multiple concurrent jobs and filling the partition. A GPT-5.5
 worker then created a reviewed/authorized audit record for the two-zone package,
 but submission still stopped before `sbatch` because the Balfrin access
-preflight remained `blocked_dirty_remote_checkout`. No measured multi-zone
-result has been promoted. The physical-evidence path now has an
+preflight remained `blocked_dirty_remote_checkout`. TB-304 preserved the
+untracked checkout clutter in
+`/users/olifu/work/tb304_remote_checkout_cleanup_20260519T185745Z.tgz`,
+removed only those stale generated checkout files, and reran the access
+preflight to `ready_for_read_only_collection`. No measured multi-zone result has
+been promoted. The physical-evidence path now has an
 explicit release/scenario physical-meaning firewall, an observed
 runout/deposition acquisition blocker matrix, a template-only operator
 acquisition package, fixture-backed intake acceptance smoke tests, a

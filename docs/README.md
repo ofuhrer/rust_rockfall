@@ -82,6 +82,8 @@ starting context for implementation unless a task explicitly asks for them.
 ## Current Balfrin And Tschamut Evidence
 
 - `balfrin_probe_slurm_driver.md`: SLURM-first Balfrin probe driver.
+- `balfrin_remote_checkout_hygiene_tb304.md`: TB-304 before/after remote
+  checkout cleanup record for stale generated Balfrin files.
 - `balfrin_skills.md`: practical Balfrin cluster-discovery notes.
 - `balfrin_minimal_demo_vs_closure.md`: minimal demo versus scientific closure
   boundary pointer retained because active Balfrin contracts cite it.

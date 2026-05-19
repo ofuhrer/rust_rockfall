@@ -95,7 +95,11 @@ The read-only Balfrin access preflight also reported `blocked_dirty_remote_check
 the remote checkout contained 18 untracked/stale generated files including
 `balfrin_submission_package.json`, `balfrin_submission_package.md`,
 `command_plan.json`, `probe.sbatch`, `logs/slurm-4326016.err`, and
-`logs/slurm-4326016.out`. No `sbatch` command was run.
+`logs/slurm-4326016.out`. TB-304 preserved those files in
+`/users/olifu/work/tb304_remote_checkout_cleanup_20260519T185745Z.tgz`,
+removed only the listed untracked checkout clutter, and reran the read-only
+access preflight to `ready_for_read_only_collection`. No `sbatch` command was
+run.
 
 ## Balfrin checkout and scratch boundary
 
@@ -297,8 +301,10 @@ blocker is superseded.
 The latest GPT-5.5 worker attempt created a reviewed live authorization/audit
 record and reran the gates. Submission still did not happen: no
 `--authorized-submit` command or `sbatch` call was run because the technical
-pre-submit blocker remains `blocked_dirty_remote_checkout` on
-`/users/olifu/work/rust_rockfall`. The current two-zone package state is:
+pre-submit blocker was `blocked_dirty_remote_checkout` on
+`/users/olifu/work/rust_rockfall`. TB-304 later cleared that checkout hygiene
+blocker and left the access preflight at `ready_for_read_only_collection`.
+The recorded two-zone package state before that cleanup was:
 authorization record `reviewed` / `authorized`, reducer budget `ready`, output
 profile `ready`, output-budget acceptance `accepted`, access preflight
 `blocked_dirty_remote_checkout`, and authorization preflight `blocked_access`.

@@ -2779,3 +2779,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: dashboard/status only; no SSH mutation, no `sbatch`, no live Balfrin run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: backlog refill needed
+
+### TB-304: Balfrin Remote Checkout Cleanup Execution
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: clear the documented dirty Balfrin remote-checkout blocker without submitting live work or touching preserved scratch/evidence roots.
+- Files changed: `docs/balfrin_remote_checkout_hygiene_tb304.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/current_maturity_snapshot.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the read-only Balfrin access preflight and preserved the before state: `/users/olifu/work/rust_rockfall` was on `main` at `a2c4831b52e34e5b772c560ad6cc4faa65886853`, had no tracked modifications, and had 18 untracked/stale generated checkout paths.
+  - Added a tracked TB-304 hygiene report before cleanup, listing tracked modifications, untracked generated files, stale submission packages, stale SLURM/log files, and the exact cleanup boundary.
+  - Preserved the 18 listed remote files plus metadata in `/users/olifu/work/tb304_remote_checkout_cleanup_20260519T185745Z.tgz` and `/users/olifu/work/tb304_remote_checkout_cleanup_20260519T185745Z_manifest.txt`, then removed only those untracked checkout paths.
+  - Reran the official preflight to `ready_for_read_only_collection` with dirty path count `0`, updated stale status references, and removed TB-304 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb304_balfrin_preflight_before.json` (returned `blocked_dirty_remote_checkout` before cleanup)
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin ...` (preserved and removed only the 18 listed untracked checkout paths)
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb304_balfrin_preflight_after.json` (returned `ready_for_read_only_collection`)
+- Result/status: implemented_measured
+- Boundaries: remote checkout hygiene only; no `sbatch`, no run submission, no deletion of preserved run roots or `/scratch` evidence roots, no non-`postproc` work, no distributed execution, no scale-up claim, no scientific/operational claim upgrade, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-305`

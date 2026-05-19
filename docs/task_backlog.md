@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-304: Balfrin Remote Checkout Cleanup Execution
-
-Goal: Clear the documented dirty remote-checkout blocker on Balfrin so standing `postproc` clearance can be used for measured runs without stale generated files contaminating submission packages.
-
-Capability gap reduced: Live Balfrin postproc work is currently blocked before `sbatch` by `blocked_dirty_remote_checkout`, not by authorization, reducer budget, or output profile.
-
-Why this outranks alternatives: Every next measured Balfrin action depends on a clean or explicitly accepted remote pre-submit state.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/orchestration_strategy.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_probe_driver.py`
-
-Deliverables:
-
-- A preserved before/after remote-hygiene report listing tracked modifications, untracked generated files, stale submission packages, stale SLURM logs, and cleanup actions taken or explicitly deferred.
-- Safe cleanup or relocation of stale generated files under `/users/olifu/work/rust_rockfall` after preserving the listing and any necessary forensic metadata.
-- A passing Balfrin access preflight ending in `ready_for_read_only_collection`, or one exact remaining blocker if cleanup cannot proceed safely.
-
-Definition of done:
-
-- The Balfrin remote checkout is either clean enough for package-specific preflight gates or has one explicitly documented non-clean state accepted or blocked for the next task.
-
-Boundaries: Remote checkout hygiene only; no `sbatch`, no run submission, no deletion of preserved run roots, no non-postproc partition work, no distributed execution, no scale-up claim, and no scientific/operational claim upgrade.
-
 ### TB-305: Balfrin Postproc Microbenchmark Live Run
 
 Goal: Run the exact bounded postproc microbenchmark under standing `postproc` clearance to measure workflow-shell overhead on Balfrin.
