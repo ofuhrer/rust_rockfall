@@ -41,6 +41,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/derive_hazard_rebuild_reduced_profile.py`
 - `scripts/download_tschamut_swisstlm3d_context.py`
 - `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/generate_balfrin_postproc_microbenchmark_package.py`
 - `scripts/generate_balfrin_target_area_demo_handoff.py`
 - `scripts/generate_balfrin_target_area_scenario_tables.py`
 - `scripts/generate_candidate_source_zone_scenarios.py`

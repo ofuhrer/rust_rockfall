@@ -2581,3 +2581,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: manifest/package representation only; no live Balfrin submission, no reducer math change, no output deletion, no scale-up authorization, and no operational claim.
 - Next task: `TB-295`
+
+### TB-295: Balfrin Postproc Microbenchmark Harness
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a bounded Balfrin post-processing microbenchmark package generator that isolates workflow-shell overhead from physics execution.
+- Files changed: `scripts/generate_balfrin_postproc_microbenchmark_package.py`, `tests/test_balfrin_postproc_microbenchmark_package.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a synthetic package generator with configurable file count, manifest size, sidecar count, reducer chunk count, and payload size.
+  - Generated packages include synthetic file-family roots, JSON manifests, sidecars, reducer chunk manifests, a README, and a standalone stdlib runner that measures file scan, manifest scan, reducer merge, package time, wall time, CPU time, peak RSS, and bytes/files touched.
+  - Added fixture-backed tests for package materialization, generated-runner measurement schema, parser validation, and existing-output force handling.
+  - Documented the no-submit package surface in the Balfrin driver notes, registered the helper in the script inventory, and removed TB-295 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_postproc_microbenchmark_package`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_postproc_microbenchmark_package.py --output-root /tmp/rust_rockfall/tb295_postproc_microbenchmark_smoke --file-count 3 --manifest-size-bytes 1024 --sidecar-count 1 --reducer-chunk-count 2 --payload-bytes 16 --format json`
+  - `PYENV_VERSION=system uv run python /tmp/rust_rockfall/tb295_postproc_microbenchmark_smoke/harness/run_balfrin_postproc_microbenchmark.py --package-root /tmp/rust_rockfall/tb295_postproc_microbenchmark_smoke --output-json /tmp/rust_rockfall/tb295_postproc_microbenchmark_smoke/output/measurements.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: package/harness generation only; no live Balfrin submission, no `sbatch`, no simulation execution, no physical-probability claim, no risk/exposure/vulnerability claim, no scale-up or distributed-execution authorization, and no operational claim.
+- Next task: `TB-296`

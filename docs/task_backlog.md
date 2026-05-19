@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-295: Balfrin Postproc Microbenchmark Harness
-
-Goal: Add a bounded Balfrin postprocessing microbenchmark harness that measures filesystem, manifest scanning, reducer merge, and hazard packaging overhead independently from full simulation scale.
-
-Capability gap reduced: Execution efficiency is not under control because the repo lacks measured Balfrin postproc overhead curves for the workflow shell.
-
-Why this outranks alternatives: The likely scaling wall is Python/output/reducer/filesystem pressure, so microbenchmarks should isolate those costs before larger live probes.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-
-Deliverables:
-
-- A microbenchmark package generator for synthetic file-family roots with configurable file count, manifest size, sidecar count, and reducer chunk count.
-- A postproc-node measurement plan that records wall time, CPU time where available, peak RSS, file scan time, merge time, package time, and bytes/files touched.
-- Local fixture tests for package generation and parser behavior.
-
-Definition of done:
-
-- The repo can prepare an exact bounded Balfrin postproc microbenchmark package that measures workflow-shell overhead separately from physics execution.
-
-Boundaries: Package/harness generation only unless separately authorized for live execution; no live Balfrin submission by default, no simulation, no physical claims, no operational claim, and no heavy generated files committed.
-
 ### TB-296: Authorized Balfrin Postproc Microbenchmark Run
 
 Goal: Execute one exact bounded Balfrin postproc microbenchmark run if separately authorized, or record the exact pre-submit blocker.

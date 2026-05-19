@@ -59,6 +59,27 @@ execution reproducible and metadata-friendly on Balfrin.
 - `--local-command-plan`
   - Regenerates and prints the command plan only.
 
+TB-295 adds a separate package generator for post-processing overhead
+microbenchmarks:
+
+```bash
+PYENV_VERSION=system uv run python scripts/generate_balfrin_postproc_microbenchmark_package.py \
+  --output-root /tmp/rust_rockfall/balfrin_postproc_microbenchmark_v1 \
+  --file-count 128 \
+  --manifest-size-bytes 65536 \
+  --sidecar-count 16 \
+  --reducer-chunk-count 8 \
+  --format json
+```
+
+The generated package contains only synthetic file-family roots, JSON
+manifests, sidecars, reducer chunk manifests, and a standalone stdlib runner
+that measures file scan, manifest scan, reducer merge, package time, wall time,
+CPU time, peak RSS where the OS exposes it, and bytes/files touched. It is a
+package/harness-generation surface only; a later Balfrin run still needs
+separate exact authorization and must not be inferred from this generated
+package.
+
 ## Balfrin checkout and scratch boundary
 
 Run submission commands from the Balfrin checkout:
