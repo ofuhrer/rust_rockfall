@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-290: AOI End-To-End User Documentation Smoke
-
-Goal: Write and test a short user-facing walkthrough from AOI bounds to review map using only supported commands and documented blocked states.
-
-Capability gap reduced: The workflow has grown many commands, but a user still lacks a concise verified path through them.
-
-Why this outranks alternatives: Documentation should now capture the newly implemented AOI workflow before more interfaces are added.
-
-Inspect first:
-
-- `README.md`
-- `docs/onboarding.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/package_aoi_hazard_map.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A concise AOI-to-map walkthrough that names commands, expected outputs, blocked states, ignored roots, and claim boundaries.
-- A smoke test or doc-command checker that verifies the documented fixture commands still run or fail with the documented status.
-- Updates to README or onboarding only where they reduce user confusion.
-
-Definition of done:
-
-- A new user can follow one documented path from AOI definition to a local diagnostic review map or an exact blocked state.
-
-Boundaries: Documentation and command smoke only; no new scientific claims, no live Balfrin submission, no network download, and no heavy generated outputs committed.
-
 ### TB-291: Workflow Surface Consolidation Review
 
 Goal: Identify and consolidate duplicated AOI/Balfrin status rendering, path handling, blocker vocabulary, and claim-boundary helpers that now affect user-facing workflow consistency.

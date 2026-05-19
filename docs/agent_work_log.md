@@ -2471,3 +2471,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: acquisition/rejection only; no calibration, no parameter fitting, no physical-probability product, no annual-frequency semantics, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-290`
+
+### TB-290: AOI End-To-End User Documentation Smoke
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: write a short user-facing AOI walkthrough from bounds to a local diagnostic review bundle, and verify the documented command chain stays aligned with the supported CLI and blocked states.
+- Files changed: `README.md`, `docs/onboarding.md`, `docs/public_real_site_geodata_preparation.md`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rewrote the AOI-to-map review path in the public geodata preparation guide as a concise command sequence from `bootstrap_aoi_manifest.py` through `run_aoi_hazard_workflow.py status`, `prepare`, and `run-local-smoke`, then into `package_aoi_hazard_map.py` for the local review bundle.
+  - Added the direct-script import-prefix note to onboarding so the documented commands are runnable from the repository root without guessing why sibling imports fail.
+  - Added a focused command-chain smoke test that bootstraps a temp AOI manifest from bounds, checks the documented blocked states, runs the local smoke path, and packages the smoke hazard root into the review surface with `cog_blocked` / `review_ready_with_warnings`.
+  - Removed TB-290 from the active backlog after the walkthrough and smoke coverage were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_documented_aoi_bounds_to_review_map_command_chain_smoke -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: documentation and command smoke only; no new scientific claims, no live Balfrin submission, no network download, no heavy generated outputs committed, no annual-frequency semantics, no physical-probability claim, and no operational claim.
+- Next task: `TB-291`

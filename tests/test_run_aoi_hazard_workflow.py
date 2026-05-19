@@ -15,7 +15,9 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+BOOTSTRAP_SCRIPT_PATH = ROOT / "scripts" / "bootstrap_aoi_manifest.py"
 SCRIPT_PATH = ROOT / "scripts" / "run_aoi_hazard_workflow.py"
+PACKAGE_SCRIPT_PATH = ROOT / "scripts" / "package_aoi_hazard_map.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 
@@ -30,6 +32,8 @@ def _load_module(path: Path, name: str):
 
 
 workflow = _load_module(SCRIPT_PATH, "run_aoi_hazard_workflow")
+bootstrap = _load_module(BOOTSTRAP_SCRIPT_PATH, "bootstrap_aoi_manifest_for_front_door_tests")
+package = _load_module(PACKAGE_SCRIPT_PATH, "package_aoi_hazard_map_for_front_door_tests")
 planner = _load_module(PLANNER_SCRIPT_PATH, "plan_aoi_to_prepared_pilot_dry_run_for_front_door_tests")
 staging = _load_module(
     STAGING_SCRIPT_PATH,
@@ -38,11 +42,14 @@ staging = _load_module(
 
 
 class RunAoiHazardWorkflowTests(unittest.TestCase):
-    def _run_main(self, args: list[str]) -> tuple[int, str]:
+    def _run_module_main(self, module, args: list[str]) -> tuple[int, str]:
         stdout = io.StringIO()
         with redirect_stdout(stdout):
-            code = workflow.main(args)
+            code = module.main(args)
         return code, stdout.getvalue().strip()
+
+    def _run_main(self, args: list[str]) -> tuple[int, str]:
+        return self._run_module_main(workflow, args)
 
     def test_command_dispatch_routes_to_the_expected_backend_view(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -356,6 +363,111 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(report["first_blocker"]["step_id"], "command")
         self.assertIn("run_aoi_hazard_workflow.py status", report["next_command"])
         self.assertEqual(workflow.status_exit_code(report), 64)
+
+    def test_documented_aoi_bounds_to_review_map_command_chain_smoke(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            work_root = Path(tmp)
+            site_root = work_root / "site"
+            smoke_root = work_root / "smoke"
+            review_root = work_root / "review"
+
+            bootstrap_code, bootstrap_output = self._run_module_main(
+                bootstrap,
+                [
+                    "--output-root",
+                    str(site_root),
+                    "--site-id",
+                    "chant_sura_fluelapass_portability_example_v1",
+                    "--bounds",
+                    "2696376",
+                    "1167384",
+                    "2696476",
+                    "1167484",
+                    "--format",
+                    "json",
+                ],
+            )
+            self.assertEqual(bootstrap_code, 0)
+            bootstrap_report = json.loads(bootstrap_output)
+            self.assertEqual(bootstrap_report["bootstrap_status"], "ready")
+            self.assertTrue((site_root / "aoi_manifest.yaml").exists())
+            self.assertTrue((site_root / "input" / "public_geodata_acquisition.yaml").exists())
+
+            status_code, status_output = self._run_main(
+                [
+                    "status",
+                    "--site-config",
+                    str(site_root / "aoi_manifest.yaml"),
+                    "--repo-root",
+                    str(ROOT),
+                    "--format",
+                    "json",
+                ]
+            )
+            self.assertEqual(status_code, 2)
+            status_report = json.loads(status_output)
+            self.assertEqual(status_report["workflow_status"], "blocked_missing_inputs")
+            self.assertEqual(status_report["next_action"], "prepare")
+            self.assertEqual(status_report["first_blocker"]["step_id"], "tiny_bounded_ensemble_handoff")
+
+            prepare_code, prepare_output = self._run_main(
+                [
+                    "prepare",
+                    "--site-config",
+                    str(site_root / "aoi_manifest.yaml"),
+                    "--repo-root",
+                    str(ROOT),
+                    "--format",
+                    "json",
+                ]
+            )
+            self.assertEqual(prepare_code, 2)
+            prepare_report = json.loads(prepare_output)
+            self.assertEqual(prepare_report["status"], "blocked_missing_inputs")
+            self.assertEqual(prepare_report["first_blocker"]["step_id"], "public_geodata_cache_verification")
+            self.assertIn("verify_public_geodata_cache.py", prepare_report["next_command"])
+
+            smoke_code, smoke_output = self._run_main(
+                [
+                    "run-local-smoke",
+                    "--repo-root",
+                    str(ROOT),
+                    "--smoke-output-root",
+                    str(smoke_root),
+                    "--format",
+                    "json",
+                ]
+            )
+            self.assertEqual(smoke_code, 0)
+            smoke_report = json.loads(smoke_output)
+            self.assertEqual(smoke_report["status"], "smoke_completed")
+            self.assertEqual(smoke_report["next_action"], "collect")
+            self.assertTrue((smoke_root / "validation" / "results" / "probabilistic_phase1_smoke_manifest.json").exists())
+            self.assertTrue((smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke" / "probabilistic_phase1_smoke_map_package_manifest.json").exists())
+            self.assertFalse(smoke_report["claim_boundaries"]["operational_claims_allowed"])
+
+            package_code, package_output = self._run_module_main(
+                package,
+                [
+                    "--input-root",
+                    str(smoke_root / "hazard" / "results" / "probabilistic_phase1_smoke"),
+                    "--output-root",
+                    str(review_root),
+                    "--overwrite",
+                    "--format",
+                    "json",
+                ],
+            )
+            self.assertEqual(package_code, 1)
+            package_report = json.loads(package_output)
+            self.assertEqual(package_report["status"], "cog_blocked")
+            self.assertEqual(package_report["review_surface_status"], "review_ready_with_warnings")
+            self.assertTrue(package_report["review_surface_paths"]["html"].endswith("index.html"))
+            self.assertTrue((review_root / "aoi_hazard_map_package_manifest.json").exists())
+            self.assertTrue((review_root / "aoi_hazard_map_package_summary.txt").exists())
+            self.assertTrue((review_root / "aoi_map_qa_review_manifest.json").exists())
+            self.assertTrue((review_root / "index.html").exists())
+            self.assertFalse(package_report["claim_boundary"]["annualized"])
 
     def test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

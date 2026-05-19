@@ -191,6 +191,9 @@ not a Swiss-wide production hazard service. New contributors should assume:
   it now surfaces normalized `workflow_status`, `first_blocker`,
   `next_command`, `expected_inputs`, and `expected_outputs` fields directly in
   text and JSON output.
+- Direct `scripts/*.py` entrypoints need `PYTHONPATH=$PWD` from the repository
+  root so their sibling imports resolve. The AOI walkthrough in
+  `docs/public_real_site_geodata_preparation.md` uses that prefix explicitly.
 - Chant Sura / Fluelapass remains a second-site readiness/acquisition track;
   synthetic fixtures and AOI automation outputs are not public-context,
   validation, calibration, source-frequency, or block-population evidence.

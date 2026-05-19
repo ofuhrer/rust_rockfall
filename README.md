@@ -40,6 +40,9 @@ evidence overlay hook. It does not yet download all public inputs, run
 arbitrary real AOIs end to end, execute second-site ensembles, or generate
 physically annualized intensity-frequency products.
 
+The user-facing AOI bounds-to-review-map walkthrough now lives in
+`docs/public_real_site_geodata_preparation.md`.
+
 The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
 normalized `workflow_status`, `first_blocker`, `next_command`,
 `expected_inputs`, and `expected_outputs` set so the next step is visible

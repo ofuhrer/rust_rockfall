@@ -144,33 +144,100 @@ mismatch, or unsupported products.
 ## AOI-To-Map Review Path
 
 The current AOI workflow is no longer only a preparation dry run. It now has a
-clean-checkout-safe, fixture-backed path that exercises the user-facing flow
-from AOI preparation to a tiny diagnostic map package:
+clean-checkout-safe path from AOI bounds to a local diagnostic review bundle.
+Run the direct `scripts/*.py` entrypoints from the repository root with
+`PYTHONPATH=$PWD`; that keeps the sibling imports in these helpers visible.
 
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py` composes prepared inputs,
-  command-plan state, output-root planning, and first-blocker reporting.
-- `scripts/package_aoi_hazard_map.py` turns an existing hazard output root into
-  a compact map package with raster inventory, checksums, release/scenario
-  overlays, COG-ready or `cog_blocked` classification, and explicit
-  non-operational claim boundaries.
-- `scripts/generate_aoi_map_qa_review.py` writes a static review surface with
-  layer-presence and boundary warnings for terrain, source/scenario metadata,
-  hazard layers, context availability, COG status, fixture-backed inputs, and
-  conditional-only weights.
-- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/`
-  is the checked-in AOI regression fixture package that keeps the clean
-  checkout path honest with a tiny terrain crop, cache metadata, source and
-  scenario records, and explicit regression-only labeling.
-- The AOI regression in `tests/test_aoi_to_prepared_pilot_dry_run.py` runs the
-  compact path under `/tmp` and asserts the first broken workflow step when the
-  prepared-pilot command path remains blocked.
+1. Bootstrap the AOI manifest from LV95 bounds.
 
-Optional observed-evidence overlays can be attached to map packages only when
-real accepted observed runout/deposition evidence or field-supported
-release-zone provenance is staged. Fixture-only, ambiguous-role, or schema-gap
-inputs remain blocked. Overlay support is for diagnostic review and evidence
-planning only; it does not imply calibration, physical probability, annual
-frequency, risk, or operational readiness.
+   ```bash
+   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/bootstrap_aoi_manifest.py \
+     --output-root /tmp/aoi_smoke/site \
+     --site-id chant_sura_fluelapass_portability_example_v1 \
+     --bounds 2696376 1167384 2696476 1167484 \
+     --format json
+   ```
+
+   Expected ready outputs are `/tmp/aoi_smoke/site/aoi_manifest.yaml`,
+   `/tmp/aoi_smoke/site/input/aoi_tile_catalog.yaml`,
+   `/tmp/aoi_smoke/site/input/public_geodata_acquisition.yaml`, and
+   `/tmp/aoi_smoke/site/validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`.
+   The ignored roots stay outside git: `data/raw/swisstopo/<pilot_id>/`,
+   `data/processed/swisstopo/<pilot_id>/`, `validation/private/<pilot_id>/`,
+   and `hazard/results/<pilot_id>/`.
+   The claim boundary is diagnostic-only bootstrap metadata: no simulation, no
+   operational claim, no annual-frequency claim, and no risk/exposure/
+   vulnerability claim.
+
+2. Check the read-only front door.
+
+   ```bash
+   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+     status \
+     --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
+     --repo-root . \
+     --format json
+   ```
+
+   On a clean checkout this reports
+   `workflow_status: blocked_missing_inputs`,
+   `next_action: prepare`, and
+   `first_blocker.step_id: tiny_bounded_ensemble_handoff`.
+   The boundary remains read-only: no live Balfrin submission and no claim
+   upgrade.
+
+3. Check the preparation gate.
+
+   ```bash
+   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+     prepare \
+     --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
+     --repo-root . \
+     --format json
+   ```
+
+   On the same clean checkout this reports `status: blocked_missing_inputs`
+   with `first_blocker.step_id: public_geodata_cache_verification` and
+   `blocked_reason: missing public geodata cache manifest`. The next command is
+   the cache verifier.
+
+4. Produce the local diagnostic smoke outputs.
+
+   ```bash
+   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+     run-local-smoke \
+     --repo-root . \
+     --smoke-output-root /tmp/aoi_smoke \
+     --format json
+   ```
+
+   This reports `smoke_completed` and writes the reduced validation manifest,
+   trajectory CSV, deposition CSV, hazard manifest, map-package manifest, and
+   pilot-GIS manifest under `/tmp/aoi_smoke/`.
+   The claim boundary stays diagnostic-only: no annualized product, no risk
+   map, and no operational map.
+
+5. Package the smoke hazard root and write the review surface.
+
+   ```bash
+   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py \
+     --input-root /tmp/aoi_smoke/hazard/results/probabilistic_phase1_smoke \
+     --output-root /tmp/aoi_review \
+     --overwrite \
+     --format json
+   ```
+
+   In the documented smoke path this reports `status: cog_blocked`,
+   `review_surface_status: review_ready_with_warnings`, and writes
+   `/tmp/aoi_review/aoi_hazard_map_package_manifest.json`,
+   `/tmp/aoi_review/aoi_hazard_map_package_summary.txt`,
+   `/tmp/aoi_review/index.html`, and
+   `/tmp/aoi_review/aoi_map_qa_review_manifest.json`.
+   Optional observed-evidence overlays remain blocked unless real accepted
+   observed runout/deposition evidence or field-supported release-zone
+   provenance is staged. Fixture-only, ambiguous-role, or schema-gap inputs
+   stay blocked, and the package still does not imply calibration, physical
+   probability, annual frequency, risk, or operational readiness.
 
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
