@@ -2731,3 +2731,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local/fixture scaling only; no live Balfrin submission, no distributed execution, no physical credibility claim, no Swiss-wide claim, no operational claim, no annual-frequency claim, no physical-probability claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-302`
+
+### TB-302: Balfrin Run-Root Output Budget Auditor
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a read-only auditor that classifies preserved Balfrin run roots against the output/reducer budget after execution.
+- Files changed: `scripts/audit_balfrin_run_root_output_budget.py`, `scripts/summarize_balfrin_probe_preservation_gate.py`, `docs/output_budget_reducer_scaling_gate.md`, `docs/script_inventory.md`, `tests/test_balfrin_run_root_output_budget_audit.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a run-root output-budget auditor that measures declared output families, per-family bytes, manifest bytes, sidecar counts, reducer chunk manifests, required hashes, missing replay-critical artifacts, and budget acceptance status from preserved files.
+  - Reused the existing Balfrin output-budget acceptance thresholds so post-run evidence is classified against the same file, manifest, sidecar, reducer, family, and hash contract as the handoff packages.
+  - Embedded the auditor report in the Balfrin preservation-gate summary without changing the older preservation-gate readiness semantics.
+  - Added temporary fixture-backed tests for compliant, oversized, incomplete, and missing-run-root cases, and removed TB-302 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_run_root_output_budget_audit tests.test_balfrin_probe_preservation_gate`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/audit_balfrin_run_root_output_budget.py scripts/summarize_balfrin_probe_preservation_gate.py tests/test_balfrin_run_root_output_budget_audit.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: read-only run-root auditing only; no Balfrin mutation, no `sbatch`, no live run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-303`

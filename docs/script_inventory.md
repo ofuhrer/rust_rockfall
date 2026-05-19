@@ -125,6 +125,7 @@ operator-facing until they get smoke tests or a documented replacement.
 
 ## Evidence Summarizers
 
+- `scripts/audit_balfrin_run_root_output_budget.py`
 - `scripts/rehearse_balfrin_post_run_evidence_collector.py`
 - `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
 - `scripts/summarize_balfrin_bounded_probe_interpretation.py`

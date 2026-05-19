@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-302: Balfrin Run-Root Output Budget Auditor
-
-Goal: Add a run-root auditor that can inspect preserved Balfrin roots and classify output budget compliance after execution.
-
-Capability gap reduced: Post-run evidence preservation exists, but output-budget compliance needs to be measured directly from run roots, not only predicted from handoff packages.
-
-Why this outranks alternatives: Scale claims require proving the actual run root stayed within file, byte, manifest, sidecar, and replayability budgets.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/recover_balfrin_target_area_metrics_from_run_root.py`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `tests/test_balfrin_probe_preservation_gate.py`
-
-Deliverables:
-
-- A read-only auditor for Balfrin run roots that reports per-family files/bytes, manifest bytes, sidecar counts, reducer chunks, hashes, missing replay-critical artifacts, and budget status.
-- Integration into post-run collector or preservation-gate summaries.
-- Fixture tests for compliant, oversized, incomplete, and missing-run-root cases.
-
-Definition of done:
-
-- Any future Balfrin run root can be classified against the output/reducer budget from preserved artifacts.
-
-Boundaries: Read-only auditing only; no remote mutation, no live Balfrin submission, no new run, no claim upgrade, and no operational claim.
-
 ### TB-303: Scale Evidence Dashboard For Workers
 
 Goal: Produce a compact worker-facing scale dashboard that summarizes the latest measured and blocked evidence for Balfrin execution efficiency, output size, reducer pressure, and next safe action.

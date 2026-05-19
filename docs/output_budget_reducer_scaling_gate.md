@@ -127,6 +127,15 @@ the required replay-critical families
 `probe_manifest_sha256`, `command_plan_sha256`, and `output_manifest_sha256`
 hashes.
 
+TB-302 adds the post-run read-only counterpart:
+`scripts/audit_balfrin_run_root_output_budget.py`. The auditor inspects a
+preserved Balfrin run root directly and reports per-family files/bytes,
+manifest bytes, sidecar counts, reducer chunks, required replay hashes, missing
+replay-critical artifacts, and budget status against the same acceptance
+thresholds. It is embedded in the preservation-gate summary as measured
+run-root classification evidence, but it does not submit jobs, mutate remote
+files, authorize scale-up, or change the non-operational claim boundary.
+
 The bounded validation summary and multi-zone reducer-pressure reports now
 make the same split explicit at the report layer: replay-critical families are
 listed separately from diagnostic/debug fanout, and the reduced validation mode

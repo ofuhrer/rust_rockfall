@@ -19,6 +19,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import collect_balfrin_probe_metrics as probe_metrics  # noqa: E402
+from scripts import audit_balfrin_run_root_output_budget as output_budget_audit  # noqa: E402
 from scripts import summarize_balfrin_probe_metrics_report as metrics_report  # noqa: E402
 from scripts import summarize_balfrin_output_tier_audit as output_tier  # noqa: E402
 
@@ -245,6 +246,7 @@ def build_report(
 
     run_root = run_root.resolve()
     output_tier_report = output_tier.build_report(evidence)
+    output_budget_report = output_budget_audit.build_report(run_root)
     required_run_root = _require_run_root_entries(run_root)
     spatial_artifacts = _load_declared_spatial_artifact_paths(evidence.get("hazard_manifest_path"))
     metrics_contract_status = str(evidence.get("metrics_contract_status") or "unknown")
@@ -368,6 +370,7 @@ def build_report(
             "blocked_reasons": output_tier_report.get("blocked_reasons", []),
             "omitted_output_implications": output_tier_report.get("omitted_output_implications", []),
         },
+        "run_root_output_budget_audit": output_budget_report,
         "spatial_gis_artifact_paths": {
             "status": spatial_artifacts["status"],
             "manifest_path": spatial_artifacts["manifest_path"],
@@ -472,6 +475,7 @@ def blocked_missing_run_root_report(
                 "The run root is missing, so the preserved output families cannot be treated as evidence.",
             ],
         },
+        "run_root_output_budget_audit": output_budget_audit.build_report(run_root),
         "spatial_gis_artifact_paths": {
             "status": "blocked_missing_run_root",
             "manifest_path": None,
@@ -574,6 +578,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"  missing_required_families: {output_families.get('missing_required_families', [])}")
     lines.append(f"  curve_availability: {output_families.get('curve_availability', {})}")
     lines.append(f"  rebuildability_classification: {output_families.get('rebuildability_classification', '')}")
+
+    budget_audit = report.get("run_root_output_budget_audit", {})
+    lines.append("run_root_output_budget_audit:")
+    lines.append(f"  audit_status: {budget_audit.get('audit_status', 'unknown')}")
+    lines.append(f"  budget_profile_id: {budget_audit.get('budget_profile_id', 'unknown')}")
+    lines.append(f"  summary: {budget_audit.get('summary', '')}")
 
     spatial = report.get("spatial_gis_artifact_paths", {})
     lines.append("spatial_gis_artifact_paths:")
