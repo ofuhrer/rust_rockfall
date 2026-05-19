@@ -81,3 +81,61 @@ Boundary: this is not measured multi-zone Balfrin evidence. It does not
 authorize a larger run, non-`postproc` partition, distributed execution,
 scale-up claim, annual-frequency or physical-probability claim,
 risk/exposure/vulnerability product, or operational use.
+
+## TB-321 Repaired Two-Zone Probe Attempt
+
+Date: 2026-05-20
+
+Status: fail-closed before scheduler submission.
+
+TB-321 reran the live Balfrin access and remote checkout gates, fast-forwarded
+the Balfrin checkout at `/users/olifu/work/rust_rockfall` to
+`20cc865756f1f5afb5c5e19b2a042e94553afd3a`, and reran the access preflight.
+The preflight reported `ready_for_read_only_collection`,
+`ready_for_pre_submit=true`, remote branch `main`, dirty path count `0`, no
+stale submission packages, and scheduler-query reachability.
+
+The live package was regenerated on Balfrin under
+`/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1`, and a remote
+authorization audit record was written with reviewed package checksum
+`506867b2d008392622ead228135f501af2ba473ad8bffd57c2f35789dc9a9b3a` and
+authorization-record checksum
+`238c59655f5e2622528faf4bcc11282db28c7d3a865da25a2d9baec254f2d5b2`.
+The authorization record consumed the standing GPT-5.5 `postproc` clearance,
+but did not relax the package gates.
+
+Submission did not reach `sbatch`. Two current pre-submit blockers replaced the
+older TB-309 manifest-contract blocker:
+
+- The authorization preflight returned `preflight_status=blocked_reducer_budget`
+  and `ready_for_authorized_submission=false` because the regenerated handoff
+  classified the package against `next_larger_four_zone_review_only_probe`,
+  with `release_zone_count=4`, rather than the expected
+  `smallest_live_two_zone_probe`.
+- The documented generate-only and submit commands still used
+  `/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`.
+  On Balfrin, `/scratch/rust_rockfall` does not exist and `/scratch` is not
+  writable for the account, while
+  `/scratch/mch/olifu/rust_rockfall/probes` is writable. The generate-only
+  review failed before writing the run root with
+  `PermissionError: [Errno 13] Permission denied: '/scratch/rust_rockfall'`.
+
+Post-attempt confirmation:
+
+- no `sbatch` command was run for TB-321;
+- no `submitted_job_id` was produced;
+- no measured two-zone Balfrin hazard execution evidence was created.
+
+Current exact technical blocker: the repaired package no longer fails on the
+TB-309 target-area wrapper manifest mismatch, but it is still not executable as
+the smallest live two-zone probe because its gate metadata selects the
+four-zone review-only profile and its reviewed commands target an unwritable
+scratch root. The next task should repair the run-root default to
+`/scratch/mch/olifu/rust_rockfall/probes/...` and force the live package gates
+to validate `smallest_live_two_zone_probe` with `release_zone_count=2` before
+any new live submission attempt.
+
+Boundary: this is a blocked pre-submit report, not measured multi-zone Balfrin
+hazard evidence. It does not authorize a larger run, non-`postproc` partition,
+distributed execution, scale-up claim, annual-frequency or physical-probability
+claim, risk/exposure/vulnerability product, or operational use.

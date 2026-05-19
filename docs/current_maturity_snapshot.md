@@ -117,10 +117,16 @@ package, decision gate, and scale-readiness dashboard, so another target-area
 metrics-completion rerun is no longer the ranked current action. TB-309 then
 failed closed before `sbatch` because the reviewed two-zone submit command used
 the target-area wrapper manifest instead of the executable
-`public_real_site_conditional_pilot_run_v1` contract. The scaling frontier now
-treats that as a two-zone failed-closed branch, not measured multi-zone
-evidence, and the next safe action is submit-contract repair or package
-regeneration rather than a live scale step. TB-312 later measured the exact compact
+`public_real_site_conditional_pilot_run_v1` contract. TB-320 repaired that
+manifest mismatch, but TB-321 failed closed before `sbatch` on newer
+pre-submit gates: the regenerated handoff classified the live package against
+the four-zone review-only profile (`next_larger_four_zone_review_only_probe`,
+`release_zone_count=4`) instead of `smallest_live_two_zone_probe`, and its
+reviewed commands targeted `/scratch/rust_rockfall/...`, which is not writable
+on Balfrin for this account. The scaling frontier still treats the two-zone
+branch as failed closed, not measured multi-zone evidence, and the next safe
+action is package run-root and live-shape repair rather than evidence
+integration or a live scale step. TB-312 later measured the exact compact
 four-zone post-processing/reducer package on Balfrin `postproc` as efficiency
 evidence only, and TB-314 confirmed the local scratch ladder still first
 blocks at 8 zones on `accumulation_seconds`. TB-315 through TB-318 then moved

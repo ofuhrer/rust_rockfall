@@ -39,63 +39,35 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-321: Execute Repaired Two-Zone Balfrin Probe
+### TB-322: Repair Two-Zone Package Run Root And Shape Gate
 
-Goal: Run the repaired bounded two-zone Balfrin probe on `postproc` after all access, submit-contract, output-budget, preservation, and evidence gates pass.
+Goal: Repair the multi-zone handoff so the next live two-zone `postproc` probe package is actually a two-zone live package and writes under the Balfrin account scratch root.
 
-Capability gap reduced: The repo lacks any measured multi-zone Balfrin hazard execution beyond single-zone and post-processing-only evidence.
+Capability gap reduced: TB-321 replaced the stale TB-309 submit-contract blocker with two current pre-submit blockers: the reviewed package preflight classifies the package as the four-zone review-only shape, and the documented run root `/scratch/rust_rockfall/...` is not writable on Balfrin.
 
-Why this outranks alternatives: A measured two-zone run is the smallest credible step from single-release-zone demonstration toward scale feasibility.
+Why this outranks alternatives: No evidence-integration or larger-scale task should run until the smallest two-zone package passes the authorization, output-budget, preservation, and generate-only gates from the Balfrin checkout.
 
 Inspect first:
 
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
 - `docs/balfrin_two_zone_probe_tb309.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-
-Deliverables:
-
-- One live two-zone `postproc` job submission from the repaired package, or a fail-closed report with the exact gate that blocked submission.
-- Preserved run root, job id, scheduler status, command plan, logs, metrics, and preservation/output-budget evidence when submission succeeds.
-- Boundary note distinguishing measured multi-zone hazard execution from postproc-only or fixture evidence.
-
-Definition of done:
-
-- Either the two-zone probe completes and measured evidence is preserved, or the task records a new precise pre-submit/live-run blocker that replaces the stale TB-309 blocker.
-
-Boundaries: Bounded `postproc` run only under standing clearance with GPT-5.5 routing; no non-postproc partition, distributed execution, scale-up claim, operational claim, or annual/physical/risk semantics.
-
-### TB-322: Integrate Two-Zone Balfrin Evidence
-
-Goal: Integrate the TB-321 two-zone outcome into the scale dashboard, run-root audits, maturity snapshot, and next-action recommendations.
-
-Capability gap reduced: Measured or fail-closed two-zone results must become machine-readable so later workers do not follow stale scale recommendations.
-
-Why this outranks alternatives: The next Balfrin scale step depends on whether TB-321 produced measured evidence or a new blocker.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/current_maturity_snapshot.md`
 - `docs/multi_zone_reducer_pressure_probe.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/submit_balfrin_probe.py`
+- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
+- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
 
 Deliverables:
 
-- Dashboard tier update for the two-zone branch with correct evidence label, runtime/output metrics, and next recommended scaling task.
-- Read-only output-budget summary for the preserved run root when available.
-- Documentation update that preserves failed-closed history without promoting it to measured evidence.
+- Repaired handoff defaults and tests so the smallest live submit/review commands use `/scratch/mch/olifu/rust_rockfall/probes/...` on Balfrin.
+- Repaired preflight/package metadata so the smallest live gate selects `smallest_live_two_zone_probe` with `release_zone_count=2`, not `next_larger_four_zone_review_only_probe`.
+- A remote Balfrin generate-only proof from `/users/olifu/work/rust_rockfall` that writes `command_plan.json` and `probe.sbatch` under the account scratch root without calling `sbatch`.
 
 Definition of done:
 
-- The scale matrix and docs tell one current story about two-zone status and the next scale step.
+- The repaired package reaches the pre-submit state needed for a later GPT-5.5 worker to submit exactly one bounded two-zone `postproc` probe, or records a newer precise gate blocker.
 
-Boundaries: Synthesis after measured or fail-closed evidence only; no new Balfrin job, no claim upgrade, no annual/physical/risk semantics.
+Boundaries: Repair and pre-submit proof only; do not submit a live job, do not use non-`postproc` partitions, and do not make distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claims.
 
 ### TB-323: Real AOI Public-Geodata Acquisition Pack
 

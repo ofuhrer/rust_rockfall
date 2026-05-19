@@ -3158,3 +3158,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: contract repair and local pre-submit validation only; no live Balfrin submission, no scale-up claim, no distributed execution claim, no operational claim, no annual/physical/risk semantics, and no generated run artifacts committed.
 - Next task: `TB-321`
+
+### TB-321: Execute Repaired Two-Zone Balfrin Probe
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: run the repaired bounded two-zone Balfrin `postproc` probe after the access, submit-contract, output-budget, preservation, and evidence gates pass, or fail closed with the exact current blocker.
+- Files changed: `docs/balfrin_two_zone_probe_tb309.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the Balfrin access preflight, fast-forwarded `/users/olifu/work/rust_rockfall` to `20cc865756f1f5afb5c5e19b2a042e94553afd3a`, and confirmed a clean remote checkout with scheduler-query reachability.
+  - Regenerated the handoff package on Balfrin under `/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1` and wrote a remote authorization audit record for the standing GPT-5.5 `postproc` clearance with reviewed package checksum `506867b2d008392622ead228135f501af2ba473ad8bffd57c2f35789dc9a9b3a`.
+  - Failed closed before `sbatch`: the authorization preflight returned `preflight_status=blocked_reducer_budget` because the package selected `next_larger_four_zone_review_only_probe` / `release_zone_count=4`, and the generate-only review also failed because the reviewed run root `/scratch/rust_rockfall/...` is not writable on Balfrin while `/scratch/mch/olifu/rust_rockfall/probes` is writable.
+  - Removed TB-321 from the active backlog and replaced the next task with the smallest unblock: repair the package run-root default and live two-zone shape gate before any new live submission attempt.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-321 --format json`
+  - `rg -n "^### TB-321:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall; git pull --ff-only origin main; git status --short --branch'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb321_balfrin_access_preflight.json --format json'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only'`
+- Result/status: implemented_blocked_report
+- Boundaries: no `sbatch` command was run, no job id was produced, and no measured two-zone Balfrin hazard evidence was created; no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency or physical-probability claim, or risk/exposure/vulnerability claim was introduced.
+- Next task: `TB-322`
