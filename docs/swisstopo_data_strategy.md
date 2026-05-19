@@ -184,19 +184,28 @@ The desired long-term user workflow is region-driven: a user supplies an AOI,
 and the system discovers/downloads the required public geodata, prepares
 terrain and context inputs, identifies candidate release zones, generates a
 release/scenario plan, runs a sufficient ensemble, and exports map products.
-That is not yet the implemented workflow.
+That is only partially implemented today.
+
+Implemented pieces now include deterministic AOI tile/product discovery,
+public-geodata cache verification, an explicit opt-in acquisition/staging
+driver, fixture-backed terrain preprocessing, deterministic release-zone
+candidate and scenario dry runs, a guided AOI front door, local smoke/package
+execution for bounded fixtures, and an openable diagnostic QA review surface.
+These pieces make the user path inspectable and reproducible, but they do not
+yet constitute a real arbitrary-AOI production workflow.
 
 The largest missing automation pieces are:
 
-- AOI-to-swisstopo product and tile discovery, including download/cache,
-  checksum, product-version, retry, and resume handling;
-- generic terrain/context preprocessing for swissALTI3D, SWISSIMAGE,
+- real public-geodata staging for arbitrary AOIs through the acquisition driver,
+  including operator choices for download records, retries, and resume handling;
+- generic production terrain/context preprocessing for swissALTI3D, SWISSIMAGE,
   swissTLM3D, swissSURFACE3D/swissSURFACE3D Raster, and swissBUILDINGS3D;
 - heuristic release-zone identification from slope, terrain quality, optional
-  geology/material context, and exclusion/context masks;
+  geology/material context, and exclusion/context masks that can move beyond
+  fixture-backed diagnostics;
 - pragmatic release/scenario plan generation with release-cell ids, block-size
   or block-mass assumptions, sampling weights, seed policy, and trajectory
-  counts;
+  counts for real staged AOIs;
 - automatic ensemble sufficiency criteria based on spatial convergence and
   uncertainty stability rather than a fixed production-scale run;
 - native rebuildable reduced output and COG-ready GIS export as default
@@ -215,12 +224,13 @@ conditional diagnostic workflow.
 
 1. Select one small Alpine slope or valley domain with a clearly bounded source
    zone and runout corridor.
-2. Before any staging, run the AOI-to-swisstopo dry-run planner against the
-   candidate site config to list required public products, expected staging
-   paths, and unresolved acquisition decisions, then copy the public real-site
-   preparation manifest template to an ignored pilot directory and fill in the
-   domain, source-tile inventory, local paths, and preprocessing plan before
-   any simulation work.
+2. Before any staging, run the AOI-to-swisstopo dry-run planner and the guided
+   AOI front door against the candidate site config to list required public
+   products, expected staging paths, first blockers, and unresolved acquisition
+   decisions. Use `scripts/stage_public_geodata_cache.py --mode dry-run` first;
+   use `--mode local-copy --apply` or `--mode download --download` only after
+   the operator has supplied explicit source records and accepted the side
+   effects.
 3. Run the release-zone heuristic dry run against the same site config to
    separate heuristic requirements from concrete inputs and to document which
    terrain and public-context prerequisites are still missing before any real

@@ -83,9 +83,11 @@ scientific/operational claim upgrades.
   explicitly defer the path.
 - For scale and Balfrin planning, use the scale readiness matrix and preserve
   its evidence labels: `measured_on_balfrin`, `fixture_backed`,
-  `scratch_local`, `projection_only`, and `blocked_pre_submit`. Do not treat
-  local ladders, fixtures, projections, or pre-submit blockers as measured
-  Balfrin scale capability.
+  `measured_on_balfrin_postproc_microbenchmark`, `scratch_local`,
+  `projection_only`, `blocked_pre_submit`, and `failed_closed`. Do not treat
+  local ladders, fixtures, synthetic postproc probes, projections, or
+  pre-submit/failed-closed branches as measured Balfrin hazard scale
+  capability.
 - Treat management-facing summaries and closure packages as secondary outputs.
   They are justified only after executable evidence changes or when they
   replace multiple stale summaries with one canonical surface.

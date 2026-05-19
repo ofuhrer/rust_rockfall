@@ -62,9 +62,12 @@ starting context for implementation unless a task explicitly asks for them.
 ## Current Swiss Workflow
 
 - `swisstopo_data_strategy.md`: Swiss public geodata roles, metadata
-  requirements, AOI automation gaps, and second-site boundaries.
-- `public_real_site_geodata_preparation.md`: public real-site geodata manifest
-  and run-freeze workflow.
+  requirements, AOI automation gaps, explicit acquisition/staging modes, and
+  second-site boundaries.
+- `public_real_site_geodata_preparation.md`: public real-site geodata manifest,
+  AOI guided workflow, user-defined AOI local demonstration, and review-map
+  workflow.
+- `pilot_gis_package.md`: diagnostic QGIS/GeoTIFF package contract.
 - `public_real_site_conditional_pilot_report_template.md`: template for
   conditional pilot reporting without operational claim upgrades.
 - `source_zone_block_scenario_policy_v1.md`: conditional source-zone and
@@ -73,7 +76,6 @@ starting context for implementation unless a task explicitly asks for them.
   and terrain-class metadata contracts.
 - `terrain_model.md`: retained terrain-model record required by model
   consistency checks.
-- `pilot_gis_package.md`: diagnostic QGIS/GeoTIFF package contract.
 - `dem_terrain_sensitivity_benchmark.md`: dry-runnable DEM/terrain sensitivity
   fixture and real-site scaffold.
 - `chant_sura_fluelapass_real_context_acquisition_decision.md`: deferred

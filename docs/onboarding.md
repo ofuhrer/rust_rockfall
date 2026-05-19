@@ -177,25 +177,31 @@ not a Swiss-wide production hazard service. New contributors should assume:
 - Tschamut same-scale artifacts are the canonical local diagnostic evidence.
 - Balfrin now has measured single-release-zone demonstration evidence, a live
   interruption/resume proof, a canonical evidence bundle, and a replay smoke
-  helper. One explicitly authorized target-area probe has also completed on
-  Balfrin; it adds measured target-area runtime/output evidence, with
-  preserved/read-only recovery paths for peak-memory and split
-  validation/hazard output provenance. Further or repeat Balfrin probes still
-  require explicit execution authorization.
+  helper. The target-area probe and its follow-up metrics-completion rerun have
+  completed on Balfrin, including measured peak memory and split
+  validation/hazard output provenance. Standing clearance exists for GPT-5.5
+  workers to submit and actively monitor `postproc` jobs after the repository
+  access, readiness, output-budget, preservation, and evidence gates pass.
+  That clearance does not authorize non-postproc partitions, distributed
+  execution, scale-up claims, or scientific/operational claim upgrades.
 - Scale planning now has a compact dashboard:
   `scripts/summarize_balfrin_scale_readiness_matrix.py`. It labels tiers as
-  measured on Balfrin, fixture-backed, scratch-local, projection-only, or
-  blocked before submission; use those labels before proposing larger runs.
-- AOI-to-workflow automation exists as deterministic dry-run composition:
-  product discovery, public-geodata cache verification, AOI terrain
-  preprocessing, terrain release-zone candidate stability checks, generic
-  candidate-source-zone scenario generation, ignored output roots, command-plan
-  references, blocked case-skeleton handoff bundles, and planning-only GIS
-  scope summaries.
-- `scripts/run_aoi_hazard_workflow.py status` is the front door for that path;
-  it now surfaces normalized `workflow_status`, `first_blocker`,
-  `next_command`, `expected_inputs`, and `expected_outputs` fields directly in
-  text and JSON output.
+  measured on Balfrin, measured postproc microbenchmark, fixture-backed,
+  scratch-local, projection-only, blocked before submission, or failed closed;
+  use those labels before proposing larger runs.
+- AOI-to-workflow automation now has an explicit local front door:
+  `scripts/run_aoi_hazard_workflow.py workflow`. It can start from LV95 bounds
+  or a site config, report the current stage, first blocker, next command, and
+  generated paths, and optionally execute safe local smoke/package/review
+  steps. It remains fixture-backed until real public geodata is staged.
+- Public geodata staging now has a mode-gated acquisition helper:
+  `scripts/stage_public_geodata_cache.py` supports dry-run, local-copy/apply,
+  and explicit download-enabled modes. No network fetch or local copy happens
+  unless the caller opts in.
+- The AOI review package now writes an openable static review surface with
+  layer inventory, conditional semantics, warnings, provenance, observed
+  overlay status, first blocker, and next recommended command. It is the
+  primary local diagnostic map artifact, not an operational product.
 - Direct `scripts/*.py` entrypoints need `PYTHONPATH=$PWD` from the repository
   root so their sibling imports resolve. The AOI walkthrough in
   `docs/public_real_site_geodata_preparation.md` uses that prefix explicitly.
