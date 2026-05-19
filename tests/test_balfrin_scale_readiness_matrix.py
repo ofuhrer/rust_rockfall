@@ -23,7 +23,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
         self.assertEqual(report["matrix_status"], "blocked_reducer_budget")
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
-        self.assertEqual(report["next_evidence_field"], "target_area_metrics_completion")
+        self.assertEqual(report["next_evidence_field"], "hazard_builder_accumulation_optimization")
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone"])
@@ -34,8 +34,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["projection_only_tiers"], ["projected_larger_aoi"])
         self.assertEqual(report["no_go_tiers"], ["projected_larger_aoi"])
         self.assertFalse(report["live_run_authorization_status"]["live_submission_authorized"])
-        self.assertEqual(report["live_run_authorization_status"]["recommended_next_action"], "metrics_completion_rerun")
-        self.assertEqual(report["next_recommended_scaling_task"], "target_area_metrics_completion_rerun")
+        self.assertEqual(report["live_run_authorization_status"]["recommended_next_action"], "hazard_builder_accumulation_optimization")
+        self.assertEqual(report["next_recommended_scaling_task"], "hazard_builder_accumulation_optimization")
         self.assertEqual(
             report["evidence_label_order"],
             [
@@ -82,12 +82,15 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["single_zone"]["memory_peak_mb"], 409.22)
         self.assertEqual(tiers["single_zone"]["replayability_status"], "pass_hash_stable")
 
-        self.assertEqual(tiers["target_area"]["classification"], "ready_for_exact_authorization")
+        self.assertEqual(tiers["target_area"]["classification"], "measured_metrics_completion")
         self.assertEqual(tiers["target_area"]["evidence_label"], "measured_on_balfrin")
-        self.assertEqual(tiers["target_area"]["file_count"], 58)
-        self.assertEqual(tiers["target_area"]["bytes"], 192350243)
-        self.assertEqual(tiers["target_area"]["authorization_status"], "ready_for_authorization_review")
-        self.assertEqual(tiers["target_area"]["next_evidence_field"], "memory_peak_mb")
+        self.assertEqual(tiers["target_area"]["file_count"], 130)
+        self.assertEqual(tiers["target_area"]["bytes"], 34565498)
+        self.assertEqual(tiers["target_area"]["hazard_output_file_count"], 99)
+        self.assertEqual(tiers["target_area"]["hazard_output_bytes"], 273194249)
+        self.assertEqual(tiers["target_area"]["memory_peak_mb"], 5.4375)
+        self.assertEqual(tiers["target_area"]["authorization_status"], "authorized_for_one_metrics_completion_rerun")
+        self.assertIsNone(tiers["target_area"]["next_evidence_field"])
 
         self.assertEqual(tiers["smallest_multi_zone"]["classification"], "blocked_reducer_budget")
         self.assertEqual(tiers["smallest_multi_zone"]["evidence_label"], "blocked_pre_submit")

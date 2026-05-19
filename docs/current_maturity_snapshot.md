@@ -103,7 +103,15 @@ multi-zone scale capability. The runner-side measurement was `0.6338623960000405
 wall seconds, `0.048968283` CPU seconds, `32624` kbytes peak RSS, `154` files
 touched, and `89802` bytes touched. The next scale-status action remains
 target-area metrics completion before a smallest two-zone hazard probe is
-reconsidered. The physical-evidence path now has an
+reconsidered. TB-307 then completed that target-area metrics-completion rerun
+on `postproc` as job `4339889` with exit `0:0`, elapsed `00:00:29`,
+`memory_peak_mb=5.4375`, `130` validation files / `34565498` validation bytes,
+and `99` hazard files / `273194249` hazard bytes preserved at
+`/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1`.
+TB-308 integrates those measured values across the evidence bundle, closure
+package, decision gate, and scale-readiness dashboard, so another target-area
+metrics-completion rerun is no longer the ranked current action. The
+physical-evidence path now has an
 explicit release/scenario physical-meaning firewall, an observed
 runout/deposition acquisition blocker matrix, a template-only operator
 acquisition package, fixture-backed intake acceptance smoke tests, a
@@ -113,7 +121,8 @@ source-frequency records are deferred until a later phase change. Those reports
 keep measured, unavailable, blocked, dry-run, unauthorized, historical,
 template, fixture-backed, candidate, accepted, rejected, and deferred
 provenance separate. The target-area metrics-completion source label now
-distinguishes recovered existing run-root metrics from rerun or blocked
+distinguishes recovered existing run-root metrics, the measured TB-307 rerun,
+blocked pre-submit attempts, failed-closed attempts, and missing-metrics
 branches. The TB-243 read-only spatial-artifact inventory recovered
 the run-root-referenced hazard manifest plus standard and pilot GIS package
 manifests from the preserved Balfrin root, but the target-area cellwise

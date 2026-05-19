@@ -39,37 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-308: Target-Area Metrics Evidence Integration
-
-Goal: Propagate the TB-307 target-area metrics outcome through the evidence bundle, closure package, decision gate, scale dashboard, and maturity snapshot.
-
-Capability gap reduced: Balfrin evidence summaries must agree on whether target-area metrics are recovered, newly measured, blocked pre-submit, or still missing.
-
-Why this outranks alternatives: Stale or conflicting metrics labels would mislead the next live-run decision.
-
-Inspect first:
-
-- `scripts/recover_balfrin_target_area_metrics_from_run_root.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_evidence_bundle.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Unified metric-state propagation for `new_metrics_completion_rerun`, `recovered_existing_run_root`, `blocked_pre_submit`, `failed_closed`, and `blocked_missing_metrics`.
-- Tests proving peak memory, split output counts/bytes, SLURM fields, run-root hashes, and preservation status are shown consistently when present.
-- Updated next-action ranking after the metrics branch is integrated.
-
-Definition of done:
-
-- All authoritative Balfrin decision and evidence surfaces agree on the target-area metrics state and the next recommended measured action.
-
-Boundaries: Evidence integration only; no live Balfrin submission, no new metrics fabrication, no claim upgrade beyond execution-metric completeness, no annual/physical/risk semantics, and no operational claim.
-
 ### TB-309: Smallest Two-Zone Balfrin Postproc Probe
 
 Goal: Submit the smallest bounded two-zone Balfrin `postproc` probe under standing clearance once the current access, remote-hygiene, authorization-audit, reducer-budget, output-profile, and preservation gates pass.

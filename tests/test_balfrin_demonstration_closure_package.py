@@ -25,34 +25,24 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
         fixture_root = ROOT / "tests/fixtures/balfrin_next_live_run_decision_gate"
         return json.loads((fixture_root / name).read_text(encoding="utf-8"))
 
-    def test_blocked_no_new_measured_evidence_classification(self) -> None:
+    def test_current_report_closes_target_area_metrics_branch(self) -> None:
         report = MODULE.build_report()
 
         self.assertEqual(report["schema_version"], "balfrin_demonstration_closure_package_v1")
-        self.assertEqual(report["closure_status"], "blocked_no_new_measured_evidence")
-        self.assertEqual(report["closure_provenance_status"], "blocked_no_new_measured_evidence")
-        self.assertFalse(report["maturity_label_update_allowed"])
-        self.assertEqual(report["metrics_closure_section"]["status"], "blocked_no_new_measured_evidence")
+        self.assertEqual(report["closure_status"], "metrics_complete")
+        self.assertEqual(report["closure_provenance_status"], "metrics_complete")
+        self.assertTrue(report["maturity_label_update_allowed"])
+        self.assertEqual(report["metrics_closure_section"]["status"], "metrics_complete")
+        self.assertEqual(report["metrics_closure_section"]["metrics_completion_source"], "new_metrics_completion_rerun")
+        self.assertEqual(report["metrics_closure_section"]["metrics_evidence_state"]["memory_peak_mb"], 5.4375)
         self.assertEqual(report["target_area_spatial_artifact_section"]["status"], "not_evaluated_in_closure_refresh")
-        self.assertEqual(report["next_measured_action_section"]["status"], "blocked")
-        self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "blocked")
+        self.assertIn(report["next_measured_action_section"]["status"], {"defer", "blocked"})
+        self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "measured")
         self.assertEqual(report["multi_zone_balfrin_evidence_section"]["status"], "blocked_incomplete")
         self.assertEqual(report["multi_zone_balfrin_evidence_section"]["first_bottleneck_label"], "manifest_size_bytes")
-        self.assertEqual(
-            report["package_summary"]["section_counts"],
-            {
-                "measured": 5,
-                "fixture_backed": 1,
-                "dry_run": 2,
-                "blocked": 3,
-                "unavailable": 1,
-                "unauthorized": 1,
-                "historical": 1,
-            },
-        )
-        self.assertIn("fails closed", report["package_summary"]["summary"])
-        self.assertIn("no new measured or recovered target-area metrics", report["reviewer_answer"].lower())
-        self.assertIn("blocked_no_new_measured_evidence", MODULE.render_text_report(report))
+        self.assertIn("metrics are complete", report["package_summary"]["summary"].lower())
+        self.assertIn("target-area metrics", report["reviewer_answer"].lower())
+        self.assertIn("metrics_complete", MODULE.render_text_report(report))
 
     def test_metrics_complete_branch_ranks_next_measured_action_after_metrics_completion(self) -> None:
         report = MODULE.build_report(

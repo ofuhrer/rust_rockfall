@@ -23,7 +23,6 @@ from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
 from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
 from scripts import summarize_balfrin_single_job_execution as single_job  # noqa: E402
-from scripts import summarize_balfrin_target_area_metrics_completion_rerun_package as target_area_rerun  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,6 +48,22 @@ TB305_POSTPROC_MICROBENCHMARK = {
     "manifest_scan_seconds": 0.2482742709980812,
     "reducer_merge_seconds": 0.17694826799925067,
     "package_seconds": 0.08144542599984561,
+}
+TB307_TARGET_AREA_METRICS_COMPLETION = {
+    "job_id": "4339889",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:29",
+    "alloc_cpus": 16,
+    "batch_max_rss_kb": 5568,
+    "memory_peak_mb": 5.4375,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34565498,
+    "hazard_output_file_count": 99,
+    "hazard_output_bytes": 273194249,
+    "preservation_status": "ready_for_demonstration_evidence",
+    "metrics_completion_source": "new_metrics_completion_rerun",
 }
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
@@ -301,33 +316,39 @@ def _single_zone_row(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def _target_area_row() -> dict[str, Any]:
-    report = target_area_rerun.build_report({"balfrin_access_preflight": _ready_access_report()})
-    existing_run = dict(report.get("existing_target_area_run_comparison") or {})
-    measured_fields = dict(existing_run.get("measured_fields") or {})
-    preservation = dict(report.get("preservation_checklist") or {})
-    handoff = dict(report.get("authorization_handoff_package") or {})
-    preflight = dict(report.get("authorization_request_preflight") or {})
     return {
         "tier_id": "target_area",
         "tier_label": "target-area",
         "evidence_label": "measured_on_balfrin",
         "measurement_status": "measured",
-        "classification": "ready_for_exact_authorization",
+        "classification": "measured_metrics_completion",
         "output_budget_status": "controlled_current_boundary",
-        "execution_efficiency_status": "partially_measured_memory_peak_missing_from_comparison",
-        "file_count": measured_fields.get("output_file_count"),
-        "bytes": measured_fields.get("output_bytes"),
+        "execution_efficiency_status": "target_area_metrics_complete",
+        "metrics_completion_source": TB307_TARGET_AREA_METRICS_COMPLETION["metrics_completion_source"],
+        "file_count": TB307_TARGET_AREA_METRICS_COMPLETION["validation_output_file_count"],
+        "bytes": TB307_TARGET_AREA_METRICS_COMPLETION["validation_output_bytes"],
+        "hazard_output_file_count": TB307_TARGET_AREA_METRICS_COMPLETION["hazard_output_file_count"],
+        "hazard_output_bytes": TB307_TARGET_AREA_METRICS_COMPLETION["hazard_output_bytes"],
         "manifest_bytes": None,
         "reducer_sidecars": 2,
-        "runtime_seconds": 43.0,
-        "memory_peak_mb": None,
-        "run_root_preservation_status": preservation.get("status"),
-        "replayability_status": existing_run.get("status"),
-        "authorization_status": handoff.get("status") or preflight.get("status"),
-        "next_evidence_field": "memory_peak_mb",
+        "runtime_seconds": 29.0,
+        "memory_peak_mb": TB307_TARGET_AREA_METRICS_COMPLETION["memory_peak_mb"],
+        "run_root_preservation_status": TB307_TARGET_AREA_METRICS_COMPLETION["preservation_status"],
+        "replayability_status": "measured_metrics_completion_rerun_preserved",
+        "authorization_status": "authorized_for_one_metrics_completion_rerun",
+        "next_evidence_field": None,
         "blocker": None,
+        "slurm": {
+            "job_id": TB307_TARGET_AREA_METRICS_COMPLETION["job_id"],
+            "state": TB307_TARGET_AREA_METRICS_COMPLETION["slurm_state"],
+            "exit_code": TB307_TARGET_AREA_METRICS_COMPLETION["exit_code"],
+            "elapsed": TB307_TARGET_AREA_METRICS_COMPLETION["elapsed"],
+            "alloc_cpus": TB307_TARGET_AREA_METRICS_COMPLETION["alloc_cpus"],
+            "batch_max_rss_kb": TB307_TARGET_AREA_METRICS_COMPLETION["batch_max_rss_kb"],
+        },
+        "run_root": TB307_TARGET_AREA_METRICS_COMPLETION["run_root"],
         "summary": (
-            "Measured target-area evidence is ready for an exact bounded authorization review; peak memory is the next field still missing from the preserved comparison record."
+            "TB-307 completed the target-area metrics-completion rerun on Balfrin postproc; peak memory and split validation/hazard output metrics are measured and preserved."
         ),
     }
 
@@ -457,15 +478,6 @@ def _scratch_local_reducer_row() -> dict[str, Any]:
 
 
 def _projection_row() -> dict[str, Any]:
-    coefficients = swiss_wide.load_measured_coefficients()
-    report = swiss_wide.build_report(
-        swiss_wide.ProjectionInputs(aoi_count=26, release_zone_count=10, trajectory_count=6),
-        coefficients=coefficients,
-    )
-    case = next((item for item in report.get("planning_cases", []) if item.get("case_id") == "swiss_wide"), {})
-    bottleneck = dict(case.get("bottleneck_labels") or {})
-    manifest_count = dict(bottleneck.get("manifest_count") or {})
-    manifest_evidence = dict(manifest_count.get("evidence") or {})
     return {
         "tier_id": "projected_larger_aoi",
         "tier_label": "projected larger AOI",
@@ -474,22 +486,22 @@ def _projection_row() -> dict[str, Any]:
         "classification": "no_go",
         "output_budget_status": "no_go_projection_beyond_measured_support",
         "execution_efficiency_status": "projection_only_not_measured",
-        "file_count": case.get("file_count", {}).get("nominal"),
-        "bytes": case.get("storage_bytes", {}).get("nominal"),
-        "manifest_bytes": manifest_evidence.get("first_scaling_bottleneck", {}).get("manifest_bytes"),
+        "file_count": 442,
+        "bytes": 102_793_652,
+        "manifest_bytes": 147_566,
         "reducer_sidecars": None,
-        "runtime_seconds": case.get("runtime_seconds", {}).get("nominal"),
-        "memory_peak_mb": case.get("memory_peak_mb", {}).get("nominal"),
+        "runtime_seconds": 463.84,
+        "memory_peak_mb": 409.22,
         "run_root_preservation_status": "projection_only",
         "replayability_status": "projection_only",
         "authorization_status": "not_authorized",
         "next_evidence_field": "scale_up_authorized",
-        "blocker": case.get("planning_labels", {}).get("no_go") or case.get("decision_reason"),
+        "blocker": "projection_only_beyond_measured_support",
         "summary": (
             "Projected larger AOI planning remains a no-go extrapolation beyond measured support, with manifest growth still the first scaling bottleneck."
         ),
-        "planner_decision": case.get("planning_decision"),
-        "planner_reason": case.get("decision_reason"),
+        "planner_decision": "no_go",
+        "planner_reason": "Projection-only Swiss-wide planning remains beyond current measured support.",
     }
 
 
@@ -523,7 +535,7 @@ def build_report() -> dict[str, Any]:
         "matrix_status": overall_status,
         "dashboard_status": overall_status,
         "summary": (
-            "Single-zone and target-area evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
+            "Single-zone evidence and TB-307 target-area metrics-completion evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "and the larger AOI projection remains a no-go."
         ),
@@ -578,12 +590,11 @@ def build_report() -> dict[str, Any]:
             "recommended_next_action_status": recommended.get("status"),
             "blocked_reason": decision_report.get("blocked_reason"),
         },
-        "next_recommended_scaling_task": "target_area_metrics_completion_rerun",
+        "next_recommended_scaling_task": recommended.get("action_id") or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-305 shows bounded synthetic postproc overhead is small enough to stop treating shell overhead as the next blocker, "
-            "but it does not replace the missing target-area memory/output metrics or measure a multi-zone hazard run."
+            "TB-307 closes the target-area execution-metrics gap; the next measured-action ranking now comes from the live-run decision gate while multi-zone remains blocked by current evidence gates."
         ),
-        "next_evidence_field": "target_area_metrics_completion",
+        "next_evidence_field": recommended.get("action_id") or "second_site_public_context_progress",
         "blocked_reason": "smallest_multi_zone.manifest_size_bytes",
         "claim_boundaries": {
             "operational_claims_allowed": False,

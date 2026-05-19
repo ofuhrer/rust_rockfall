@@ -28,12 +28,14 @@ ALLOWED_METRICS_COMPLETION_SOURCES = {
     "new_metrics_completion_rerun",
     "blocked_missing_metrics",
     "blocked_pre_submit",
+    "failed_closed",
 }
 ALLOWED_METRICS_COMPLETION_OUTCOMES = {
     "measured",
     "recovered",
     "blocked",
     "incomplete",
+    "failed_closed",
 }
 METRICS_COMPLETION_RERUN_MARKERS = (
     "metrics_completion",
@@ -137,11 +139,14 @@ def classify_metrics_completion_outcome(
 ) -> str:
     if explicit_outcome in ALLOWED_METRICS_COMPLETION_OUTCOMES:
         return explicit_outcome
+    if metrics_completion_source == "failed_closed":
+        return "failed_closed"
     if attempt_status in {
         "blocked_before_submission",
         "blocked_remote_checkout_dirty",
         "no_slurm_job_submitted",
         "incomplete_no_submission",
+        "failed_closed",
     }:
         return "incomplete"
     if report_status == "complete" and metrics_contract_status == "complete":

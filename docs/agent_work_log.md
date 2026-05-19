@@ -2874,3 +2874,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exact target-area metrics-completion `postproc` rerun only; no non-`postproc` partition, no multi-zone run, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no physical credibility upgrade, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-308`
+
+### TB-308: Target-Area Metrics Evidence Integration
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: propagate the TB-307 target-area metrics-completion outcome through the Balfrin evidence, closure, decision, scale, and maturity surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_probe_metrics_report.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted the measured TB-307 target-area metrics-completion rerun as the current execution-metrics state: job `4339889`, exit `0:0`, elapsed `00:00:29`, peak memory `5.4375` MB, `130` validation files / `34565498` bytes, and `99` hazard files / `273194249` bytes.
+  - Added consistent current-path metric-state propagation for `new_metrics_completion_rerun` while keeping explicit fixture/override paths available for `recovered_existing_run_root`, `blocked_pre_submit`, `failed_closed`, and `blocked_missing_metrics`.
+  - Updated the closure package and scale-readiness matrix so another target-area metrics-completion rerun is no longer ranked as the next action after TB-307.
+  - Replaced a slow scale-dashboard projection recomposition path with the tracked bounded projection constants already asserted by the tests.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_evidence_bundle.py scripts/summarize_balfrin_demonstration_closure_package.py scripts/summarize_balfrin_next_live_run_decision_gate.py scripts/summarize_balfrin_probe_metrics_report.py scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_evidence_bundle.py tests/test_balfrin_next_live_run_decision_gate.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+- Result/status: implemented_measured
+- Boundaries: evidence integration only; no live Balfrin submission, no remote mutation, no fabricated metrics, no multi-zone run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-309`
