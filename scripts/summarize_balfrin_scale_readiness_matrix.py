@@ -21,12 +21,20 @@ if __package__ in {None, ""}:
 
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
+from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
 from scripts import summarize_balfrin_single_job_execution as single_job  # noqa: E402
 from scripts import summarize_balfrin_target_area_metrics_completion_rerun_package as target_area_rerun  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_scale_readiness_matrix_v1"
+EVIDENCE_LABELS = (
+    "measured_on_balfrin",
+    "fixture_backed",
+    "scratch_local",
+    "projection_only",
+    "blocked_pre_submit",
+)
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -257,8 +265,11 @@ def _single_zone_row(summary: dict[str, Any]) -> dict[str, Any]:
     return {
         "tier_id": "single_zone",
         "tier_label": "single-zone",
+        "evidence_label": "measured_on_balfrin",
         "measurement_status": "measured",
         "classification": "measured",
+        "output_budget_status": output_size.get("validation_output_blocker_status") or "controlled_current_boundary",
+        "execution_efficiency_status": "measured_under_current_single_job_boundary",
         "file_count": output_size.get("current_gap_output_file_count"),
         "bytes": output_size.get("current_gap_output_bytes"),
         "manifest_bytes": None,
@@ -284,8 +295,11 @@ def _target_area_row() -> dict[str, Any]:
     return {
         "tier_id": "target_area",
         "tier_label": "target-area",
+        "evidence_label": "measured_on_balfrin",
         "measurement_status": "measured",
         "classification": "ready_for_exact_authorization",
+        "output_budget_status": "controlled_current_boundary",
+        "execution_efficiency_status": "partially_measured_memory_peak_missing_from_comparison",
         "file_count": measured_fields.get("output_file_count"),
         "bytes": measured_fields.get("output_bytes"),
         "manifest_bytes": None,
@@ -311,8 +325,11 @@ def _smallest_multi_zone_row() -> dict[str, Any]:
     return {
         "tier_id": "smallest_multi_zone",
         "tier_label": "smallest multi-zone",
+        "evidence_label": "blocked_pre_submit",
         "measurement_status": "blocked_pre_submit",
         "classification": "blocked_reducer_budget",
+        "output_budget_status": reducer_budget.get("handoff_budget_recheck_status") or "blocked_reducer_budget",
+        "execution_efficiency_status": "blocked_pre_submit_not_measured",
         "file_count": before.get("output_file_count"),
         "bytes": before.get("output_byte_count"),
         "manifest_bytes": before.get("manifest_size_bytes"),
@@ -334,6 +351,58 @@ def _smallest_multi_zone_row() -> dict[str, Any]:
     }
 
 
+def _fixture_budget_gate_row() -> dict[str, Any]:
+    return {
+        "tier_id": "fixture_budget_gate",
+        "tier_label": "fixture-backed output-budget gate",
+        "evidence_label": "fixture_backed",
+        "measurement_status": "fixture_backed",
+        "classification": "budget_regression_fixture",
+        "output_budget_status": "fixture_guardrail_only",
+        "execution_efficiency_status": "not_live_execution_evidence",
+        "file_count": SMALLEST_MULTI_ZONE_COMPACT_FILE_COUNT,
+        "bytes": SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES,
+        "manifest_bytes": SMALLEST_MULTI_ZONE_COMPACT_MANIFEST_BYTES,
+        "reducer_sidecars": SMALLEST_MULTI_ZONE_COMPACT_SIDECARES,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "fixture_backed",
+        "replayability_status": "replay_critical_retained",
+        "authorization_status": "not_authorized_fixture_only",
+        "next_evidence_field": None,
+        "blocker": "fixture_backed_not_measured_on_balfrin",
+        "summary": (
+            "Fixture-backed budget checks protect the compact handoff shape, but they do not count as measured Balfrin scale capability."
+        ),
+    }
+
+
+def _scratch_local_reducer_row() -> dict[str, Any]:
+    return {
+        "tier_id": "local_reducer_ladder",
+        "tier_label": "local reducer ladder",
+        "evidence_label": "scratch_local",
+        "measurement_status": "scratch_local",
+        "classification": "local_breakpoint_measured",
+        "output_budget_status": "local_ladder_first_blocked_at_8_zones",
+        "execution_efficiency_status": "local_accumulation_breakpoint",
+        "file_count": 53,
+        "bytes": None,
+        "manifest_bytes": 9586,
+        "reducer_sidecars": 14,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "scratch_local",
+        "replayability_status": "local_fixture_ladder_only",
+        "authorization_status": "not_authorized_local_only",
+        "next_evidence_field": "accumulation_seconds",
+        "blocker": "first_blocked_rung:8_zones:accumulation_seconds",
+        "summary": (
+            "The local reduced-output ladder reports 1, 2, and 4 zones ready, with the first blocked scratch-local rung at 8 zones on accumulation_seconds."
+        ),
+    }
+
+
 def _projection_row() -> dict[str, Any]:
     coefficients = swiss_wide.load_measured_coefficients()
     report = swiss_wide.build_report(
@@ -347,8 +416,11 @@ def _projection_row() -> dict[str, Any]:
     return {
         "tier_id": "projected_larger_aoi",
         "tier_label": "projected larger AOI",
+        "evidence_label": "projection_only",
         "measurement_status": "projection_only",
         "classification": "no_go",
+        "output_budget_status": "no_go_projection_beyond_measured_support",
+        "execution_efficiency_status": "projection_only_not_measured",
         "file_count": case.get("file_count", {}).get("nominal"),
         "bytes": case.get("storage_bytes", {}).get("nominal"),
         "manifest_bytes": manifest_evidence.get("first_scaling_bottleneck", {}).get("manifest_bytes"),
@@ -370,29 +442,66 @@ def _projection_row() -> dict[str, Any]:
 
 def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
+    decision_report = decision_gate.build_report()
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
         _smallest_multi_zone_row(),
+        _fixture_budget_gate_row(),
+        _scratch_local_reducer_row(),
         _projection_row(),
     ]
-    measured = [row["tier_id"] for row in rows if row["measurement_status"] == "measured"]
+    measured = [row["tier_id"] for row in rows if row["evidence_label"] == "measured_on_balfrin"]
     blocked = [row["tier_id"] for row in rows if row["classification"].startswith("blocked")]
+    blocked_pre_submit = [row["tier_id"] for row in rows if row["evidence_label"] == "blocked_pre_submit"]
+    fixture_backed = [row["tier_id"] for row in rows if row["evidence_label"] == "fixture_backed"]
+    scratch_local = [row["tier_id"] for row in rows if row["evidence_label"] == "scratch_local"]
     projected = [row["tier_id"] for row in rows if row["measurement_status"] == "projection_only"]
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
     overall_status = "blocked_reducer_budget" if blocked else "measured"
+    recommended = dict(decision_report.get("recommended_next_action") or {})
     return {
         "schema_version": SCHEMA_VERSION,
         "matrix_status": overall_status,
+        "dashboard_status": overall_status,
         "summary": (
             "Single-zone and target-area evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
-            "and the larger AOI projection remains a no-go."
+            "fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
+        "evidence_label_order": list(EVIDENCE_LABELS),
+        "evidence_label_definitions": {
+            "measured_on_balfrin": "Preservation-checked Balfrin run-root evidence with measured execution or output fields.",
+            "fixture_backed": "Regression or handoff evidence from fixtures; useful for guardrails but not live measured scale capability.",
+            "scratch_local": "Local /tmp measurement or generated scratch evidence; useful for bottleneck discovery but not Balfrin evidence.",
+            "projection_only": "Planner extrapolation from measured coefficients; not an executed scale tier.",
+            "blocked_pre_submit": "A live path stopped before sbatch or live execution and promoted no measured run-root evidence.",
+        },
         "tiers": rows,
         "measured_tiers": measured,
         "blocked_tiers": blocked,
+        "blocked_pre_submit_tiers": blocked_pre_submit,
+        "fixture_backed_tiers": fixture_backed,
+        "scratch_local_tiers": scratch_local,
         "projection_only_tiers": projected,
         "no_go_tiers": no_go,
+        "latest_output_budget_status": {
+            row["tier_id"]: row["output_budget_status"] for row in rows
+        },
+        "latest_execution_efficiency_status": {
+            row["tier_id"]: row["execution_efficiency_status"] for row in rows
+        },
+        "live_run_authorization_status": {
+            "live_submission_authorized": False,
+            "decision_status": decision_report.get("decision_status"),
+            "recommended_next_action": recommended.get("action_id") or recommended.get("option_id"),
+            "recommended_next_action_status": recommended.get("status"),
+            "blocked_reason": decision_report.get("blocked_reason"),
+        },
+        "next_recommended_scaling_task": (
+            "resolve smallest_multi_zone blocked_pre_submit reducer-budget and authorization blockers before any live multi-zone measurement"
+            if blocked_pre_submit
+            else "refresh measured Balfrin evidence before considering a larger tier"
+        ),
         "next_evidence_field": "manifest_size_bytes",
         "blocked_reason": "smallest_multi_zone.manifest_size_bytes",
         "claim_boundaries": {
@@ -407,6 +516,7 @@ def build_report() -> dict[str, Any]:
             "scripts/summarize_balfrin_single_job_execution.py",
             "scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py",
             "scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py",
+            "scripts/summarize_balfrin_next_live_run_decision_gate.py",
             "scripts/estimate_swiss_wide_execution_envelope.py",
         ],
     }
@@ -417,12 +527,18 @@ def render_text_report(report: dict[str, Any]) -> str:
         "Balfrin Scale Readiness Baseline Matrix",
         f"schema_version: {report['schema_version']}",
         f"matrix_status: {report['matrix_status']}",
+        f"dashboard_status: {report['dashboard_status']}",
         f"next_evidence_field: {report['next_evidence_field']}",
         f"blocked_reason: {report['blocked_reason']}",
+        f"next_recommended_scaling_task: {report['next_recommended_scaling_task']}",
         f"measured_tiers: {', '.join(report.get('measured_tiers', []))}",
         f"blocked_tiers: {', '.join(report.get('blocked_tiers', []))}",
+        f"blocked_pre_submit_tiers: {', '.join(report.get('blocked_pre_submit_tiers', []))}",
+        f"fixture_backed_tiers: {', '.join(report.get('fixture_backed_tiers', []))}",
+        f"scratch_local_tiers: {', '.join(report.get('scratch_local_tiers', []))}",
         f"projection_only_tiers: {', '.join(report.get('projection_only_tiers', []))}",
         f"no_go_tiers: {', '.join(report.get('no_go_tiers', []))}",
+        f"live_submission_authorized: {report['live_run_authorization_status']['live_submission_authorized']}",
         "",
         "tiers:",
     ]
@@ -431,7 +547,10 @@ def render_text_report(report: dict[str, Any]) -> str:
             [
                 f"- {row.get('tier_id')}",
                 f"  classification: {row.get('classification')}",
+                f"  evidence_label: {row.get('evidence_label')}",
                 f"  measurement_status: {row.get('measurement_status')}",
+                f"  output_budget_status: {row.get('output_budget_status')}",
+                f"  execution_efficiency_status: {row.get('execution_efficiency_status')}",
                 f"  file_count: {row.get('file_count')}",
                 f"  bytes: {row.get('bytes')}",
                 f"  manifest_bytes: {row.get('manifest_bytes')}",

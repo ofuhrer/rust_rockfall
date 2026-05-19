@@ -169,6 +169,11 @@ CANONICAL_HELPERS = [
         "command": f"{PYTHON_INVOCATION} scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
     },
     {
+        "name": "Balfrin scale evidence dashboard",
+        "path": "scripts/summarize_balfrin_scale_readiness_matrix.py",
+        "command": f"{PYTHON_INVOCATION} scripts/summarize_balfrin_scale_readiness_matrix.py --format json",
+    },
+    {
         "name": "second-site portability preflight",
         "path": "scripts/check_second_site_public_geodata_preflight.py",
         "command": (
@@ -375,6 +380,7 @@ def relevant_helpers(task: ActiveTask | None, *, detail: str) -> list[dict[str, 
         (("cog", "gis", "geotiff"), "scripts/audit_gis_cog_package_readiness.py"),
         (("cog", "conversion", "package"), "scripts/convert_same_scale_package_to_cog.py"),
         (("runtime", "scaling", "ensemble feasibility"), "scripts/summarize_bounded_reducer_runtime_scaling.py"),
+        (("scale dashboard", "scale evidence", "execution efficiency", "output size"), "scripts/summarize_balfrin_scale_readiness_matrix.py"),
         (("chant sura", "second-site", "flüelapass", "aoi"), "scripts/check_second_site_public_geodata_preflight.py"),
         (("balfrin", "ssh", "live run", "remote run root", "evidence collection"), "scripts/check_balfrin_remote_access_preflight.py"),
         (("source", "scenario", "multisite"), "scripts/audit_multisite_source_scenario_contract.py"),

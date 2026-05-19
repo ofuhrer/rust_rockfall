@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-303: Scale Evidence Dashboard For Workers
-
-Goal: Produce a compact worker-facing scale dashboard that summarizes the latest measured and blocked evidence for Balfrin execution efficiency, output size, reducer pressure, and next safe action.
-
-Capability gap reduced: Scale evidence is fragmented across maturity snapshots, reducer docs, decision gates, and run-root reports.
-
-Why this outranks alternatives: Workers need one short status surface to avoid re-running stale paths or treating projections as measured scale evidence.
-
-Inspect first:
-
-- `scripts/print_agent_task_context.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-
-Deliverables:
-
-- A scale dashboard command or extension to task context with latest measured tiers, blocked tiers, output-budget status, efficiency measurements, live-run authorization status, and next recommended scaling task.
-- Clear labels for `measured_on_balfrin`, `fixture_backed`, `scratch_local`, `projection_only`, and `blocked_pre_submit`.
-- Tests that prevent blocked multi-zone evidence from appearing as measured scale capability.
-
-Definition of done:
-
-- A worker can quickly answer whether output size and execution efficiency are under control for each scale tier without reading the whole repository.
-
-Boundaries: Status/dashboard only; no live Balfrin submission, no new run, no claim upgrade, no scale-up authorization, and no operational claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

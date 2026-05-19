@@ -2753,3 +2753,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: read-only run-root auditing only; no Balfrin mutation, no `sbatch`, no live run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-303`
+
+### TB-303: Scale Evidence Dashboard For Workers
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: produce a compact worker-facing dashboard for Balfrin scale evidence without promoting blocked or projected evidence to measured capability.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/print_agent_task_context.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Balfrin scale-readiness matrix into a dashboard with explicit `measured_on_balfrin`, `fixture_backed`, `scratch_local`, `projection_only`, and `blocked_pre_submit` labels.
+  - Added per-tier output-budget and execution-efficiency status, live-run authorization status, and a next recommended scaling task so workers can see the current safe action without reading the maturity snapshot and reducer documents.
+  - Kept measured tiers limited to the measured Balfrin single-zone and target-area rows; the smallest multi-zone row remains `blocked_pre_submit`, while fixture, scratch-local, and projection rows are non-promotable.
+  - Registered the dashboard helper in the compact task-context helper and removed TB-303 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m pytest tests/test_balfrin_scale_readiness_matrix.py` (failed: `pytest` is not installed)
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py scripts/print_agent_task_context.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb303_scale_dashboard.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format text > /tmp/tb303_scale_dashboard.txt`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json > /tmp/tb303_task_context_after.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: dashboard/status only; no SSH mutation, no `sbatch`, no live Balfrin run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: backlog refill needed
