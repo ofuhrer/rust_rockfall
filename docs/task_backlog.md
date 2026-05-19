@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-287: Smallest Multi-Zone Balfrin Probe
-
-Goal: Execute or fail closed on the exact smallest bounded two-zone Balfrin postproc probe after all authorization and budget gates are ready.
-
-Capability gap reduced: Reducer and manifest behavior remain unmeasured beyond scratch/fixture-backed multi-zone probes.
-
-Why this outranks alternatives: Once package and authorization gates are ready, a two-zone probe is the smallest measured step toward the full-scale Balfrin demonstration.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- If separate exact user authorization is present at execution time, submit exactly the bounded two-zone postproc probe described by the refreshed authorization package.
-- Preserve SLURM id, runtime, memory, output counts/bytes, reducer manifests, hashes, replay metadata, and preservation-gate output.
-- If any gate fails, stop before submission and record the exact blocker.
-
-Definition of done:
-
-- The smallest multi-zone branch is either measured and preserved under the run-root contract or has one exact pre-submit blocker.
-
-Boundaries: Exact smallest two-zone probe only; live Balfrin submission requires separate explicit authorization at execution time; no retry without blocker analysis, no larger ensemble, no distributed execution, no scale-up, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-288: Real Chant Sura Core Input Staging Pass
 
 Goal: Stage or reject the first missing real Chant Sura / Fluelapass core inputs named by the readiness gate, beginning with terrain metadata and AOI tile catalog.

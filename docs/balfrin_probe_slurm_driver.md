@@ -249,6 +249,21 @@ The probe was measured, but the metrics contract still reports missing peak
 memory and split validation/hazard output counts and bytes. Those completeness
 gaps are intentionally left to the next metrics task rather than backfilled.
 
+## TB-287 smallest multi-zone fail-closed result
+
+TB-287 stopped before live submission. The current conversation did not contain
+separate exact user authorization for the bounded two-zone multi-zone probe, and
+the worker did not run `--authorized-submit` or call `sbatch`.
+
+The read-only Balfrin access preflight reported
+`blocked_dirty_remote_checkout`: no tracked remote modifications were reported,
+but generated run files, SLURM logs, and scratch helper scripts are still
+untracked in the Balfrin checkout. The smallest multi-zone authorization
+preflight therefore reports `blocked_access` with reducer budget and output
+profile both `ready`, while the live authorization record remains `missing`.
+No SLURM id, metrics JSON, preservation-gate output, or measured multi-zone
+evidence was produced.
+
 ## SBATCH defaults and constraints
 
 Default submit behavior:

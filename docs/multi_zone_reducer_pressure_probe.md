@@ -192,3 +192,20 @@ manifest-size reducer-budget blocker and the missing authorization record are
 resolved. If a future preservation-checked two-zone Balfrin root is supplied,
 the helpers can move the frontier to a reviewed next-larger package, but they
 still keep `scale_up_authorized=false` and do not authorize a larger run.
+
+## TB-287 Smallest Two-Zone Probe Gate
+
+TB-287 did not submit a live Balfrin job. No separate exact user authorization
+for the bounded two-zone submit was present at execution time, so no
+`--authorized-submit` command or `sbatch` call was run.
+
+The current read-only preflight also fails before submission with the exact
+helper blocker `blocked_dirty_remote_checkout`: the Balfrin checkout reports no
+tracked modifications, but it still contains untracked generated run files,
+SLURM logs, and scratch helper scripts. The refreshed smallest authorization
+preflight over `/tmp/tb287_balfrin_access_preflight.json` reports
+`preflight_status=blocked_access`,
+`balfrin_access_status=blocked_dirty_remote_checkout`,
+`reducer_budget_status=ready`, `output_profile_status=ready`, and the
+authorization record remains `missing`. The authorization-gated path report
+keeps `submit_command_executed=false` and promotes no measured result.

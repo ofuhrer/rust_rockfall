@@ -2400,3 +2400,31 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: authorization package only; no `sbatch`, no live Balfrin submission, no remote cleanup, no scale-up, no distributed execution, no annual-frequency semantics, no physical-probability claim, no operational claim, and no risk/exposure/vulnerability product.
 - Next task: `TB-287`
+
+### TB-287: Smallest Multi-Zone Balfrin Probe
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: execute or fail closed on the exact smallest bounded two-zone Balfrin postproc probe after authorization, access, budget, and preservation gates.
+- Files changed: `docs/balfrin_probe_slurm_driver.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Did not run `--authorized-submit`, `sbatch`, or any live Balfrin submission because the current prompt did not contain separate exact user authorization for the two-zone submit.
+  - Ran only read-only/preflight checks and recorded the helper's exact current pre-submit blocker: Balfrin access is `blocked_dirty_remote_checkout`, with no tracked remote modifications but untracked generated run files, SLURM logs, and scratch helper scripts in the Balfrin checkout.
+  - Confirmed the smallest authorization preflight remains fail-closed with `preflight_status=blocked_access`; reducer budget and output profile are `ready`, the authorization record is `missing`, `submit_command_executed=false`, and no measured multi-zone result was promoted.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-287 --format json`
+  - `rg -n "^### TB-287:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb287_balfrin_access_preflight.json` (exit 2, expected dirty-remote blocker)
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb287_balfrin_access_preflight.json --json-output /tmp/tb287_authorization_preflight.json --text-output /tmp/tb287_authorization_preflight.txt --format json > /tmp/tb287_authorization_preflight.stdout` (exit 2, expected access blocker)
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py --authorization-preflight validation/pilot_runs/balfrin_smallest_multi_zone_authorization_preflight_v1.yaml --format json > /tmp/tb287_authorization_gated_path.json` (exit 2, expected pre-authorization blocker)
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py scripts/collect_balfrin_probe_metrics.py scripts/summarize_balfrin_probe_preservation_gate.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_authorization_gated_multi_zone_measurement_path -v`
+  - `rg -n "^### TB-287:" docs/task_backlog.md` (exit 1, expected absent after completion)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: exact smallest two-zone probe gate only; no `sbatch`, no live Balfrin submission, no retry, no larger ensemble, no remote cleanup, no scale-up, no distributed execution, no annual-frequency semantics, no physical-probability claim, no operational claim, and no risk/exposure/vulnerability product.
+- Next task: `TB-288`
