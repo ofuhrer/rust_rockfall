@@ -2949,3 +2949,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: evidence integration and decision support only; no live Balfrin submission, no larger run, no Swiss-wide claim, no distributed execution, no annual/physical/risk semantics, and no operational claim.
 - Next task: `TB-311`
+
+### TB-311: Four-Zone Balfrin Review Package
+
+- Date: 2026-05-19
+- Commit: `e043d5c`
+- Objective: generate a review-only four-zone Balfrin package using the post-TB-309 evidence and current output-budget thresholds without authorizing live submission.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added an explicit four-zone review package section to the Balfrin handoff generator with compact-manifest validation, reduced-output defaults, replay-critical families, expected runtime/output projections, and a `ready_for_review`/`blocked_*` classification path.
+  - Taught the authorization preflight to read the review-only four-zone package, surface its readiness status, and keep live promotion blocked until the later authorization evidence is present.
+  - Added the four-zone review tier to the scale readiness matrix so the next bounded step is visible alongside the existing measured, blocked, and projection-only tiers.
+  - Updated focused tests to assert the four-zone threshold profile, review-package promotion block, and matrix classification updates, then removed TB-311 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: review package only; no live Balfrin submission, no scale-up authorization, no distributed execution, no Swiss-wide claim, no annual/physical/risk semantics, and no operational claim.
+- Next task: `TB-312`
