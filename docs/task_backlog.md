@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-273: Optional Observed-Evidence Overlay Hook For AOI Maps
-
-Goal: Allow an AOI hazard map package to include optional observed runout/deposition or release-zone provenance overlays when real accepted evidence is staged.
-
-Capability gap reduced: Scientific credibility remains separate from workflow execution, but users need a clean path to attach observed evidence to a map package without turning it into calibration or annual-frequency semantics.
-
-Why this outranks alternatives: This connects the physical-evidence intake machinery to the user-facing map workflow while preserving the project's strict claim boundaries.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/target_area_physical_evidence_acquisition_pack.md`
-- `docs/hazard_map_semantics.md`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `tests/test_physical_credibility_evidence_requirements.py`
-
-Deliverables:
-
-- A map-package overlay hook that accepts only real-input-ready observed evidence or field-supported release-zone provenance, and otherwise emits `blocked_missing_evidence`, `blocked_fixture_only_inputs`, or `blocked_schema_gap`.
-- Manifest fields that distinguish diagnostic hazard outputs, observed evidence overlays, calibration inputs, holdout evidence, and deferred source-frequency records.
-- Tests proving fixture-only or ambiguous-role evidence cannot appear as accepted physical validation in the map package.
-
-Definition of done:
-
-- AOI map packages can carry optional real observed-evidence overlays without implying calibration, physical probability, annual frequency, risk, or operational readiness.
-
-Boundaries: Optional overlay integration only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no operational claim, and no claim upgrade beyond accepted evidence.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
