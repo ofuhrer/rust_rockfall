@@ -27,6 +27,7 @@ ALLOWED_METRICS_COMPLETION_SOURCES = {
     "recovered_existing_run_root",
     "new_metrics_completion_rerun",
     "blocked_missing_metrics",
+    "blocked_pre_submit",
 }
 ALLOWED_METRICS_COMPLETION_OUTCOMES = {
     "measured",

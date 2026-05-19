@@ -57,6 +57,7 @@ ALLOWED_METRICS_COMPLETION_SOURCES = {
     "recovered_existing_run_root",
     "new_metrics_completion_rerun",
     "blocked_missing_metrics",
+    "blocked_pre_submit",
 }
 METRICS_COMPLETION_RERUN_MARKERS = (
     "metrics_completion",
@@ -131,6 +132,87 @@ def _metrics_completion_source(single_job_summary: dict[str, Any], probe_metrics
     if any(marker in path for path in source_paths for marker in METRICS_COMPLETION_RERUN_MARKERS):
         return "new_metrics_completion_rerun"
     return "recovered_existing_run_root"
+
+
+def _first_mapping(*values: Any) -> dict[str, Any]:
+    for value in values:
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def _first_present(*values: Any) -> Any:
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _metric_value(entry: Any) -> Any:
+    if isinstance(entry, dict):
+        return entry.get("value")
+    return entry
+
+
+def build_metrics_evidence_state(
+    *,
+    single_job_summary: dict[str, Any],
+    metrics_completion_source: str,
+    metrics_completion_outcome: str,
+    metrics_completion_attempt_status: Any,
+    memory_peak_mb: Any,
+    validation_output: dict[str, Any],
+    hazard_output: dict[str, Any],
+) -> dict[str, Any]:
+    hashes = _first_mapping(
+        single_job_summary.get("run_root_hashes"),
+        single_job_summary.get("hashes"),
+        _first_mapping(single_job_summary.get("metrics_contract", {})).get("run_root_hashes"),
+    )
+    slurm = _first_mapping(
+        single_job_summary.get("slurm"),
+        single_job_summary.get("slurm_fields"),
+        single_job_summary.get("submission_report"),
+        single_job_summary.get("runtime_report"),
+    )
+    preservation = _first_mapping(
+        single_job_summary.get("preservation"),
+        single_job_summary.get("preservation_gate_report"),
+        single_job_summary.get("preservation_section"),
+    )
+    preservation_status = _first_present(
+        preservation.get("gate_status"),
+        preservation.get("status"),
+        single_job_summary.get("preservation_status"),
+    )
+    return {
+        "schema_version": "balfrin_target_area_metrics_evidence_state_v1",
+        "metrics_completion_source": metrics_completion_source,
+        "metrics_completion_outcome": metrics_completion_outcome,
+        "metrics_completion_attempt_status": metrics_completion_attempt_status,
+        "memory_peak_mb": memory_peak_mb,
+        "validation_output": {
+            "file_count": validation_output.get("file_count"),
+            "bytes": validation_output.get("bytes"),
+        },
+        "hazard_output": {
+            "file_count": hazard_output.get("file_count"),
+            "bytes": hazard_output.get("bytes"),
+        },
+        "run_root_hashes": hashes,
+        "slurm": {
+            "job_id": _first_present(slurm.get("job_id"), slurm.get("submitted_job_id"), slurm.get("JobID")),
+            "state": _first_present(slurm.get("state"), slurm.get("slurm_state"), slurm.get("State")),
+            "exit_code": _first_present(slurm.get("exit_code"), slurm.get("ExitCode")),
+            "max_rss": _first_present(slurm.get("max_rss"), slurm.get("MaxRSS")),
+        },
+        "preservation_status": preservation_status,
+        "preservation_checked": bool(
+            single_job_summary.get("preservation_checked")
+            or preservation.get("preservation_checked")
+            or preservation_status == "ready_for_demonstration_evidence"
+        ),
+    }
 
 
 def _flatten_source_paths(value: Any) -> list[str]:
@@ -1010,21 +1092,34 @@ def build_probe_metrics(single_job_summary: dict[str, Any]) -> dict[str, Any]:
         if isinstance(metrics.get("metrics_completion_attempt_status"), str)
         else None,
     )
+    memory_peak_value = memory_peak.get("value") if isinstance(memory_peak, dict) else _metric_value(memory_peak)
+    validation_output_state = {
+        "file_count": validation_output.get("file_count") if isinstance(validation_output, dict) else None,
+        "bytes": validation_output.get("bytes") if isinstance(validation_output, dict) else None,
+    }
+    hazard_output_state = {
+        "file_count": hazard_output.get("file_count") if isinstance(hazard_output, dict) else None,
+        "bytes": hazard_output.get("bytes") if isinstance(hazard_output, dict) else None,
+    }
+    metrics_evidence_state = build_metrics_evidence_state(
+        single_job_summary=single_job_summary,
+        metrics_completion_source=metrics_completion_source,
+        metrics_completion_outcome=metrics_completion_outcome,
+        metrics_completion_attempt_status=metrics.get("metrics_completion_attempt_status"),
+        memory_peak_mb=memory_peak_value,
+        validation_output=validation_output_state,
+        hazard_output=hazard_output_state,
+    )
     return {
         "status": metrics.get("status", "blocked_missing_inputs"),
         "metrics_completion_source": metrics_completion_source,
         "metrics_completion_outcome": metrics_completion_outcome,
         "metrics_completion_attempt_status": metrics.get("metrics_completion_attempt_status"),
         "wall_time_seconds": wall_time.get("value"),
-        "memory_peak_mb": memory_peak.get("value"),
-        "validation_output": {
-            "file_count": validation_output.get("file_count"),
-            "bytes": validation_output.get("bytes"),
-        },
-        "hazard_output": {
-            "file_count": hazard_output.get("file_count"),
-            "bytes": hazard_output.get("bytes"),
-        },
+        "memory_peak_mb": memory_peak_value,
+        "validation_output": validation_output_state,
+        "hazard_output": hazard_output_state,
+        "metrics_evidence_state": metrics_evidence_state,
         "reduced_output_family_counts": reduced_output_family_counts,
         "conditional_curve_row_count": mandatory.get("conditional_curve_row_count"),
         "restartability_metadata": restartability,

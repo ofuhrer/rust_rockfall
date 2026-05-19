@@ -60,10 +60,13 @@ that distinguishes `recovered_existing_run_root`, `new_metrics_completion_rerun`
 and `blocked_missing_metrics` without implying a stronger claim. TB-264's
 metrics-completion postproc attempt failed closed before submission because the
 remote Balfrin checkout was dirty; TB-265 integrated that result as
-`incomplete`, not measured. The Balfrin access preflight now includes a
-read-only remote checkout hygiene gate that fails closed on dirty pre-submit
-state, records remote HEAD, and reports safe operator cleanup commands without
-deleting remote files. The multi-zone follow-up path now has a
+`incomplete`, not measured. The evidence bundle and decision surfaces now also
+carry `blocked_pre_submit` as a distinct metrics state, so dirty or otherwise
+blocked pre-submit attempts are not collapsed into recovered or missing metric
+labels. The Balfrin access preflight now includes a read-only remote checkout
+hygiene gate that fails closed on dirty pre-submit state, records remote HEAD,
+and reports safe operator cleanup commands without deleting remote files. The
+multi-zone follow-up path now has a
 reviewed-package/authorization submission gate, smallest-probe authorization
 preflight, scalable command-plan output-profile enforcement, reducer
 manifest/file-family budget regression coverage, handoff-derived output budget

@@ -299,6 +299,7 @@ def build_metrics_closure_section(
     metrics_contract_status: str = "blocked_missing_inputs",
     summary: str | None = None,
     source_paths: list[str] | None = None,
+    metrics_evidence_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     status = str(status or BLOCKED_NO_NEW_MEASURED_EVIDENCE)
     if summary is None:
@@ -332,6 +333,7 @@ def build_metrics_closure_section(
         ),
         "metrics_completion_attempt_status": metrics_completion_attempt_status,
         "metrics_contract_status": metrics_contract_status,
+        "metrics_evidence_state": dict(metrics_evidence_state or {}),
         "summary": summary,
         "source_paths": list(source_paths or []),
     }

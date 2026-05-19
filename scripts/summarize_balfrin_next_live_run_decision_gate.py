@@ -242,6 +242,8 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     next_run_required = _safe_list(metrics.get("metrics_remediation", {}).get("next_run_required_metrics"))
     metrics_completion_source = _status(metrics.get("metrics_completion_source"), "blocked_missing_metrics")
     metrics_completion_outcome = _status(metrics.get("metrics_completion_outcome"), "blocked")
+    metrics_completion_attempt_status = metrics.get("metrics_completion_attempt_status")
+    metrics_evidence_state = _copy_mapping(metrics.get("metrics_evidence_state"))
     preservation_ready = preservation.get("gate_status") == "ready_for_demonstration_evidence"
     reducer_blocked = _bool(reducer.get("multi_zone_dry_run_blocked"))
     output_pressure = _copy_mapping(package.get("pressure_checkpoints", {}).get("output_pressure"))
@@ -253,13 +255,24 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "missing_target_area_metrics": {
-            "status": "missing" if missing_metrics else "complete",
+            "status": (
+                "blocked_pre_submit"
+                if metrics_completion_source == "blocked_pre_submit"
+                else "missing"
+                if missing_metrics
+                else "complete"
+            ),
             "metrics_contract_status": _status(metrics.get("metrics_contract_status")),
             "metrics_completion_source": metrics_completion_source,
             "metrics_completion_outcome": metrics_completion_outcome,
+            "metrics_completion_attempt_status": metrics_completion_attempt_status,
             "missing_mandatory_metrics": missing_metrics,
             "next_run_required_metrics": next_run_required,
+            "metrics_evidence_state": metrics_evidence_state,
             "summary": (
+                "The latest metrics-completion path is blocked before submit; no live job or measured run-root evidence is promoted."
+                if metrics_completion_source == "blocked_pre_submit"
+                else (
                 "The latest metrics-completion attempt is incomplete; target-area metrics remain blocked until a preservation-checked measured run is supplied."
                 if metrics_completion_outcome == "incomplete"
                 else "Target-area metrics remain incomplete and can be closed by the next measured rerun."
@@ -267,6 +280,7 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
                 else (
                     "The target-area metrics contract is complete "
                     f"from {metrics_completion_source.replace('_', ' ')}, so a rerun would not close a current gap."
+                )
                 )
             ),
         },
@@ -426,16 +440,24 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         access_blockers.append(f"balfrin_ssh_access:{access['status']}")
 
     metrics_source = metrics["metrics_completion_source"]
+    metrics_pre_submit_blocked = metrics["status"] == "blocked_pre_submit"
+    metrics_gap_open = metrics["status"] in {"missing", "blocked_pre_submit"}
     metrics_complete = metrics["status"] == "complete"
     metrics_blockers: list[str] = []
-    if metrics["status"] == "missing":
+    if metrics_pre_submit_blocked:
+        metrics_blockers.append(
+            f"metrics_completion_pre_submit:{metrics.get('metrics_completion_attempt_status') or metrics_source}"
+        )
+    if metrics_gap_open:
         if preservation["status"] != "ready":
             metrics_blockers.append(f"preservation_gate:{preservation['gate_status']}")
     metrics_blockers.extend(access_blockers)
 
     multi_zone_blockers: list[str] = []
-    if metrics["status"] == "missing":
-        multi_zone_blockers.append("missing_target_area_metrics")
+    if metrics_gap_open:
+        multi_zone_blockers.append(
+            "target_area_metrics_blocked_pre_submit" if metrics_pre_submit_blocked else "missing_target_area_metrics"
+        )
     if preservation["status"] != "ready":
         multi_zone_blockers.append(f"preservation_gate:{preservation['gate_status']}")
     if reducer["status"] != "ready":
@@ -453,8 +475,10 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     multi_zone_blockers.extend(access_blockers)
 
     defer_blockers: list[str] = []
-    if metrics["status"] == "missing":
-        defer_blockers.append("missing_target_area_metrics")
+    if metrics_gap_open:
+        defer_blockers.append(
+            "target_area_metrics_blocked_pre_submit" if metrics_pre_submit_blocked else "missing_target_area_metrics"
+        )
     if preservation["status"] != "ready":
         defer_blockers.append(f"preservation_gate:{preservation['gate_status']}")
     if package["status"] == "ready" and reducer["status"] == "ready" and runtime_pressure["status"] == "acceptable":
@@ -463,20 +487,26 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         defer_blockers.append(f"portability_or_physical_evidence_value:{portability['status']}")
 
     second_site_blockers = list(second_site["blockers"])
-    if metrics["status"] == "missing":
-        second_site_blockers.append("missing_target_area_metrics")
+    if metrics_gap_open:
+        second_site_blockers.append(
+            "target_area_metrics_blocked_pre_submit" if metrics_pre_submit_blocked else "missing_target_area_metrics"
+        )
     if second_site["status"] not in {"preferred", "defer", "ready"}:
         second_site_blockers.append(f"second_site_progress:{second_site['status']}")
 
     physical_evidence_blockers = list(physical_evidence["blockers"])
-    if metrics["status"] == "missing":
-        physical_evidence_blockers.append("missing_target_area_metrics")
+    if metrics_gap_open:
+        physical_evidence_blockers.append(
+            "target_area_metrics_blocked_pre_submit" if metrics_pre_submit_blocked else "missing_target_area_metrics"
+        )
     if physical_evidence["status"] not in {"preferred", "defer", "ready"}:
         physical_evidence_blockers.append(f"physical_evidence_acquisition:{physical_evidence['status']}")
 
     hazard_optimization_blockers = list(hazard_optimization["blockers"])
-    if metrics["status"] == "missing":
-        hazard_optimization_blockers.append("missing_target_area_metrics")
+    if metrics_gap_open:
+        hazard_optimization_blockers.append(
+            "target_area_metrics_blocked_pre_submit" if metrics_pre_submit_blocked else "missing_target_area_metrics"
+        )
     if hazard_optimization["path_state"] == "fixture_backed":
         hazard_optimization_blockers.append("hazard_hotspot_evidence:fixture_backed")
     if hazard_optimization["status"] not in {"preferred", "defer", "ready", "fixture_backed"}:
@@ -505,6 +535,8 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
                     if metrics_source == "recovered_existing_run_root"
                     else "Target-area metrics were already completed by an authorized rerun, so another metrics-completion rerun is no longer the next action."
                     if metrics_source == "new_metrics_completion_rerun"
+                    else "The metrics-completion path is blocked before submit; rerun authorization must not proceed until the pre-submit blocker is cleared."
+                    if metrics_source == "blocked_pre_submit"
                     else "No current target-area metrics gap is open for a rerun to close."
                 )
             ),
@@ -905,6 +937,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         if key == "missing_target_area_metrics":
             lines.append(f"    metrics_completion_source: {entry.get('metrics_completion_source', 'unknown')}")
             lines.append(f"    metrics_completion_outcome: {entry.get('metrics_completion_outcome', 'unknown')}")
+            lines.append(f"    metrics_completion_attempt_status: {entry.get('metrics_completion_attempt_status', 'unknown')}")
             lines.append(f"    missing_mandatory_metrics: {entry.get('missing_mandatory_metrics', [])}")
             lines.append(f"    next_run_required_metrics: {entry.get('next_run_required_metrics', [])}")
         if key == "reducer_pressure":

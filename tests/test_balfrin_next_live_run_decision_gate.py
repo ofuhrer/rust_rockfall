@@ -139,6 +139,47 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
             report["option_assessments"]["smallest_bounded_multi_zone_probe"]["exact_evidence_blockers"],
         )
 
+    def test_blocked_pre_submit_metrics_state_fails_closed_with_evidence_details(self) -> None:
+        bundle = self.load_fixture("default_bundle.json")
+        bundle["probe_metrics_report"]["metrics_completion_source"] = "blocked_pre_submit"
+        bundle["probe_metrics_report"]["metrics_completion_outcome"] = "incomplete"
+        bundle["probe_metrics_report"]["metrics_completion_attempt_status"] = "blocked_remote_checkout_dirty"
+        bundle["probe_metrics_report"]["metrics_evidence_state"] = {
+            "schema_version": "balfrin_target_area_metrics_evidence_state_v1",
+            "metrics_completion_source": "blocked_pre_submit",
+            "metrics_completion_outcome": "incomplete",
+            "metrics_completion_attempt_status": "blocked_remote_checkout_dirty",
+            "memory_peak_mb": 512.5,
+            "validation_output": {"file_count": 2005, "bytes": 571377719},
+            "hazard_output": {"file_count": 46, "bytes": 16613900},
+            "run_root_hashes": {"run_root_manifest_sha256": "abc123"},
+            "slurm": {"job_id": None, "state": None, "exit_code": None, "max_rss": None},
+            "preservation_status": "blocked_remote_checkout_dirty",
+            "preservation_checked": False,
+        }
+
+        report = MODULE.build_report(bundle)
+        metrics = report["criteria"]["missing_target_area_metrics"]
+
+        self.assertEqual(report["decision_status"], "blocked")
+        self.assertEqual(metrics["status"], "blocked_pre_submit")
+        self.assertEqual(metrics["metrics_completion_source"], "blocked_pre_submit")
+        self.assertEqual(metrics["metrics_completion_outcome"], "incomplete")
+        self.assertEqual(metrics["metrics_completion_attempt_status"], "blocked_remote_checkout_dirty")
+        self.assertEqual(metrics["metrics_evidence_state"]["memory_peak_mb"], 512.5)
+        self.assertEqual(metrics["metrics_evidence_state"]["validation_output"]["file_count"], 2005)
+        self.assertEqual(metrics["metrics_evidence_state"]["hazard_output"]["bytes"], 16613900)
+        self.assertEqual(metrics["metrics_evidence_state"]["run_root_hashes"]["run_root_manifest_sha256"], "abc123")
+        self.assertIn(
+            "metrics_completion_pre_submit:blocked_remote_checkout_dirty",
+            report["option_assessments"]["metrics_completion_rerun"]["exact_evidence_blockers"],
+        )
+        self.assertIn(
+            "target_area_metrics_blocked_pre_submit",
+            report["option_assessments"]["smallest_bounded_multi_zone_probe"]["exact_evidence_blockers"],
+        )
+        self.assertIn("blocked before submit", metrics["summary"])
+
     def test_defer_fixture_prefers_portability_or_physical_evidence_work(self) -> None:
         report = MODULE.build_report(self.load_fixture("defer_bundle.json"))
 

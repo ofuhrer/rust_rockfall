@@ -110,6 +110,54 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
         )
         self.assertIn("no live job", report["reviewer_answer"].lower())
 
+    def test_metrics_closure_section_carries_metrics_evidence_state_without_promoting_blocked_pre_submit(self) -> None:
+        evidence_state = {
+            "schema_version": "balfrin_target_area_metrics_evidence_state_v1",
+            "metrics_completion_source": "blocked_pre_submit",
+            "metrics_completion_outcome": "incomplete",
+            "metrics_completion_attempt_status": "blocked_remote_checkout_dirty",
+            "memory_peak_mb": 512.5,
+            "validation_output": {"file_count": 2005, "bytes": 571377719},
+            "hazard_output": {"file_count": 46, "bytes": 16613900},
+            "run_root_hashes": {"run_root_manifest_sha256": "abc123"},
+            "slurm": {"job_id": None, "state": None, "exit_code": None, "max_rss": None},
+            "preservation_status": "blocked_remote_checkout_dirty",
+            "preservation_checked": False,
+        }
+        metrics_closure_section = MODULE.build_metrics_closure_section(
+            status=MODULE.METRICS_INCOMPLETE,
+            metrics_completion_source="blocked_pre_submit",
+            metrics_completion_outcome="incomplete",
+            metrics_completion_attempt_status="blocked_remote_checkout_dirty",
+            metrics_contract_status="blocked_missing_inputs",
+            metrics_evidence_state=evidence_state,
+        )
+        report = MODULE.build_report(
+            {
+                "section_overrides": {
+                    "metrics_closure_section": metrics_closure_section,
+                    "new_measured_evidence_section": MODULE.build_new_measured_evidence_section(metrics_closure_section),
+                    "next_measured_action_section": MODULE.build_next_measured_action_section(metrics_closure_section),
+                }
+            }
+        )
+
+        self.assertEqual(report["closure_status"], "metrics_incomplete")
+        self.assertFalse(report["maturity_label_update_allowed"])
+        self.assertEqual(report["metrics_closure_section"]["metrics_completion_source"], "blocked_pre_submit")
+        self.assertEqual(report["metrics_closure_section"]["metrics_evidence_state"]["memory_peak_mb"], 512.5)
+        self.assertEqual(
+            report["metrics_closure_section"]["metrics_evidence_state"]["validation_output"],
+            {"file_count": 2005, "bytes": 571377719},
+        )
+        self.assertEqual(report["metrics_closure_section"]["metrics_evidence_state"]["hazard_output"]["file_count"], 46)
+        self.assertEqual(
+            report["metrics_closure_section"]["metrics_evidence_state"]["run_root_hashes"]["run_root_manifest_sha256"],
+            "abc123",
+        )
+        self.assertFalse(report["metrics_closure_section"]["metrics_evidence_state"]["preservation_checked"])
+        self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "blocked")
+
     def test_complete_decision_gate_ranks_metrics_completion_as_closed(self) -> None:
         decision_gate_report = DECISION_GATE.build_report(self.load_fixture("defer_bundle.json"))
 

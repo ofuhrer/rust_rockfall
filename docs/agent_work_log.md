@@ -2331,3 +2331,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: read-only package refresh only; no `sbatch`, no live Balfrin submission, no remote cleanup, no retry, no multi-zone or distributed execution, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability product.
 - Next task: `TB-284`
+
+### TB-284: Metrics Recovery Integration Refresh
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: integrate recovered, rerun, missing, and pre-submit-blocked target-area metrics states consistently across the Balfrin evidence bundle, closure package, decision gate, and maturity snapshot.
+- Files changed: `scripts/summarize_balfrin_probe_metrics_report.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `blocked_pre_submit` to the target-area metrics completion classifier path and carried a normalized metrics evidence state through the evidence bundle and closure section.
+  - Propagated peak memory, split validation/hazard file counts and bytes, run-root hashes, SLURM fields, and preservation status when supplied.
+  - Updated the next live-run decision gate so pre-submit-blocked metrics fail closed with exact blockers instead of being treated as recovered evidence or a ready rerun gap.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-284 --format json`
+  - `rg -n "^### TB-284:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json` (exit 2, expected fail-closed dirty remote checkout)
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_evidence_bundle.py`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_next_live_run_decision_gate.py`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_demonstration_closure_package.py`
+- Result/status: implemented_measured
+- Boundaries: evidence integration only; no `sbatch`, no live Balfrin submission, no new run, no remote cleanup, no claim upgrade beyond execution-metric completeness, no annual-frequency semantics, and no operational, risk, exposure, vulnerability, distributed-execution, scale-up, or physical-probability claim.
+- Next task: `TB-285`

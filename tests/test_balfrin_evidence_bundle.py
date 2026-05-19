@@ -243,6 +243,72 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(measured["root_class"], "measured_multi_zone_balfrin_root")
         self.assertEqual(measured["evidence_type"], "measured")
 
+    def test_metrics_evidence_state_propagates_recovered_run_root_fields(self) -> None:
+        summary = self.single_job_summary()
+        summary["metrics_contract"]["status"] = "complete"
+        summary["metrics_contract"]["mandatory_metrics"].update(
+            {
+                "memory_peak_mb": {"value": 512.5},
+                "validation_output": {"file_count": 2005, "bytes": 571377719},
+                "hazard_output": {"file_count": 46, "bytes": 16613900},
+            }
+        )
+        summary["run_root_hashes"] = {
+            "run_root_manifest_sha256": "abc123",
+            "command_plan_sha256": "def456",
+        }
+        summary["submission_report"] = {
+            "submitted_job_id": "4329024",
+            "slurm_state": "COMPLETED",
+            "exit_code": "0:0",
+            "MaxRSS": "525M",
+        }
+        summary["preservation_gate_report"] = {"gate_status": "ready_for_demonstration_evidence"}
+        summary["preservation_checked"] = True
+
+        metrics = bundle.build_probe_metrics(summary)
+        state = metrics["metrics_evidence_state"]
+
+        self.assertEqual(metrics["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertEqual(state["metrics_completion_source"], "recovered_existing_run_root")
+        self.assertEqual(state["memory_peak_mb"], 512.5)
+        self.assertEqual(state["validation_output"], {"file_count": 2005, "bytes": 571377719})
+        self.assertEqual(state["hazard_output"], {"file_count": 46, "bytes": 16613900})
+        self.assertEqual(state["run_root_hashes"]["run_root_manifest_sha256"], "abc123")
+        self.assertEqual(state["slurm"]["job_id"], "4329024")
+        self.assertEqual(state["slurm"]["state"], "COMPLETED")
+        self.assertEqual(state["slurm"]["max_rss"], "525M")
+        self.assertEqual(state["preservation_status"], "ready_for_demonstration_evidence")
+        self.assertTrue(state["preservation_checked"])
+
+    def test_metrics_evidence_state_accepts_new_rerun_and_blocked_pre_submit_classifiers(self) -> None:
+        summary = self.single_job_summary()
+        summary["metrics_completion_source"] = "new_metrics_completion_rerun"
+        summary["metrics_contract"]["status"] = "complete"
+        summary["metrics_contract"]["mandatory_metrics"].update(
+            {
+                "memory_peak_mb": {"value": 640.0},
+                "validation_output": {"file_count": 2100, "bytes": 600000000},
+                "hazard_output": {"file_count": 50, "bytes": 20000000},
+            }
+        )
+        rerun_metrics = bundle.build_probe_metrics(summary)
+        self.assertEqual(rerun_metrics["metrics_completion_source"], "new_metrics_completion_rerun")
+        self.assertEqual(rerun_metrics["metrics_completion_outcome"], "measured")
+        self.assertEqual(rerun_metrics["metrics_evidence_state"]["memory_peak_mb"], 640.0)
+
+        blocked_summary = self.single_job_summary()
+        blocked_summary["metrics_completion_source"] = "blocked_pre_submit"
+        blocked_summary["metrics_contract"]["status"] = "blocked_missing_inputs"
+        blocked_summary["metrics_contract"]["metrics_completion_attempt_status"] = "blocked_remote_checkout_dirty"
+        blocked_metrics = bundle.build_probe_metrics(blocked_summary)
+        self.assertEqual(blocked_metrics["metrics_completion_source"], "blocked_pre_submit")
+        self.assertEqual(blocked_metrics["metrics_completion_outcome"], "incomplete")
+        self.assertEqual(
+            blocked_metrics["metrics_evidence_state"]["metrics_completion_attempt_status"],
+            "blocked_remote_checkout_dirty",
+        )
+
     def test_fixture_backed_override_stays_fixture_backed(self) -> None:
         fixture_path = "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"
         report = bundle.build_report(

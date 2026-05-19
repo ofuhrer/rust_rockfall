@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-284: Metrics Recovery Integration Refresh
-
-Goal: Integrate any newly recovered or rerun target-area metrics into the Balfrin evidence bundle, closure package, decision gate, and maturity snapshot without overclaiming.
-
-Capability gap reduced: Metrics evidence can be recovered or rerun, but it must be propagated consistently across the repository's authoritative decision surfaces.
-
-Why this outranks alternatives: Evidence drift across Balfrin summaries is a known risk and would directly affect the next live-run decision.
-
-Inspect first:
-
-- `scripts/recover_balfrin_target_area_metrics_from_run_root.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_evidence_bundle.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Updated evidence classifiers for `recovered_existing_run_root`, `new_metrics_completion_rerun`, `blocked_missing_metrics`, and `blocked_pre_submit`.
-- Tests proving peak memory, split validation/hazard counts/bytes, run-root hashes, SLURM fields, and preservation status propagate consistently when available.
-- Documentation updates only where the evidence state materially changes.
-
-Definition of done:
-
-- Balfrin evidence summaries agree on the target-area metrics state and the next decision gate no longer relies on stale or contradictory metric labels.
-
-Boundaries: Evidence integration only; no live Balfrin submission, no new run, no claim upgrade beyond execution-metric completeness, no annual-frequency semantics, and no operational claim.
-
 ### TB-285: Reducer Manifest Budget Compression
 
 Goal: Reduce smallest multi-zone manifest pressure while retaining replay-critical metadata, hashes, merge order, and output-profile semantics.
