@@ -2514,3 +2514,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: path and blocked-report consolidation only; no CLI schema change, no broader workflow rewrite, no live Balfrin submission, no claim upgrade, no operational claim, and no annual-frequency or physical-probability claim.
 - Next task: `TB-292`
+
+### TB-292: Balfrin Scale Readiness Baseline Matrix
+
+- Date: 2026-05-19
+- Commit: `9cc8f8d`; never leave `pending` in a pushed commit.
+- Objective: establish one authoritative Balfrin scale-readiness baseline matrix that names the current measured, blocked, and projection-only tier state in one read-only report.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/script_inventory.md`
+- Implementation summary:
+  - Added a read-only scale-readiness matrix helper that composes the current single-job evidence, the exact target-area authorization package, the smallest multi-zone blocked preflight, and the Swiss-wide projection into one four-tier report.
+  - Exposed explicit columns for file count, bytes, manifest bytes, reducer sidecars, runtime, memory, run-root preservation, replayability, and authorization status, plus top-level measured, blocked, projection, and no-go tier summaries.
+  - Added a focused regression that checks the single-zone, target-area, smallest multi-zone, and larger-AOI rows stay aligned with the existing fixture-backed and blocked-preflight evidence.
+  - Removed TB-292 from the active backlog and registered the new helper in the script inventory so consistency checks stay green.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: read-only synthesis only; no live Balfrin submission, no new run, no scale-up authorization, no distributed execution, no physical-probability semantics, and no operational claim.
+- Next task: `TB-293`
