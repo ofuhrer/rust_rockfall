@@ -258,6 +258,37 @@ Bounded next target:
 
 - batch or vectorize trajectory-cell updates inside the existing accumulator.
 - expected impact: reduce the dominant explicit-grid trajectory accumulation
+
+## Hazard Accumulation Hypothesis Benchmark
+
+TB-298 added a fixture-backed benchmark harness at
+`scripts/hazard_accumulation_benchmark.py`. The harness records three
+representative explicit-grid profiles:
+
+- `single_zone_control`: a no-op control with one release zone and no plots or
+  auxiliary output fan-out.
+- `smallest_multi_zone_baseline`: the comparison baseline future accumulation
+  optimizations must beat.
+- `output_heavy_guardrail`: a higher-output case that keeps conditional-curve
+  and grid-CSV fan-out visible without changing hazard semantics.
+
+The suite emits a deterministic baseline replay and objective acceptance
+thresholds:
+
+- speedup floor: future candidate `accumulation_seconds` must improve by at
+  least 10% against the smallest multi-zone baseline;
+- memory ceiling: future candidate `peak_rss_kb` must stay within 10% of the
+  baseline when both runs report RSS;
+- output parity: stable manifest view and hazard-layer signatures must match;
+- determinism: the baseline replay must match the baseline manifest view and
+  layer signatures;
+- claim boundaries: the suite keeps annual-frequency, operational, physical
+  probability, risk, exposure, vulnerability, and scale-up claims out of scope.
+
+The first recorded baseline result is intentionally non-optimizing. It gives
+future hazard-accumulation changes a reproducible "before" run and a stable
+comparison contract instead of relying on ad hoc adoptions of faster-looking
+code.
   phase by lowering Python row-wise update overhead.
 - risk: batching must preserve per-cell maxima, reach counts, exceedance
   semantics, and reducer merge determinism.

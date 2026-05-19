@@ -37,34 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-298: Hazard Accumulation Optimization Hypothesis Bench
-
-Goal: Build a benchmark harness for candidate hazard-accumulation optimizations and require before/after evidence before any implementation is accepted.
-
-Capability gap reduced: The repo has rejected broad performance churn once, but still lacks a safe way to evaluate targeted accumulation improvements.
-
-Why this outranks alternatives: Execution efficiency must improve through measured hypotheses, not speculative rewrites of a fragile hazard builder.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_hazard_layers.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- A benchmark harness with representative fixture profiles for single-zone, smallest multi-zone, and output-heavy cases.
-- Acceptance criteria for speedup, memory, output parity, deterministic manifests, and claim-boundary preservation.
-- At least one no-op/baseline benchmark result that future optimization tasks must beat.
-
-Definition of done:
-
-- Future hazard-accumulation optimization work has a reproducible benchmark and objective acceptance thresholds.
-
-Boundaries: Benchmark harness only; no optimization implementation unless trivially required for instrumentation, no live Balfrin submission, no hazard-value change, and no operational claim.
-
 ### TB-299: Reduced-Output Profile Enforcement In AOI Command Plans
 
 Goal: Ensure every AOI and Balfrin command plan that can scale beyond tiny smoke defaults to the scalable reduced-output profile and fails closed on full grid CSV or full conditional-curve output.

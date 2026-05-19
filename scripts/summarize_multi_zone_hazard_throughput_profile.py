@@ -562,34 +562,52 @@ def run_profiled_hazard_build(
     original_read_impact_parquet_batches = hazard.read_impact_event_parquet_batches
     original_merge = hazard.HazardAccumulator.merge
 
-    def timed_trajectory_reader(path: Path, warnings: list[str]) -> Any:
+    def timed_trajectory_reader(path: Path, warnings: list[str], *, phase_telemetry: Any | None = None, **_: Any) -> Any:
         started = time.perf_counter()
         try:
-            return original_read_trajectory(path, warnings)
+            return original_read_trajectory(path, warnings, phase_telemetry=phase_telemetry)
         finally:
             elapsed = time.perf_counter() - started
             timing["trajectory_read_seconds"] += elapsed
             timing["input_read_seconds"] += elapsed
 
-    def timed_deposition_reader(path: Path | None, warnings: list[str]) -> Any:
+    def timed_deposition_reader(
+        path: Path | None,
+        warnings: list[str],
+        *,
+        phase_telemetry: Any | None = None,
+        **_: Any,
+    ) -> Any:
         started = time.perf_counter()
         try:
-            return original_read_deposition(path, warnings)
+            return original_read_deposition(path, warnings, phase_telemetry=phase_telemetry)
         finally:
             timing["input_read_seconds"] += time.perf_counter() - started
 
-    def timed_impact_csv_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
+    def timed_impact_csv_reader(
+        paths: list[Path],
+        warnings: list[str],
+        *,
+        phase_telemetry: Any | None = None,
+        **_: Any,
+    ) -> Iterator[Any]:
         started = time.perf_counter()
         try:
-            for batch in original_read_impact_csv_batches(paths, warnings):
+            for batch in original_read_impact_csv_batches(paths, warnings, phase_telemetry=phase_telemetry):
                 yield batch
         finally:
             timing["input_read_seconds"] += time.perf_counter() - started
 
-    def timed_impact_parquet_reader(paths: list[Path], warnings: list[str]) -> Iterator[Any]:
+    def timed_impact_parquet_reader(
+        paths: list[Path],
+        warnings: list[str],
+        *,
+        phase_telemetry: Any | None = None,
+        **_: Any,
+    ) -> Iterator[Any]:
         started = time.perf_counter()
         try:
-            for batch in original_read_impact_parquet_batches(paths, warnings):
+            for batch in original_read_impact_parquet_batches(paths, warnings, phase_telemetry=phase_telemetry):
                 yield batch
         finally:
             timing["input_read_seconds"] += time.perf_counter() - started

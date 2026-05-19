@@ -2649,3 +2649,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: instrumentation only; no optimization, no hazard-value changes, no live Balfrin submission, no operational claim, no scale-up claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-298`
+
+### TB-298: Hazard Accumulation Optimization Hypothesis Bench
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a reproducible benchmark harness for hazard-accumulation optimization hypotheses, together with a no-op baseline and objective acceptance thresholds.
+- Files changed: `scripts/hazard_accumulation_benchmark.py`, `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `docs/hazard_throughput_bottleneck_report.md`, `tests/test_hazard_accumulation_benchmark.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a fixture-backed benchmark harness that materializes three explicit-grid profiles: a single-zone no-op control, the smallest multi-zone comparison baseline, and an output-heavy guardrail profile.
+  - The harness runs the existing hazard-layer builder, records stable semantic manifest views, captures hazard-layer signatures, and replays the smallest multi-zone baseline to prove deterministic manifest behavior.
+  - Added objective acceptance criteria for speedup, memory growth, output parity, deterministic replays, and claim-boundary preservation.
+  - Documented the benchmark contract in the hazard-throughput bottleneck report and removed TB-298 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_accumulation_benchmark -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/hazard_accumulation_benchmark.py scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: benchmark harness only; no optimization implementation, no hazard-value changes, no live Balfrin submission, no operational claim, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no scale-up authorization.
+- Next task: `TB-299`
