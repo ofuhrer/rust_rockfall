@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-280: Prepared-Pilot Local Execution Wrapper
-
-Goal: Turn a ready prepared-pilot command plan into one local bounded execution command that writes validation outputs, hazard layers, map package, and QA review under a caller-provided output root.
-
-Capability gap reduced: The repo can run a tiny smoke and can package maps, but a user still lacks one local command for a ready prepared pilot.
-
-Why this outranks alternatives: This creates the first practical local end-to-end execution path after preparation and planning, while staying bounded and non-operational.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A local execution wrapper that consumes a ready prepared-pilot report, runs the bounded validation case, builds reduced hazard layers, packages the map, and generates the static QA review.
-- Output-root safety checks, overwrite policy, reduced-output defaults, manifest checksums, and first-failure reporting.
-- Tests against the golden fixture or existing tiny smoke fixture.
-
-Definition of done:
-
-- A prepared AOI fixture can produce a complete local diagnostic map package through one command.
-
-Boundaries: Local bounded execution only; no live Balfrin submission, no large AOI execution, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
-
 ### TB-281: AOI Map Package Openable Review Bundle
 
 Goal: Make the AOI map package directly reviewable as a single openable static bundle with layer toggles, legends, warnings, provenance, and claim boundaries.

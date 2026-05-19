@@ -23,17 +23,30 @@ from typing import Any, Callable
 
 import yaml
 
+from scripts.hazard_output_writers import sha256_file
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_hazard_workflow_front_door_v1"
+PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION = "aoi_prepared_pilot_local_execution_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 DEFAULT_ARTIFACT_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.yaml"
 DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
-SUPPORTED_COMMANDS = ("status", "prepare", "plan", "run-local-smoke", "submit-balfrin", "collect", "package-map")
+SUPPORTED_COMMANDS = (
+    "status",
+    "prepare",
+    "plan",
+    "run-local-smoke",
+    "run-prepared-pilot-local",
+    "submit-balfrin",
+    "collect",
+    "package-map",
+)
 PREPARE_SCHEMA_VERSION = "aoi_hazard_prepare_front_door_v1"
+DEFAULT_PREPARED_PILOT_VALIDATION_CASE = DEFAULT_LOCAL_SMOKE_CASE
 STATUS_READY = "ready"
 STATUS_BLOCKED = "blocked_missing_inputs"
 STATUS_INVALID_INPUT = "blocked_invalid_input"
@@ -64,6 +77,8 @@ TERRAIN_PREP = _load_module("aoi_hazard_front_door_terrain_prep", "plan_aoi_terr
 RELEASE_CANDIDATES = _load_module("aoi_hazard_front_door_release_candidates", "plan_terrain_release_zone_candidates.py")
 COMMAND_PLAN = _load_module("aoi_hazard_front_door_command_plan", "generate_pilot_command_plan.py")
 GIS_COG = _load_module("aoi_hazard_front_door_gis_cog", "audit_gis_cog_package_readiness.py")
+PACKAGE_AOI = _load_module("aoi_hazard_front_door_package_aoi", "package_aoi_hazard_map.py")
+QA_REVIEW = _load_module("aoi_hazard_front_door_qa_review", "generate_aoi_map_qa_review.py")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -91,6 +106,10 @@ def main(argv: list[str] | None = None) -> int:
             artifact_root=args.artifact_root,
             smoke_case_path=args.smoke_case_path,
             smoke_output_root=args.smoke_output_root,
+            prepared_pilot_report_path=args.prepared_pilot_report_path,
+            prepared_pilot_output_root=args.prepared_pilot_output_root,
+            validation_case_path=args.validation_case_path,
+            overwrite=args.overwrite,
         )
         output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
 
@@ -112,6 +131,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
     parser.add_argument("--smoke-case-path", type=Path, default=DEFAULT_LOCAL_SMOKE_CASE)
     parser.add_argument("--smoke-output-root", type=Path, default=DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT)
+    parser.add_argument("--prepared-pilot-report-path", type=Path, default=None)
+    parser.add_argument("--prepared-pilot-output-root", type=Path, default=None)
+    parser.add_argument("--validation-case-path", type=Path, default=DEFAULT_PREPARED_PILOT_VALIDATION_CASE)
+    parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--format", choices=("text", "json"), default="json")
     parser.add_argument("--json-output", type=Path, default=None)
     return parser
@@ -127,6 +150,10 @@ def build_report(
     artifact_root: Path | None = None,
     smoke_case_path: Path | None = None,
     smoke_output_root: Path | None = None,
+    prepared_pilot_report_path: Path | None = None,
+    prepared_pilot_output_root: Path | None = None,
+    validation_case_path: Path | None = None,
+    overwrite: bool = False,
 ) -> dict[str, Any]:
     if command == "prepare":
         return build_prepare_report(
@@ -138,6 +165,14 @@ def build_report(
             repo_root=repo_root,
             smoke_case_path=smoke_case_path or DEFAULT_LOCAL_SMOKE_CASE,
             smoke_output_root=smoke_output_root or DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT,
+        )
+    if command == "run-prepared-pilot-local":
+        return build_prepared_pilot_local_execution_report(
+            repo_root=repo_root,
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path or DEFAULT_PREPARED_PILOT_VALIDATION_CASE,
+            overwrite=overwrite,
         )
 
     aoi_report = build_aoi_workflow_report(
@@ -442,6 +477,440 @@ def build_local_smoke_report(*, repo_root: Path, smoke_case_path: Path, smoke_ou
         },
         "smoke_run": smoke_result,
     }
+
+
+def build_prepared_pilot_local_execution_report(
+    *,
+    repo_root: Path,
+    prepared_pilot_report_path: Path | None,
+    prepared_pilot_output_root: Path | None,
+    validation_case_path: Path,
+    overwrite: bool,
+) -> dict[str, Any]:
+    if prepared_pilot_report_path is None:
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=None,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="prepared_pilot_report",
+            blocked_reason="prepared-pilot report path is required",
+            missing_inputs=[],
+        )
+    if not prepared_pilot_report_path.exists():
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="prepared_pilot_report",
+            blocked_reason=f"prepared-pilot report does not exist: {prepared_pilot_report_path}",
+            missing_inputs=[str(prepared_pilot_report_path)],
+        )
+
+    prepared_pilot_report = load_structured_document(prepared_pilot_report_path)
+    classification, execution_hints, first_blocker = summarize_prepared_pilot_readiness(prepared_pilot_report)
+    if classification not in {"ready_for_balfrin_postproc", "ready_for_local_smoke"}:
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id=str(first_blocker.get("step_id") or "prepared_pilot_report"),
+            blocked_reason=str(first_blocker.get("blocked_reason") or "prepared-pilot report is not ready"),
+            missing_inputs=list(first_blocker.get("missing_inputs") or []),
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+        )
+
+    resolved_output_root = resolve_prepared_pilot_output_root(repo_root, prepared_pilot_output_root)
+    if resolved_output_root is None:
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="output_root",
+            blocked_reason="prepared-pilot local execution output root is required",
+            missing_inputs=[],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+        )
+    if resolved_output_root.exists() and not overwrite:
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="output_root",
+            blocked_reason=f"output root exists and overwrite is disabled: {resolved_output_root}",
+            missing_inputs=[str(resolved_output_root)],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+        )
+    if resolved_output_root.exists():
+        shutil.rmtree(resolved_output_root)
+    resolved_output_root.mkdir(parents=True, exist_ok=True)
+
+    if not validation_case_path.exists():
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="validation_case",
+            blocked_reason=f"validation case does not exist: {validation_case_path}",
+            missing_inputs=[str(validation_case_path)],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+        )
+
+    workflow_steps: list[dict[str, Any]] = []
+    validation_step: dict[str, Any] | None = None
+    try:
+        validation_result = execute_local_smoke_run(
+            repo_root=repo_root,
+            smoke_case_path=validation_case_path,
+            smoke_output_root=resolved_output_root,
+        )
+        validation_step = {
+            "step_id": "bounded_validation_case",
+            "label": "Bounded validation case",
+            "status": validation_result["status"],
+            "blocked_reason": "" if validation_result["status"] == "smoke_completed" else "bounded validation case did not complete",
+            "validation_output_root": validation_result["validation_output_root"],
+            "hazard_output_root": validation_result["hazard_output_root"],
+            "commands": validation_result["commands"],
+            "no_heavy_debug_defaults": validation_result["no_heavy_debug_defaults"],
+            "claim_boundaries": validation_result["claim_boundaries"],
+            "expected_paths": validation_result["expected_paths"],
+            "artifact_sha256": validation_result["artifact_sha256"],
+            "validation_result": validation_result,
+        }
+        workflow_steps.append(validation_step)
+    except Exception as exc:  # noqa: BLE001 - the wrapper must surface the first failure.
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="bounded_validation_case",
+            blocked_reason=str(exc),
+            missing_inputs=[],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+            workflow_steps=workflow_steps,
+        )
+
+    validation_result = (validation_step or {}).get("validation_result", {})
+    hazard_output_root = Path((validation_step or {}).get("hazard_output_root") or resolved_output_root / "hazard" / "results")
+    package_output_root = resolved_output_root / "package"
+    review_output_root = resolved_output_root / "review"
+
+    package_step = {"step_id": "package_map", "label": "Package diagnostic map", "status": "pending", "blocked_reason": ""}
+    review_step = {"step_id": "qa_review", "label": "Generate static QA review", "status": "pending", "blocked_reason": ""}
+    workflow_steps.extend([package_step, review_step])
+
+    try:
+        package_report = PACKAGE_AOI.package_aoi_hazard_map(
+            hazard_output_root,
+            package_output_root,
+            overwrite=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - first failure should identify packaging.
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="package_map",
+            blocked_reason=str(exc),
+            missing_inputs=[],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+            workflow_steps=workflow_steps,
+            validation_report=validation_result,
+        )
+    package_step.update(
+        {
+            "status": package_report.get("status", "blocked_missing_inputs"),
+            "blocked_reason": "" if package_report.get("status") == "map_package_ready" else str(
+                (package_report.get("cog_blockers") or package_report.get("missing_hazard_outputs") or ["map packaging failed"])[0]
+            ),
+            "package_manifest_path": package_report.get("package_manifest_path", ""),
+            "summary_path": package_report.get("summary_path", ""),
+            "inventory": package_report.get("inventory", []),
+            "claim_boundary": package_report.get("claim_boundary", {}),
+        }
+    )
+    if str(package_report.get("status") or "").startswith("blocked_"):
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="package_map",
+            blocked_reason=str((package_report.get("cog_blockers") or package_report.get("missing_hazard_outputs") or ["map packaging failed"])[0]),
+            missing_inputs=list(package_report.get("missing_hazard_outputs") or []),
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+            workflow_steps=workflow_steps,
+            validation_report=validation_result,
+            package_report=package_report,
+        )
+
+    try:
+        review_report = QA_REVIEW.build_review_surface(
+            input_root=package_output_root,
+            output_root=review_output_root,
+            overwrite=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - first failure should identify QA review.
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="qa_review",
+            blocked_reason=str(exc),
+            missing_inputs=[],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+            workflow_steps=workflow_steps,
+            validation_report=validation_result,
+            package_report=package_report,
+        )
+    review_step.update(
+        {
+            "status": review_report.get("status", "blocked_missing_inputs"),
+            "blocked_reason": "" if str(review_report.get("status") or "").startswith("review_ready") else "QA review generation failed",
+            "review_manifest_path": review_report.get("review_surface_paths", {}).get("manifest", ""),
+            "review_html_path": review_report.get("review_surface_paths", {}).get("html", ""),
+            "warnings": review_report.get("warnings", []),
+            "claim_boundary": review_report.get("claim_boundary", {}),
+        }
+    )
+    if not str(review_report.get("status") or "").startswith("review_ready"):
+        return build_prepared_pilot_local_execution_failure_report(
+            prepared_pilot_report_path=prepared_pilot_report_path,
+            prepared_pilot_output_root=prepared_pilot_output_root,
+            validation_case_path=validation_case_path,
+            step_id="qa_review",
+            blocked_reason="QA review generation failed",
+            missing_inputs=[],
+            prepared_pilot_report=prepared_pilot_report,
+            classification=classification,
+            execution_hints=execution_hints,
+            first_blocker=first_blocker,
+            output_root=resolved_output_root,
+            workflow_steps=workflow_steps,
+            validation_report=validation_result,
+            package_report=package_report,
+            review_report=review_report,
+        )
+
+    validation_manifest_path = Path(validation_result["expected_paths"]["validation_manifest"])
+    hazard_manifest_path = Path(validation_result["expected_paths"]["hazard_manifest"])
+    map_package_manifest_path = Path(package_report["package_manifest_path"])
+    qa_review_manifest_path = Path(review_report["review_surface_paths"]["manifest"])
+    qa_review_html_path = Path(review_report["review_surface_paths"]["html"])
+    manifest_checksums = {
+        "validation_manifest_sha256": sha256_file(validation_manifest_path),
+        "hazard_manifest_sha256": sha256_file(hazard_manifest_path),
+        "map_package_manifest_sha256": sha256_file(map_package_manifest_path),
+        "qa_review_manifest_sha256": sha256_file(qa_review_manifest_path),
+        "qa_review_html_sha256": sha256_file(qa_review_html_path),
+    }
+    command_recipes = {
+        "validation": validation_result["commands"]["validation"],
+        "hazard": validation_result["commands"]["hazard"],
+        "package": [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/package_aoi_hazard_map.py",
+            "--input-root",
+            str(hazard_output_root),
+            "--output-root",
+            str(package_output_root),
+            "--overwrite",
+        ],
+        "qa_review": [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/generate_aoi_map_qa_review.py",
+            "--input-root",
+            str(package_output_root),
+            "--output-root",
+            str(review_output_root),
+            "--overwrite",
+        ],
+    }
+    return {
+        "schema_version": PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION,
+        "command": "run-prepared-pilot-local",
+        "status": "local_execution_ready",
+        "next_action": "inspect qa review",
+        "prepared_pilot_report_path": str(prepared_pilot_report_path),
+        "prepared_pilot_classification": classification,
+        "prepared_pilot_execution_hints": execution_hints,
+        "prepared_pilot_first_blocker": first_blocker,
+        "prepared_pilot_report": prepared_pilot_report,
+        "output_root": str(resolved_output_root),
+        "validation_case_path": str(validation_case_path),
+        "validation_output_root": validation_result["validation_output_root"],
+        "hazard_output_root": validation_result["hazard_output_root"],
+        "package_output_root": str(package_output_root),
+        "review_output_root": str(review_output_root),
+        "expected_paths": {
+            "prepared_pilot_report_path": str(prepared_pilot_report_path),
+            "validation_case_path": str(validation_case_path),
+            "validation_output_root": validation_result["validation_output_root"],
+            "hazard_output_root": validation_result["hazard_output_root"],
+            "package_output_root": str(package_output_root),
+            "review_output_root": str(review_output_root),
+            "validation_manifest": str(validation_manifest_path),
+            "hazard_manifest": str(hazard_manifest_path),
+            "map_package_manifest": str(map_package_manifest_path),
+            "qa_review_manifest": str(qa_review_manifest_path),
+            "qa_review_html": str(qa_review_html_path),
+        },
+        "first_blocker": dict(first_blocker),
+        "workflow_steps": workflow_steps,
+        "first_failure": None,
+        "manifest_checksums": manifest_checksums,
+        "command_recipes": command_recipes,
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "scale_up_authorized": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+        },
+        "validation_report": validation_result,
+        "package_report": package_report,
+        "review_report": review_report,
+    }
+
+
+def build_prepared_pilot_local_execution_failure_report(
+    *,
+    prepared_pilot_report_path: Path | None,
+    prepared_pilot_output_root: Path | None,
+    validation_case_path: Path,
+    step_id: str,
+    blocked_reason: str,
+    missing_inputs: list[str],
+    prepared_pilot_report: dict[str, Any] | None = None,
+    classification: str = "blocked_missing_inputs",
+    execution_hints: dict[str, Any] | None = None,
+    first_blocker: dict[str, Any] | None = None,
+    output_root: Path | None = None,
+    workflow_steps: list[dict[str, Any]] | None = None,
+    validation_report: dict[str, Any] | None = None,
+    package_report: dict[str, Any] | None = None,
+    review_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_output_root = output_root or prepared_pilot_output_root
+    report = {
+        "schema_version": PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION,
+        "command": "run-prepared-pilot-local",
+        "status": "blocked_local_execution",
+        "next_action": "fix first failure and rerun",
+        "prepared_pilot_report_path": str(prepared_pilot_report_path) if prepared_pilot_report_path is not None else "",
+        "prepared_pilot_classification": classification,
+        "prepared_pilot_execution_hints": execution_hints or {},
+        "prepared_pilot_first_blocker": first_blocker or {},
+        "prepared_pilot_report": prepared_pilot_report or {},
+        "output_root": str(resolved_output_root) if resolved_output_root is not None else "",
+        "validation_case_path": str(validation_case_path),
+        "validation_output_root": str((resolved_output_root / "validation" / "results") if resolved_output_root is not None else ""),
+        "hazard_output_root": str((resolved_output_root / "hazard" / "results") if resolved_output_root is not None else ""),
+        "package_output_root": str((resolved_output_root / "package") if resolved_output_root is not None else ""),
+        "review_output_root": str((resolved_output_root / "review") if resolved_output_root is not None else ""),
+        "expected_paths": {
+            "prepared_pilot_report_path": str(prepared_pilot_report_path) if prepared_pilot_report_path is not None else "",
+            "validation_case_path": str(validation_case_path),
+            "validation_output_root": str((resolved_output_root / "validation" / "results") if resolved_output_root is not None else ""),
+            "hazard_output_root": str((resolved_output_root / "hazard" / "results") if resolved_output_root is not None else ""),
+            "package_output_root": str((resolved_output_root / "package") if resolved_output_root is not None else ""),
+            "review_output_root": str((resolved_output_root / "review") if resolved_output_root is not None else ""),
+        },
+        "first_blocker": {
+            "step_id": step_id,
+            "label": "Prepared-pilot local execution",
+            "status": "blocked_missing_inputs" if blocked_reason else "blocked_local_execution",
+            "blocked_reason": blocked_reason,
+            "missing_inputs": missing_inputs,
+        },
+        "workflow_steps": workflow_steps or [],
+        "first_failure": {
+            "step_id": step_id,
+            "status": "blocked_missing_inputs" if blocked_reason else "blocked_local_execution",
+            "blocked_reason": blocked_reason,
+            "missing_inputs": missing_inputs,
+        },
+        "manifest_checksums": {},
+        "command_recipes": {},
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "scale_up_authorized": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+        },
+    }
+    if validation_report is not None:
+        report["validation_report"] = validation_report
+    if package_report is not None:
+        report["package_report"] = package_report
+    if review_report is not None:
+        report["review_report"] = review_report
+    return report
+
+
+def summarize_prepared_pilot_readiness(report: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    compiler = report.get("prepared_pilot_compiler", {})
+    classification = str(compiler.get("classification") or report.get("workflow_status") or "blocked_missing_inputs")
+    execution_hints = compiler.get("execution_hints") if isinstance(compiler.get("execution_hints"), dict) else {}
+    first_blocker = compiler.get("first_blocker") if isinstance(compiler.get("first_blocker"), dict) else {}
+    return classification, execution_hints, first_blocker
+
+
+def resolve_prepared_pilot_output_root(repo_root: Path, output_root: Path | None) -> Path | None:
+    if output_root is None:
+        return None
+    resolved = output_root if output_root.is_absolute() else repo_root / output_root
+    if not is_allowed_prepared_pilot_output_root(resolved, repo_root):
+        raise ValueError(f"output root must stay under /tmp or validation/private: {resolved}")
+    return resolved
+
+
+def is_allowed_prepared_pilot_output_root(output_root: Path, repo_root: Path) -> bool:
+    resolved = output_root.resolve()
+    allowed_roots = [Path("/tmp").resolve(), (repo_root / "validation/private").resolve()]
+    return any(resolved != root and resolved.is_relative_to(root) for root in allowed_roots)
+
+
+def load_structured_document(path: Path) -> dict[str, Any]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        return data
+    raise ValueError(f"prepared-pilot report must be a mapping: {path}")
 
 
 def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_output_root: Path) -> dict[str, Any]:
@@ -1302,6 +1771,21 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"- validation_output_root: {smoke.get('validation_output_root', '')}")
         lines.append(f"- hazard_output_root: {smoke.get('hazard_output_root', '')}")
         lines.append(f"- validation_output_mode: {smoke.get('no_heavy_debug_defaults', {}).get('validation_output_mode', '')}")
+    if report.get("command") == "run-prepared-pilot-local":
+        lines.append("prepared_pilot_local_execution:")
+        lines.append(f"- prepared_pilot_report_path: {report.get('prepared_pilot_report_path', '')}")
+        lines.append(f"- validation_case_path: {report.get('validation_case_path', '')}")
+        lines.append(f"- output_root: {report.get('output_root', '')}")
+        lines.append(f"- validation_output_root: {report.get('validation_output_root', '')}")
+        lines.append(f"- hazard_output_root: {report.get('hazard_output_root', '')}")
+        lines.append(f"- package_output_root: {report.get('package_output_root', '')}")
+        lines.append(f"- review_output_root: {report.get('review_output_root', '')}")
+        lines.append("- workflow_steps:")
+        for step in report.get("workflow_steps", []) or []:
+            lines.append(f"  - {step.get('step_id', '')}: {step.get('status', '')}")
+        lines.append("- manifest_checksums:")
+        for key, value in sorted((report.get("manifest_checksums") or {}).items()):
+            lines.append(f"  - {key}: {value}")
     return "\n".join(lines)
 
 

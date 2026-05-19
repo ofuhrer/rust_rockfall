@@ -4,6 +4,7 @@ import io
 import hashlib
 import json
 import importlib.util
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "run_aoi_hazard_workflow.py"
+PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 
 
@@ -28,6 +30,7 @@ def _load_module(path: Path, name: str):
 
 
 workflow = _load_module(SCRIPT_PATH, "run_aoi_hazard_workflow")
+planner = _load_module(PLANNER_SCRIPT_PATH, "plan_aoi_to_prepared_pilot_dry_run_for_front_door_tests")
 staging = _load_module(
     STAGING_SCRIPT_PATH,
     "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_front_door_tests",
@@ -448,6 +451,81 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                     second_smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["annualized"],
                 )
 
+    def test_prepared_pilot_local_execution_writes_validation_hazard_package_and_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_prepared_pilot_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            prepared_report = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run",
+            )
+            self.assertEqual(prepared_report["prepared_pilot_compiler"]["classification"], "ready_for_balfrin_postproc")
+            prepared_report_path = repo_root / "prepared_pilot_report.yaml"
+            prepared_report_path.write_text(yaml.safe_dump(prepared_report, sort_keys=False), encoding="utf-8")
+
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/prepared_local_execution"
+            report = workflow.build_report(
+                command="run-prepared-pilot-local",
+                site_config=config_path,
+                repo_root=ROOT,
+                prepared_pilot_report_path=prepared_report_path,
+                prepared_pilot_output_root=output_root,
+                validation_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+                overwrite=True,
+            )
+            self.assertEqual(report["status"], "local_execution_ready")
+            self.assertEqual(report["prepared_pilot_classification"], "ready_for_balfrin_postproc")
+            self.assertEqual(report["first_failure"], None)
+            self.assertTrue(Path(report["validation_output_root"]).exists())
+            self.assertTrue(Path(report["hazard_output_root"]).exists())
+            self.assertTrue(Path(report["package_output_root"]).exists())
+            self.assertTrue(Path(report["review_output_root"]).exists())
+            self.assertTrue(Path(report["expected_paths"]["qa_review_html"]).exists())
+            self.assertEqual(report["workflow_steps"][0]["status"], "smoke_completed")
+            self.assertIn(report["workflow_steps"][1]["status"], {"map_package_ready", "cog_blocked"})
+            self.assertTrue(str(report["workflow_steps"][2]["status"]).startswith("review_ready"))
+            self.assertTrue(report["manifest_checksums"]["validation_manifest_sha256"])
+            self.assertTrue(report["manifest_checksums"]["map_package_manifest_sha256"])
+            self.assertTrue(report["manifest_checksums"]["qa_review_manifest_sha256"])
+            self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+            self.assertFalse(report["claim_boundaries"]["risk_exposure_vulnerability_claims_allowed"])
+
+    def test_prepared_pilot_local_execution_blocks_overwrite_and_reports_first_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_prepared_pilot_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            prepared_report = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run",
+            )
+            prepared_report_path = repo_root / "prepared_pilot_report.yaml"
+            prepared_report_path.write_text(yaml.safe_dump(prepared_report, sort_keys=False), encoding="utf-8")
+
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/prepared_local_execution"
+            output_root.mkdir(parents=True, exist_ok=True)
+            report = workflow.build_report(
+                command="run-prepared-pilot-local",
+                site_config=config_path,
+                repo_root=ROOT,
+                prepared_pilot_report_path=prepared_report_path,
+                prepared_pilot_output_root=output_root,
+                validation_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+            )
+
+        self.assertEqual(report["status"], "blocked_local_execution")
+        self.assertEqual(report["first_blocker"]["step_id"], "output_root")
+        self.assertTrue(report["first_failure"]["blocked_reason"])
+        self.assertIn("overwrite is disabled", report["first_failure"]["blocked_reason"])
+        self.assertEqual(report["output_root"], str(output_root))
+
     def _write_candidate_config(
         self,
         repo_root: Path,
@@ -489,6 +567,69 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
+
+    def _stage_ready_prepared_pilot_inputs(self, repo_root: Path, config_path: Path) -> None:
+        staging.stage_minimal_inputs(
+            repo_root=repo_root,
+            site_config=config_path,
+            fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
+        )
+        self._copy_repo_file(
+            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
+        )
+        catalog_path = repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/aoi_tile_catalog.yaml"
+        catalog_path.parent.mkdir(parents=True, exist_ok=True)
+        catalog_path.write_text(
+            yaml.safe_dump(
+                {
+                    "schema_version": "swisstopo_aoi_tile_catalog_v1",
+                    "catalog_status": "metadata_only",
+                    "source_product": "swissALTI3D",
+                    "product_id": "swissalti3d_2m",
+                    "crs": "EPSG:2056",
+                    "resolution_m": 2,
+                    "expected_staging_root": "data/raw/swisstopo/tschamut_public_pilot",
+                    "tile_size_m": 1000,
+                    "tiles": [
+                        {
+                            "tile_id": "2696-1167",
+                            "source_product": "swissALTI3D",
+                            "source_filename": "swissalti3d_2019_2696-1167_2_2056_5728.tif",
+                            "source_url": "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif",
+                            "product_version": "2019",
+                            "product_date": "2019-01-01",
+                            "license": "swisstopo open data terms",
+                            "extent_lv95_m": {
+                                "xmin": 2696000.0,
+                                "ymin": 1167000.0,
+                                "xmax": 2697000.0,
+                                "ymax": 1168000.0,
+                            },
+                        }
+                    ],
+                },
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        self._copy_repo_file(
+            ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+            repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+        )
+        self._write_real_context_cache_manifest(repo_root)
 
     def _write_acquisition_package(
         self,
@@ -574,6 +715,27 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             "products": records,
         }
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+
+    def _copy_repo_file(self, source: Path, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+    def _write_release_polygon(self, repo_root: Path) -> Path:
+        path = repo_root / "release_polygon.geojson"
+        payload = {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [2793001.0, 1180201.0],
+                    [2793006.0, 1180201.0],
+                    [2793006.0, 1180206.0],
+                    [2793001.0, 1180206.0],
+                    [2793001.0, 1180201.0],
+                ]
+            ],
+        }
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return path
 
     def _write_real_public_context_bundles(
         self,

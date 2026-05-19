@@ -2239,3 +2239,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: preview and estimation only; no live Balfrin submission, no simulation, no distributed execution, no scale-up authorization, and no physical-probability semantics.
 - Next task: `TB-280`
+
+### TB-280: Prepared-Pilot Local Execution Wrapper
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add one local bounded execution command that consumes a ready prepared-pilot report, runs the bounded validation case, packages the hazard layers, and emits the static QA review under a caller-provided output root.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `run-prepared-pilot-local` front-door command that validates a prepared-pilot report, enforces an allowed output-root policy, runs the bounded smoke validation, packages the hazard outputs, and generates the QA review surface.
+  - Kept the local execution bounded by reusing the existing tiny smoke case defaults and recorded manifest checksums plus first-failure details for each stage.
+  - Added regression coverage for the successful prepared-pilot path, the overwrite/output-root guard, and the existing tiny smoke execution path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_aoi_hazard_workflow.py tests/test_run_aoi_hazard_workflow.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_ready_compiler_fixture_emits_manifest_plan_and_hints`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_writes_validation_hazard_package_and_review tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_blocks_overwrite_and_reports_first_failure`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: local bounded execution only; no live Balfrin submission, no large AOI execution, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
+- Next task: `TB-281`
