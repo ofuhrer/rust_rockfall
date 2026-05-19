@@ -3244,3 +3244,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: preprocessing gate only; no release-zone validation claim, no simulation, no Balfrin submission, and no operational claim.
 - Next task: `TB-325`
+
+### TB-325: Real-Terrain Release-Zone Candidate Sweep
+
+- Date: 2026-05-20
+- Commit: `f92316c`
+- Objective: run the deterministic terrain-driven release-zone candidate generator across the larger staged Tschamut / Balfrin AOI and record candidate cardinality, geometry sizes, runtime, and output pressure with deterministic rerun evidence.
+- Files changed: `tests/test_balfrin_target_area_candidate_stability.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the candidate-sweep regression to lock the measured multi-file scratch-root footprint at 7 outputs and confirm the output pressure stays in the measured ~39.5 MB range.
+  - Preserved the existing Tschamut/Balfrin candidate sweep as the larger real-terrain measurement surface and captured the fresh deterministic run at `/tmp/tb325_candidate_sweep`.
+  - Removed TB-325 from the active backlog once the measured sweep and deterministic regression were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_balfrin_target_area_candidate_stability -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_candidate_stability.py --output-root /tmp/tb325_candidate_sweep --format json > /tmp/tb325_candidate_sweep.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: heuristic candidate generation only; no validated release-zone claim, no tuning to fit outcomes, no simulation, no operational claim, and no release-zone acceptance evidence.
+- Next task: `TB-326`
