@@ -93,6 +93,13 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 "output_file_count": 39,
                 "sidecar_file_count": 2,
                 "reducer_manifest_bytes": 0,
+                "replay_critical_retained_output_families": [
+                    "trajectory_csv",
+                    "deposition_csv",
+                    "impact_events_csv",
+                    "trajectory_merge_state",
+                    "reducer_merge_state",
+                ],
                 "first_bottleneck_labels": {
                     "first_blocked": "manifest_size_bytes"
                     if compact_handoff_budget_status == "blocked_budget_reduction_needed"
@@ -107,7 +114,11 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 },
                 "budget_recheck": {
                     "status": compact_handoff_budget_status,
-                    "reason": "current handoff projection remains blocked at first bottleneck manifest_size_bytes",
+                    "reason": (
+                        "current handoff projection remains blocked at first bottleneck manifest_size_bytes; "
+                        "replay-critical families retained: trajectory_csv, deposition_csv, impact_events_csv, "
+                        "trajectory_merge_state, reducer_merge_state"
+                    ),
                 },
             }
             constraint["handoff_output_budget_projection"] = compact_projection
@@ -209,6 +220,9 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "scalable_default",
         )
         self.assertGreaterEqual(len(report["smallest_multi_zone_run_shape"]["preservation_checklist"]), 2)
+        text_report = MODULE.render_text_report(report)
+        self.assertIn("Before manifest bytes", text_report)
+        self.assertIn("Exact blocking fields", text_report)
 
     def test_missing_authorization_record_blocks_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
@@ -289,6 +303,8 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "blocked_budget_reduction_needed",
         )
         self.assertEqual(report["reducer_budget_requirement"]["manifest_pruning_status"], "blocked_budget_reduction_needed")
+        self.assertIn("replay-critical families retained", report["reducer_budget_requirement"]["handoff_budget_recheck_reason"])
+        self.assertIn("Before manifest bytes", MODULE.render_text_report(report))
         self.assertIn("manifest_size_bytes", report["blocked_reason"])
         self.assertEqual(report["authorization_record_status"], "missing")
 

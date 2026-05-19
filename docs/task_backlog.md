@@ -37,37 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-266: Smallest Multi-Zone Handoff Budget Repair
-
-Goal: Repair or tighten the smallest multi-zone handoff so its projected manifest, sidecar, and reducer budget can pass or fail with an actionable reason.
-
-Capability gap reduced: The multi-zone path remains blocked by handoff-derived manifest/reducer pressure, preventing a measured many-release-zone Balfrin probe.
-
-Why this outranks alternatives: Full Balfrin demonstration progress requires getting beyond single-zone comfort, but only after the smallest multi-zone handoff is inside measured budgets.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- A compact handoff projection or reduced sidecar mode that preserves replay-critical fields while lowering manifest/file-family pressure.
-- Before/after budget report for the reviewed two-release-zone probe shape.
-- Tests proving replay-critical metadata, sorted merge order, checksums, and output-profile semantics cannot be removed to pass the budget.
-
-Definition of done:
-
-- The smallest multi-zone handoff either reaches `ready_for_authorization_review` on budget grounds or reports the precise replay-critical budget field that remains a blocker.
-
-Boundaries: Handoff budget repair only; no live Balfrin submission in this task, no loss of replayability, no distributed reducer, no physics change, no operational claim.
-
 ### TB-267: Smallest Multi-Zone Balfrin Postproc Probe
 
 Goal: Submit the exact smallest bounded multi-zone Balfrin probe on postprocessing nodes once TB-266 and the authorization preflight are ready.

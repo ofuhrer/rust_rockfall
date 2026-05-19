@@ -369,6 +369,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     run_shape = dict(report.get("smallest_multi_zone_run_shape") or {})
     reducer_budget = dict(report.get("reducer_budget_requirement") or {})
     access_requirement = dict(report.get("balfrin_access_preflight_requirement") or {})
+    manifest_pruning_before = dict(reducer_budget.get("manifest_pruning_before") or {})
+    manifest_pruning_after = dict(reducer_budget.get("manifest_pruning_after") or {})
     lines = [
         "Balfrin Smallest Multi-Zone Probe Authorization Preflight",
         "",
@@ -400,6 +402,15 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Package constraint status: `{reducer_budget.get('package_constraint_status')}`",
         f"- Handoff budget recheck status: `{reducer_budget.get('handoff_budget_recheck_status')}`",
         f"- Manifest pruning status: `{reducer_budget.get('manifest_pruning_status')}`",
+        f"- Before manifest bytes: `{manifest_pruning_before.get('manifest_size_bytes')}`",
+        f"- After manifest bytes: `{manifest_pruning_after.get('manifest_size_bytes')}`",
+        f"- Before sidecar files: `{manifest_pruning_before.get('sidecar_file_count')}`",
+        f"- After sidecar files: `{manifest_pruning_after.get('sidecar_file_count')}`",
+        f"- Before output files: `{manifest_pruning_before.get('output_file_count')}`",
+        f"- After output files: `{manifest_pruning_after.get('output_file_count')}`",
+        f"- Before reducer manifest bytes: `{manifest_pruning_before.get('reducer_manifest_bytes')}`",
+        f"- After reducer manifest bytes: `{manifest_pruning_after.get('reducer_manifest_bytes')}`",
+        f"- Exact blocking fields: `{reducer_budget.get('manifest_pruning_exact_blocking_fields')}`",
         f"- Constraint summary: {reducer_budget.get('constraint_summary')}",
         "",
         "## Preservation Checklist",

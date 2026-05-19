@@ -94,12 +94,17 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 0)
         self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 0)
         self.assertEqual(output_budget_projection["output_file_count"], 39)
+        self.assertEqual(
+            output_budget_projection["replay_critical_retained_output_families"],
+            ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
+        )
         self.assertGreater(output_budget_projection["primary_output_byte_count"], 0)
         self.assertGreater(output_budget_projection["sidecar_byte_count"], 0)
         self.assertGreater(output_budget_projection["manifest_size_bytes"], 0)
         self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_blocked"], "manifest_size_bytes")
         self.assertEqual(output_budget_projection["budget_recheck"]["status"], "blocked_budget_reduction_needed")
         self.assertIn("manifest_size_bytes", output_budget_projection["budget_recheck"]["reason"])
+        self.assertIn("replay-critical families retained", output_budget_projection["budget_recheck"]["reason"])
         self.assertEqual(
             set(output_budget_projection["replay_critical_field_inventory"]),
             {"command_plan", "projection", "thresholds", "constraints", "smallest_run", "manifest_pruning"},
@@ -145,6 +150,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(manifest_pruning["after"]["output_file_count"], 39)
         self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 964)
         self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 0)
+        self.assertIn("manifest_pruning.exact_blocking_fields", manifest_pruning["replay_critical_field_paths"])
         self.assertEqual(
             manifest_pruning["exact_blocking_fields"],
             ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],

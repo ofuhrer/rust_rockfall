@@ -1447,9 +1447,13 @@ def build_handoff_output_budget_projection(
     primary_output_family_bytes = dict(target_profile.get("primary_output_family_bytes") or {})
     primary_output_file_count = sum(int(value) for value in primary_output_family_file_counts.values())
     primary_output_byte_count = sum(int(value) for value in primary_output_family_bytes.values())
+    replay_critical_retained_output_families = [
+        family for family in list(target_profile.get("output_family_mix") or []) if family in REPLAY_CRITICAL_OUTPUT_FAMILIES
+    ]
     budget_recheck = build_handoff_budget_recheck(
         handoff_output_budget_projection=gate_report,
         first_bottleneck_labels=first_bottleneck_labels,
+        retained_replay_critical_output_families=replay_critical_retained_output_families,
     )
     summary = (
         "Handoff command-plan output-budget projection is "
@@ -1487,6 +1491,7 @@ def build_handoff_output_budget_projection(
         "primary_output_byte_count": primary_output_byte_count,
         "primary_output_family_file_counts": primary_output_family_file_counts,
         "primary_output_family_bytes": primary_output_family_bytes,
+        "replay_critical_retained_output_families": replay_critical_retained_output_families,
         "sidecar_file_count": target_profile.get("sidecar_file_count", 0),
         "sidecar_byte_count": target_profile.get("sidecar_byte_count", 0),
         "sidecar_family_file_counts": dict(target_profile.get("sidecar_family_file_counts") or {}),
@@ -1565,6 +1570,7 @@ def build_manifest_pruning_report(
     comparison_status = compact_status if compact_status else "blocked_replay_contract_ambiguity"
     retained_output_families = list(compact_projection.get("output_family_mix") or [])
     exact_blocking_fields = list(retained_output_families)
+    replay_critical_field_paths = list(build_replay_critical_field_inventory().get("manifest_pruning") or [])
     summary = (
         "manifest pruning reduced the projected handoff pressure from "
         f"{baseline_projection.get('manifest_size_bytes')} manifest bytes / "
@@ -1581,7 +1587,8 @@ def build_manifest_pruning_report(
     elif comparison_status == "blocked_budget_reduction_needed":
         summary = (
             "manifest pruning remains blocked because the replay-safe compact projection still includes "
-            f"{', '.join(retained_output_families)}."
+            f"{', '.join(retained_output_families)}; replay-critical field paths remain explicit in "
+            f"{', '.join(replay_critical_field_paths)}."
         )
     return {
         "status": comparison_status,
@@ -1594,6 +1601,7 @@ def build_manifest_pruning_report(
         "after": summarize_projection_budget(compact_projection),
         "delta": delta,
         "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
+        "replay_critical_field_paths": replay_critical_field_paths,
         "pruned_output_families": list(PRUNED_OUTPUT_FAMILIES),
         "retained_output_families": retained_output_families,
         "exact_blocking_fields": exact_blocking_fields,
@@ -1779,6 +1787,7 @@ def build_handoff_budget_recheck(
     *,
     handoff_output_budget_projection: dict[str, Any],
     first_bottleneck_labels: dict[str, Any],
+    retained_replay_critical_output_families: list[str] | None = None,
 ) -> dict[str, Any]:
     status = str(handoff_output_budget_projection.get("status") or "")
     gate_status = str(handoff_output_budget_projection.get("gate_status") or "")
@@ -1794,9 +1803,20 @@ def build_handoff_budget_recheck(
                 "status": "blocked_replay_contract_ambiguity",
                 "reason": "the projection is blocked, but the first replay bottleneck is not explicit",
             }
+        retained_families = [
+            family
+            for family in list(retained_replay_critical_output_families or [])
+            if family in REPLAY_CRITICAL_OUTPUT_FAMILIES
+        ]
+        retained_detail = (
+            "; replay-critical families retained: " + ", ".join(retained_families) if retained_families else ""
+        )
         return {
             "status": "blocked_budget_reduction_needed",
-            "reason": f"current handoff projection remains {status or gate_status} at first bottleneck {first_bottleneck}",
+            "reason": (
+                f"current handoff projection remains {status or gate_status} at first bottleneck {first_bottleneck}"
+                f"{retained_detail}"
+            ),
         }
     if status in {"ready", "acceptable"} or gate_status == "fixture_backed_ready":
         return {

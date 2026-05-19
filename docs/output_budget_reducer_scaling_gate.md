@@ -94,6 +94,14 @@ manifest bytes / `2` sidecars while keeping replay-safe hashes and merge-state
 fields explicit, but the compact path still remains blocked on
 `manifest_size_bytes`.
 
+TB-266 keeps that compact path explicit in the smallest multi-zone preflight
+as well: the reviewed two-zone handoff still fails closed, but the reducer
+budget report now carries the before/after manifest, sidecar, output-file, and
+reducer-manifest numbers together with the retained replay-critical families.
+That means the next review can see the exact blocker field instead of a generic
+budget label, while still refusing to trim the replay-critical metadata needed
+for replayability.
+
 ## Summary-Only Conditional Curves
 
 Scalable runs must keep conditional curves summary-only.

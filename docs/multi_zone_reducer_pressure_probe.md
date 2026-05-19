@@ -127,6 +127,24 @@ handoff report records for provenance. The budget can therefore be rechecked
 without mutating the live handoff semantics, while still reporting the exact
 remaining fields that prevent a smaller manifest.
 
+## TB-266 Smallest Multi-Zone Handoff Budget Repair
+
+The reviewed two-release-zone probe shape is still fail-closed, but the repair
+path now reports a compact before/after budget envelope instead of only a
+generic manifest-pressure label:
+
+- Before: `62` output files, `21` sidecar files, `964` reducer-manifest bytes,
+  `26057` manifest bytes.
+- After compact pruning: `39` output files, `2` sidecar files, `0`
+  reducer-manifest bytes, `17788` manifest bytes.
+
+The retained replay-critical families are
+`trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state`. The blocker is still
+`manifest_size_bytes`, but the follow-on report now keeps the replay-critical
+field inventory and the compact retained families explicit so the next review
+can see exactly what cannot be removed to pass the budget.
+
 ## Smallest Authorization Preflight Shape
 
 The smallest bounded multi-zone authorization preflight consumes the reviewed
