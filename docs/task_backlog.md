@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-292: Balfrin Scale Readiness Baseline Matrix
-
-Goal: Establish one authoritative baseline matrix for Balfrin scale readiness across single-zone, target-area, smallest multi-zone, and projected larger AOI runs.
-
-Capability gap reduced: The project has many scale-related reports, but workers still have to reconcile output budget, reducer pressure, metrics completeness, access, and authorization state manually.
-
-Why this outranks alternatives: Before changing execution or output behavior, the repo needs a single measured/blocked/projection matrix that names the exact blockers for each scale tier.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- A compact scale-readiness report that classifies each tier as `measured`, `ready_for_exact_authorization`, `blocked_pre_submit`, `blocked_reducer_budget`, `projection_only`, or `no_go`.
-- Explicit columns for file count, bytes, manifest bytes, reducer sidecars, runtime, memory, run-root preservation, replayability, and authorization status.
-- Tests using existing fixture and blocked-preflight evidence.
-
-Definition of done:
-
-- A worker can answer, from one report, which Balfrin scale tier is currently measured, which is blocked, and which evidence field must change next.
-
-Boundaries: Read-only synthesis only; no live Balfrin submission, no new run, no scale-up authorization, no distributed execution, no physical-probability semantics, and no operational claim.
-
 ### TB-293: Multi-Zone Output Budget Acceptance Thresholds
 
 Goal: Convert the current multi-zone output-budget blockers into explicit acceptance thresholds for the smallest live Balfrin probe and the next larger review-only probe.

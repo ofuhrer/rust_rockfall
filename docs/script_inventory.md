@@ -136,6 +136,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_output_tier_audit.py`
 - `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
 - `scripts/summarize_balfrin_post_run_interpretation_gate.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
 - `scripts/summarize_balfrin_probe_metrics_report.py`
 - `scripts/summarize_balfrin_probe_preservation_gate.py`
 - `scripts/summarize_balfrin_restartability_recovery.py`
