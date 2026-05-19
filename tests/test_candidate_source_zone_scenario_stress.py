@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
@@ -101,6 +103,101 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertIn("workflow_generated", report_text)
         self.assertIn("candidate_release_point_summary_v1", report_text)
         self.assertIn("policy_block_family_v1", report_text)
+
+    def test_selected_zone_prefixes_stay_deterministic_and_bounded(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            review_package = self._write_review_package(
+                tmp_root / "review_package.yaml",
+                self._build_review_package_payload(),
+            )
+            accepted_ids = [f"stable_candidate_{index:03d}" for index in range(1, 13)]
+
+            first_runs = []
+            second_runs = []
+            previous_manifest_bytes = 0
+            previous_csv_bytes = 0
+            for count in (2, 4, 8, 12):
+                output_root = tmp_root / f"selected_zone_{count:02d}"
+                first = MODULE.build_freezer_report(
+                    review_package_path=review_package,
+                    accepted_candidate_ids=accepted_ids[:count],
+                    output_root=output_root,
+                    trajectory_count=6,
+                    seed=MODULE.DEFAULT_FREEZER_SEED + count,
+                )
+                second = MODULE.build_freezer_report(
+                    review_package_path=review_package,
+                    accepted_candidate_ids=accepted_ids[:count],
+                    output_root=output_root,
+                    trajectory_count=6,
+                    seed=MODULE.DEFAULT_FREEZER_SEED + count,
+                )
+                first_runs.append(first)
+                second_runs.append(second)
+
+                self.assertEqual(first["accepted_candidate_ids"], accepted_ids[:count])
+                self.assertEqual(first["accepted_candidate_count"], count)
+                self.assertEqual(first["scenario_row_count"], count * 3)
+                self.assertEqual(first["block_family_ids"], [
+                    "reviewed_block_family_small",
+                    "reviewed_block_family_medium",
+                    "reviewed_block_family_large",
+                ])
+                self.assertEqual(first["seed_policy"], "fixed_integer_recorded_before_simulation")
+                self.assertEqual(first["release_row_count"], count)
+                self.assertEqual(len(first["output_paths"]), 5)
+                csv_bytes = Path(first["output_paths"]["scenario_table"]).stat().st_size
+                manifest_bytes = Path(first["output_paths"]["manifest"]).stat().st_size
+                self.assertTrue(Path(first["output_paths"]["scenario_table"]).exists())
+                self.assertTrue(Path(first["output_paths"]["manifest"]).exists())
+                self.assertGreater(csv_bytes, previous_csv_bytes)
+                self.assertGreater(manifest_bytes, previous_manifest_bytes)
+                self.assertLess(csv_bytes, 20_000)
+                self.assertLess(manifest_bytes, 80_000)
+
+                previous_csv_bytes = csv_bytes
+                previous_manifest_bytes = manifest_bytes
+
+            self.assertEqual(first_runs, second_runs)
+
+    def _build_review_package_payload(self) -> dict[str, object]:
+        accepted_ids = [f"stable_candidate_{index:03d}" for index in range(1, 13)]
+        return {
+            "review_package_status": "review_applied",
+            "source_zone_id": "stable_review_zone",
+            "candidate_site_id": "stable_preview_site",
+            "candidate_site_name": "Stable Preview Site",
+            "trajectory_count_target": 6,
+            "review_application": {
+                "validation_status": "validated",
+                "accepted_candidate_ids": accepted_ids,
+            },
+            "candidate_review_rows": [
+                {
+                    "candidate_release_zone_id": candidate_id,
+                    "accepted": True,
+                    "rejected": False,
+                    "review_decision": "accepted",
+                    "candidate_sensitivity_label": "reviewed",
+                    "provenance_label": "workflow_generated",
+                    "release_cell_ids": f"stable_review_zone_release_cell_{index:03d}",
+                    "release_cell_count": 1,
+                    "component_bbox_lv95_m": {
+                        "xmin": 2793000.0 + (index * 2.0),
+                        "ymin": 1180200.0 + (index * 2.0),
+                        "xmax": 2793001.0 + (index * 2.0),
+                        "ymax": 1180201.0 + (index * 2.0),
+                    },
+                }
+                for index, candidate_id in enumerate(accepted_ids, start=1)
+            ],
+        }
+
+    def _write_review_package(self, path: Path, payload: dict[str, object]) -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+        return path
 
     def test_missing_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

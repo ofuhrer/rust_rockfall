@@ -136,10 +136,89 @@ class AoiScenarioPreviewTests(unittest.TestCase):
         self.assertEqual(report["execution_target"]["target"], "blocked")
         self.assertIn("budget", report["blocked_reason"])
 
+    def test_selected_zone_counts_generate_scratch_root_pressure_summary(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            package = self._write_review_package(
+                Path(tmp) / "selected_zone_review_package.yaml",
+                self._build_review_package_payload(),
+            )
+
+            report = preview.build_report(
+                review_package_paths=[package],
+                trajectory_count=None,
+                selected_zone_counts=(2, 4, 8, 12),
+            )
+
+        self.assertEqual(report["schema_version"], preview.SELECTED_ZONE_SCHEMA_VERSION)
+        self.assertEqual(report["preview_mode"], "selected_zone_counts")
+        self.assertEqual(report["preview_status"], "ready")
+        self.assertEqual(report["selected_zone_counts"], [2, 4, 8, 12])
+        self.assertEqual(report["reviewed_candidate_pool_count"], 12)
+        self.assertEqual(report["largest_selected_zone_count"], 12)
+        self.assertEqual([row["selected_zone_count"] for row in report["selected_zone_count_reports"]], [2, 4, 8, 12])
+        self.assertEqual(
+            report["selected_zone_count_reports"][0]["selected_candidate_ids"],
+            [f"stable_candidate_{index:03d}" for index in range(1, 3)],
+        )
+        self.assertEqual(
+            report["selected_zone_count_reports"][-1]["selected_candidate_ids"],
+            [f"stable_candidate_{index:03d}" for index in range(1, 13)],
+        )
+        self.assertEqual(report["selected_zone_count_reports"][0]["scenario_cardinality"]["source_zone_count"], 2)
+        self.assertEqual(report["selected_zone_count_reports"][0]["scenario_cardinality"]["row_count"], 6)
+        self.assertEqual(report["selected_zone_count_reports"][-1]["scenario_cardinality"]["source_zone_count"], 12)
+        self.assertEqual(report["selected_zone_count_reports"][-1]["scenario_cardinality"]["row_count"], 36)
+        self.assertTrue(
+            report["selected_zone_count_reports"][0]["output_root"].startswith("/tmp")
+            or report["selected_zone_count_reports"][0]["output_root"].startswith("/private/tmp")
+        )
+        self.assertTrue(report["selected_zone_count_reports"][0]["manifest_bytes"] > 0)
+        self.assertTrue(report["selected_zone_count_reports"][0]["csv_bytes"] > 0)
+        self.assertTrue(report["selected_zone_count_reports"][0]["projected_files"]["nominal"] > 0)
+        self.assertTrue(report["selected_zone_count_reports"][0]["projected_bytes"]["nominal"] > 0)
+        self.assertTrue(report["selected_zone_count_reports"][0]["estimated_runtime_seconds"]["nominal"] > 0.0)
+        self.assertEqual(report["selected_zone_count_reports"][-1]["seed_policy"], "fixed_integer_recorded_before_simulation")
+        self.assertGreaterEqual(report["selected_zone_count_reports"][-1]["manifest_bytes"], report["selected_zone_count_reports"][0]["manifest_bytes"])
+        self.assertEqual(report["execution_target"]["target"], report["largest_selected_zone_report"]["execution_target"]["target"])
+        self.assertIn("Largest Selected Zone Count", preview.render_text_report(report))
+
     def _write_review_package(self, path: Path, payload: dict) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
         return path
+
+    def _build_review_package_payload(self) -> dict:
+        accepted_ids = [f"stable_candidate_{index:03d}" for index in range(1, 13)]
+        return {
+            "review_package_status": "review_applied",
+            "source_zone_id": "stable_review_zone",
+            "candidate_site_id": "stable_preview_site",
+            "candidate_site_name": "Stable Preview Site",
+            "trajectory_count_target": 6,
+            "review_application": {
+                "validation_status": "validated",
+                "accepted_candidate_ids": accepted_ids,
+            },
+            "candidate_review_rows": [
+                {
+                    "candidate_release_zone_id": candidate_id,
+                    "accepted": True,
+                    "rejected": False,
+                    "review_decision": "accepted",
+                    "candidate_sensitivity_label": "reviewed",
+                    "provenance_label": "workflow_generated",
+                    "release_cell_ids": f"stable_review_zone_release_cell_{index:03d}",
+                    "release_cell_count": 1,
+                    "component_bbox_lv95_m": {
+                        "xmin": 2793000.0 + (index * 2.0),
+                        "ymin": 1180200.0 + (index * 2.0),
+                        "xmax": 2793001.0 + (index * 2.0),
+                        "ymax": 1180201.0 + (index * 2.0),
+                    },
+                }
+                for index, candidate_id in enumerate(accepted_ids, start=1)
+            ],
+        }
 
 
 if __name__ == "__main__":

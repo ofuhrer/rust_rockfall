@@ -35,9 +35,11 @@ from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
 
 SCHEMA_VERSION = "aoi_scenario_preview_v1"
+SELECTED_ZONE_SCHEMA_VERSION = "aoi_selected_zone_scenario_preview_v1"
 DEFAULT_REVIEW_PACKAGE = ROOT / "tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml"
 DEFAULT_TRAJECTORY_COUNT = None
 DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/aoi_scenario_preview")
+DEFAULT_SELECTED_ZONE_COUNTS = (2, 4, 8, 12)
 DEFAULT_OUTPUT_PROFILE_CONTROLS = {
     "conditional_curve_export": "summary-only",
     "grid_csv_export": "none",
@@ -91,16 +93,24 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_OUTPUT_PROFILE_CONTROLS["explicit_debug_override"],
         help="Allow an explicit heavy-debug output-profile override.",
     )
+    parser.add_argument(
+        "--selected-zone-counts",
+        default="",
+        help="Comma-separated selected-zone counts to preview from a single reviewed package. "
+        "When set, the helper generates scratch-root scenario tables for each count.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
     review_packages = args.review_package or [DEFAULT_REVIEW_PACKAGE]
+    selected_zone_counts = parse_selected_zone_counts(args.selected_zone_counts) if args.selected_zone_counts else None
 
     try:
         report = build_report(
             review_package_paths=review_packages,
             trajectory_count=args.trajectory_count,
+            selected_zone_counts=selected_zone_counts,
             output_profile_policy=OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
                 conditional_curve_export=args.conditional_curve_export,
                 grid_csv_export=args.grid_csv_export,
@@ -128,8 +138,19 @@ def build_report(
     *,
     review_package_paths: list[Path] | tuple[Path, ...],
     trajectory_count: int | None = DEFAULT_TRAJECTORY_COUNT,
+    selected_zone_counts: list[int] | tuple[int, ...] | None = None,
     output_profile_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if selected_zone_counts is not None:
+        if len(review_package_paths) != 1:
+            raise AoiScenarioPreviewError("selected-zone counts mode requires exactly one reviewed package")
+        return build_selected_zone_pressure_report(
+            review_package_path=review_package_paths[0],
+            selected_zone_counts=selected_zone_counts,
+            trajectory_count=trajectory_count,
+            output_profile_policy=output_profile_policy,
+        )
+
     if not review_package_paths:
         return blocked_report(
             review_package_paths=[],
@@ -561,7 +582,295 @@ def blocked_report(
     }
 
 
+def build_selected_zone_pressure_report(
+    *,
+    review_package_path: Path,
+    selected_zone_counts: list[int] | tuple[int, ...],
+    trajectory_count: int | None = DEFAULT_TRAJECTORY_COUNT,
+    output_profile_policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    profile_policy = output_profile_policy or default_output_profile_policy()
+    if profile_policy.get("classification") == OUTPUT_PROFILE_POLICY.BLOCKED_UNSCALABLE_DEFAULT:
+        return blocked_selected_zone_report(
+            review_package_path=review_package_path,
+            selected_zone_counts=selected_zone_counts,
+            blocked_reason="unsupported output profile requires an explicit override",
+            blocking_label=BLOCKED_UNSUPPORTED_PROFILE,
+            output_profile_policy=profile_policy,
+        )
+
+    package_path = Path(review_package_path)
+    if not package_path.exists():
+        return blocked_selected_zone_report(
+            review_package_path=package_path,
+            selected_zone_counts=selected_zone_counts,
+            blocked_reason=f"missing reviewed candidate package: {display_path(package_path)}",
+            blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+            output_profile_policy=profile_policy,
+        )
+
+    review_package = load_review_package(package_path)
+    reviewed_candidates = list((review_package.get("review_application") or {}).get("accepted_candidate_ids") or [])
+    if review_package.get("review_package_status") != "review_applied" or not reviewed_candidates:
+        return blocked_selected_zone_report(
+            review_package_path=package_path,
+            selected_zone_counts=selected_zone_counts,
+            blocked_reason="missing reviewed candidates in reviewed package",
+            blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+            output_profile_policy=profile_policy,
+        )
+
+    requested_counts = parse_selected_zone_counts(selected_zone_counts)
+    if not requested_counts:
+        return blocked_selected_zone_report(
+            review_package_path=package_path,
+            selected_zone_counts=requested_counts,
+            blocked_reason="no selected-zone counts were supplied",
+            blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+            output_profile_policy=profile_policy,
+        )
+
+    preview_count = trajectory_count if trajectory_count is not None else infer_trajectory_count(package_path)
+    if preview_count is None or preview_count <= 0:
+        return blocked_selected_zone_report(
+            review_package_path=package_path,
+            selected_zone_counts=requested_counts,
+            blocked_reason="trajectory budget is missing or invalid",
+            blocking_label=BLOCKED_UNKNOWN_TRAJECTORY_BUDGET,
+            output_profile_policy=profile_policy,
+        )
+
+    missing_counts = [count for count in requested_counts if count > len(reviewed_candidates)]
+    if missing_counts:
+        return blocked_selected_zone_report(
+            review_package_path=package_path,
+            selected_zone_counts=requested_counts,
+            blocked_reason=(
+                "selected-zone count exceeds reviewed candidate pool: "
+                + ", ".join(str(count) for count in missing_counts)
+            ),
+            blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+            output_profile_policy=profile_policy,
+        )
+
+    selected_reports: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="aoi_selected_zone_preview_") as tmpdir:
+        output_root = Path(tmpdir)
+        for count in requested_counts:
+            selected_ids = reviewed_candidates[:count]
+            try:
+                freezer_report = FREEZER.build_freezer_report(
+                    review_package_path=package_path,
+                    accepted_candidate_ids=selected_ids,
+                    output_root=output_root / f"selected_{count:02d}",
+                    trajectory_count=preview_count,
+                    seed=FREEZER.DEFAULT_FREEZER_SEED + count,
+                )
+            except FREEZER.CandidateSourceZoneFreezerError as exc:
+                return blocked_selected_zone_report(
+                    review_package_path=package_path,
+                    selected_zone_counts=requested_counts,
+                    blocked_reason=f"missing reviewed candidates: {exc}",
+                    blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+                    output_profile_policy=profile_policy,
+                )
+
+            block_family_count = len(freezer_report.get("block_family_ids", []))
+            row_units = max(1, freezer_report["accepted_candidate_count"]) * preview_count * max(1, block_family_count)
+            pressure = estimate_output_pressure(row_units)
+            output_paths = {
+                name: Path(path)
+                for name, path in freezer_report.get("output_paths", {}).items()
+            }
+            csv_path = output_paths.get("scenario_table")
+            manifest_path = output_paths.get("manifest")
+            if csv_path is None or manifest_path is None:
+                return blocked_selected_zone_report(
+                    review_package_path=package_path,
+                    selected_zone_counts=requested_counts,
+                    blocked_reason="selected-zone scratch outputs are incomplete",
+                    blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+                    output_profile_policy=profile_policy,
+                )
+            csv_bytes = csv_path.stat().st_size
+            manifest_bytes = manifest_path.stat().st_size
+            total_bytes = 0
+            for output_path in output_paths.values():
+                total_bytes += output_path.stat().st_size
+            execution_target = recommend_execution_target(
+                profile_policy=profile_policy,
+                projected_files=pressure["projected_files"],
+                projected_bytes=pressure["projected_bytes"],
+                budget_summary=OUTPUT_BUDGET.build_summary(),
+            )
+            selected_reports.append(
+                {
+                    "selected_zone_count": count,
+                    "selected_candidate_ids": selected_ids,
+                    "reviewed_candidate_pool_count": len(reviewed_candidates),
+                    "trajectory_count": preview_count,
+                    "seed": freezer_report["seed"],
+                    "seed_policy": freezer_report["seed_policy"],
+                    "block_family_count": block_family_count,
+                    "block_family_ids": list(freezer_report.get("block_family_ids", [])),
+                    "candidate_release_zone_record_count": freezer_report["accepted_candidate_count"],
+                    "scenario_cardinality": {
+                        "source_zone_count": freezer_report["accepted_candidate_count"],
+                        "scenario_family_count": block_family_count,
+                        "row_count": freezer_report["scenario_row_count"],
+                    },
+                    "scenario_row_count": freezer_report["scenario_row_count"],
+                    "storage_measurements": {
+                        "csv_bytes": csv_bytes,
+                        "manifest_bytes": manifest_bytes,
+                        "total_bytes": total_bytes,
+                    },
+                    "manifest_bytes": manifest_bytes,
+                    "csv_bytes": csv_bytes,
+                    "total_bytes": total_bytes,
+                    "projected_files": pressure["projected_files"],
+                    "projected_bytes": pressure["projected_bytes"],
+                    "estimated_runtime_seconds": pressure["estimated_runtime_seconds"],
+                    "output_root": display_path(output_root / f"selected_{count:02d}"),
+                    "output_paths": freezer_report["output_paths"],
+                    "expected_output_file_count": len(freezer_report["output_paths"]),
+                    "execution_target": execution_target,
+                    "output_budget_assessment": {
+                        "local": execution_target["local_assessment"],
+                        "balfrin": execution_target["balfrin_assessment"],
+                        "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
+                    },
+                }
+            )
+
+    largest_report = selected_reports[-1]
+    return {
+        "schema_version": SELECTED_ZONE_SCHEMA_VERSION,
+        "preview_mode": "selected_zone_counts",
+        "preview_status": "ready",
+        "blocked_reason": "",
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "review_package_count": 1,
+        "review_package_path": display_path(package_path),
+        "reviewed_candidate_pool_count": len(reviewed_candidates),
+        "trajectory_count": preview_count,
+        "selected_zone_counts": requested_counts,
+        "selected_zone_count_reports": selected_reports,
+        "largest_selected_zone_count": largest_report["selected_zone_count"],
+        "largest_selected_zone_report": largest_report,
+        "output_profile_policy": profile_policy,
+        "output_profile_choice": profile_policy.get("classification", "unknown"),
+        "blocking_labels": [],
+        "source_zone_count": largest_report["scenario_cardinality"]["source_zone_count"],
+        "scenario_family_count": largest_report["scenario_cardinality"]["scenario_family_count"],
+        "scenario_cardinality": largest_report["scenario_cardinality"],
+        "rows": [],
+        "projected_files": largest_report["projected_files"],
+        "projected_bytes": largest_report["projected_bytes"],
+        "estimated_runtime_seconds": largest_report["estimated_runtime_seconds"],
+        "budget_summary": OUTPUT_BUDGET.build_summary(),
+        "execution_target": largest_report["execution_target"],
+        "output_budget_assessment": largest_report["output_budget_assessment"],
+    }
+
+
+def blocked_selected_zone_report(
+    *,
+    review_package_path: Path,
+    selected_zone_counts: list[int] | tuple[int, ...],
+    blocked_reason: str,
+    blocking_label: str,
+    output_profile_policy: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": SELECTED_ZONE_SCHEMA_VERSION,
+        "preview_mode": "selected_zone_counts",
+        "preview_status": blocking_label,
+        "blocked_reason": blocked_reason,
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "review_package_count": 1,
+        "review_package_path": display_path(Path(review_package_path)),
+        "reviewed_candidate_pool_count": 0,
+        "trajectory_count": None,
+        "selected_zone_counts": list(selected_zone_counts),
+        "selected_zone_count_reports": [],
+        "largest_selected_zone_count": 0,
+        "largest_selected_zone_report": {},
+        "output_profile_policy": output_profile_policy,
+        "output_profile_choice": output_profile_policy.get("classification", "unknown"),
+        "blocking_labels": [blocking_label],
+        "source_zone_count": 0,
+        "scenario_family_count": 0,
+        "scenario_cardinality": {
+            "source_zone_count": 0,
+            "scenario_family_count": 0,
+            "row_count": 0,
+        },
+        "rows": [],
+        "projected_files": {"low": 0, "nominal": 0, "high": 0},
+        "projected_bytes": {"low": 0, "nominal": 0, "high": 0},
+        "estimated_runtime_seconds": {"low": 0.0, "nominal": 0.0, "high": 0.0},
+        "budget_summary": OUTPUT_BUDGET.build_summary(),
+        "execution_target": {
+            "target_status": BLOCKED_TARGET,
+            "target": BLOCKED_TARGET,
+            "blocked_reason": blocked_reason,
+            "local_assessment": {"status": blocking_label},
+            "balfrin_assessment": {"status": blocking_label},
+        },
+        "output_budget_assessment": {
+            "local": {"status": blocking_label},
+            "balfrin": {"status": blocking_label},
+            "budget_exceeded": True,
+        },
+    }
+
+
 def render_text_report(report: dict[str, Any]) -> str:
+    if report.get("preview_mode") == "selected_zone_counts":
+        lines = [
+            "AOI Selected-Zone Scenario Preview",
+            "",
+            f"- schema_version: `{report['schema_version']}`",
+            f"- preview_status: `{report['preview_status']}`",
+            f"- blocked_reason: `{report['blocked_reason']}`",
+            f"- output_profile_choice: `{report['output_profile_choice']}`",
+            f"- review_package_count: `{report['review_package_count']}`",
+            f"- reviewed_candidate_pool_count: `{report['reviewed_candidate_pool_count']}`",
+            f"- trajectory_count: `{report['trajectory_count']}`",
+            f"- selected_zone_counts: `{report['selected_zone_counts']}`",
+            "",
+            "Selected Zone Counts",
+        ]
+        for row in report.get("selected_zone_count_reports", []):
+            lines.append(f"- selected_zone_count: `{row.get('selected_zone_count', '')}`")
+            lines.append(f"  selected_candidate_ids: `{row.get('selected_candidate_ids', [])}`")
+            lines.append(f"  block_family_ids: `{row.get('block_family_ids', [])}`")
+            lines.append(f"  scenario_cardinality: `{row.get('scenario_cardinality', {})}`")
+            lines.append(f"  seed_policy: `{row.get('seed_policy', '')}`")
+            lines.append(f"  seed: `{row.get('seed', '')}`")
+            lines.append(f"  manifest_bytes: `{row.get('manifest_bytes', '')}`")
+            lines.append(f"  output_root: `{row.get('output_root', '')}`")
+            lines.append(f"  projected_files: `{row.get('projected_files', {})}`")
+            lines.append(f"  projected_bytes: `{row.get('projected_bytes', {})}`")
+            lines.append(f"  estimated_runtime_seconds: `{row.get('estimated_runtime_seconds', {})}`")
+        lines.extend(
+            [
+                "",
+                "Largest Selected Zone Count",
+                f"- selected_zone_count: `{report['largest_selected_zone_count']}`",
+                f"- execution_target: `{report['execution_target'].get('target', '')}`",
+                f"- projected_files: `{report['projected_files']}`",
+                f"- projected_bytes: `{report['projected_bytes']}`",
+                f"- estimated_runtime_seconds: `{report['estimated_runtime_seconds']}`",
+            ]
+        )
+        return "\n".join(lines)
+
     lines = [
         "AOI Scenario Preview",
         "",
@@ -601,6 +910,29 @@ def render_text_report(report: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def parse_selected_zone_counts(value: str | list[int] | tuple[int, ...]) -> list[int]:
+    if isinstance(value, (list, tuple)):
+        counts = [int(item) for item in value if int(item) > 0]
+    else:
+        counts = [int(item.strip()) for item in value.split(",") if item.strip()]
+    unique_counts: list[int] = []
+    seen: set[int] = set()
+    for count in counts:
+        if count <= 0 or count in seen:
+            continue
+        seen.add(count)
+        unique_counts.append(count)
+    return sorted(unique_counts)
+
+
+def display_path(path: Path) -> str:
+    resolved = path.resolve(strict=False)
+    try:
+        return str(resolved.relative_to(ROOT))
+    except ValueError:
+        return str(resolved)
 
 
 if __name__ == "__main__":  # pragma: no cover

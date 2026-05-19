@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-327: Multi-Zone Scenario Table Stress Test
-
-Goal: Generate deterministic scenario tables for the selected stable release-zone candidates and measure scenario cardinality, manifest pressure, and output-root expectations.
-
-Capability gap reduced: Scenario generation for many zones is not yet measured enough to project runtime/output pressure.
-
-Why this outranks alternatives: Balfrin scale feasibility depends on scenario count and scenario-family structure before execution.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_balfrin_target_area_scenario_tables.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `docs/source_zone_block_scenario_policy_v1.md`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_aoi_scenario_preview.py`
-
-Deliverables:
-
-- Deterministic scenario tables for 2, 4, 8, and 12 selected zones in ignored scratch roots.
-- Cardinality, block-family, seed-policy, manifest-size, and expected-output summaries.
-- Tests for deterministic ordering and bounded output sizes.
-
-Definition of done:
-
-- The repo can estimate scenario pressure for selected multi-zone AOIs before any Balfrin submission.
-
-Boundaries: Conditional scenario generation only; no source-frequency semantics, no physics tuning, no simulation, no operational claim.
-
 ### TB-328: AOI Scenario Cost Projection Model
 
 Goal: Convert release-zone and scenario-table cardinality into a deterministic runtime, storage, and reducer-pressure projection for bounded AOI sizes.
