@@ -37,38 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-269: AOI Hazard Map Product Packager
-
-Goal: Package AOI hazard-layer outputs into user-consumable GeoTIFF/COG, GeoJSON/GeoPackage, manifest, and text-summary artifacts.
-
-Capability gap reduced: Producing hazard rasters is not enough; a user needs a coherent map package with provenance, layer semantics, and claim boundaries.
-
-Why this outranks alternatives: The stated project goal is an actual hazard map workflow, so the output bundle has to be a first-class interface rather than scattered files.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/hazard_output_writers.py`
-- `scripts/hazard_output_manifests.py`
-- `docs/hazard_map_semantics.md`
-- `docs/hazard_output_profile_contract.md`
-- `tests/test_gis_cog_package_readiness.py`
-- `tests/test_same_scale_cog_package_conversion.py`
-
-Deliverables:
-
-- A map-packaging command or front-door subcommand that converts AOI hazard outputs into a compact package with COG rasters where supported, vector release/scenario overlays, layer inventory, checksums, and claim-boundary metadata.
-- A `map_package_ready`, `cog_blocked`, or `blocked_missing_hazard_outputs` classification.
-- Tests for fixture hazard outputs, missing layers, COG conversion failure, and manifest consistency.
-
-Definition of done:
-
-- A user can point at an AOI hazard output root and receive a reviewable map package rather than raw intermediate files.
-
-Boundaries: Packaging only; no hazard-value change, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
-
 ### TB-270: AOI Map QA Project And Static Review Surface
 
 Goal: Generate a lightweight QA surface for an AOI map package that overlays terrain, release zones, scenario metadata, hazard layers, and context availability.
