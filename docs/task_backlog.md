@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-301: Multi-Zone Local Scaling Ladder
-
-Goal: Run a deterministic local scaling ladder over increasing zone/scenario counts to measure output, reducer, manifest, and hazard-builder timing before another live Balfrin scale step.
-
-Capability gap reduced: Multi-zone pressure is currently scratch/fixture-backed at limited points, with no systematic ladder showing where bottlenecks appear.
-
-Why this outranks alternatives: A local ladder can cheaply identify the next measured breakpoint and prevent premature live Balfrin submission.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/check_hazard_output_profile.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- A local scaling-ladder helper or report for 1, 2, 4, 8, and 12 zone-equivalent fixture workloads using reduced-output profiles.
-- Measurements for runtime, phase timing if TB-297 exists, file counts, bytes, manifest bytes, reducer sidecars, and first bottleneck.
-- Tests for deterministic ladder fixture generation and blocked budget classifications.
-
-Definition of done:
-
-- The repo has systematic local evidence for how output and reducer pressure grows before requiring live Balfrin execution.
-
-Boundaries: Local/fixture scaling only; no live Balfrin submission, no distributed execution, no physical credibility claim, no Swiss-wide claim, and no operational claim.
-
 ### TB-302: Balfrin Run-Root Output Budget Auditor
 
 Goal: Add a run-root auditor that can inspect preserved Balfrin roots and classify output budget compliance after execution.

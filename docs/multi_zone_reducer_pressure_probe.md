@@ -232,3 +232,22 @@ measured value, threshold, excess, and whether the excess is `compressible` or
 also provides `--validation-mode budget-thresholds` for budget-only review; that
 mode does not convert missing authorization or dirty Balfrin access state into a
 budget failure.
+
+## TB-301 Local Scaling Ladder
+
+The local ladder helper `scripts/summarize_multi_zone_scaling_ladder.py`
+extends the pressure probe into 1, 2, 4, 8, and 12-zone reduced-output rungs.
+It keeps the pressure measurement local and fixture-backed, while separately
+recording reduced-output hazard-builder timing for the same zone counts.
+
+Measured rung summary:
+
+- `1` zones: `probe_ready`, `5888` manifest bytes, `3` sidecars, `8` output files.
+- `2` zones: `probe_ready`, `6292` manifest bytes, `4` sidecars, `13` output files.
+- `4` zones: `probe_ready`, `6948` manifest bytes, `6` sidecars, `21` output files.
+- `8` zones: `multi_zone_dry_run_blocked`, `8260` manifest bytes, `10` sidecars, `37` output files.
+- `12` zones: `multi_zone_dry_run_blocked`, `9586` manifest bytes, `14` sidecars, `53` output files.
+
+The first blocked rung is `8` zones, with `accumulation_seconds` as the first
+bottleneck label. That gives the repo a compact local breakpoint surface before
+any live Balfrin scale step is considered.

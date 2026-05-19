@@ -163,6 +163,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_conditional_pilot_acceptance.py`
 - `scripts/summarize_large_aoi_gis_cog_stress_test.py`
 - `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- `scripts/summarize_multi_zone_scaling_ladder.py`
 - `scripts/summarize_multi_zone_reducer_pressure.py`
 - `scripts/summarize_observed_runout_deposition_intake_contract.py`
 - `scripts/summarize_pilot_scaling.py`
