@@ -1284,6 +1284,7 @@ def build_output_profile_summary(report_inputs: dict[str, Any]) -> dict[str, Any
     return {
         "schema_version": OUTPUT_PROFILE_POLICY.POLICY_SCHEMA_VERSION,
         "command_profile_policy": command_plan_report.get("output_profile_policy", {}),
+        "command_profile_validation": command_plan_report.get("output_profile_validation", {}),
         "command_plan_status": command_plan_report.get("command_plan_status", ""),
         "blocked_template_commands": list(command_plan_report.get("blocked_template_commands", [])),
         "gis_scope_summary": {
@@ -1366,6 +1367,7 @@ def build_run_manifest(
             "commands": command_plan_report.get("commands", []),
             "ignored_output_paths": list(command_plan_report.get("ignored_output_paths", [])),
             "output_profile_policy": command_plan_report.get("output_profile_policy", {}),
+            "output_profile_validation": command_plan_report.get("output_profile_validation", {}),
         },
         "expected_io_inventory": expected_io_inventory,
         "output_profile": output_profile,
@@ -1940,6 +1942,7 @@ def build_case_skeleton_output(
         "command_ids": report_inputs["command_plan_report"].get("command_ids", []),
         "command_descriptions": report_inputs["command_plan_report"].get("command_descriptions", {}),
         "ignored_output_paths": report_inputs["command_plan_report"].get("ignored_output_paths", []),
+        "output_profile_validation": report_inputs["command_plan_report"].get("output_profile_validation", {}),
         "runnable_command_ids": runnable_command_ids,
         "template_only_command_ids": template_only_command_ids,
     }

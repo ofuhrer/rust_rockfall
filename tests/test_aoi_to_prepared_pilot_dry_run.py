@@ -206,6 +206,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("second_site_release_plan_execution_template", compiler["run_manifest"]["command_plan"]["blocked_template_commands"])
         self.assertEqual(compiler["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(compiler["output_profile"]["command_profile_policy"]["classification"], "scalable_default")
+        self.assertEqual(compiler["output_profile"]["command_profile_validation"]["status"], "ready")
+        self.assertEqual(compiler["command_plan"]["output_profile_validation"]["status"], "ready")
         self.assertEqual(run_manifest["classification"], "ready_for_balfrin_postproc")
         self.assertEqual(run_manifest["first_blocker"]["step_id"], "prepared_pilot_command_plan")
         self.assertEqual(run_manifest["expected_io_inventory"]["schema_version"], "aoi_to_prepared_pilot_expected_io_inventory_v1")

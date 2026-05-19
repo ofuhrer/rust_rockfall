@@ -9,6 +9,7 @@ from unittest.mock import patch
 import unittest
 
 from scripts.lib import command_plan_contract as COMMAND_PLAN
+from scripts.lib import command_plan_output_profile_validator as OUTPUT_PROFILE_VALIDATOR
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
 
@@ -153,6 +154,8 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertEqual(report["tschamut_native_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertEqual(report["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
+        self.assertEqual(report["output_profile_validation"]["status"], "ready")
+        self.assertEqual(report["output_profile_validation"]["blocked_command_ids"], [])
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", report["ignored_output_paths"])
         self.assertIn(
@@ -293,6 +296,12 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("second_site_acquisition_manifest_review", report["command_ids"])
         self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
         self.assertIn("hazard/results/chant_sura_fluelapass_portability_example_v1", report["ignored_output_paths"])
+        self.assertEqual(report["output_profile_validation"]["status"], "ready")
+        hazard_template = next(command for command in report["commands"] if command["id"] == "second_site_hazard_build_template")
+        self.assertIn("--grid-csv-export none", hazard_template["command"])
+        self.assertIn("--conditional-curve-export summary-only", hazard_template["command"])
+        self.assertIn("--ensemble-impact-events-dir", hazard_template["command"])
+        self.assertEqual(hazard_template["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
         self.assertEqual(
             set(report["blocked_template_commands"]),
             {
@@ -397,6 +406,94 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
         self.assertIn("tschamut_next_ensemble_feasibility_probe_template", output)
+
+    def test_shared_output_profile_validator_blocks_scalable_full_debug_drift(self) -> None:
+        command = COMMAND_PLAN.build_command_record(
+            site="fixture",
+            group="hazard_builds",
+            command_id="bad_scalable_hazard",
+            description="bad scalable hazard command",
+            command=COMMAND_PLAN.command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/build_hazard_layers.py",
+                    "--case",
+                    "validation/private/site/case.yaml",
+                    "--output-dir",
+                    "hazard/results/site",
+                    "--conditional-curve-export",
+                    "full",
+                    "--grid-csv-export",
+                    "full",
+                    "--trajectory-workers",
+                    "4",
+                ]
+            ),
+            expected_inputs=["validation/private/site/case.yaml"],
+            expected_outputs=["hazard/results/site/full.csv"],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=["hazard/results/site"],
+        )
+
+        validation = OUTPUT_PROFILE_VALIDATOR.validate_command_plan_output_profile(
+            [command],
+            label="unit_bad_plan",
+        )
+
+        self.assertEqual(validation["status"], "blocked_unscalable_output_profile")
+        self.assertEqual(validation["blocked_command_ids"], ["bad_scalable_hazard"])
+        diagnostics = validation["diagnostics"][0]["diagnostics"]
+        self.assertIn("full conditional-curve output is not allowed for scalable command plans", diagnostics)
+        self.assertIn("full grid CSV output is not allowed for scalable command plans", diagnostics)
+        self.assertTrue(any("excessive worker/chunk sidecars" in item for item in diagnostics))
+        self.assertTrue(any("missing rebuildability artifacts" in item for item in diagnostics))
+
+    def test_tiny_smoke_can_explicitly_opt_into_fixture_safe_outputs(self) -> None:
+        command = COMMAND_PLAN.build_command_record(
+            site="fixture",
+            group="tiny_smoke",
+            command_id="tiny_smoke_debug_fixture",
+            description="fixture-safe tiny smoke command",
+            command=COMMAND_PLAN.command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    "scripts/build_hazard_layers.py",
+                    "--case",
+                    "tests/fixtures/hazard/plane_case.yaml",
+                    "--output-dir",
+                    "/tmp/tiny_smoke",
+                    "--conditional-curve-export",
+                    "full",
+                    "--grid-csv-export",
+                    "full",
+                ]
+            ),
+            expected_inputs=["tests/fixtures/hazard/plane_case.yaml"],
+            expected_outputs=["/tmp/tiny_smoke"],
+            read_only=False,
+            may_produce_ignored_outputs=True,
+            ignored_output_paths=["/tmp/tiny_smoke"],
+        )
+
+        validation = OUTPUT_PROFILE_VALIDATOR.validate_command_plan_output_profile(
+            [command],
+            label="tiny_smoke_fixture",
+            allow_tiny_fixture_outputs=True,
+        )
+
+        self.assertEqual(validation["status"], "fixture_safe_tiny_smoke")
+        self.assertEqual(validation["blocked_command_count"], 0)
+        self.assertEqual(
+            validation["diagnostics"][0]["output_profile_policy"]["classification"],
+            OUTPUT_PROFILE_POLICY.EXPLICIT_HEAVY_DEBUG,
+        )
 
     def test_json_cli_output_preserves_schema_and_status_labels(self) -> None:
         report = self._fixture_report("tschamut_same_scale")

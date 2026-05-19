@@ -2668,3 +2668,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: benchmark harness only; no optimization implementation, no hazard-value changes, no live Balfrin submission, no operational claim, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no scale-up authorization.
 - Next task: `TB-299`
+
+### TB-299: Reduced-Output Profile Enforcement In AOI Command Plans
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: enforce reduced-output defaults in AOI and Balfrin command plans and fail closed on non-scalable output families.
+- Files changed: `scripts/lib/command_plan_output_profile_validator.py`, `scripts/generate_pilot_command_plan.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `docs/hazard_output_profile_contract.md`, `tests/test_pilot_command_plan.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a shared command-plan output-profile validator that inspects generated hazard-layer commands and blocks scalable plans using full conditional curves, full grid CSV, missing reduced-output flags, excessive worker/chunk sidecars, or missing rebuildability artifacts.
+  - Wired the validator into the portable pilot command-plan generator and carried the validation summary through the AOI prepared-pilot compiler run manifest.
+  - Updated the second-site hazard-build template to include reduced-output controls and rebuildability artifact inputs, while retaining blocked/template-only execution boundaries.
+  - Added tests covering fail-closed scalable drift, explicit tiny-smoke fixture-safe output allowance, and AOI compiler propagation of the validation summary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan tests.test_aoi_to_prepared_pilot_dry_run`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site all --format json`
+- Result/status: implemented_fixture_backed
+- Boundaries: planning/profile enforcement only; no live Balfrin submission, no `sbatch`, no simulation execution, no output data deletion, no operational claim, no scale-up authorization, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-300`

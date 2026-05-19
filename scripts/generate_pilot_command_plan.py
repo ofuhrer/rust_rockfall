@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.lib import command_plan_contract as COMMAND_PLAN
+from scripts.lib import command_plan_output_profile_validator as OUTPUT_PROFILE_VALIDATOR
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 from scripts.lib.workflow_validation import load_repo_script_module
 
@@ -126,6 +127,10 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         for plan in site_plans.values()
         if plan.get("output_profile_policy") is not None
     ]
+    output_profile_validation = OUTPUT_PROFILE_VALIDATOR.validate_command_plan_output_profile(
+        flattened_commands,
+        label="pilot_command_plan",
+    )
     ignored_output_paths = sorted(
         {
             *readiness_ignored_output_paths(),
@@ -135,7 +140,11 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
 
     report = {
         "schema_version": SCHEMA_VERSION,
-        "command_plan_status": "ready",
+        "command_plan_status": (
+            "ready"
+            if output_profile_validation["status"] == OUTPUT_PROFILE_VALIDATOR.STATUS_READY
+            else output_profile_validation["status"]
+        ),
         "tschamut_readiness_status": readiness_report["readiness_status"],
         "tschamut_hazard_rebuild_output_profile_status": output_profile_report["hazard_rebuild_output_profile_status"],
         "tschamut_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
@@ -158,6 +167,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "output_profile_policy": OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
             output_profile_policies, label="pilot_command_plan"
         ),
+        "output_profile_validation": output_profile_validation,
         "command_groups": flattened_groups,
         "commands": flattened_commands,
         "command_ids": COMMAND_PLAN.command_ids(flattened_commands),
@@ -1380,6 +1390,16 @@ def build_second_site_plan(
                     "summary-only",
                     "--grid-csv-export",
                     "none",
+                    "--diagnostics",
+                    f"validation/private/{candidate_site_id}/<site_case>_metrics.json",
+                    "--trajectory",
+                    f"validation/private/{candidate_site_id}/<site_case>_trajectory.csv",
+                    "--ensemble-trajectories-dir",
+                    f"validation/private/{candidate_site_id}/<site_case>_trajectories",
+                    "--deposition",
+                    f"validation/private/{candidate_site_id}/<site_case>_deposition.csv",
+                    "--ensemble-impact-events-dir",
+                    f"validation/private/{candidate_site_id}/<site_case>_impacts",
                 ]
             ),
             expected_inputs=[
@@ -1387,15 +1407,29 @@ def build_second_site_plan(
                 f"data/processed/swisstopo/{candidate_site_id}/input/source_zone_metadata.yaml",
                 f"data/processed/swisstopo/{candidate_site_id}/input/scenario_table.csv",
             ],
-            expected_outputs=[f"hazard/results/{candidate_site_id}/<site_case>_map_package_manifest.json"],
+            expected_outputs=[
+                f"hazard/results/{candidate_site_id}/<site_case>_map_package_manifest.json",
+                f"hazard/results/{candidate_site_id}/<site_case>_pilot_gis_package_manifest.json",
+            ],
             blocked_reason=blocked_reason,
             read_only=False,
             may_produce_ignored_outputs=True,
             ignored_output_paths=[f"hazard/results/{candidate_site_id}"],
+            output_profile_policy=OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+                conditional_curve_export="summary-only",
+                grid_csv_export="none",
+                no_plots=True,
+                label="second_site_hazard_build_template",
+            ),
         ),
     ]
 
     command_groups = group_summaries(commands, site="chant_sura_fluelapass", ignored_output_paths=ignored_output_paths)
+    output_profile_policies = [
+        command["output_profile_policy"]
+        for command in commands
+        if command.get("output_profile_policy") is not None
+    ]
     return {
         "site": "chant_sura_fluelapass",
         "read_only": all(command["read_only"] for command in commands),
@@ -1410,6 +1444,9 @@ def build_second_site_plan(
         "claim_boundaries": second_site_report["claim_boundaries"],
         "blocked_reason": blocked_reason,
         "contract_audit_status": contract_report["source_scenario_contract_audit_status"],
+        "output_profile_policy": OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
+            output_profile_policies, label="chant_sura_fluelapass_command_plan"
+        ),
     }
 
 

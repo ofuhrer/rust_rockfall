@@ -159,6 +159,16 @@ shared `scripts/lib/output_profile_policy.py` policy states:
   - heavier output controls are present without an explicit override,
   - this is the fail-closed state for default multi-zone and Balfrin plans.
 
+Generated AOI and Balfrin command plans also run the shared
+`scripts/lib/command_plan_output_profile_validator.py` gate. For scalable
+hazard-layer command entries the gate fails closed when it detects full grid
+CSV output, full conditional-curve output, missing reduced-output flags,
+worker/chunk sidecar counts above the bounded command-plan default, or missing
+rebuildability inputs such as diagnostics, trajectory/deposition, and impact
+event artifacts. Tiny smoke fixtures can opt into fixture-safe output
+diagnostics explicitly; that exception is not used for scalable AOI or Balfrin
+plans.
+
 Balfrin handoff contract:
 
 - The current target-gate profile in `validation/pilot_runs/tschamut_public_output_budget_reducer_gate_v1.yaml`

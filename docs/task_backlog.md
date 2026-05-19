@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-299: Reduced-Output Profile Enforcement In AOI Command Plans
-
-Goal: Ensure every AOI and Balfrin command plan that can scale beyond tiny smoke defaults to the scalable reduced-output profile and fails closed on full grid CSV or full conditional-curve output.
-
-Capability gap reduced: Output size is only partly controlled; command-plan drift can still reintroduce non-scalable output families.
-
-Why this outranks alternatives: Preventing accidental high-output plans is cheaper and safer than cleaning up oversized run roots after execution.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/check_hazard_output_profile.py`
-- `docs/hazard_output_profile_contract.md`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A shared command-plan output-profile validator used by AOI and Balfrin planning paths.
-- Fail-closed diagnostics for full grid CSV, full conditional curves, excessive worker/chunk sidecars, missing reduced-output flags, and missing rebuildability artifacts.
-- Tests proving tiny smoke can opt into fixture-safe outputs while scalable plans require reduced-output defaults.
-
-Definition of done:
-
-- Scalable command plans cannot silently select output families known to be non-scalable.
-
-Boundaries: Planning/profile enforcement only; no live Balfrin submission, no simulation, no output data deletion, no physical-probability semantics, and no operational claim.
-
 ### TB-300: Validation Output Budget Reduction Plan
 
 Goal: Measure and reduce validation-output file fanout for target-area and multi-zone workflows while preserving replayability and required scientific diagnostics.
