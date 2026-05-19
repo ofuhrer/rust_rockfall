@@ -199,6 +199,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertLess(first_sbatch_idx, setu_index)
         self.assertIn("export RUN_ROOT", script)
         self.assertIn("export REPO_ROOT", script)
+        self.assertIn('env["PYTHONPATH"] = str(repo_root)', script)
         self.assertIn("python3 - <<'PY'", script)
         self.assertIn("#SBATCH --partition=postproc", script)
         self.assertIn("#SBATCH --time=00:30:00", script)

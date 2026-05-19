@@ -55,7 +55,8 @@ POST_ATTEMPT_STATUSES = {
     POST_ATTEMPT_NO_AUTHORIZATION,
 }
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_metrics_completion_rerun_package_v1"
-DEFAULT_PROBE_MANIFEST = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
+DEFAULT_TARGET_AREA_CONTRACT = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
+DEFAULT_PROBE_MANIFEST = ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
 DEFAULT_RERUN_RUN_ROOT = Path(
     "/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1"
 )
@@ -336,6 +337,7 @@ def _build_dry_run_command_plan(
         "sbatch_script_text": sbatch_script_text,
         "sbatch_script_sha256": _sha256_text(sbatch_script_text),
         "source_paths": {
+            "target_area_contract": str(DEFAULT_TARGET_AREA_CONTRACT),
             "probe_manifest": str(probe_manifest),
             "run_root": str(run_root),
             "artifact_dir": str(artifact_dir),
@@ -412,6 +414,7 @@ def _build_sbatch_package(
             ]
         ),
         "source_paths": {
+            "target_area_contract": str(DEFAULT_TARGET_AREA_CONTRACT),
             "run_root": str(run_root),
             "probe_manifest": str(probe_manifest),
             "command_plan_path": str(run_root / "command_plan.json"),
@@ -535,6 +538,7 @@ def _build_replay_metadata(
         "existing_target_area_job_id": existing_target_area_run.get("job_id"),
         "git_commit": git_commit,
         "source_paths": {
+            "target_area_contract": str(DEFAULT_TARGET_AREA_CONTRACT),
             "run_root": str(run_root),
             "probe_manifest": str(probe_manifest),
             "command_plan_path": str(command_plan_path),
@@ -1307,6 +1311,7 @@ def build_report(
         "source_paths": {
             "artifact_dir": str(artifact_dir),
             "run_root": str(run_root),
+            "target_area_contract": str(DEFAULT_TARGET_AREA_CONTRACT),
             "probe_manifest": str(probe_manifest),
             "balfrin_access_preflight": balfrin_access_preflight_source,
             "existing_target_area_run_root": str(DEFAULT_EXISTING_TARGET_AREA_RUN_ROOT),
@@ -1472,6 +1477,7 @@ def blocked_report(
         "source_paths": {
             "artifact_dir": str(artifact_dir),
             "run_root": str(run_root),
+            "target_area_contract": str(DEFAULT_TARGET_AREA_CONTRACT),
             "probe_manifest": str(probe_manifest),
             "balfrin_access_preflight": balfrin_access_preflight_source,
             "existing_target_area_run_root": str(DEFAULT_EXISTING_TARGET_AREA_RUN_ROOT),

@@ -123,6 +123,12 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         self.assertEqual(handoff["status"], "ready_for_authorization_review")
         self.assertEqual(handoff["exact_run_root"], str(MODULE.DEFAULT_RERUN_RUN_ROOT.resolve()))
         self.assertEqual(handoff["probe_manifest"], str(MODULE.DEFAULT_PROBE_MANIFEST.resolve()))
+        self.assertIn("tschamut_public_conditional_pilot_gate_v1.yaml", handoff["probe_manifest"])
+        self.assertNotIn("tschamut_public_balfrin_target_area_demo_v1.yaml", handoff["dry_run_command"])
+        self.assertEqual(
+            report["source_paths"]["target_area_contract"],
+            str(MODULE.DEFAULT_TARGET_AREA_CONTRACT),
+        )
         self.assertEqual(handoff["tb240_unrecovered_metrics"], MODULE.TB240_UNRECOVERED_METRICS)
         self.assertEqual(handoff["fail_closed_classifications"]["missing_access"]["status"], "complete")
         self.assertEqual(handoff["fail_closed_classifications"]["missing_package"]["status"], "complete")

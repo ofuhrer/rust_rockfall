@@ -2845,3 +2845,32 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence integration only; no Balfrin submission, no remote mutation, no new run, no hazard execution, no synthetic-to-hazard promotion, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-307`
+
+### TB-307: Target-Area Metrics Completion Postproc Rerun
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: submit and preserve the exact bounded target-area metrics-completion rerun on Balfrin `postproc` after the current access, remote-hygiene, package, output-budget, and preservation gates passed.
+- Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `scripts/submit_balfrin_probe.py`, `scripts/collect_balfrin_probe_metrics.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_probe_driver.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the next-live-run decision gate, Balfrin access preflight, remote checkout fast-forward, package preflight, `postproc` occupancy check, and package readiness review. The final pre-submit access gate was `ready_for_read_only_collection` with remote HEAD `722f7c7ebb7ace7927b5502c46ea3cec99b48ce9` and dirty path count `0`.
+  - Fixed the metrics-completion package to use the executable probe manifest `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` while preserving the wrapper target-area contract as provenance.
+  - Submitted job `4339888`; it failed before hazard output completion with `ModuleNotFoundError: No module named 'scripts'`. Preserved that failed attempt as `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1_failed_4339888_20260519T192723Z.tgz`, diagnosed the missing repo-root `PYTHONPATH`, and made one diagnosed retry.
+  - Submitted diagnosed retry job `4339889` on `postproc`; it completed with state `COMPLETED`, exit `0:0`, elapsed `00:00:29`, `AllocCPUS=16`, and batch `MaxRSS=5568K` (`5.4375` MB).
+  - Preserved the measured run root at `/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1` with scheduler accounting, logs, command plan, SBATCH script, package files, run-root replay pointers, checksums, and preservation reports. Final metrics were `memory_peak_mb=5.4375`, `validation_output_file_count=130`, `validation_output_bytes=34565498`, `hazard_output_file_count=99`, and `hazard_output_bytes=273194249`.
+  - Reran the preservation gate with the measured evidence JSON; it reported `ready_for_demonstration_evidence`, `metrics_contract_status=complete`, no missing metrics, no missing run-root entries, `output_family_summaries.status=sufficient`, and `metrics_completion_source=new_metrics_completion_rerun`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json > /tmp/tb307_decision_gate.json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb307_access_preflight_after_pull.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --balfrin-access-json /tmp/tb307_access_preflight_after_pull.json --format json --json-output /tmp/tb307_rerun_package_fixed.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD && git status --porcelain=v1 -uall'`
+  - `ssh ... squeue/sinfo postproc occupancy check`
+  - `ssh ... PYTHONPATH=/users/olifu/work/rust_rockfall PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/metrics_completion_v1 --run-id tschamut_public_balfrin_target_area_demo_metrics_completion_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --submit`
+  - `sacct -j 4339889 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir -P`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_probe_driver.py`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_probe_metrics_report.py`
+  - `PYENV_VERSION=system uv run python tests/test_balfrin_probe_preservation_gate.py`
+- Result/status: implemented_measured
+- Boundaries: exact target-area metrics-completion `postproc` rerun only; no non-`postproc` partition, no multi-zone run, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no physical credibility upgrade, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-308`

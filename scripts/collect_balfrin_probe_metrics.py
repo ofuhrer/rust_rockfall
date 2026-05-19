@@ -47,6 +47,26 @@ def _safe_float(value: Any) -> float | None:
         return None
 
 
+def _rss_to_mb(value: Any) -> float | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    match = re.fullmatch(r"([0-9.]+)([KMGTP]?)", text)
+    if match is None:
+        return None
+    amount = float(match.group(1))
+    unit = match.group(2)
+    factors = {
+        "": 1 / (1024 * 1024),
+        "K": 1 / 1024,
+        "M": 1,
+        "G": 1024,
+        "T": 1024 * 1024,
+        "P": 1024 * 1024 * 1024,
+    }
+    return amount * factors[unit]
+
+
 def _load_json(path: Path | None) -> dict[str, Any] | None:
     if path is None or not path.exists():
         return None
@@ -142,6 +162,85 @@ def _count_output_families(outputs: list[Any]) -> dict[str, int]:
             continue
         counts[kind] = counts.get(kind, 0) + 1
     return counts
+
+
+def _directory_footprint(root: Path | None) -> dict[str, int] | None:
+    if root is None or not root.exists():
+        return None
+    files = sorted(path for path in root.rglob("*") if path.is_file())
+    return {
+        "file_count": len(files),
+        "bytes": sum(path.stat().st_size for path in files),
+    }
+
+
+def _slurm_peak_memory_mb(run_root: Path) -> float | None:
+    peak: float | None = None
+    for path in sorted(run_root.glob("slurm_accounting*.psv")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        if not lines:
+            continue
+        header = lines[0].split("|")
+        try:
+            maxrss_index = header.index("MaxRSS")
+        except ValueError:
+            continue
+        for line in lines[1:]:
+            fields = line.split("|")
+            if maxrss_index >= len(fields):
+                continue
+            value = _rss_to_mb(fields[maxrss_index])
+            if value is not None:
+                peak = value if peak is None else max(peak, value)
+    return peak
+
+
+def _command_validation_output_footprint(command_plan: dict[str, Any], *, run_root: Path) -> dict[str, int] | None:
+    commands = command_plan.get("commands")
+    if not isinstance(commands, list):
+        return None
+    roots: set[Path] = set()
+    file_flags = {
+        "--diagnostics",
+        "--trajectory",
+        "--deposition",
+    }
+    dir_flags = {
+        "--ensemble-trajectories-dir",
+        "--ensemble-impact-events-dir",
+    }
+    for entry in commands:
+        if not isinstance(entry, dict) or entry.get("name") != "build_conditional_hazard_layers":
+            continue
+        command = entry.get("command")
+        if not isinstance(command, list):
+            continue
+        cwd = Path(str(entry.get("cwd", str(run_root)))).expanduser()
+        if not cwd.is_absolute():
+            cwd = (run_root / cwd).resolve()
+        tokens = [str(token) for token in command]
+        for idx, token in enumerate(tokens):
+            if token not in file_flags | dir_flags or idx + 1 >= len(tokens):
+                continue
+            candidate = Path(tokens[idx + 1]).expanduser()
+            if not candidate.is_absolute():
+                candidate = (cwd / candidate).resolve()
+            roots.add(candidate.parent if token in file_flags else candidate)
+    files: set[Path] = set()
+    for root in roots:
+        if root.is_file():
+            files.add(root)
+        elif root.exists():
+            files.update(path for path in root.rglob("*") if path.is_file())
+    if not files:
+        return None
+    return {
+        "file_count": len(files),
+        "bytes": sum(path.stat().st_size for path in files),
+    }
 
 
 def _checksum_entry(path: Path, *, label: str) -> dict[str, Any]:
@@ -781,8 +880,28 @@ def collect_run_metrics(
 
     trajectory_decision_counts = _count_decision_manifests(output_root / "trajectory_chunks")
     reducer_decision_counts = _count_decision_manifests(output_root / "chunks")
+    performance_with_fallbacks = dict(performance)
+    memory_peak_mb = _slurm_peak_memory_mb(run_root)
+    if memory_peak_mb is not None and performance_with_fallbacks.get("memory_peak_mb") is None:
+        performance_with_fallbacks["memory_peak_mb"] = memory_peak_mb
+    validation_footprint = _command_validation_output_footprint(command_plan, run_root=run_root)
+    if validation_footprint is not None:
+        if performance_with_fallbacks.get("validation_output_file_count") is None:
+            performance_with_fallbacks["validation_output_file_count"] = validation_footprint["file_count"]
+        if performance_with_fallbacks.get("validation_output_bytes") is None:
+            performance_with_fallbacks["validation_output_bytes"] = validation_footprint["bytes"]
+    hazard_footprint = _directory_footprint(output_root)
+    if hazard_footprint is not None:
+        if performance_with_fallbacks.get("hazard_output_file_count") is None:
+            performance_with_fallbacks["hazard_output_file_count"] = hazard_footprint["file_count"]
+        if performance_with_fallbacks.get("hazard_output_bytes") is None:
+            performance_with_fallbacks["hazard_output_bytes"] = hazard_footprint["bytes"]
+        if performance_with_fallbacks.get("output_file_count") is None:
+            performance_with_fallbacks["output_file_count"] = hazard_footprint["file_count"]
+        if performance_with_fallbacks.get("output_bytes") is None:
+            performance_with_fallbacks["output_bytes"] = hazard_footprint["bytes"]
     metrics_contract = _build_metrics_contract(
-        performance=performance,
+        performance=performance_with_fallbacks,
         conditional_execution=conditional_execution,
         outputs=manifest.get("outputs", []) if isinstance(manifest, dict) else [],
         scaling_summary=scaling_summary,
@@ -792,6 +911,25 @@ def collect_run_metrics(
         trajectory_decision_counts=trajectory_decision_counts,
         reducer_decision_counts=reducer_decision_counts,
     )
+    family_counts = dict(metrics_contract.get("reduced_output_family_counts") or {})
+    if trajectory_decision_counts:
+        family_counts["trajectory_chunk_manifest"] = sum(trajectory_decision_counts.values())
+    if reducer_decision_counts:
+        family_counts["reducer_chunk_manifest"] = sum(reducer_decision_counts.values())
+    if output_root.exists():
+        map_manifests = list(output_root.glob("*map_package_manifest.json"))
+        gis_manifests = list(output_root.glob("*pilot_gis_package_manifest.json"))
+        if map_manifests:
+            family_counts["map_package_manifest"] = max(
+                _safe_int(family_counts.get("map_package_manifest")) or 0,
+                len(map_manifests),
+            )
+        if gis_manifests:
+            family_counts["pilot_gis_package_manifest"] = max(
+                _safe_int(family_counts.get("pilot_gis_package_manifest")) or 0,
+                len(gis_manifests),
+            )
+    metrics_contract["reduced_output_family_counts"] = family_counts
     report_status = _classify_run_root_status(
         run_root_exists=run_root.exists(),
         command_plan_exists=command_plan_path.exists(),
@@ -840,22 +978,18 @@ def collect_run_metrics(
         "metrics_contract": metrics_contract,
         "output_bytes": _safe_int(
             (
-                performance.get("output_bytes")
-                if isinstance(performance, dict)
-                else None
+                performance_with_fallbacks.get("output_bytes")
             )
             or output_budget.get("output_bytes")
         ),
         "output_file_count": _safe_int(
             (
-                performance.get("output_file_count")
-                if isinstance(performance, dict)
-                else None
+                performance_with_fallbacks.get("output_file_count")
             )
             or output_budget.get("output_file_count")
         ),
         "output_write_seconds": _safe_float(
-            performance.get("output_write_seconds") if isinstance(performance, dict) else None
+            performance_with_fallbacks.get("output_write_seconds")
         ),
         "output_write_kind_seconds": metrics_contract["output_write_kind_seconds"],
         "output_write_kind_bytes": metrics_contract["output_write_kind_bytes"],
@@ -876,9 +1010,9 @@ def collect_run_metrics(
         "checksums": checksums,
         "manifest_pressure": {
             "status": "measured" if report_status == "measured_run_root" else checksums["status"],
-            "output_file_count": _safe_int(performance.get("output_file_count") if isinstance(performance, dict) else None)
+            "output_file_count": _safe_int(performance_with_fallbacks.get("output_file_count"))
             or _safe_int(output_budget.get("output_file_count")),
-            "output_bytes": _safe_int(performance.get("output_bytes") if isinstance(performance, dict) else None)
+            "output_bytes": _safe_int(performance_with_fallbacks.get("output_bytes"))
             or _safe_int(output_budget.get("output_bytes")),
             "validation_output_file_count": metrics_contract["validation_output"]["file_count"],
             "validation_output_bytes": metrics_contract["validation_output"]["bytes"],

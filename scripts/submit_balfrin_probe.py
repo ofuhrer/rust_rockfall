@@ -1075,6 +1075,8 @@ for entry in commands:
     name = str(entry.get("name", ""))
     cwd = str(entry.get("cwd", str(repo_root))).strip().strip(quote_chars)
     env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(repo_root) if not existing_pythonpath else f"{repo_root}{os.pathsep}{existing_pythonpath}"
     for key, value in (entry.get("env") or {}).items():
         env[str(key)] = str(value)
 

@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-307: Target-Area Metrics Completion Postproc Rerun
-
-Goal: Execute the bounded target-area metrics-completion postproc rerun now that standing `postproc` clearance exists, if all current preflight and preservation gates pass.
-
-Capability gap reduced: The target-area Balfrin evidence still needs a clean live branch for peak memory and split validation/hazard output metrics.
-
-Why this outranks alternatives: Metrics completion is still the top ranked Balfrin decision-gate action and directly improves the measured target-area demonstration record.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A GPT-5.5-routed `postproc` submission for the exact target-area metrics-completion rerun package if access, remote hygiene, package readiness, output-budget, and preservation gates pass.
-- Preserved metrics for peak memory, split validation/hazard file counts and bytes, run-root paths, scheduler fields, logs, checksums, and preservation status.
-- A fail-closed report with one exact blocker if any gate fails before `sbatch`.
-
-Definition of done:
-
-- The target-area metrics-completion branch is either measured and preserved or blocked at one current pre-submit gate with no ambiguous authorization state.
-
-Boundaries: Exact target-area metrics-completion postproc rerun only; standing clearance applies only to `postproc`; no multi-zone run, no retry loop without diagnosis, no physical credibility upgrade, no annual-frequency claim, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-308: Target-Area Metrics Evidence Integration
 
 Goal: Propagate the TB-307 target-area metrics outcome through the evidence bundle, closure package, decision gate, scale dashboard, and maturity snapshot.
