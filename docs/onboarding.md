@@ -178,9 +178,14 @@ not a Swiss-wide production hazard service. New contributors should assume:
 - Balfrin now has measured single-release-zone demonstration evidence, a live
   interruption/resume proof, a canonical evidence bundle, and a replay smoke
   helper. One explicitly authorized target-area probe has also completed on
-  Balfrin; it adds measured target-area runtime/output evidence, but peak-memory
-  and split validation/hazard output metrics remain incomplete. Further or
-  repeat Balfrin probes still require explicit execution authorization.
+  Balfrin; it adds measured target-area runtime/output evidence, with
+  preserved/read-only recovery paths for peak-memory and split
+  validation/hazard output provenance. Further or repeat Balfrin probes still
+  require explicit execution authorization.
+- Scale planning now has a compact dashboard:
+  `scripts/summarize_balfrin_scale_readiness_matrix.py`. It labels tiers as
+  measured on Balfrin, fixture-backed, scratch-local, projection-only, or
+  blocked before submission; use those labels before proposing larger runs.
 - AOI-to-workflow automation exists as deterministic dry-run composition:
   product discovery, public-geodata cache verification, AOI terrain
   preprocessing, terrain release-zone candidate stability checks, generic

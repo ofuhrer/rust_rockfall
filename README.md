@@ -22,6 +22,13 @@ It provides measured runtime/output evidence for the frozen target-area
 contract. Peak-memory and split validation/hazard output metrics were later
 recovered from preserved/read-only sources; the attempted metrics-completion
 rerun and the smallest multi-zone probe both failed closed before submission.
+The current scale surface also includes reduced-output command-plan
+enforcement, validation-output replay/debug budget inventories, a local
+1/2/4/8/12-zone scaling ladder, a read-only Balfrin run-root output-budget
+auditor, and a compact scale evidence dashboard for workers. These surfaces
+distinguish `measured_on_balfrin`, `fixture_backed`, `scratch_local`,
+`projection_only`, and `blocked_pre_submit` evidence so blocked or local
+projections are not promoted to measured scale capability.
 No further Balfrin execution is authorized by default. Future live Balfrin
 submission requires an explicit user instruction for the exact bounded run,
 GPT-5.5 Balfrin-worker routing, and the existing access, readiness,
@@ -33,7 +40,7 @@ dry-run helpers for AOI product discovery, public-geodata cache verification,
 AOI terrain preprocessing from staged tiles, terrain-driven release-zone
 candidate stability checks, generic candidate-source-zone scenario generation,
 second-site acquisition planning, site-level case-skeleton handoff, and
-planning-only GIS scope summaries. Post-TB-273, the AOI-to-map user path also
+planning-only GIS scope summaries. Post-TB-303, the AOI-to-map user path also
 has a fixture-backed regression from AOI dry run to tiny hazard map, an AOI
 hazard-map packager, a static QA review surface, and an optional observed
 evidence overlay hook. It does not yet download all public inputs, run
@@ -103,6 +110,8 @@ backlog-refill pass before launching implementation workers.
 - `docs/current_maturity_snapshot.md` - current project maturity and capability gaps.
 - `docs/balfrin_probe_slurm_driver.md` - SLURM-first Balfrin execution flow.
 - `docs/balfrin_single_job_execution_sufficiency.md` - measured Balfrin runtime/output evidence.
+- `docs/output_budget_reducer_scaling_gate.md` - output/reducer budget and run-root audit contract.
+- `docs/multi_zone_reducer_pressure_probe.md` - multi-zone pressure and local scaling ladder evidence.
 - `docs/decision_log.md` - durable decisions.
 - `docs/agent_work_log.md` - chronological completed TB history.
 - `docs/swisstopo_data_strategy.md` - public geodata strategy and boundaries.

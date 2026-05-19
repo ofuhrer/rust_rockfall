@@ -37,6 +37,8 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
+Backlog refill needed. No active executable tasks remain after TB-303.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

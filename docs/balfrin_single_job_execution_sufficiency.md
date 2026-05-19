@@ -331,7 +331,14 @@ classification into the execution-metrics result.
 
 ## Recommended Next Step
 
-Continue using the single-job Balfrin SLURM driver for the next same-scale selected Tschamut conditional hazard-map reproduction; keep distributed execution deferred until a new measurement shows a capacity need.
+Continue using the single-job Balfrin SLURM driver for the next same-scale
+selected Tschamut conditional hazard-map reproduction; keep distributed
+execution deferred until a new measurement shows a capacity need. Before
+proposing any larger Balfrin step, consult
+`scripts/summarize_balfrin_scale_readiness_matrix.py`; it is the compact
+worker-facing dashboard that separates `measured_on_balfrin`,
+`fixture_backed`, `scratch_local`, `projection_only`, and
+`blocked_pre_submit` tiers.
 
 For planning larger AOI counts without changing that execution boundary, use
 `scripts/estimate_swiss_wide_execution_envelope.py`. The helper is read-only:

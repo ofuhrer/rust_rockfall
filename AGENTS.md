@@ -13,6 +13,7 @@ physics, output, versioning, HPC, or review-policy changes.
 - Current maturity snapshot: `docs/current_maturity_snapshot.md`.
 - Sequential orchestration strategy: `docs/orchestration_strategy.md`.
 - Detailed project background: `docs/project_overview.md`.
+- Worker-facing scale status: `scripts/summarize_balfrin_scale_readiness_matrix.py`.
 
 When files conflict, preserve hard safety/claim boundaries first, then update
 docs so the repository tells one consistent story.
@@ -78,6 +79,11 @@ or broaden Balfrin execution from prior approvals or generated packages.
   achieving the task's measured capability. Do not chain blocked reports; the
   next task should either unblock the input, run/recover/measure something, or
   explicitly defer the path.
+- For scale and Balfrin planning, use the scale readiness matrix and preserve
+  its evidence labels: `measured_on_balfrin`, `fixture_backed`,
+  `scratch_local`, `projection_only`, and `blocked_pre_submit`. Do not treat
+  local ladders, fixtures, projections, or pre-submit blockers as measured
+  Balfrin scale capability.
 - Treat management-facing summaries and closure packages as secondary outputs.
   They are justified only after executable evidence changes or when they
   replace multiple stale summaries with one canonical surface.

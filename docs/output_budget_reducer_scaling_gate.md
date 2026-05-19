@@ -163,6 +163,13 @@ The command-plan policy vocabulary used by the Balfrin handoff helpers is:
 - `explicit_heavy_debug` only when a heavier profile is intentionally
   overridden for debug use.
 
+TB-299 adds shared command-plan enforcement around that vocabulary. AOI and
+Balfrin scalable command plans now fail closed when they retain full grid CSV,
+full conditional-curve output, omit reduced-output controls, emit excessive
+sidecar families, or lack rebuildability artifacts. Tiny fixture smoke paths
+may still opt into heavy debug outputs explicitly, but that status cannot be
+promoted to a scalable Balfrin or AOI plan.
+
 ## Grid CSV Suppression
 
 Scalable runs must suppress grid CSV output.

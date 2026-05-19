@@ -10,7 +10,7 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-273 have now completed the latest
+primarily swisstopo. TB-222 through TB-303 have now completed the latest
 post-review queue: Balfrin next-action and metrics-completion preflights were
 sharpened; read-only target-area metric and spatial-artifact recovery paths
 were added; multi-zone handoff budgets and authorization gates were refreshed;
@@ -21,7 +21,15 @@ inputs; the prepared-pilot dry run fails closed unless real core inputs are
 ready; and physical-evidence intake now separates observed benchmark
 candidates, accepted/rejected intake packages, release-zone provenance,
 block-population evidence, calibration inputs, holdout evidence, and
-source-frequency records. The active backlog is currently empty and
+source-frequency records. The later TB-299 through TB-303 pass tightened the
+scale-control layer: scalable command plans fail closed on full grid CSV, full
+conditional-curve output, missing reduced-output flags, excessive sidecars, or
+missing rebuildability artifacts; validation-output summaries separate
+replay-critical families from diagnostic/debug fanout; a local 1/2/4/8/12-zone
+ladder records fixture-backed breakpoints; preserved Balfrin run roots can be
+audited read-only against output/reducer budgets; and the scale readiness
+matrix gives workers one compact evidence dashboard. The active backlog is
+currently empty and
 `scripts/print_agent_task_context.py` reports `backlog_refill_needed=true`;
 the next action should therefore be a scoped gap-analysis/backlog-refill pass,
 not ad hoc implementation. The
@@ -70,7 +78,8 @@ multi-zone follow-up path now has a
 reviewed-package/authorization submission gate, smallest-probe authorization
 preflight, scalable command-plan output-profile enforcement, reducer
 manifest/file-family budget regression coverage, handoff-derived output budget
-projection, and a fixture-backed throughput profile. TB-267's smallest
+projection, a fixture-backed throughput profile, and a local scaling ladder.
+TB-267's smallest
 multi-zone probe also failed closed before submission because the preflight
 remained `blocked_reducer_budget` at `manifest_size_bytes` and the
 authorization record was missing; TB-268 integrated that branch as
@@ -113,7 +122,8 @@ exact bounded run, GPT-5.5 Balfrin-worker routing, and the applicable access,
 readiness, authorization, output-budget, preservation, and post-run evidence
 gates.
 
-Post-TB-273, the AOI-to-map front door is stronger but still bounded. The
+Post-TB-303, the AOI-to-map and scale-status front doors are stronger but
+still bounded. The
 workflow now has an AOI hazard-map packager that emits a compact review package
 with raster inventory, checksums, release/scenario overlays, COG-ready or
 `cog_blocked` classification, and explicit claim boundaries. It also has a
@@ -220,6 +230,15 @@ objective are:
    Live interruption/resume evidence has now been recorded for the Balfrin
    demonstration path, while smaller fixture-backed tests remain useful for
    clean-checkout regression coverage.
+   AOI and Balfrin command plans now share an output-profile validator, so
+   scalable plans explicitly block full grid CSV, full conditional curves,
+   missing reduced-output controls, excessive sidecars, and missing
+   rebuildability artifacts outside tiny fixture-smoke contexts. The bounded
+   validation summary and multi-zone reducer-pressure reports now carry
+   validation-output inventories that separate replay-critical output families
+   from diagnostic/debug fanout. This improves budget evidence and replay
+   auditability; it does not convert a blocked scale tier into measured
+   execution.
    TB-161 freezes the next target-area demonstration contract at
    `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`,
    including the Tschamut selected domain, the target-gate reproduction
@@ -302,7 +321,14 @@ objective are:
    preserved probe-metrics report, and the measured canonical bundle into one
    deterministic target-area evidence bundle so the current demonstration
    state is auditable without collapsing unavailable or blocked evidence into
-   the measured sections. None of this authorizes Swiss-wide execution.
+   the measured sections. TB-301 adds local 1/2/4/8/12-zone ladder evidence:
+   rungs through 4 zones remain fixture-ready, while the 8-zone rung is the
+   first local blocked point, with hazard accumulation timing as the first
+   bottleneck label. TB-302 adds a read-only Balfrin run-root output-budget
+   auditor for future preserved roots, and TB-303 adds the worker-facing scale
+   dashboard that labels tiers as `measured_on_balfrin`, `fixture_backed`,
+   `scratch_local`, `projection_only`, or `blocked_pre_submit`. None of this
+   authorizes Swiss-wide execution or a new live Balfrin submission.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing
@@ -434,7 +460,7 @@ objective are:
     prepared-pilot dry-run report emits `blocked_missing_real_core_inputs`
     rather than treating fixture scaffolding as real workflow evidence.
 14. Backlog and worker-context hygiene have improved materially. TB-181 through
-    TB-273 completed the post-TB-179 execution queues: deterministic
+    TB-303 completed the post-TB-179 execution queues: deterministic
     release-candidate stress evidence, multi-zone reducer pressure,
     second-site dry-run realism, shared validator helpers, dependency
     guidance, calibration failure diagnostics, runtime-facing panic-path
@@ -485,7 +511,7 @@ Over-procedural areas to avoid:
 - secondary GIS/QGIS bookkeeping when the main conditional hazard-map evidence
   remains unresolved.
 
-Current high-value work after TB-273:
+Current high-value work after TB-303:
 
 - run a scoped gap-analysis/backlog-refill pass before launching another
   implementation worker, using the backlog capability filter to reject tasks
@@ -527,6 +553,11 @@ Current high-value work after TB-273:
 - treat the AOI case-skeleton, scenario-generation handoff, and GIS scope
   summary as reproducible operator handoff artifacts, not as authorization to
   execute a second-site ensemble or as generated hazard/GIS evidence;
+- use the scale readiness matrix before proposing larger Balfrin work, and
+  keep `measured_on_balfrin`, `fixture_backed`, `scratch_local`,
+  `projection_only`, and `blocked_pre_submit` tiers separate;
+- use the run-root output-budget auditor only on preserved roots and only as
+  read-only evidence; it does not authorize new runs or mutate remote data;
 - keep the Chant Sura / Fluelapass real-context decision tied to the trigger
   matrix and measured evidence, not synthetic fixtures;
 - keep physical credibility work tied to independent observed
