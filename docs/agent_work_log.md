@@ -3224,3 +3224,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no large swisstopo products committed, and no operational claim.
 - Next task: `TB-324`
+
+### TB-324: Real AOI Terrain And Context Preprocessing Gate
+
+- Date: 2026-05-20
+- Commit: `ffd0413`
+- Objective: extend the AOI preprocessing path so staged swissALTI3D terrain and selected context products produce deterministic manifests, QA summaries, and blocked/ready classifications.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swiss_terrain_ingestion_pilot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added explicit terrain and context provenance summaries, QA blockers, and gate classifications to the AOI preprocessing reports and prepared-input manifest surface.
+  - Extended the focused regression file with real-input-like terrain/context fixtures, missing-context coverage, CRS/extent mismatch coverage, and deterministic output-root assertions.
+  - Documented that the guided AOI workflow front door now consumes the terrain preprocessing gate before smoke, package, or review steps run.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: preprocessing gate only; no release-zone validation claim, no simulation, no Balfrin submission, and no operational claim.
+- Next task: `TB-325`
