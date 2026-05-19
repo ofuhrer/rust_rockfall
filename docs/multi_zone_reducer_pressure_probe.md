@@ -199,6 +199,16 @@ TB-287 did not submit a live Balfrin job. No separate exact user authorization
 for the bounded two-zone submit was present at execution time, so no
 `--authorized-submit` command or `sbatch` call was run.
 
+After TB-303, the user granted standing clearance for GPT-5.5 workers to submit
+and actively monitor Balfrin `postproc` jobs. That removes the earlier
+authorization blocker for the smallest two-zone postproc probe, but it does not
+remove technical pre-submit gates. The authorization record remains a
+reproducibility/audit artifact for the helper chain, and the access, remote
+checkout hygiene, output-budget, reduced-output, preservation, and post-run
+evidence gates still determine whether a job may actually be submitted.
+Multiple concurrent `postproc` jobs are allowed under this clearance, but
+keeping the partition fully busy for more than 6 hours requires rediscussion.
+
 The current read-only preflight also fails before submission with the exact
 helper blocker `blocked_dirty_remote_checkout`: the Balfrin checkout reports no
 tracked modifications, but it still contains untracked generated run files,
@@ -207,8 +217,14 @@ preflight over `/tmp/tb287_balfrin_access_preflight.json` reports
 `preflight_status=blocked_access`,
 `balfrin_access_status=blocked_dirty_remote_checkout`,
 `reducer_budget_status=ready`, `output_profile_status=ready`, and the
-authorization record remains `missing`. The authorization-gated path report
-keeps `submit_command_executed=false` and promotes no measured result.
+authorization record was previously `missing`. A later GPT-5.5 worker attempt
+created a reviewed/authorized audit record with package SHA-256
+`8e0a01fd787f941775c51ef7ade12cf18ab370796f6b518be0fd1dd9b5d6e808` and
+authorization-record SHA-256
+`a92371d0117f39ba5657480090d8173a9cc50808174afa38101c1c80e4291fe4`, but the
+access preflight still returned `blocked_dirty_remote_checkout`. The
+authorization-gated path report keeps `submit_command_executed=false` and
+promotes no measured result.
 
 ## TB-293 Output-Budget Acceptance Thresholds
 

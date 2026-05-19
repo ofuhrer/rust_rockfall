@@ -83,7 +83,15 @@ TB-267's smallest
 multi-zone probe also failed closed before submission because the preflight
 remained `blocked_reducer_budget` at `manifest_size_bytes` and the
 authorization record was missing; TB-268 integrated that branch as
-`blocked_incomplete`, not measured. The physical-evidence path now has an
+`blocked_incomplete`, not measured. The later TB-286/TB-287 refresh fixed the
+two-zone reducer/output-budget branch but exposed `blocked_dirty_remote_checkout`
+as the remaining pre-submit blocker. After TB-303, the user granted standing
+clearance for GPT-5.5 workers to submit and actively monitor Balfrin `postproc`
+jobs, including multiple concurrent jobs and filling the partition. A GPT-5.5
+worker then created a reviewed/authorized audit record for the two-zone package,
+but submission still stopped before `sbatch` because the Balfrin access
+preflight remained `blocked_dirty_remote_checkout`. No measured multi-zone
+result has been promoted. The physical-evidence path now has an
 explicit release/scenario physical-meaning firewall, an observed
 runout/deposition acquisition blocker matrix, a template-only operator
 acquisition package, fixture-backed intake acceptance smoke tests, a
@@ -111,16 +119,15 @@ repository. They are still bounded, non-operational conditional diagnostic
 demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
 The largest near-term gap has moved from "can the Balfrin demo execute?" and
-"can an AOI dry run be composed?" to "which, if any, next measured action is
-worth authorizing from the now-preflighted options?" Metrics completion,
-smallest bounded multi-zone measurement, real second-site public-context
-progress, physical-evidence acquisition, and hazard-builder optimization all
-now have sharper blockers or preconditions, but none authorizes a claim
-upgrade from the current demonstration or a new live Balfrin submission. Any
-future live Balfrin run still requires a fresh explicit user instruction for the
-exact bounded run, GPT-5.5 Balfrin-worker routing, and the applicable access,
-readiness, authorization, output-budget, preservation, and post-run evidence
-gates.
+"can an AOI dry run be composed?" to "which measured action should now be run
+under the standing Balfrin postproc clearance?" Metrics completion, smallest
+bounded multi-zone measurement, real second-site public-context progress,
+physical-evidence acquisition, and hazard-builder optimization all now have
+sharper blockers or preconditions, but none authorizes a claim upgrade from the
+current demonstration. Standing `postproc` clearance does not relax access,
+readiness, authorization-record/audit, output-budget, preservation, or post-run
+evidence gates, and it does not authorize non-postproc partitions, distributed
+execution, scale-up claims, or scientific/operational claim upgrades.
 
 Post-TB-303, the AOI-to-map and scale-status front doors are stronger but
 still bounded. The
@@ -516,15 +523,18 @@ Current high-value work after TB-303:
 - run a scoped gap-analysis/backlog-refill pass before launching another
   implementation worker, using the backlog capability filter to reject tasks
   that mainly add wrappers around known blocked states;
-- decide whether a future authorized Balfrin action should be another
-  metrics-completion attempt, the smallest bounded multi-zone measurement, or
-  no live run until access, remote-cleanliness, reducer-budget, authorization,
-  and preservation conditions improve;
+- use the standing Balfrin postproc clearance to run the next measured action
+  only when GPT-5.5 worker routing, active monitoring, access,
+  remote-cleanliness, output-budget, authorization-record/audit, and
+  preservation conditions pass; the current candidates remain another
+  metrics-completion attempt or the smallest bounded multi-zone measurement;
 - keep using the Balfrin remote-access preflight, worker-routing metadata,
   metrics-completion preflight, smallest multi-zone preflight, and post-run
   collector rehearsal before treating any future run as evidence;
 - treat TB-264 and TB-267 as failed-closed pre-submission branches, not as
-  measured evidence or authorization for another live Balfrin attempt;
+  measured evidence; their prior authorization blockers are superseded by the
+  standing postproc clearance, but their technical pre-submit blockers still
+  matter until rerun through the current gates;
 - treat the rejected accumulator optimization as evidence against broad
   performance churn and require a new measured hypothesis before touching the
   hazard accumulator again;

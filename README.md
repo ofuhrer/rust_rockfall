@@ -29,11 +29,14 @@ auditor, and a compact scale evidence dashboard for workers. These surfaces
 distinguish `measured_on_balfrin`, `fixture_backed`, `scratch_local`,
 `projection_only`, and `blocked_pre_submit` evidence so blocked or local
 projections are not promoted to measured scale capability.
-No further Balfrin execution is authorized by default. Future live Balfrin
-submission requires an explicit user instruction for the exact bounded run,
-GPT-5.5 Balfrin-worker routing, and the existing access, readiness,
-authorization, output-budget, preservation, and evidence gates. Generated
-packages, ready preflights, and previous approvals do not authorize a new run.
+The user has granted standing clearance for GPT-5.5 workers to submit and
+actively monitor Balfrin jobs on the `postproc` partition, including multiple
+concurrent jobs and filling that partition. If the work would keep `postproc`
+fully busy for more than 6 hours, the run plan must be rediscussed. This
+clearance does not relax access, readiness, authorization-record/audit,
+output-budget, preservation, or evidence gates, and it does not authorize
+non-postproc partitions, distributed execution, scale-up claims, or scientific
+or operational claim upgrades.
 
 Swiss-wide automation is still emerging. The repo now has deterministic
 dry-run helpers for AOI product discovery, public-geodata cache verification,

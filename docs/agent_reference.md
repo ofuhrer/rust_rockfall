@@ -55,17 +55,18 @@ changed JSON/TOML/Markdown with available local tools.
 - For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, deterministic reducer merge rules, and resume semantics before adding new execution frameworks.
 - CSCS/SLURM orchestration is in scope for the hazard-map goal, but should follow stable local chunk/reducer contracts. Do not add MPI, GPU, or heavy distributed frameworks without an explicit phase change.
 - The current measured Balfrin path is single-node SLURM execution with
-  rebuildable reduced outputs. Treat additional Balfrin runs, distributed
-  execution, and Swiss-wide scale-up as separate authorization steps, not as
-  automatic consequences of a successful probe.
-- A future live Balfrin submission requires an explicit user instruction for
-  the exact bounded run and GPT-5.5 Balfrin-worker routing. Dry-run packages,
-  generated SBATCH files, readiness/preflight labels, reviewed handoffs, and
-  previous run approvals are not authorization by themselves. Even when the
-  user authorizes one run, all existing Balfrin access, package readiness,
-  authorization, output-budget, preservation, and evidence gates still apply,
-  and the authorization does not permit retries, scale-up, distributed
-  execution, annual/physical/risk semantics, or operational claims.
+  rebuildable reduced outputs. The user has granted standing clearance for
+  GPT-5.5 workers to submit and actively monitor jobs on Balfrin's `postproc`
+  partition, including multiple concurrent jobs and filling that partition. If
+  the work would keep `postproc` fully busy for more than 6 hours, rediscuss
+  before continuing.
+- Standing `postproc` clearance does not bypass engineering or scientific
+  gates. Live Balfrin submissions still require GPT-5.5 routing, active
+  monitoring, clean or explicitly accepted pre-submit state, package readiness,
+  authorization-record/audit artifacts when helpers require them,
+  output-budget, preservation, and evidence collection. It does not authorize
+  non-postproc partitions, distributed execution, Swiss-wide scale-up,
+  annual/physical/risk semantics, or operational claims.
 
 ## Versioning Rules
 

@@ -79,28 +79,27 @@ available.
 
 ## Live Balfrin Run Authorization
 
-No current backlog task, dry-run package, generated SBATCH script, readiness
-label, preflight result, or documentation update authorizes a new live Balfrin
-submission by itself. A future live Balfrin run is authorized only when the user
-gives an explicit instruction for that specific run, after reviewing the bounded
-run shape. The instruction must name the intended Balfrin target or package,
-confirm that live submission is allowed, and keep the scope to the stated
-single-job or otherwise explicitly bounded run. General statements such as
-"continue", "run the next task", "prepare the package", "ready for
-authorization review", "generate-only", or "collect evidence" are not
-authorization to call `sbatch`.
+The user has granted standing clearance for GPT-5.5 workers to submit and
+actively monitor Balfrin jobs on the `postproc` partition. This includes
+permission to submit multiple concurrent `postproc` jobs and to fill the
+partition. If a task would keep the `postproc` partition fully busy for more
+than 6 hours, the worker must stop and rediscuss before continuing.
 
-When such an instruction exists, the orchestrator must route the work to a
-Balfrin-capable GPT-5.5 worker, and the prompt must include the exact user
-authorization text, the selected package/manifest/run root, and the required
-preflights. The worker must still fail closed unless all applicable gates pass:
-fast-forwarded Balfrin checkout, clean local context, Balfrin access preflight,
-package-specific readiness or authorization preflight, reviewed handoff package
-when required, reduced-output/output-budget gates, preservation checklist, and
-post-run evidence collection. Passing those gates permits only the named run; it
-does not authorize retries, scale-up, distributed execution, second-site
-execution, annual-frequency products, physical-probability claims, risk,
-exposure, vulnerability, regulatory use, or operational claims.
+This clearance changes the authorization default, but not the engineering or
+scientific gates. Live Balfrin work still requires GPT-5.5 worker routing,
+active monitoring, a clean or explicitly accepted pre-submit state, applicable
+package/readiness preflights, reviewed handoff packages when required,
+authorization-record or audit artifacts when repository helpers require them,
+reduced-output/output-budget gates, preservation checks, and post-run evidence
+collection. The authorization/audit record is now a reproducibility artifact,
+not a request for permission, for postproc jobs covered by the standing
+clearance.
+
+The standing clearance does not authorize non-postproc partitions,
+multi-node/distributed execution, GPU/MPI phase changes, second-site execution,
+Swiss-wide scale-up, annual-frequency products, physical-probability claims,
+risk, exposure, vulnerability, regulatory use, or operational claims. Those
+remain separate phase changes.
 
 ## Outcome Taxonomy
 

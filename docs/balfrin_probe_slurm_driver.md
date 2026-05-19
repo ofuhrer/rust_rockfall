@@ -39,9 +39,10 @@ execution reproducible and metadata-friendly on Balfrin.
 - `--submit`
   - Writes artifacts and calls `sbatch` with `--parsable`.
   - Exercised for the authorized TB-168 target-area probe as job `4329024`.
-  - Must not be used for a future live run unless the user has explicitly
-    authorized that exact bounded run and a GPT-5.5 Balfrin worker is executing
-    the submission after the required preflights pass.
+  - Must not be used for a live run unless the standing `postproc` clearance
+    applies or the user has separately authorized the exact run, and a GPT-5.5
+    Balfrin worker is executing and monitoring after the required preflights
+    pass.
 
 - `--authorized-submit`
   - Writes artifacts and calls `sbatch` only after a reviewed handoff package
@@ -77,17 +78,19 @@ manifests, sidecars, reducer chunk manifests, and a standalone stdlib runner
 that measures file scan, manifest scan, reducer merge, package time, wall time,
 CPU time, peak RSS where the OS exposes it, and bytes/files touched. It is a
 package/harness-generation surface only; a later Balfrin run still needs
-separate exact authorization and must not be inferred from this generated
-package.
+GPT-5.5 routing, active monitoring, and passing access/readiness/output-budget
+gates. The generated package alone is not a submission instruction.
 
 TB-296 reviewed the exact bounded postproc microbenchmark gate on 2026-05-19
 without submitting a job. The reviewed synthetic package shape was fixed at
 `file_count=128`, `manifest_size_bytes=65536`, `sidecar_count=16`,
 `reducer_chunk_count=8`, and `payload_bytes=128`, with the deterministic local
 review root `/tmp/rust_rockfall/tb296_postproc_microbenchmark_gate`.
-Live Balfrin execution remains fail-closed because the current conversation did
-not include separate exact authorization for this run. The read-only Balfrin
-access preflight also reported `blocked_dirty_remote_checkout` for
+At that time, the run remained fail-closed because separate exact authorization
+had not yet been granted. The user has since granted standing clearance for
+GPT-5.5 workers to submit and actively monitor `postproc` jobs, so authorization
+is no longer the default blocker for postproc work covered by that clearance.
+The read-only Balfrin access preflight also reported `blocked_dirty_remote_checkout` for
 `/users/olifu/work/rust_rockfall`: SSH and the remote clone were reachable, but
 the remote checkout contained 18 untracked/stale generated files including
 `balfrin_submission_package.json`, `balfrin_submission_package.md`,
@@ -109,31 +112,30 @@ scratch.
 
 ## Live-run authorization protocol
 
-This repository does not carry standing authorization for additional live
-Balfrin runs. A future live run can proceed only under all of the following
-conditions:
+The user has granted standing clearance for GPT-5.5 workers to submit and
+actively monitor Balfrin jobs on the `postproc` partition. Multiple concurrent
+`postproc` jobs are allowed, including filling the partition. If a run plan
+would keep the `postproc` partition fully busy for more than 6 hours, stop and
+rediscuss before continuing.
 
-- the user explicitly instructs the agent to submit the exact bounded Balfrin
-  run, naming the target package, manifest, run root, or probe;
+For `postproc` jobs covered by that clearance, the live-run authorization
+record remains an audit/reproducibility artifact consumed by fail-closed helper
+gates, not a request for permission. A live run can proceed only when:
+
 - the orchestrator routes the task to a GPT-5.5 Balfrin worker;
-- the worker includes the exact authorization text in its task context and does
-  not broaden the scope beyond that single named run;
+- the worker records the standing-clearance text, selected package/manifest,
+  run root, and run scope in the authorization/audit artifact;
 - the Balfrin checkout is fast-forwarded, the local worktree context is clean,
   and the access preflight, package-specific readiness or authorization
   preflight, reviewed handoff package, reduced-output/output-budget checks, and
   any preservation or post-run evidence gates required by the package all pass;
-- the final report records the job id, run root, gates run, and scientific
-  boundary note.
+- the worker actively monitors submitted jobs and records job id, run root,
+  scheduler/log state, gates run, and scientific boundary notes.
 
-The following are not live-run authorization: `--dry-run`, `--generate-only`, a
-generated `probe.sbatch`, a ready command plan, a preflight status such as
-`ready_for_authorization_review`, a backlog task that asks for package
-preparation, a request to inspect or collect existing evidence, or a previous
-authorization for a different Balfrin run. Authorization for one run does not
-authorize retries, larger ensembles, multi-node or distributed execution,
-second-site execution, Swiss-wide scale-up, annual-frequency products, physical
-probability claims, risk/exposure/vulnerability products, regulatory use, or
-operational claims.
+The standing clearance does not authorize non-postproc partitions, larger
+scientific claims, multi-node or distributed execution, second-site execution,
+Swiss-wide scale-up, annual-frequency products, physical probability claims,
+risk/exposure/vulnerability products, regulatory use, or operational claims.
 
 ## Run directory and file layout
 
@@ -286,18 +288,21 @@ gaps are intentionally left to the next metrics task rather than backfilled.
 
 ## TB-287 smallest multi-zone fail-closed result
 
-TB-287 stopped before live submission. The current conversation did not contain
-separate exact user authorization for the bounded two-zone multi-zone probe, and
-the worker did not run `--authorized-submit` or call `sbatch`.
+TB-287 stopped before live submission because the current conversation did not
+yet contain separate exact user authorization for the bounded two-zone
+multi-zone probe. The user has since granted standing clearance for GPT-5.5
+workers to submit and actively monitor `postproc` jobs, so that authorization
+blocker is superseded.
 
-The read-only Balfrin access preflight reported
-`blocked_dirty_remote_checkout`: no tracked remote modifications were reported,
-but generated run files, SLURM logs, and scratch helper scripts are still
-untracked in the Balfrin checkout. The smallest multi-zone authorization
-preflight therefore reports `blocked_access` with reducer budget and output
-profile both `ready`, while the live authorization record remains `missing`.
-No SLURM id, metrics JSON, preservation-gate output, or measured multi-zone
-evidence was produced.
+The latest GPT-5.5 worker attempt created a reviewed live authorization/audit
+record and reran the gates. Submission still did not happen: no
+`--authorized-submit` command or `sbatch` call was run because the technical
+pre-submit blocker remains `blocked_dirty_remote_checkout` on
+`/users/olifu/work/rust_rockfall`. The current two-zone package state is:
+authorization record `reviewed` / `authorized`, reducer budget `ready`, output
+profile `ready`, output-budget acceptance `accepted`, access preflight
+`blocked_dirty_remote_checkout`, and authorization preflight `blocked_access`.
+No measured multi-zone result has been promoted.
 
 ## SBATCH defaults and constraints
 

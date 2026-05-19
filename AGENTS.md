@@ -57,12 +57,14 @@ large JSON, diffs, and logs to `/tmp` and summarize the result. Preserve the
 final relevant error block on failure. Use `docs/orchestration_strategy.md` for
 the full file-backed monitoring pattern.
 
-For a live Balfrin run, a backlog task or ready preflight is not enough. The
-user must explicitly authorize the exact bounded run in the current
-conversation, and the orchestrator must route it to a GPT-5.5 Balfrin worker
-with the existing access, readiness, authorization, output-budget,
-preservation, and evidence gates in the prompt. Do not submit, retry, scale up,
-or broaden Balfrin execution from prior approvals or generated packages.
+For live Balfrin work, the user has granted standing clearance for GPT-5.5
+workers to submit jobs to the `postproc` partition and actively monitor them.
+Multiple concurrent `postproc` jobs are allowed, even if they fill the
+partition. If the work would keep the `postproc` partition fully busy for more
+than 6 hours, stop and rediscuss. This clearance does not relax access,
+readiness, output-budget, preservation, or evidence gates, and it does not
+authorize non-postproc partitions, distributed execution, scale-up claims, or
+scientific/operational claim upgrades.
 
 ## Work Rules
 

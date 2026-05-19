@@ -28,12 +28,14 @@ to the next task. Stop on any failure or dirty worktree; do not pre-generate
 later prompts. Full sequential-loop guidance lives in
 `docs/orchestration_strategy.md`.
 
-Live Balfrin rule: a task may prepare, review, or preflight a Balfrin submission
-package, but it may not submit a new live run unless the user gives an explicit
-instruction for that exact run. The orchestrator must route any authorized live
-run to a GPT-5.5 Balfrin worker and require the existing Balfrin access,
-readiness, authorization, output-budget, preservation, and evidence gates. A
-ready preflight, generated package, or backlog task is not authorization.
+Live Balfrin rule: the user has granted standing clearance for GPT-5.5 workers
+to submit and actively monitor jobs on Balfrin's `postproc` partition. Multiple
+concurrent `postproc` jobs are allowed, including filling the partition. If the
+work would keep the `postproc` partition fully busy for more than 6 hours, stop
+and rediscuss. Submission still requires the relevant access, readiness,
+authorization-record/audit, output-budget, preservation, and evidence gates to
+pass. This clearance does not authorize non-postproc partitions, distributed
+execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
@@ -79,10 +81,11 @@ Definition of done:
   A new blocked/deferred classification is not enough unless it eliminates a
   real ambiguity and names the next unblock action or explicit deferral.
 
-Boundaries: No live Balfrin submission, tuning, operational claims, scale-up
-authorization, or other phase changes unless the task explicitly allows them
-and, for live Balfrin submission, the user has separately authorized the exact
-run.
+Boundaries: No tuning, operational claims, scale-up authorization, non-postproc
+Balfrin submission, distributed execution, or other phase changes unless the
+task explicitly allows them. Postproc Balfrin submissions are covered by the
+standing live Balfrin rule above and still require GPT-5.5 routing, active
+monitoring, and passing repository gates.
 ```
 
 Workers should start with compact task context and a targeted backlog lookup:
