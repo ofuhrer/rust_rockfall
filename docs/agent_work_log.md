@@ -3285,3 +3285,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: ranking heuristic only; no physical credibility, calibration, source-frequency, or operational release-zone claim.
 - Next task: `TB-327`
+
+### TB-327: Multi-Zone Scenario Table Stress Test
+
+- Date: 2026-05-20
+- Commit: `d4cded0`
+- Objective: generate deterministic scenario tables for selected stable release-zone prefixes and measure cardinality, manifest pressure, and scratch-root output expectations before any Balfrin submission.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_aoi_scenario_preview.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a selected-zone preview mode that materializes scratch-root scenario tables for deterministic 2/4/8/12 candidate prefixes from one reviewed package and summarizes per-count cardinality, block-family coverage, seed policy, manifest bytes, and output-root expectations.
+  - Kept the freezer path deterministic by exercising explicit accepted-candidate prefixes in the stress regression, then verified the emitted scenario tables, manifests, and report outputs remain bounded and order-stable as the selected prefix grows.
+  - Extended the AOI preview regression to cover the selected-zone pressure path and to confirm the largest requested prefix stays on the scratch-root boundary with positive output estimates.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_aoi_scenario_preview -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: conditional scenario generation only; no source-frequency semantics, no physics tuning, no simulation, and no operational claim.
+- Next task: `TB-328`
