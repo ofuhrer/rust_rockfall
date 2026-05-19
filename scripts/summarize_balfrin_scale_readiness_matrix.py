@@ -574,7 +574,7 @@ def _scratch_local_reducer_row() -> dict[str, Any]:
         "next_evidence_field": "accumulation_seconds",
         "blocker": "first_blocked_rung:8_zones:accumulation_seconds",
         "summary": (
-            "The local reduced-output ladder reports 1, 2, and 4 zones ready, with the first blocked scratch-local rung at 8 zones on accumulation_seconds."
+            "TB-314 refreshed the local reduced-output ladder at 1, 2, 4, 8, and 12 zones; 1-4 zones remain ready, 8 and 12 zones are blocked, and the first blocked scratch-local rung stays at 8 zones on accumulation_seconds. TB-312's four-zone postproc result remains separate measured Balfrin evidence, and TB-313 did not change the accumulator implementation."
         ),
     }
 
@@ -644,6 +644,7 @@ def build_report() -> dict[str, Any]:
         "dashboard_status": overall_status,
         "summary": (
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
+            "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),

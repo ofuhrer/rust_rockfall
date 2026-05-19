@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-314: Current Local Scaling Ladder Refresh
-
-Goal: Rerun the 1/2/4/8/12-zone local scaling ladder after TB-312 measured four-zone postproc evidence and TB-313 rejected the accumulator micro-optimization.
-
-Capability gap reduced: The scale dashboard needs current ladder evidence after the latest measured Balfrin postproc point and the confirmed no-op optimization attempt.
-
-Why this outranks alternatives: The next action should be based on the current implementation and measured four-zone evidence, not on an assumed optimization that was not accepted.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Refreshed ladder measurements for 1, 2, 4, 8, and 12 zones with phase timing, manifest bytes, sidecars, output files, first bottleneck, and status changes.
-- Scale-dashboard updates that separate measured four-zone postproc evidence from unchanged local hazard-accumulation behavior.
-- A next-action recommendation for larger local ladder, further accumulation architecture work, or AOI workflow progress.
-
-Definition of done:
-
-- The local scaling frontier reflects the latest implementation and names the next safe scale action.
-
-Boundaries: Local/fixture measurement only; no live Balfrin submission, no Swiss-wide claim, no distributed execution, no physical credibility claim, and no operational claim.
-
 ### TB-315: User AOI Guided Pipeline Command
 
 Goal: Add a single guided command that takes AOI bounds or a bootstrapped AOI manifest and walks the user through status, prepare, local smoke, package-map, and QA-review steps.

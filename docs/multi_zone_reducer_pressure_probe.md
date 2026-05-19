@@ -251,22 +251,28 @@ budget failure.
 
 ## TB-301 Local Scaling Ladder
 
-The local ladder helper `scripts/summarize_multi_zone_scaling_ladder.py`
-extends the pressure probe into 1, 2, 4, 8, and 12-zone reduced-output rungs.
-It keeps the pressure measurement local and fixture-backed, while separately
-recording reduced-output hazard-builder timing for the same zone counts.
+TB-314 refreshed the local ladder after TB-312 measured four-zone Balfrin
+postproc evidence and TB-313 rejected the accumulator micro-optimization. The
+helper still stays local and fixture-backed; it records scratch-only
+pressure/throughput evidence and does not promote the Balfrin postproc result
+into a local hazard-accumulation claim.
 
 Measured rung summary:
 
-- `1` zones: `probe_ready`, `5888` manifest bytes, `3` sidecars, `8` output files.
-- `2` zones: `probe_ready`, `6292` manifest bytes, `4` sidecars, `13` output files.
-- `4` zones: `probe_ready`, `6948` manifest bytes, `6` sidecars, `21` output files.
-- `8` zones: `multi_zone_dry_run_blocked`, `8260` manifest bytes, `10` sidecars, `37` output files.
-- `12` zones: `multi_zone_dry_run_blocked`, `9586` manifest bytes, `14` sidecars, `53` output files.
+| Zones | Status | Manifest bytes | Reducer manifest bytes | Sidecars | Output files | First bottleneck | Accumulation s | Raster write s | Reducer merge s | Total wall s |
+| --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |
+| 1 | `probe_ready` | `5888` | `197` | `3` | `8` | `raster_write_seconds` | `0.010291` | `0.020531` | `0.000000` | `0.129674` |
+| 2 | `probe_ready` | `6292` | `394` | `4` | `13` | `accumulation_seconds` | `0.090298` | `0.022384` | `0.006235` | `0.218312` |
+| 4 | `probe_ready` | `6948` | `438` | `6` | `21` | `accumulation_seconds` | `0.090089` | `0.021907` | `0.006222` | `0.211048` |
+| 8 | `multi_zone_dry_run_blocked` | `8260` | `526` | `10` | `37` | `accumulation_seconds` | `0.088567` | `0.023540` | `0.006084` | `0.223721` |
+| 12 | `multi_zone_dry_run_blocked` | `9586` | `614` | `14` | `53` | `accumulation_seconds` | `0.104789` | `0.022471` | `0.007194` | `0.230328` |
 
-The first blocked rung is `8` zones, with `accumulation_seconds` as the first
-bottleneck label. That gives the repo a compact local breakpoint surface before
-any live Balfrin scale step is considered.
+The status change is stable across the refresh: `1`, `2`, and `4` zones remain
+`probe_ready`, while `8` and `12` zones remain `multi_zone_dry_run_blocked`.
+The first blocked rung is still `8` zones, and the first bottleneck label stays
+`accumulation_seconds` for every rung beyond the single-zone raster-write case.
+That keeps the current local scaling frontier clear without turning the TB-312
+Balfrin postproc measurement into a local hazard-accumulation claim.
 
 ## TB-309 Smallest Two-Zone Probe Result
 

@@ -405,3 +405,28 @@ Interpretation:
   approach or a projected trajectory reader that reduces Python row-wise update
   overhead while preserving reach, maxima, exceedance, weighting, and reducer
   determinism.
+
+## TB-314 Current Local Scaling Ladder Refresh
+
+TB-314 reran the fixture-backed 1/2/4/8/12-zone local ladder after TB-312
+measured four-zone Balfrin postproc evidence and TB-313 rejected the
+accumulator micro-optimization. The refreshed ladder stays local and
+fixture-backed, so it does not convert the Balfrin postproc evidence into a
+hazard-accumulation claim.
+
+The refresh confirms the same local boundary as before:
+
+- `1` zone remains raster-write bound, with `raster_write_seconds` as the first
+  bottleneck label.
+- `2`, `4`, `8`, and `12` zones remain accumulation-bound, with
+  `accumulation_seconds` as the first bottleneck label.
+- The first blocked rung remains `8` zones, and the `12`-zone rung remains
+  blocked without changing the local implementation.
+
+Recommended next action:
+
+- If more local evidence is needed, extend the scratch ladder beyond `12`
+  zones to see whether the blocked boundary moves.
+- Otherwise move to structural accumulator batching/vectorization work or the
+  AOI workflow slice, because TB-313 did not produce an accepted optimization
+  and the current local accumulator behavior is unchanged.

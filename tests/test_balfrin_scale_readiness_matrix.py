@@ -24,6 +24,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
         self.assertEqual(report["next_evidence_field"], "remote_cleanup_rerun")
+        self.assertIn("TB-314 refreshed the local scratch ladder", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone"])
@@ -150,6 +151,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["local_reducer_ladder"]["evidence_label"], "scratch_local")
         self.assertEqual(tiers["local_reducer_ladder"]["classification"], "local_breakpoint_measured")
         self.assertIn("8_zones", tiers["local_reducer_ladder"]["blocker"])
+        self.assertIn("1, 2, 4, 8, and 12 zones", tiers["local_reducer_ladder"]["summary"])
+        self.assertIn("accumulation_seconds", tiers["local_reducer_ladder"]["summary"])
 
         self.assertEqual(tiers["projected_larger_aoi"]["classification"], "no_go")
         self.assertEqual(tiers["projected_larger_aoi"]["evidence_label"], "projection_only")

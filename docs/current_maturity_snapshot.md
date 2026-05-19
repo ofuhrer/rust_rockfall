@@ -354,14 +354,16 @@ objective are:
    preserved probe-metrics report, and the measured canonical bundle into one
    deterministic target-area evidence bundle so the current demonstration
    state is auditable without collapsing unavailable or blocked evidence into
-   the measured sections. TB-301 adds local 1/2/4/8/12-zone ladder evidence:
-   rungs through 4 zones remain fixture-ready, while the 8-zone rung is the
-   first local blocked point, with hazard accumulation timing as the first
-   bottleneck label. TB-302 adds a read-only Balfrin run-root output-budget
-   auditor for future preserved roots, and TB-303 adds the worker-facing scale
-   dashboard that labels tiers as `measured_on_balfrin`, `fixture_backed`,
-   `scratch_local`, `projection_only`, or `blocked_pre_submit`. None of this
-   authorizes Swiss-wide execution or a new live Balfrin submission.
+   the measured sections. TB-312 added the measured four-zone Balfrin postproc
+   result as separate evidence, TB-313 rejected the accumulator micro-
+   optimization, and TB-314 refreshed the local 1/2/4/8/12-zone ladder so the
+   scratch-local frontier still first blocks at 8 zones on
+   `accumulation_seconds`. TB-302 adds a read-only Balfrin run-root
+   output-budget auditor for future preserved roots, and TB-303 adds the
+   worker-facing scale dashboard that labels tiers as `measured_on_balfrin`,
+   `fixture_backed`, `scratch_local`, `projection_only`, or
+   `blocked_pre_submit`. None of this authorizes Swiss-wide execution or a new
+   live Balfrin submission.
 8. GIS package manifests are complete and declared GeoTIFF outputs are present
    for the same-scale artifacts. COG readiness is blocked for the committed
    standard roots by the current strip-organized raster layout, missing

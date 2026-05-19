@@ -3023,3 +3023,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_noop
 - Boundaries: no accepted optimization was retained; no physics change, output schema change, live Balfrin submission, distributed execution, tuning, annual/physical/risk semantics, or operational claim was introduced.
 - Next task: `TB-314`
+
+### TB-314: Current Local Scaling Ladder Refresh
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: refresh the fixture-backed 1/2/4/8/12-zone local scaling ladder after TB-312 measured the four-zone Balfrin postproc point and TB-313 rejected the accumulator micro-optimization.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/hazard_throughput_bottleneck_report.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the local ladder in scratch space and captured refreshed 1, 2, 4, 8, and 12-zone measurements with phase timing, manifest bytes, reducer-manifest bytes, sidecars, output files, and first-bottleneck labels.
+  - Updated the reducer-pressure probe, throughput report, maturity snapshot, and scale-dashboard summaries so the four-zone Balfrin postproc evidence stays separate from the unchanged local accumulator boundary after TB-313.
+  - Removed TB-314 from the active backlog after the refresh was documented.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root /tmp/rust_rockfall/tb314_multi_zone_ladder --format json --json-output /tmp/rust_rockfall/tb314_multi_zone_ladder/report.json --markdown-output /tmp/rust_rockfall/tb314_multi_zone_ladder/report.md`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_multi_zone_scaling_ladder -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: local/fixture ladder only; no live Balfrin submission, no Swiss-wide claim, no distributed execution, no physical credibility claim, and no operational claim.
+- Next task: `TB-315`
