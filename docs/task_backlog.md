@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-325: Real-Terrain Release-Zone Candidate Sweep
-
-Goal: Run the deterministic terrain-driven release-zone candidate generator across a larger real or real-like staged AOI and measure candidate counts, geometry sizes, runtime, and output pressure.
-
-Capability gap reduced: Release-zone generation remains a core Swiss-scale automation gap and needs measured behavior beyond handcrafted single-zone examples.
-
-Why this outranks alternatives: Multi-zone scenario and Balfrin scaling projections depend directly on how many candidate zones the heuristic produces.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `docs/swisstopo_data_strategy.md`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_balfrin_target_area_candidate_stability.py`
-
-Deliverables:
-
-- Candidate sweep summary with slope/topography thresholds, component counts, area distributions, runtime, file counts, and output bytes.
-- GIS-ready candidate masks or vector outputs in ignored scratch roots.
-- Comparison to existing Tschamut/Balfrin candidate behavior without claiming validation.
-
-Definition of done:
-
-- The repo has measured release-candidate cardinality and output pressure for a larger AOI, with deterministic rerun evidence.
-
-Boundaries: Heuristic candidate generation only; no validated release-zone claim, no tuning to fit outcomes, no simulation, no operational claim.
-
 ### TB-326: Release-Zone Stability Ranking For Scale
 
 Goal: Rank automatically generated release-zone candidates by stability under slope threshold, smoothing, terrain resolution, and AOI-boundary perturbations.
