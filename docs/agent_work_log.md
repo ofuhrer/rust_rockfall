@@ -3265,3 +3265,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: heuristic candidate generation only; no validated release-zone claim, no tuning to fit outcomes, no simulation, no operational claim, and no release-zone acceptance evidence.
 - Next task: `TB-326`
+
+### TB-326: Release-Zone Stability Ranking For Scale
+
+- Date: 2026-05-20
+- Commit: `8a7b4b3`
+- Objective: rank automatically generated release-zone candidates by bounded stability across slope-threshold, smoothing, terrain-resolution, and AOI-boundary perturbations, and expose deterministic 2/4/8-zone bounded-probe selections.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/summarize_balfrin_target_area_candidate_stability.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a deterministic candidate-stability ranking over the baseline connected components with stable/sensitive/unstable classification, per-component retention metrics, and bounded-probe top-N selection helpers.
+  - Surfaced the stability score method, ranked candidate list, and deterministic two-zone, four-zone, and eight-zone candidate selections in the target-area stability summary and text report.
+  - Extended the regression coverage to prove the ranking is order-independent and that the top-N bounded-probe selections are stable when the candidate list is reversed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_balfrin_target_area_candidate_stability -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: ranking heuristic only; no physical credibility, calibration, source-frequency, or operational release-zone claim.
+- Next task: `TB-327`
