@@ -233,6 +233,7 @@ def build_report(
     reducer_chunk_count: int = DEFAULT_TARGET_REDUCER_CHUNK_COUNT,
     reducer_workers: int = DEFAULT_TARGET_REDUCER_WORKERS,
     output_family_mix: tuple[str, ...] | str | None = None,
+    manifest_mode: str = "full",
     warning_release_zone_count: int = DEFAULT_WARNING_RELEASE_ZONE_COUNT,
     warning_reducer_chunk_count: int = DEFAULT_WARNING_REDUCER_CHUNK_COUNT,
     warning_reducer_workers: int = DEFAULT_WARNING_REDUCER_WORKERS,
@@ -266,6 +267,7 @@ def build_report(
             reducer_worker_count=reducer_workers,
             reducer_chunk_count=reducer_chunk_count,
             output_family_mix=output_family_mix,
+            manifest_mode=manifest_mode,
         )
     elif probe_root is not None:
         target_root = probe_root
@@ -277,6 +279,7 @@ def build_report(
             reducer_worker_count=reducer_workers,
             reducer_chunk_count=reducer_chunk_count,
             output_family_mix=output_family_mix,
+            manifest_mode=manifest_mode,
         )
 
     with tempfile.TemporaryDirectory() as tmpdir:

@@ -1512,6 +1512,7 @@ def build_handoff_output_budget_projection(
         reducer_chunk_count=command_spec["reducer_chunk_count"],
         reducer_workers=command_spec["reducer_worker_count"],
         output_family_mix=output_family_mix,
+        manifest_mode=manifest_mode,
     )
     target_profile = dict(gate_report.get("target_profile") or {})
     first_bottleneck_labels = first_handoff_budget_bottleneck_labels(gate_report)
@@ -1564,6 +1565,12 @@ def build_handoff_output_budget_projection(
         "gate_status": gate_report.get("gate_status"),
         "summary": summary,
         "projection_provenance": "handoff_command_plan",
+        "manifest_encoding": {
+            "mode": manifest_mode,
+            "deduplicated_path_prefixes": manifest_mode == "compact",
+            "deduplicated_output_family_metadata": manifest_mode == "compact",
+            "deduplicated_command_plan_fields": manifest_mode == "compact",
+        },
         "threshold_provenance": gate_report.get("threshold_provenance"),
         "command_id": command_spec["command_id"],
         "source_command": command_spec["source_command"],

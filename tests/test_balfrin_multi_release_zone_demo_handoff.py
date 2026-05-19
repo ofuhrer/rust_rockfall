@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import tempfile
+import sys
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -19,6 +20,13 @@ assert SPEC is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
+PRESSURE_SCRIPT_PATH = ROOT / "scripts" / "summarize_multi_zone_reducer_pressure.py"
+PRESSURE_SPEC = importlib.util.spec_from_file_location("summarize_multi_zone_reducer_pressure", PRESSURE_SCRIPT_PATH)
+assert PRESSURE_SPEC is not None
+PRESSURE_MODULE = importlib.util.module_from_spec(PRESSURE_SPEC)
+assert PRESSURE_SPEC.loader is not None
+sys.modules["summarize_multi_zone_reducer_pressure"] = PRESSURE_MODULE
+PRESSURE_SPEC.loader.exec_module(PRESSURE_MODULE)
 
 
 class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
@@ -282,6 +290,33 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("preservation_gate_checklist", smallest_run)
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
+
+    def test_compact_manifest_mode_preserves_replay_critical_report_shape(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            full_root = tmp / "full_probe"
+            compact_root = tmp / "compact_probe"
+
+            PRESSURE_MODULE.materialize_probe_root(full_root, manifest_mode="full")
+            PRESSURE_MODULE.materialize_probe_root(compact_root, manifest_mode="compact")
+
+            full_report = PRESSURE_MODULE.build_report(full_root)
+            compact_report = PRESSURE_MODULE.build_report(compact_root)
+            compact_manifest = json.loads(
+                (compact_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(compact_manifest["manifest_encoding"]["mode"], "compact_v1")
+        self.assertIn("shared_output_family_metadata", compact_manifest["manifest_encoding"])
+        self.assertIn("shared_command_plan_fields", compact_manifest["manifest_encoding"])
+        self.assertLess(compact_report["manifest_size_bytes"], full_report["manifest_size_bytes"])
+        self.assertEqual(compact_report["merge_order"], "sorted_chunk_id")
+        self.assertTrue(compact_report["merge_order_independent"])
+        self.assertEqual(compact_report["output_family_file_counts"], full_report["output_family_file_counts"])
+        self.assertEqual(compact_report["output_family_bytes"], full_report["output_family_bytes"])
+        self.assertLessEqual(compact_report["manifest_size_bytes"], 11_000)
 
     def test_handoff_budget_projection_consumes_shared_command_plan_contract_without_mutating_semantics(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

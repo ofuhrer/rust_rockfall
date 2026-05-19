@@ -105,6 +105,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
+    parser.add_argument(
+        "--manifest-mode",
+        choices=("full", "compact"),
+        default="full",
+        help="Write the output manifest in full or compact replay-preserving form.",
+    )
     args = parser.parse_args(argv)
 
     probe_root = args.probe_root
@@ -117,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
                 reducer_worker_count=args.reducer_workers,
                 reducer_chunk_count=args.reducer_chunk_count,
                 output_family_mix=output_family_mix,
+                manifest_mode=args.manifest_mode,
             )
             probe_root = args.materialize_root
         if probe_root is None:
@@ -147,6 +154,7 @@ def materialize_probe_root(
     reducer_worker_count: int = DEFAULT_REDUCER_WORKERS,
     reducer_chunk_count: int = DEFAULT_REDUCER_CHUNK_COUNT,
     output_family_mix: tuple[str, ...] | str | None = None,
+    manifest_mode: str = "full",
 ) -> ProbeMaterialization:
     if release_zone_count <= 1:
         raise MultiZoneReducerPressureError("release_zone_count must be greater than 1")
@@ -156,6 +164,8 @@ def materialize_probe_root(
         raise MultiZoneReducerPressureError("reducer_chunk_count must be greater than 0")
     if reducer_chunk_count > release_zone_count:
         raise MultiZoneReducerPressureError("reducer_chunk_count cannot exceed release_zone_count")
+    if manifest_mode not in {"full", "compact"}:
+        raise MultiZoneReducerPressureError(f"unsupported manifest mode: {manifest_mode}")
 
     output_family_mix = normalize_output_family_mix(output_family_mix)
     probe_root = probe_root.resolve()
@@ -222,6 +232,7 @@ def materialize_probe_root(
         reducer_execution=reducer_execution,
         outputs=output_entries,
         output_family_mix=output_family_mix,
+        manifest_mode=manifest_mode,
     )
     write_json(output_manifest_path, output_manifest)
 
@@ -253,7 +264,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
 
     probe_manifest = load_json(probe_manifest_path)
     command_plan = load_json(command_plan_path)
-    output_manifest = load_json(output_manifest_path)
+    output_manifest = canonicalize_output_manifest(load_json(output_manifest_path), probe_root)
 
     release_zones = ensure_list_of_strings(probe_manifest.get("release_zones"), "probe_manifest.release_zones")
     output_family_mix = normalize_output_family_mix(probe_manifest.get("output_family_mix"))
@@ -705,12 +716,114 @@ def build_output_manifest(
     reducer_execution: dict[str, Any],
     outputs: list[dict[str, Any]],
     output_family_mix: tuple[str, ...],
+    manifest_mode: str = "full",
 ) -> dict[str, Any]:
     total_file_count = sum(number_or_zero(output.get("file_count")) for output in outputs)
     total_bytes = sum(number_or_zero(output.get("total_bytes")) for output in outputs)
     reducer_wall_seconds = round(0.75 + 0.12 * len(release_zones) + 0.2 * len(reducer_execution.get("chunk_ids") or []), 2)
     output_write_seconds = round(0.05 * len(outputs) + 0.01 * len(release_zones), 2)
     output_family_mix_set = set(output_family_mix)
+    if manifest_mode == "compact":
+        return {
+            "schema_version": "run_manifest_v1",
+            "case_id": "multi_zone_reducer_pressure_probe",
+            "probe_root": str(probe_root),
+            "manifest_encoding": {
+                "mode": "compact_v1",
+                "path_prefixes": {
+                    "trajectory_csv": "output/trajectories",
+                    "deposition_csv": "output/deposition",
+                    "impact_events_csv": "output/impact_events",
+                    "trajectory_chunk_manifest": "output/trajectory_chunks",
+                    "reducer_chunk_manifest": "output/chunks",
+                    "trajectory_execution_plan": "output/trajectory_execution_plan.json",
+                    "trajectory_execution_index": "output/trajectory_execution_index.json",
+                    "trajectory_merge_state": "output/trajectory_merge_state.json",
+                    "reducer_execution_plan": "output/reducer_execution_plan.json",
+                    "reducer_execution_index": "output/reducer_execution_index.json",
+                    "reducer_merge_state": "output/reducer_merge_state.json",
+                    "diagnostics_json": "output/diagnostics.json",
+                    "map_package_manifest": "output/map_package_manifest.json",
+                    "pilot_gis_package_manifest": "output/pilot_gis_package_manifest.json",
+                },
+                "shared_output_family_metadata": {
+                    "trajectory_csv": {"format": "csv", "suffix": "_trajectory.csv"},
+                    "deposition_csv": {"format": "csv", "suffix": "_deposition.csv"},
+                    "impact_events_csv": {"format": "csv", "suffix": "_impact_events.csv"},
+                    "trajectory_chunk_manifest": {"format": "json"},
+                    "reducer_chunk_manifest": {"format": "json"},
+                    "trajectory_execution_plan": {"format": "json"},
+                    "trajectory_execution_index": {"format": "json"},
+                    "trajectory_merge_state": {"format": "json"},
+                    "reducer_execution_plan": {"format": "json"},
+                    "reducer_execution_index": {"format": "json"},
+                    "reducer_merge_state": {"format": "json"},
+                    "diagnostics_json": {"format": "json"},
+                    "map_package_manifest": {"format": "json"},
+                    "pilot_gis_package_manifest": {"format": "json"},
+                },
+                "shared_command_plan_fields": {
+                    "trajectory_execution": {
+                        "schema_version": "trajectory_execution_manifest_v1",
+                        "mode": "chunked_local_threads",
+                        "merge_order": "sorted_chunk_id",
+                        "merge_order_independent": True,
+                    },
+                    "reducer_execution": {
+                        "schema_version": "deterministic_local_reducer_v1",
+                        "mode": "chunked_local_threads",
+                        "merge_order": "sorted_chunk_id",
+                        "merge_order_independent": True,
+                    },
+                },
+            },
+            "performance": {
+                "total_wall_seconds": reducer_wall_seconds,
+                "output_write_seconds": output_write_seconds,
+            },
+            "trajectory_execution": {
+                "schema_version": trajectory_execution["schema_version"],
+                "mode": trajectory_execution["mode"],
+                "worker_count": trajectory_execution["worker_count"],
+                "chunk_count": trajectory_execution["chunk_count"],
+                "merge_order": trajectory_execution["merge_order"],
+                "merge_order_independent": trajectory_execution["merge_order_independent"],
+            },
+            "reducer_execution": {
+                "schema_version": reducer_execution["schema_version"],
+                "mode": reducer_execution["mode"],
+                "worker_count": reducer_execution["worker_count"],
+                "chunk_count": reducer_execution["chunk_count"],
+                "merge_order": reducer_execution["merge_order"],
+                "merge_order_independent": reducer_execution["merge_order_independent"],
+            },
+            "outputs": build_compact_output_entries(
+                release_zones=release_zones,
+                trajectory_execution=trajectory_execution,
+                reducer_execution=reducer_execution,
+                output_family_mix=output_family_mix,
+            ),
+            "cellwise_layers": [
+                layer
+                for layer in (
+                    {"name": "reach_probability", "kind": "trajectory_csv"}
+                    if "trajectory_csv" in output_family_mix_set
+                    else None,
+                    {"name": "impact_energy", "kind": "impact_events_csv"}
+                    if "impact_events_csv" in output_family_mix_set
+                    else None,
+                    {"name": "deposition_mass", "kind": "deposition_csv"}
+                    if "deposition_csv" in output_family_mix_set
+                    else None,
+                )
+                if layer is not None
+            ],
+            "source_zone_summary": {
+                "release_zone_count": len(release_zones),
+                "release_zone_ids": [zone["source_zone_id"] for zone in release_zones],
+            },
+            "output_family_mix": list(output_family_mix),
+        }
     return {
         "schema_version": "run_manifest_v1",
         "case_id": "multi_zone_reducer_pressure_probe",
@@ -765,6 +878,48 @@ def build_output_manifest(
         },
         "output_family_mix": list(output_family_mix),
     }
+
+
+def build_compact_output_entries(
+    *,
+    release_zones: list[dict[str, Any]],
+    trajectory_execution: dict[str, Any],
+    reducer_execution: dict[str, Any],
+    output_family_mix: tuple[str, ...],
+) -> list[dict[str, Any]]:
+    output_family_mix_set = set(output_family_mix)
+    outputs: list[dict[str, Any]] = []
+    for zone_index, zone in enumerate(release_zones):
+        if "trajectory_csv" in output_family_mix_set:
+            outputs.append({"kind": "trajectory_csv", "zone_index": zone_index})
+        if "deposition_csv" in output_family_mix_set:
+            outputs.append({"kind": "deposition_csv", "zone_index": zone_index})
+        if "impact_events_csv" in output_family_mix_set:
+            outputs.append({"kind": "impact_events_csv", "zone_index": zone_index})
+        if "trajectory_chunk_manifest" in output_family_mix_set:
+            outputs.append({"kind": "trajectory_chunk_manifest", "zone_index": zone_index})
+    for chunk_index, chunk_id in enumerate(reducer_execution.get("chunk_ids") or []):
+        if "reducer_chunk_manifest" in output_family_mix_set:
+            outputs.append({"kind": "reducer_chunk_manifest", "chunk_index": chunk_index})
+    if "trajectory_execution_plan" in output_family_mix_set:
+        outputs.append({"kind": "trajectory_execution_plan"})
+    if "trajectory_execution_index" in output_family_mix_set:
+        outputs.append({"kind": "trajectory_execution_index"})
+    if "trajectory_merge_state" in output_family_mix_set:
+        outputs.append({"kind": "trajectory_merge_state"})
+    if "reducer_execution_plan" in output_family_mix_set:
+        outputs.append({"kind": "reducer_execution_plan"})
+    if "reducer_execution_index" in output_family_mix_set:
+        outputs.append({"kind": "reducer_execution_index"})
+    if "reducer_merge_state" in output_family_mix_set:
+        outputs.append({"kind": "reducer_merge_state"})
+    if "diagnostics_json" in output_family_mix_set:
+        outputs.append({"kind": "diagnostics_json"})
+    if "map_package_manifest" in output_family_mix_set:
+        outputs.append({"kind": "map_package_manifest"})
+    if "pilot_gis_package_manifest" in output_family_mix_set:
+        outputs.append({"kind": "pilot_gis_package_manifest"})
+    return outputs
 
 
 def build_trajectory_rows(zone: dict[str, Any], zone_index: int) -> list[dict[str, Any]]:
@@ -1169,6 +1324,101 @@ def build_output_entries(
         )
         outputs.append(output_manifest_entry(pilot_gis_manifest_path, "pilot_gis_package_manifest", "json", 1))
     return outputs
+
+
+def canonicalize_output_manifest(output_manifest: dict[str, Any] | None, output_root: Path) -> dict[str, Any]:
+    if not output_manifest:
+        return {}
+    manifest_encoding = dict(output_manifest.get("manifest_encoding") or {})
+    if manifest_encoding.get("mode") != "compact_v1":
+        return output_manifest
+
+    path_prefixes = dict(manifest_encoding.get("path_prefixes") or {})
+    family_metadata = dict(manifest_encoding.get("shared_output_family_metadata") or {})
+    release_zone_ids = list(dict(output_manifest.get("source_zone_summary") or {}).get("release_zone_ids") or [])
+    canonical_outputs: list[dict[str, Any]] = []
+    for entry in list(output_manifest.get("outputs") or []):
+        if not isinstance(entry, dict):
+            continue
+        kind = str(entry.get("kind") or "")
+        metadata = dict(family_metadata.get(kind) or {})
+        path = compact_output_path(
+            output_root=output_root,
+            family=kind,
+            entry=entry,
+            path_prefixes=path_prefixes,
+            metadata=metadata,
+            release_zone_ids=release_zone_ids,
+        )
+        if path is None:
+            continue
+        canonical_outputs.append(
+            {
+                "kind": kind,
+                "format": str(metadata.get("format") or entry.get("format") or "json"),
+                "path": str(path),
+                "file_count": 1,
+                "total_bytes": file_size(path),
+            }
+        )
+
+    canonical = dict(output_manifest)
+    canonical["outputs"] = canonical_outputs
+    canonical["manifest_encoding"] = manifest_encoding
+    return canonical
+
+
+def compact_output_path(
+    *,
+    output_root: Path,
+    family: str,
+    entry: dict[str, Any],
+    path_prefixes: dict[str, str],
+    metadata: dict[str, Any],
+    release_zone_ids: list[str],
+) -> Path | None:
+    if family in {"trajectory_csv", "deposition_csv", "impact_events_csv"}:
+        family_root = path_prefixes.get(family)
+        zone_index = entry.get("zone_index")
+        if zone_index is not None:
+            try:
+                source_zone_id = str(release_zone_ids[int(zone_index)])
+            except (IndexError, ValueError, TypeError):
+                source_zone_id = ""
+        else:
+            source_zone_id = str(entry.get("source_zone_id") or "")
+        suffix = str(metadata.get("suffix") or "")
+        return output_root / family_root / f"{source_zone_id}{suffix}" if family_root and source_zone_id else None
+    if family in {"trajectory_chunk_manifest", "reducer_chunk_manifest"}:
+        family_root = path_prefixes.get(family)
+        if family == "trajectory_chunk_manifest":
+            zone_index = entry.get("zone_index")
+            if zone_index is None:
+                chunk_id = str(entry.get("chunk_id") or "")
+            else:
+                try:
+                    source_zone_id = str(release_zone_ids[int(zone_index)])
+                except (IndexError, ValueError, TypeError):
+                    source_zone_id = ""
+                chunk_id = f"trajectory_chunk_{int(zone_index):02d}" if source_zone_id else ""
+        else:
+            chunk_index = entry.get("chunk_index")
+            chunk_id = f"reducer_chunk_{int(chunk_index):02d}" if chunk_index is not None else str(entry.get("chunk_id") or "")
+        return output_root / family_root / f"{chunk_id}.json" if family_root and chunk_id else None
+    if family in {
+        "trajectory_execution_plan",
+        "trajectory_execution_index",
+        "trajectory_merge_state",
+        "reducer_execution_plan",
+        "reducer_execution_index",
+        "reducer_merge_state",
+        "diagnostics_json",
+        "map_package_manifest",
+        "pilot_gis_package_manifest",
+    }:
+        relative = path_prefixes.get(family)
+        return output_root / relative if relative else None
+    return None
 
 
 def output_manifest_entry(path: Path, kind: str, format: str, row_count: int) -> dict[str, Any]:

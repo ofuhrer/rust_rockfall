@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-294: Replay-Preserving Manifest Slimming Prototype
-
-Goal: Prototype a replay-preserving compact manifest representation for the smallest multi-zone handoff that reduces manifest bytes without losing deterministic replay, hashes, merge order, or provenance.
-
-Capability gap reduced: Multi-zone Balfrin execution is blocked by manifest-size pressure before the smallest live probe can run.
-
-Why this outranks alternatives: Output size control must be proven on the current blocking artifact before adding more zones or workers.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/hazard_output_profile_contract.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- A compact manifest mode that deduplicates repeated path prefixes, shared output-family metadata, and repeated command-plan fields while preserving replay-critical hashes and merge order.
-- Before/after report with manifest bytes, sidecar counts, replay-critical retained fields, deterministic package hash, and threshold status from TB-293.
-- Regression tests showing replay metadata is still complete and the previous `manifest_size_bytes` blocker is reduced or explicitly proven irreducible.
-
-Definition of done:
-
-- The smallest multi-zone package either passes the manifest threshold or reports a smaller, replay-critical residual blocker with evidence.
-
-Boundaries: Manifest/package representation only; no live Balfrin submission, no reducer math change, no output data deletion, no scale-up authorization, and no operational claim.
-
 ### TB-295: Balfrin Postproc Microbenchmark Harness
 
 Goal: Add a bounded Balfrin postprocessing microbenchmark harness that measures filesystem, manifest scanning, reducer merge, and hazard packaging overhead independently from full simulation scale.

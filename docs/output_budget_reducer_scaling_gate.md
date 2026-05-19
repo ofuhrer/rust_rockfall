@@ -102,6 +102,14 @@ That means the next review can see the exact blocker field instead of a generic
 budget label, while still refusing to trim the replay-critical metadata needed
 for replayability.
 
+TB-294 then turns that compact representation into a replay-preserving
+manifest mode for the smallest multi-zone handoff. The compact output manifest
+deduplicates repeated path prefixes, shared output-family metadata, and
+repeated command-plan fields while keeping the replay-critical families, merge
+order proof, and required hashes explicit. The reviewed two-zone handoff now
+lands at `10,228` manifest bytes, `11` sidecar files, and `budget_passes_no_reduction_needed`,
+so the manifest-size blocker is no longer the limiting field for that package.
+
 TB-293 turns that budget evidence into an explicit machine-readable acceptance
 contract emitted by
 `scripts/generate_balfrin_multi_release_zone_demo_handoff.py` as
