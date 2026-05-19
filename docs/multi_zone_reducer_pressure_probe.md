@@ -209,3 +209,26 @@ preflight over `/tmp/tb287_balfrin_access_preflight.json` reports
 `reducer_budget_status=ready`, `output_profile_status=ready`, and the
 authorization record remains `missing`. The authorization-gated path report
 keeps `submit_command_executed=false` and promotes no measured result.
+
+## TB-293 Output-Budget Acceptance Thresholds
+
+The multi-zone handoff now carries objective budget thresholds in
+`output_budget_acceptance_thresholds` and validates each projection into
+`output_budget_acceptance_validation`. The smallest live-review profile is
+`smallest_live_two_zone_probe` with maxima of `11000` manifest bytes, `20`
+output files, `11` sidecar files, `2` reducer manifest files, `400`
+reducer-manifest bytes, and `2` reducer chunks. The next larger review-only
+profile is `next_larger_four_zone_review_only_probe` with maxima of `14000`
+manifest bytes, `28` output files, `13` sidecar files, `2` reducer manifest
+files, `450` reducer-manifest bytes, and `2` reducer chunks.
+
+Both profiles retain per-family file-count thresholds, the replay-critical
+families `trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state`, and the replay-critical
+package hashes `probe_manifest_sha256`, `command_plan_sha256`, and
+`output_manifest_sha256`. The validator reports each exceeded metric with its
+measured value, threshold, excess, and whether the excess is `compressible` or
+`replay_critical`. The smallest authorization preflight consumes this report and
+also provides `--validation-mode budget-thresholds` for budget-only review; that
+mode does not convert missing authorization or dirty Balfrin access state into a
+budget failure.

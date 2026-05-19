@@ -57,6 +57,7 @@ SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
     "/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
+BUDGET_ACCEPTANCE_CONTRACT_VERSION = "balfrin_multi_zone_output_budget_acceptance_v1"
 BALFRIN_COMMAND_GROUP_ORDER = (
     "candidate_release_candidates",
     "deterministic_scenarios",
@@ -119,6 +120,13 @@ REPLAY_CRITICAL_OUTPUT_FAMILIES = (
     "trajectory_merge_state",
     "reducer_merge_state",
 )
+REPLAY_CRITICAL_PACKAGE_HASHES = (
+    "probe_manifest_sha256",
+    "command_plan_sha256",
+    "output_manifest_sha256",
+)
+SMALLEST_LIVE_BUDGET_PROFILE_ID = "smallest_live_two_zone_probe"
+NEXT_REVIEW_BUDGET_PROFILE_ID = "next_larger_four_zone_review_only_probe"
 PRUNED_OUTPUT_FAMILIES = tuple(
     family for family in FULL_OUTPUT_FAMILY_MIX if family not in REPLAY_CRITICAL_OUTPUT_FAMILIES
 )
@@ -353,6 +361,33 @@ def build_blocked_missing_inputs_report(
             "gate_report_path": None,
             "gate_text_path": None,
             "blocked_reason": blocked_reason,
+        },
+        "output_budget_acceptance_thresholds": build_output_budget_acceptance_thresholds(),
+        "output_budget_acceptance_validation": {
+            "schema_version": BUDGET_ACCEPTANCE_CONTRACT_VERSION,
+            "status": "blocked_missing_inputs",
+            "threshold_profile_id": SMALLEST_LIVE_BUDGET_PROFILE_ID,
+            "failures": [
+                {
+                    "metric": "required_inputs",
+                    "excess_classification": "replay_critical",
+                    "replay_critical": True,
+                    "compressible": False,
+                    "reason": blocked_reason,
+                }
+            ],
+            "exceeded_thresholds": ["required_inputs"],
+            "compressible_excesses": [],
+            "replay_critical_excesses": [
+                {
+                    "metric": "required_inputs",
+                    "excess_classification": "replay_critical",
+                    "replay_critical": True,
+                    "compressible": False,
+                    "reason": blocked_reason,
+                }
+            ],
+            "summary": blocked_reason,
         },
         "constraint_pressure": {
             "status": "blocked_missing_inputs",
@@ -716,6 +751,10 @@ def build_report(
             single_job_report=single_job_report,
         ),
         "multi_zone_pressure": pressure_report,
+        "output_budget_acceptance_thresholds": build_output_budget_acceptance_thresholds(),
+        "output_budget_acceptance_validation": handoff_output_budget_projection.get(
+            "budget_acceptance_validation", {}
+        ),
         "handoff_output_budget_projection": handoff_output_budget_projection,
         "manifest_pruning": manifest_pruning_report,
         "constraint_pressure": constraint_pressure_report,
@@ -1495,6 +1534,24 @@ def build_handoff_output_budget_projection(
         first_bottleneck_labels=first_bottleneck_labels,
         retained_replay_critical_output_families=replay_critical_retained_output_families,
     )
+    projection_file_hashes = build_projection_file_hashes(projection_root)
+    budget_acceptance_thresholds = build_output_budget_acceptance_thresholds()
+    budget_acceptance_validation = validate_output_budget_acceptance(
+        projection={
+            "release_zone_count": command_spec["release_zone_count"],
+            "reducer_chunk_count": command_spec["reducer_chunk_count"],
+            "reducer_worker_count": command_spec["reducer_worker_count"],
+            "manifest_size_bytes": target_profile.get("manifest_size_bytes", 0),
+            "output_file_count": target_profile.get("output_file_count", 0),
+            "sidecar_file_count": target_profile.get("sidecar_file_count", 0),
+            "reducer_manifest_file_count": target_profile.get("reducer_manifest_file_count", 0),
+            "reducer_manifest_bytes": target_profile.get("reducer_manifest_bytes", 0),
+            "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
+            "replay_critical_retained_output_families": replay_critical_retained_output_families,
+            "projection_file_hashes": projection_file_hashes,
+        },
+        thresholds=budget_acceptance_thresholds,
+    )
     summary = (
         "Handoff command-plan output-budget projection is "
         f"{normalized_status}: {target_profile.get('output_file_count')} output files, "
@@ -1524,6 +1581,8 @@ def build_handoff_output_budget_projection(
         "budget_checks": list(gate_report.get("budget_checks") or []),
         "family_count_checks": list(gate_report.get("family_count_checks") or []),
         "family_byte_checks": list(gate_report.get("family_byte_checks") or []),
+        "budget_acceptance_thresholds": budget_acceptance_thresholds,
+        "budget_acceptance_validation": budget_acceptance_validation,
         "warning_reasons": list(gate_report.get("warning_reasons") or []),
         "blocked_reasons": list(gate_report.get("blocked_reasons") or []),
         "first_bottleneck_labels": first_bottleneck_labels,
@@ -1543,7 +1602,7 @@ def build_handoff_output_budget_projection(
         "output_byte_count": target_profile.get("output_byte_count", 0),
         "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
         "output_family_bytes": dict(target_profile.get("output_family_bytes") or {}),
-        "projection_file_hashes": build_projection_file_hashes(projection_root),
+        "projection_file_hashes": projection_file_hashes,
         "budget_recheck": budget_recheck,
         "replay_critical_field_inventory": build_replay_critical_field_inventory(),
         "gate_report_path": str(gate_report_path),
@@ -1765,6 +1824,222 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def build_output_budget_acceptance_thresholds() -> dict[str, Any]:
+    """Return the explicit machine-readable multi-zone budget contract."""
+    replay_critical = list(REPLAY_CRITICAL_OUTPUT_FAMILIES)
+    required_hashes = list(REPLAY_CRITICAL_PACKAGE_HASHES)
+    return {
+        "schema_version": BUDGET_ACCEPTANCE_CONTRACT_VERSION,
+        "status": "active",
+        "threshold_provenance": "TB-293 fixture-backed handoff acceptance contract",
+        "profiles": {
+            SMALLEST_LIVE_BUDGET_PROFILE_ID: {
+                "scope": "smallest live Balfrin probe authorization input",
+                "authorization_scope": "requires renewed explicit human authorization before any live run",
+                "release_zone_count": 2,
+                "scenario_count": 2,
+                "max_manifest_size_bytes": 11_000,
+                "max_total_output_files": 20,
+                "max_sidecar_files": 11,
+                "max_reducer_manifest_files": 2,
+                "max_reducer_manifest_bytes": 400,
+                "max_reducer_chunks": 2,
+                "required_replay_critical_families": replay_critical,
+                "required_package_hashes": required_hashes,
+                "per_family_file_count_max": {
+                    "trajectory_csv": 2,
+                    "deposition_csv": 2,
+                    "impact_events_csv": 2,
+                    "trajectory_chunk_manifest": 2,
+                    "reducer_chunk_manifest": 2,
+                    "trajectory_execution_plan": 1,
+                    "trajectory_execution_index": 1,
+                    "trajectory_merge_state": 1,
+                    "reducer_execution_plan": 1,
+                    "reducer_execution_index": 1,
+                    "reducer_merge_state": 1,
+                    "diagnostics_json": 1,
+                    "map_package_manifest": 1,
+                    "pilot_gis_package_manifest": 1,
+                },
+            },
+            NEXT_REVIEW_BUDGET_PROFILE_ID: {
+                "scope": "next larger review-only probe planning input",
+                "authorization_scope": "review only; does not authorize scale-up, submission, or distributed execution",
+                "release_zone_count": 4,
+                "scenario_count": 4,
+                "max_manifest_size_bytes": 14_000,
+                "max_total_output_files": 28,
+                "max_sidecar_files": 13,
+                "max_reducer_manifest_files": 2,
+                "max_reducer_manifest_bytes": 450,
+                "max_reducer_chunks": 2,
+                "required_replay_critical_families": replay_critical,
+                "required_package_hashes": required_hashes,
+                "per_family_file_count_max": {
+                    "trajectory_csv": 4,
+                    "deposition_csv": 4,
+                    "impact_events_csv": 4,
+                    "trajectory_chunk_manifest": 4,
+                    "reducer_chunk_manifest": 2,
+                    "trajectory_execution_plan": 1,
+                    "trajectory_execution_index": 1,
+                    "trajectory_merge_state": 1,
+                    "reducer_execution_plan": 1,
+                    "reducer_execution_index": 1,
+                    "reducer_merge_state": 1,
+                    "diagnostics_json": 1,
+                    "map_package_manifest": 1,
+                    "pilot_gis_package_manifest": 1,
+                },
+            },
+        },
+        "excess_classification": {
+            "compressible": [
+                "manifest_size_bytes",
+                "output_file_count",
+                "sidecar_file_count",
+                "reducer_manifest_file_count",
+                "reducer_manifest_bytes",
+                "non_replay_critical_family_file_count",
+            ],
+            "replay_critical": [
+                "reducer_chunk_count",
+                "replay_critical_family_file_count",
+                "required_replay_critical_families",
+                "required_package_hashes",
+            ],
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+        },
+    }
+
+
+def budget_profile_for_projection(
+    projection: dict[str, Any],
+    thresholds: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    release_zone_count = int(projection.get("release_zone_count") or 0)
+    profiles = dict(thresholds.get("profiles") or {})
+    if release_zone_count <= 2:
+        profile_id = SMALLEST_LIVE_BUDGET_PROFILE_ID
+    else:
+        profile_id = NEXT_REVIEW_BUDGET_PROFILE_ID
+    return profile_id, dict(profiles.get(profile_id) or {})
+
+
+def validate_output_budget_acceptance(
+    *,
+    projection: dict[str, Any],
+    thresholds: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    thresholds = thresholds or build_output_budget_acceptance_thresholds()
+    profile_id, profile = budget_profile_for_projection(projection, thresholds)
+    failures: list[dict[str, Any]] = []
+
+    def add_numeric_check(metric: str, limit_key: str, classification: str) -> None:
+        measured = int(projection.get(metric) or 0)
+        limit = int(profile.get(limit_key) or 0)
+        if limit and measured > limit:
+            failures.append(
+                {
+                    "metric": metric,
+                    "measured": measured,
+                    "threshold": limit,
+                    "excess": measured - limit,
+                    "excess_classification": classification,
+                    "replay_critical": classification == "replay_critical",
+                    "compressible": classification == "compressible",
+                    "reason": f"{metric}={measured} exceeds {profile_id}.{limit_key}={limit}",
+                }
+            )
+
+    add_numeric_check("manifest_size_bytes", "max_manifest_size_bytes", "compressible")
+    add_numeric_check("output_file_count", "max_total_output_files", "compressible")
+    add_numeric_check("sidecar_file_count", "max_sidecar_files", "compressible")
+    add_numeric_check("reducer_manifest_file_count", "max_reducer_manifest_files", "compressible")
+    add_numeric_check("reducer_manifest_bytes", "max_reducer_manifest_bytes", "compressible")
+    add_numeric_check("reducer_chunk_count", "max_reducer_chunks", "replay_critical")
+
+    family_counts = dict(projection.get("output_family_file_counts") or {})
+    per_family_max = dict(profile.get("per_family_file_count_max") or {})
+    replay_critical_families = set(profile.get("required_replay_critical_families") or [])
+    for family, measured_value in sorted(family_counts.items()):
+        measured = int(measured_value or 0)
+        limit = int(per_family_max.get(family, 0))
+        if limit and measured > limit:
+            classification = "replay_critical" if family in replay_critical_families else "compressible"
+            failures.append(
+                {
+                    "metric": "output_family_file_count",
+                    "family": family,
+                    "measured": measured,
+                    "threshold": limit,
+                    "excess": measured - limit,
+                    "excess_classification": classification,
+                    "replay_critical": classification == "replay_critical",
+                    "compressible": classification == "compressible",
+                    "reason": f"{family}:file_count={measured} exceeds {profile_id}.per_family_file_count_max={limit}",
+                }
+            )
+
+    retained_families = set(projection.get("replay_critical_retained_output_families") or [])
+    missing_families = [family for family in profile.get("required_replay_critical_families") or [] if family not in retained_families]
+    if missing_families:
+        failures.append(
+            {
+                "metric": "required_replay_critical_families",
+                "missing": missing_families,
+                "threshold": list(profile.get("required_replay_critical_families") or []),
+                "excess_classification": "replay_critical",
+                "replay_critical": True,
+                "compressible": False,
+                "reason": "projection is missing replay-critical output families: " + ", ".join(missing_families),
+            }
+        )
+
+    projection_hashes = dict(projection.get("projection_file_hashes") or {})
+    missing_hashes = [
+        key
+        for key in profile.get("required_package_hashes") or []
+        if not isinstance(projection_hashes.get(key), str) or len(str(projection_hashes.get(key))) != 64
+    ]
+    if missing_hashes:
+        failures.append(
+            {
+                "metric": "required_package_hashes",
+                "missing": missing_hashes,
+                "threshold": list(profile.get("required_package_hashes") or []),
+                "excess_classification": "replay_critical",
+                "replay_critical": True,
+                "compressible": False,
+                "reason": "projection is missing replay-critical package hashes: " + ", ".join(missing_hashes),
+            }
+        )
+
+    return {
+        "schema_version": BUDGET_ACCEPTANCE_CONTRACT_VERSION,
+        "status": "accepted" if not failures else "blocked_threshold_exceeded",
+        "threshold_profile_id": profile_id,
+        "threshold_profile": profile,
+        "failures": failures,
+        "exceeded_thresholds": [failure["metric"] for failure in failures],
+        "compressible_excesses": [failure for failure in failures if failure.get("compressible")],
+        "replay_critical_excesses": [failure for failure in failures if failure.get("replay_critical")],
+        "summary": (
+            "output budget accepted"
+            if not failures
+            else "output budget blocked: " + "; ".join(failure["reason"] for failure in failures)
+        ),
+    }
+
+
 def parse_handoff_pressure_command(command_plan: dict[str, Any]) -> dict[str, Any]:
     command_entry = next(
         (
@@ -1969,6 +2244,10 @@ def build_replay_critical_field_inventory() -> dict[str, dict[str, Any]]:
                 "budget_checks",
                 "family_count_checks",
                 "family_byte_checks",
+                "budget_acceptance_thresholds",
+                "budget_acceptance_validation.status",
+                "budget_acceptance_validation.threshold_profile_id",
+                "budget_acceptance_validation.failures",
                 "blocked_reasons",
                 "warning_reasons",
             ],

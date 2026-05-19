@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-293: Multi-Zone Output Budget Acceptance Thresholds
-
-Goal: Convert the current multi-zone output-budget blockers into explicit acceptance thresholds for the smallest live Balfrin probe and the next larger review-only probe.
-
-Capability gap reduced: The smallest multi-zone path blocks on `manifest_size_bytes`, but the acceptance thresholds and replay-critical exceptions are still spread across docs and tests.
-
-Why this outranks alternatives: Reducer/manifest compression cannot be judged unless the target budget and non-negotiable replay fields are formalized first.
-
-Inspect first:
-
-- `docs/output_budget_reducer_scaling_gate.md`
-- `docs/hazard_output_profile_contract.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- Machine-readable budget thresholds for manifest bytes, total files, per-family files, sidecar counts, reducer chunks, retained replay-critical families, and package hashes.
-- A validator mode that explains exactly which threshold is exceeded and whether the excess is replay-critical or compressible.
-- Tests proving threshold failures remain distinct from missing authorization and dirty remote-state failures.
-
-Definition of done:
-
-- The multi-zone handoff has objective pass/fail budget criteria that can drive compression and later live-run authorization.
-
-Boundaries: Budget contract only; no compression implementation, no live Balfrin submission, no scale-up authorization, no dropped replayability, and no operational claim.
-
 ### TB-294: Replay-Preserving Manifest Slimming Prototype
 
 Goal: Prototype a replay-preserving compact manifest representation for the smallest multi-zone handoff that reduces manifest bytes without losing deterministic replay, hashes, merge order, or provenance.

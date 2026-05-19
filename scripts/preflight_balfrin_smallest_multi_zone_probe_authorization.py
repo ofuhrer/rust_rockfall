@@ -75,6 +75,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional JSON output from check_balfrin_remote_access_preflight.py.",
     )
     parser.add_argument("--format", choices=("json", "text"), default="json")
+    parser.add_argument(
+        "--validation-mode",
+        choices=("authorization-preflight", "budget-thresholds"),
+        default="authorization-preflight",
+        help="Use budget-thresholds to report only the output-budget acceptance validation.",
+    )
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--text-output", type=Path, default=None)
     return parser.parse_args(argv)
@@ -156,6 +162,11 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         constraint.get("handoff_output_budget_projection") or package.get("handoff_output_budget_projection") or {}
     )
     budget_recheck = dict(handoff_projection.get("budget_recheck") or {})
+    output_budget_acceptance_validation = dict(
+        handoff_projection.get("budget_acceptance_validation")
+        or package.get("output_budget_acceptance_validation")
+        or {}
+    )
     manifest_pruning = dict(package.get("manifest_pruning") or {})
     blocked_reasons: list[str] = []
 
@@ -171,6 +182,8 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
             add_blocked_reason(check.get("reason") or check.get("label") or "blocked reducer check")
     if budget_recheck.get("status") == "blocked_budget_reduction_needed":
         add_blocked_reason(budget_recheck.get("reason") or "current compact handoff budget remains blocked")
+    if output_budget_acceptance_validation.get("status") == "blocked_threshold_exceeded":
+        add_blocked_reason(output_budget_acceptance_validation.get("summary") or "output-budget acceptance threshold exceeded")
     if manifest_pruning.get("status") == "blocked_budget_reduction_needed":
         add_blocked_reason(manifest_pruning.get("blocked_reason") or manifest_pruning.get("summary"))
     if not run_shape.get("preservation_checklist"):
@@ -191,6 +204,15 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         "handoff_output_budget_projection_mode": handoff_projection.get("projection_mode"),
         "handoff_budget_recheck_status": budget_recheck.get("status"),
         "handoff_budget_recheck_reason": budget_recheck.get("reason"),
+        "output_budget_acceptance_thresholds": dict(
+            handoff_projection.get("budget_acceptance_thresholds")
+            or package.get("output_budget_acceptance_thresholds")
+            or {}
+        ),
+        "output_budget_acceptance_validation": output_budget_acceptance_validation,
+        "output_budget_acceptance_status": output_budget_acceptance_validation.get("status"),
+        "output_budget_acceptance_threshold_profile_id": output_budget_acceptance_validation.get("threshold_profile_id"),
+        "output_budget_acceptance_failures": list(output_budget_acceptance_validation.get("failures") or []),
         "manifest_pruning_status": manifest_pruning.get("status"),
         "manifest_pruning_mode": manifest_pruning.get("mode"),
         "manifest_pruning_before": manifest_pruning.get("before"),
@@ -344,6 +366,9 @@ def build_report(
         "balfrin_access_status": access_report.get("status"),
         "reducer_budget_status": reducer_budget.get("status"),
         "output_profile_status": output_profile.get("status"),
+        "output_budget_acceptance_status": reducer_budget.get("output_budget_acceptance_status"),
+        "output_budget_acceptance_validation": reducer_budget.get("output_budget_acceptance_validation", {}),
+        "output_budget_acceptance_thresholds": reducer_budget.get("output_budget_acceptance_thresholds", {}),
         "authorization_record_allows_one_bounded_probe": authorization_requirement.get("status") == "authorized",
         "reviewed_handoff_package_requirement": package_review,
         "authorization_record_requirement": authorization_requirement,
@@ -414,6 +439,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Status: `{reducer_budget.get('status')}`",
         f"- Package constraint status: `{reducer_budget.get('package_constraint_status')}`",
         f"- Handoff budget recheck status: `{reducer_budget.get('handoff_budget_recheck_status')}`",
+        f"- Acceptance threshold profile: `{reducer_budget.get('output_budget_acceptance_threshold_profile_id')}`",
+        f"- Acceptance threshold status: `{reducer_budget.get('output_budget_acceptance_status')}`",
         f"- Manifest pruning status: `{reducer_budget.get('manifest_pruning_status')}`",
         f"- Before manifest bytes: `{manifest_pruning_before.get('manifest_size_bytes')}`",
         f"- After manifest bytes: `{manifest_pruning_after.get('manifest_size_bytes')}`",
@@ -430,6 +457,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Replay-critical output-profile semantics: `{reducer_budget.get('manifest_pruning_replay_critical_contract', {}).get('output_profile_semantics', {})}`",
         f"- Exact blocking fields: `{reducer_budget.get('manifest_pruning_exact_blocking_fields')}`",
         f"- Constraint summary: {reducer_budget.get('constraint_summary')}",
+        f"- Acceptance summary: {dict(reducer_budget.get('output_budget_acceptance_validation') or {}).get('summary')}",
         "",
         "## Preservation Checklist",
         "",
@@ -456,7 +484,10 @@ def materialize_artifacts(
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        access_report, access_source = _load_access_report(args.balfrin_access_preflight_json)
+        if args.validation_mode == "budget-thresholds" and args.balfrin_access_preflight_json is None:
+            access_report, access_source = _missing_access_report(), "budget-thresholds-mode"
+        else:
+            access_report, access_source = _load_access_report(args.balfrin_access_preflight_json)
         report = build_report(
             reviewed_handoff_package=args.reviewed_handoff_package,
             authorization_record=args.authorization_record,
@@ -468,6 +499,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     materialize_artifacts(report, json_output=args.json_output, text_output=args.text_output)
+    if args.validation_mode == "budget-thresholds":
+        validation = dict(report.get("output_budget_acceptance_validation") or {})
+        if args.format == "json":
+            print(json.dumps(validation, indent=2, sort_keys=True, default=str))
+        else:
+            print(validation.get("summary") or "output-budget acceptance validation unavailable")
+        return 0 if validation.get("status") == "accepted" else 2
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True, default=str))
     else:

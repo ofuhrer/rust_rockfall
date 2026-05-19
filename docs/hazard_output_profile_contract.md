@@ -170,6 +170,17 @@ Balfrin handoff contract:
 - The helpers surface these states in both machine-readable command-plan JSON
   and the text reports written alongside the scratch-root package.
 
+Multi-zone output-budget acceptance is now separate from output-profile
+classification. The handoff package records
+`output_budget_acceptance_thresholds` and
+`output_budget_acceptance_validation` so a `scalable_default` smallest-run shape
+still must pass explicit manifest, file-count, sidecar, reducer-chunk,
+replay-family, and package-hash limits before the authorization preflight can
+treat the reducer budget as ready. The preflight also exposes
+`--validation-mode budget-thresholds` to run that budget validator without
+turning missing authorization or Balfrin access state into the reported budget
+failure.
+
 ## Profile classification clarified (Tschamut gate)
 
 The same underlying Tschamut gate workload can be represented under multiple profiles:

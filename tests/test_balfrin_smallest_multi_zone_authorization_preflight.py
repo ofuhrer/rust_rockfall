@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import yaml
@@ -68,7 +70,37 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         *,
         reducer_status: str = "acceptable",
         compact_handoff_budget_status: str | None = None,
+        budget_acceptance_status: str = "accepted",
     ) -> str:
+        budget_acceptance_validation = {
+            "schema_version": "balfrin_multi_zone_output_budget_acceptance_v1",
+            "status": budget_acceptance_status,
+            "threshold_profile_id": "smallest_live_two_zone_probe",
+            "failures": [],
+            "exceeded_thresholds": [],
+            "compressible_excesses": [],
+            "replay_critical_excesses": [],
+            "summary": "output budget accepted",
+        }
+        if budget_acceptance_status == "blocked_threshold_exceeded":
+            failure = {
+                "metric": "manifest_size_bytes",
+                "measured": 11001,
+                "threshold": 11000,
+                "excess": 1,
+                "excess_classification": "compressible",
+                "replay_critical": False,
+                "compressible": True,
+                "reason": "manifest_size_bytes=11001 exceeds smallest_live_two_zone_probe.max_manifest_size_bytes=11000",
+            }
+            budget_acceptance_validation.update(
+                {
+                    "failures": [failure],
+                    "exceeded_thresholds": ["manifest_size_bytes"],
+                    "compressible_excesses": [failure],
+                    "summary": failure["reason"],
+                }
+            )
         constraint = {
             "status": reducer_status,
             "summary": f"{reducer_status}: requested multi-zone settings stay within measured reducer constraints",
@@ -93,6 +125,13 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                     "reason": "requested simultaneous_release_zone_batch_size=2 stays within measured max 8",
                 }
             ],
+            "handoff_output_budget_projection": {
+                "budget_acceptance_validation": budget_acceptance_validation,
+                "budget_acceptance_thresholds": {
+                    "schema_version": "balfrin_multi_zone_output_budget_acceptance_v1",
+                    "profiles": {"smallest_live_two_zone_probe": {"max_manifest_size_bytes": 11000}},
+                },
+            },
         }
         if reducer_status == "blocked":
             constraint["blocked_reason"] = "requested reducer settings exceed measured max"
@@ -162,6 +201,10 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                     },
                 },
             }
+            compact_projection["budget_acceptance_validation"] = budget_acceptance_validation
+            compact_projection["budget_acceptance_thresholds"] = constraint["handoff_output_budget_projection"][
+                "budget_acceptance_thresholds"
+            ]
             constraint["handoff_output_budget_projection"] = compact_projection
             if compact_handoff_budget_status == "blocked_budget_reduction_needed":
                 constraint["status"] = "blocked"
@@ -204,6 +247,10 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "live_execution_requires_new_human_authorization": True,
             "package_constraint_status": constraint["status"],
             "constraint_pressure": constraint,
+            "output_budget_acceptance_validation": budget_acceptance_validation,
+            "output_budget_acceptance_thresholds": constraint["handoff_output_budget_projection"][
+                "budget_acceptance_thresholds"
+            ],
             "follow_up_recommendation": {
                 "minimum_measured_multi_zone_run": {
                     "release_zone_count": 2,
@@ -269,6 +316,11 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertEqual(report["balfrin_access_preflight_requirement"]["remote_checkout_hygiene"]["status"], "pass")
         self.assertEqual(report["reducer_budget_status"], "ready")
         self.assertEqual(report["output_profile_status"], "ready")
+        self.assertEqual(report["output_budget_acceptance_status"], "accepted")
+        self.assertEqual(
+            report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
+            "smallest_live_two_zone_probe",
+        )
         self.assertEqual(report["smallest_multi_zone_run_shape"]["release_zone_count"], 2)
         self.assertEqual(report["smallest_multi_zone_run_shape"]["scenario_count"], 2)
         self.assertEqual(report["smallest_multi_zone_run_shape"]["reducer_workers"], 2)
@@ -408,6 +460,69 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             report["reducer_budget_requirement"]["manifest_pruning_replay_critical_contract"]["families"],
             ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
         )
+
+    def test_threshold_failure_remains_distinct_from_missing_authorization_and_dirty_access(self) -> None:
+        access = self._ready_access()
+        access["status"] = "blocked_dirty_remote_checkout"
+        access["ready_for_pre_submit"] = False
+        access["remote_checkout_hygiene"] = {
+            "status": "fail",
+            "remote_head": "deadbeef",
+            "tracked_modifications": [],
+            "untracked_generated_files": ["validation/private/tb293/stale.json"],
+            "stale_submission_packages": ["validation/private/tb293/stale.json"],
+            "stale_logs": [],
+            "dirty_path_count": 1,
+            "safe_cleanup_commands": ["git -C /users/olifu/work/rust_rockfall status --short --untracked-files=all"],
+        }
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            self._write_package(package, budget_acceptance_status="blocked_threshold_exceeded")
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=tmp / "missing_authorization.yaml",
+                balfrin_access_preflight=access,
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(report["authorization_record_status"], "missing")
+        self.assertEqual(report["balfrin_access_status"], "blocked_dirty_remote_checkout")
+        self.assertEqual(report["output_budget_acceptance_status"], "blocked_threshold_exceeded")
+        self.assertIn("manifest_size_bytes", report["blocked_reason"])
+        self.assertEqual(
+            report["output_budget_acceptance_validation"]["failures"][0]["excess_classification"],
+            "compressible",
+        )
+
+    def test_budget_threshold_validation_mode_ignores_missing_authorization_and_access(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            self._write_package(package, budget_acceptance_status="blocked_threshold_exceeded")
+            buffer = io.StringIO()
+
+            with redirect_stdout(buffer):
+                exit_code = MODULE.main(
+                    [
+                        "--reviewed-handoff-package",
+                        str(package),
+                        "--authorization-record",
+                        str(tmp / "missing_authorization.yaml"),
+                        "--validation-mode",
+                        "budget-thresholds",
+                        "--format",
+                        "json",
+                    ]
+                )
+
+        self.assertEqual(exit_code, 2)
+        validation = json.loads(buffer.getvalue())
+        self.assertEqual(validation["status"], "blocked_threshold_exceeded")
+        self.assertEqual(validation["threshold_profile_id"], "smallest_live_two_zone_probe")
+        self.assertIn("manifest_size_bytes", validation["summary"])
 
 
 if __name__ == "__main__":

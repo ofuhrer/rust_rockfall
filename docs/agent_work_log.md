@@ -2537,3 +2537,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only synthesis only; no live Balfrin submission, no new run, no scale-up authorization, no distributed execution, no physical-probability semantics, and no operational claim.
 - Next task: `TB-293`
+
+### TB-293: Multi-Zone Output Budget Acceptance Thresholds
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: convert multi-zone output-budget blockers into explicit acceptance thresholds for the smallest live Balfrin probe and the next larger review-only probe.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/output_budget_reducer_scaling_gate.md`, `docs/hazard_output_profile_contract.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `balfrin_multi_zone_output_budget_acceptance_v1` thresholds to the handoff package for the two-zone live-review profile and the four-zone review-only profile, including manifest bytes, total files, sidecars, reducer manifests, reducer chunks, per-family file counts, replay-critical families, and package hashes.
+  - Added output-budget acceptance validation that reports each exceeded threshold with measured value, limit, excess, and `compressible` or `replay_critical` classification.
+  - Surfaced the validation in the smallest multi-zone authorization preflight and added `--validation-mode budget-thresholds` for budget-only review that stays distinct from authorization and Balfrin access blockers.
+  - Removed TB-293 from the active backlog and documented the acceptance profiles in the output-budget and multi-zone contracts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py tests/test_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: budget contract only; no compression implementation, no live Balfrin submission, no scale-up authorization, no dropped replayability, no distributed execution, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-294`

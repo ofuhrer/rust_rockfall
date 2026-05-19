@@ -102,6 +102,23 @@ That means the next review can see the exact blocker field instead of a generic
 budget label, while still refusing to trim the replay-critical metadata needed
 for replayability.
 
+TB-293 turns that budget evidence into an explicit machine-readable acceptance
+contract emitted by
+`scripts/generate_balfrin_multi_release_zone_demo_handoff.py` as
+`output_budget_acceptance_thresholds`. The smallest live-review profile is
+`smallest_live_two_zone_probe`: 2 release zones / 2 scenarios, at most `11000`
+manifest bytes, `20` total output files, `11` sidecar files, `2` reducer
+manifest files, `400` reducer-manifest bytes, and `2` reducer chunks. The next
+larger review-only profile is `next_larger_four_zone_review_only_probe`: 4
+release zones / 4 scenarios, at most `14000` manifest bytes, `28` total output
+files, `13` sidecar files, `2` reducer manifest files, `450` reducer-manifest
+bytes, and `2` reducer chunks. Both profiles carry per-family file-count maxima,
+the required replay-critical families
+`trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state`, plus required
+`probe_manifest_sha256`, `command_plan_sha256`, and `output_manifest_sha256`
+hashes.
+
 ## Summary-Only Conditional Curves
 
 Scalable runs must keep conditional curves summary-only.

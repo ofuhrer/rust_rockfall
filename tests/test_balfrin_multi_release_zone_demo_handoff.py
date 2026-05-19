@@ -106,6 +106,29 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_relevant"], "ready")
         self.assertEqual(output_budget_projection["budget_recheck"]["status"], "budget_passes_no_reduction_needed")
         self.assertIn("within the current budget thresholds", output_budget_projection["budget_recheck"]["reason"])
+        self.assertEqual(first["output_budget_acceptance_thresholds"]["schema_version"], "balfrin_multi_zone_output_budget_acceptance_v1")
+        self.assertIn("smallest_live_two_zone_probe", first["output_budget_acceptance_thresholds"]["profiles"])
+        self.assertIn("next_larger_four_zone_review_only_probe", first["output_budget_acceptance_thresholds"]["profiles"])
+        self.assertEqual(output_budget_projection["budget_acceptance_validation"]["status"], "accepted")
+        self.assertEqual(
+            output_budget_projection["budget_acceptance_validation"]["threshold_profile_id"],
+            "smallest_live_two_zone_probe",
+        )
+        self.assertEqual(output_budget_projection["budget_acceptance_validation"]["failures"], [])
+        self.assertEqual(first["output_budget_acceptance_validation"]["status"], "accepted")
+        smallest_thresholds = first["output_budget_acceptance_thresholds"]["profiles"]["smallest_live_two_zone_probe"]
+        self.assertEqual(smallest_thresholds["max_manifest_size_bytes"], 11000)
+        self.assertEqual(smallest_thresholds["max_total_output_files"], 20)
+        self.assertEqual(smallest_thresholds["max_sidecar_files"], 11)
+        self.assertEqual(smallest_thresholds["max_reducer_chunks"], 2)
+        self.assertEqual(
+            smallest_thresholds["required_replay_critical_families"],
+            ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
+        )
+        self.assertEqual(
+            smallest_thresholds["required_package_hashes"],
+            ["probe_manifest_sha256", "command_plan_sha256", "output_manifest_sha256"],
+        )
         self.assertEqual(
             set(output_budget_projection["replay_critical_field_inventory"]),
             {"command_plan", "projection", "thresholds", "constraints", "smallest_run", "manifest_pruning"},
@@ -308,6 +331,29 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
 
         self.assertEqual(recheck["status"], "budget_passes_no_reduction_needed")
         self.assertIn("within the current budget thresholds", recheck["reason"])
+
+    def test_budget_acceptance_validator_classifies_compressible_and_replay_critical_failures(self) -> None:
+        validation = MODULE.validate_output_budget_acceptance(
+            projection={
+                "release_zone_count": 2,
+                "reducer_chunk_count": 3,
+                "manifest_size_bytes": 11001,
+                "output_file_count": 21,
+                "sidecar_file_count": 12,
+                "reducer_manifest_file_count": 2,
+                "reducer_manifest_bytes": 401,
+                "output_family_file_counts": {"trajectory_csv": 3, "trajectory_chunk_manifest": 3},
+                "replay_critical_retained_output_families": ["trajectory_csv", "deposition_csv"],
+                "projection_file_hashes": {"probe_manifest_sha256": "a" * 64},
+            }
+        )
+
+        self.assertEqual(validation["status"], "blocked_threshold_exceeded")
+        self.assertEqual(validation["threshold_profile_id"], "smallest_live_two_zone_probe")
+        self.assertIn("manifest_size_bytes", validation["exceeded_thresholds"])
+        self.assertTrue(any(failure["compressible"] for failure in validation["failures"]))
+        self.assertTrue(any(failure["replay_critical"] for failure in validation["failures"]))
+        self.assertIn("required_package_hashes", validation["exceeded_thresholds"])
 
     def test_manifest_pruning_refuses_to_drop_replay_critical_fields(self) -> None:
         with self.assertRaises(MODULE.BalfrinMultiReleaseZoneDemoHandoffError):
