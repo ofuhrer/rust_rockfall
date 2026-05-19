@@ -3062,3 +3062,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local AOI workflow only; no network download, no live Balfrin submission, no operational claim, no annual/physical/risk semantics, and no heavy generated outputs committed.
 - Next task: `TB-316`
+
+### TB-316: Swisstopo Public Data Acquisition Driver
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add an explicit opt-in public-data acquisition driver that can dry-run, local-copy stage, or download-enabled stage required swisstopo products for a user-defined AOI while preserving source, checksum, CRS, license, and provenance records.
+- Files changed: `scripts/stage_public_geodata_cache.py`, `scripts/check_second_site_public_geodata_preflight.py`, `docs/swisstopo_data_strategy.md`, `docs/public_real_site_geodata_preparation.md`, `tests/test_public_geodata_cache_stager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a mode-gated acquisition front door on the public-geodata staging helper with explicit `dry-run`, `local-copy`, and `download` paths, plus an explicit download authorization flag for the network-enabled mode.
+  - Kept local-copy and dry-run runs network-free, copied staged local inputs into the verified cache on apply, and failed closed on missing download URLs and checksum mismatches while preserving the provenance fields in the manifest.
+  - Surfaced the new acquisition commands in the second-site cache contract, updated the public geodata preparation guidance, and added focused regressions for dry-run, local-copy, blocked missing URL, checksum mismatch, and no-hidden-download behavior.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_stager -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no operational claim, no physical validation claim, and no large swisstopo products committed.
+- Next task: `TB-317`

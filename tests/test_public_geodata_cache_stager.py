@@ -4,6 +4,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 import yaml
@@ -30,6 +31,265 @@ verifier = _load_module(VERIFY_SCRIPT_PATH, "verify_public_geodata_cache_for_sta
 
 
 class PublicGeodataCacheStagerTests(unittest.TestCase):
+    def test_dry_run_mode_does_not_mutate_manifest_or_call_network(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "products": [
+                            {
+                                "category": "terrain_crop",
+                                "product_id": "terrain_crop",
+                                "source_product_id": "swissalti3d_2m",
+                                "source_product_name": "swissALTI3D",
+                                "source_url_or_download_record": "https://example.invalid/swissalti3d",
+                                "product_version_or_date": "2026.1",
+                                "tile_id_or_delivery_identifier": "2793-1180",
+                                "checksum_sha256": "",
+                                "crs": "EPSG:2056",
+                                "resolution_m": 2.0,
+                                "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                "license_or_terms_reference": "example terms",
+                                "raw_checksum": "",
+                                "processed_checksum": "",
+                                "preprocessing_command_and_timestamp": "",
+                                "required": True,
+                                "staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "metadata_path": str(SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"),
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                with mock.patch.object(stager.urllib.request, "urlopen", side_effect=AssertionError("network should not be used")):
+                    report = stager.acquire_public_geodata_cache(manifest_path, mode="dry-run")
+                    manifest_after = manifest_path.read_text(encoding="utf-8")
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertTrue(report["wizard_mode"])
+        self.assertTrue(report["proposal_status"].startswith("blocked_"))
+        self.assertNotIn("staging_status", yaml.safe_load(manifest_after))
+
+    def test_local_copy_mode_stages_from_local_roots_without_network(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            source_root = root / "downloads"
+            terrain_path = source_root / "terrain.asc"
+            terrain_metadata_path = source_root / "terrain_metadata.yaml"
+            terrain_path.parent.mkdir(parents=True, exist_ok=True)
+            terrain_path.write_text("terrain-bytes\n", encoding="utf-8")
+            terrain_checksum = stager.PREFLIGHT.sha256_path(terrain_path)
+            terrain_metadata_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "source_product_id": "swissalti3d_2m",
+                        "source_product_name": "swissALTI3D",
+                        "source_url_or_download_record": "https://example.invalid/swissalti3d",
+                        "product_version_or_date": "2026.1",
+                        "tile_id_or_delivery_identifier": "2793-1180",
+                        "crs": "EPSG:2056",
+                        "resolution_m": 2.0,
+                        "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                        "license_or_terms_reference": "example terms",
+                        "raw_checksum": terrain_checksum,
+                        "processed_checksum": terrain_checksum,
+                        "preprocessing_command_and_timestamp": "local copy source",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "products": [
+                            {
+                                "category": "terrain_crop",
+                                "product_id": "terrain_crop",
+                                "source_product_id": "swissalti3d_2m",
+                                "source_product_name": "swissALTI3D",
+                                "source_url_or_download_record": "https://example.invalid/swissalti3d",
+                                "product_version_or_date": "2026.1",
+                                "tile_id_or_delivery_identifier": "2793-1180",
+                                "checksum_sha256": terrain_checksum,
+                                "crs": "EPSG:2056",
+                                "resolution_m": 2.0,
+                                "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                "license_or_terms_reference": "example terms",
+                                "raw_checksum": terrain_checksum,
+                                "processed_checksum": terrain_checksum,
+                                "preprocessing_command_and_timestamp": "local copy source",
+                                "required": True,
+                                "staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "metadata_path": str(SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"),
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                with mock.patch.object(stager.urllib.request, "urlopen", side_effect=AssertionError("network should not be used")):
+                    report = stager.acquire_public_geodata_cache(
+                        manifest_path,
+                        mode="local-copy",
+                        local_paths=[terrain_path, terrain_metadata_path],
+                        apply=True,
+                    )
+                    target_exists = (site_root / "input" / "terrain.asc").exists()
+                    target_metadata_exists = (site_root / "input" / "terrain_metadata.yaml").exists()
+                    staged_manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertEqual(report["staging_status"], "verified")
+        self.assertTrue(target_exists)
+        self.assertTrue(target_metadata_exists)
+        self.assertEqual(staged_manifest["staging_status"], "verified")
+        self.assertEqual(staged_manifest["products"][0]["staging_status"], "verified")
+
+    def test_download_mode_blocks_missing_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "products": [
+                            {
+                                "category": "terrain_crop",
+                                "product_id": "terrain_crop",
+                                "source_product_id": "swissalti3d_2m",
+                                "source_product_name": "swissALTI3D",
+                                "product_version_or_date": "2026.1",
+                                "tile_id_or_delivery_identifier": "2793-1180",
+                                "checksum_sha256": "",
+                                "crs": "EPSG:2056",
+                                "resolution_m": 2.0,
+                                "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                "license_or_terms_reference": "example terms",
+                                "raw_checksum": "",
+                                "processed_checksum": "",
+                                "preprocessing_command_and_timestamp": "",
+                                "required": True,
+                                "staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "metadata_path": str(SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"),
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                report = stager.acquire_public_geodata_cache(manifest_path, mode="download", download=True)
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertEqual(report["staging_status"], "blocked_missing_url")
+        self.assertIn("missing source_url_or_download_record", report["reason"])
+
+    def test_download_mode_reports_checksum_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "products": [
+                            {
+                                "category": "terrain_crop",
+                                "product_id": "terrain_crop",
+                                "source_product_id": "swissalti3d_2m",
+                                "source_product_name": "swissALTI3D",
+                                "source_url_or_download_record": "https://example.invalid/swissalti3d.asc",
+                                "product_version_or_date": "2026.1",
+                                "tile_id_or_delivery_identifier": "2793-1180",
+                                "checksum_sha256": "0" * 64,
+                                "crs": "EPSG:2056",
+                                "resolution_m": 2.0,
+                                "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                "license_or_terms_reference": "example terms",
+                                "raw_checksum": "",
+                                "processed_checksum": "",
+                                "preprocessing_command_and_timestamp": "",
+                                "required": True,
+                                "staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "metadata_path": str(SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"),
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            class FakeResponse:
+                def __init__(self, payload: bytes):
+                    self._payload = payload
+                    self._offset = 0
+
+                def __enter__(self) -> "FakeResponse":
+                    return self
+
+                def __exit__(self, exc_type, exc, tb) -> None:
+                    return None
+
+                def read(self, size: int) -> bytes:
+                    if self._offset >= len(self._payload):
+                        return b""
+                    chunk = self._payload[self._offset : self._offset + size]
+                    self._offset += len(chunk)
+                    return chunk
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                with mock.patch.object(stager.urllib.request, "urlopen", return_value=FakeResponse(b"downloaded-bytes")) as mocked_urlopen:
+                    report = stager.acquire_public_geodata_cache(manifest_path, mode="download", download=True)
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertEqual(report["staging_status"], "checksum_mismatch")
+        self.assertTrue(mocked_urlopen.called)
+
     def test_wizard_mode_writes_proposal_before_applying_verified_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

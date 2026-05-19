@@ -135,6 +135,9 @@ candidate live in
 The companion `scripts/stage_public_geodata_cache.py` helper consumes that
 cache manifest in place, records verified staged inputs, and fails closed on
 missing files, checksum mismatch, metadata mismatch, or unsupported products.
+It now exposes an explicit acquisition front door with `--mode dry-run`,
+`--mode local-copy --apply`, and `--mode download --download` so a caller must
+opt in before any local copy or network fetch happens.
 
 ## Minimal Ingestion Design
 

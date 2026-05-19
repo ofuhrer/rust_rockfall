@@ -140,6 +140,10 @@ The staging front door is `scripts/stage_public_geodata_cache.py`; it rewrites
 the cache manifest in place after checking local staged paths and metadata
 sidecars, and it fails closed on missing files, checksum mismatch, metadata
 mismatch, or unsupported products.
+The same helper now serves as the explicit acquisition driver: `--mode dry-run`
+keeps the run read-only, `--mode local-copy --apply` copies staged local
+inputs into the cache, and `--mode download --download` is the only path that
+authorizes network fetches.
 
 ## AOI-To-Map Review Path
 

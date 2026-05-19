@@ -1349,6 +1349,30 @@ def build_public_geodata_cache_contract(
         },
         "stage_commands": [
             {
+                "command_id": "acquire_public_geodata_dry_run",
+                "command": (
+                    "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+                    f"--cache-manifest {cache_manifest_path} --mode dry-run --format json"
+                ),
+                "purpose": "preview the public-geodata acquisition plan without mutating files or network state",
+            },
+            {
+                "command_id": "acquire_public_geodata_local_copy",
+                "command": (
+                    "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+                    f"--cache-manifest {cache_manifest_path} --mode local-copy --apply --format json"
+                ),
+                "purpose": "copy locally supplied public geodata into the cache manifest after an explicit apply",
+            },
+            {
+                "command_id": "acquire_public_geodata_download",
+                "command": (
+                    "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+                    f"--cache-manifest {cache_manifest_path} --mode download --download --format json"
+                ),
+                "purpose": "download and stage public geodata only when the caller explicitly authorizes network fetches",
+            },
+            {
                 "command_id": "stage_public_terrain_crop",
                 "command": stage_command,
                 "purpose": "stage a public AOI crop and metadata sidecar into the ignored processed cache",

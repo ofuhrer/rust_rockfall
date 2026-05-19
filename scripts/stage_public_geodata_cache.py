@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-"""Validate and record locally staged public swisstopo inputs against a cache manifest.
+"""Acquire or validate public swisstopo inputs against a cache manifest.
 
-This helper is a local staging front door. It does not download public
-geodata, infer missing tiles, or authorize any operational workflow. Instead,
-it reads the cache-manifest template, validates the locally supplied staged
-paths and metadata sidecars, records deterministic checksums and provenance
-fields, and rewrites the manifest in place.
+This helper is an explicit opt-in acquisition front door. It supports dry-run
+planning, local-copy staging, and download-enabled staging, but it keeps the
+default path read-only and network-free unless the caller passes an explicit
+mutation flag. The script reads the cache-manifest template, validates the
+staged paths and metadata sidecars, records deterministic checksums and
+provenance fields, and rewrites the manifest in place only when the caller
+authorizes that step.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import importlib.util
 import json
 import re
 import sys
+import shutil
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +42,7 @@ STAGED_PRODUCT_CATEGORIES = {
     "barrier_inventory",
 }
 STAGING_WIZARD_SCHEMA_VERSION = "swiss_public_geodata_cache_stage_proposal_v1"
+ACQUISITION_MODES = {"dry-run", "local-copy", "download"}
 WIZARD_READY_STATUSES = {"ready_to_apply", "ready_with_optional_deferred"}
 WIZARD_BLOCKING_STATUSES = {
     "ambiguous_match",
@@ -66,17 +73,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--local-path", action="append", type=Path, default=[], help="local file or directory to match against the cache manifest")
     parser.add_argument("--scan-root", action="append", type=Path, default=[], help="directory root to scan recursively for staging candidates")
     parser.add_argument("--proposal-output", type=Path, default=None, help="write the dry-run staging proposal before any manifest update")
+    parser.add_argument("--mode", choices=sorted(ACQUISITION_MODES), default="dry-run", help="select dry-run, local-copy, or download acquisition behavior")
     parser.add_argument("--apply", action="store_true", help="apply the wizard proposal to the manifest after a successful dry run")
+    parser.add_argument("--download", action="store_true", help="authorize network fetches when --mode download is selected")
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = stage_public_geodata_cache(
+    report = acquire_public_geodata_cache(
         args.cache_manifest,
         local_paths=args.local_path,
         scan_roots=args.scan_root,
         proposal_output=args.proposal_output,
+        mode=args.mode,
         apply=args.apply,
+        download=args.download,
     )
 
     if args.json_output is not None:
@@ -88,6 +99,64 @@ def main(argv: list[str] | None = None) -> int:
     if report.get("wizard_mode"):
         return 0 if report.get("proposal_status") in WIZARD_READY_STATUSES else 2
     return 0 if report["staging_status"] == "verified" else 2
+
+
+def acquire_public_geodata_cache(
+    cache_manifest_path: Path,
+    *,
+    local_paths: list[Path] | None = None,
+    scan_roots: list[Path] | None = None,
+    proposal_output: Path | None = None,
+    mode: str = "dry-run",
+    apply: bool = False,
+    download: bool = False,
+) -> dict[str, Any]:
+    if mode not in ACQUISITION_MODES:
+        raise SystemExit(f"unsupported acquisition mode: {mode}")
+    if not cache_manifest_path.exists():
+        raise SystemExit(f"missing cache manifest: {cache_manifest_path}")
+    manifest = PREFLIGHT.load_site_config(cache_manifest_path)
+    if not isinstance(manifest, dict):
+        manifest = {}
+
+    local_paths = list(local_paths or [])
+    scan_roots = list(scan_roots or [])
+
+    if mode == "dry-run":
+        return stage_public_geodata_cache_with_wizard(
+            cache_manifest_path,
+            manifest,
+            local_paths=local_paths,
+            scan_roots=scan_roots,
+            proposal_output=proposal_output,
+            apply=False,
+        )
+
+    if mode == "local-copy":
+        if not apply:
+            return stage_public_geodata_cache_with_wizard(
+                cache_manifest_path,
+                manifest,
+                local_paths=local_paths,
+                scan_roots=scan_roots,
+                proposal_output=proposal_output,
+                apply=False,
+            )
+        return stage_public_geodata_cache(
+            cache_manifest_path,
+            local_paths=local_paths,
+            scan_roots=scan_roots,
+            proposal_output=proposal_output,
+            apply=True,
+        )
+
+    if not download:
+        return build_download_blocked_report(
+            cache_manifest_path=cache_manifest_path,
+            manifest=manifest,
+            reason="download mode requires --download",
+        )
+    return download_public_geodata_cache(cache_manifest_path, manifest)
 
 
 def stage_public_geodata_cache(
@@ -174,6 +243,89 @@ def stage_public_geodata_cache(
     }
 
 
+def build_download_blocked_report(
+    *,
+    cache_manifest_path: Path,
+    manifest: dict[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "swiss_public_geodata_cache_download_report_v1",
+        "staging_status": "blocked_missing_url",
+        "cache_manifest_path": str(cache_manifest_path),
+        "product_count": len(manifest.get("products") or []),
+        "staged_product_count": 0,
+        "optional_missing_product_count": 0,
+        "missing_product_count": 0,
+        "checksum_mismatch_product_count": 0,
+        "metadata_mismatch_product_count": 0,
+        "unsupported_product_count": 0,
+        "reason": reason,
+        "claim_boundaries": PREFLIGHT.claim_boundaries(),
+    }
+
+
+def download_public_geodata_cache(cache_manifest_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    products = manifest.get("products") or []
+    required_missing_urls = missing_download_urls(products)
+    if required_missing_urls:
+        return build_download_blocked_report(
+            cache_manifest_path=cache_manifest_path,
+            manifest=manifest,
+            reason=required_missing_urls[0],
+        )
+
+    downloaded_products: list[dict[str, Any]] = []
+    overall_status = "verified"
+    for record in products:
+        if not isinstance(record, dict):
+            continue
+        downloaded = download_public_geodata_cache_product(record, cache_manifest_path.parent)
+        downloaded_products.append(downloaded)
+        status = PREFLIGHT.text_value(downloaded.get("staging_status")) or "missing"
+        if status == "optional_missing":
+            continue
+        if status == "unsupported_product":
+            overall_status = status
+            continue
+        if status == "missing" and overall_status == "verified":
+            overall_status = status
+        elif status == "checksum_mismatch" and overall_status == "verified":
+            overall_status = status
+        elif status == "metadata_mismatch" and overall_status == "verified":
+            overall_status = status
+
+    staged_manifest = {
+        **manifest,
+        "schema_version": manifest.get("schema_version") or PREFLIGHT.PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION,
+        "staging_status": overall_status,
+        "cache_manifest_path": str(cache_manifest_path),
+        "staged_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "verified"),
+        "optional_missing_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "optional_missing"),
+        "missing_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "missing"),
+        "checksum_mismatch_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "checksum_mismatch"),
+        "metadata_mismatch_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "metadata_mismatch"),
+        "unsupported_product_count": sum(1 for entry in downloaded_products if entry.get("staging_status") == "unsupported_product"),
+        "products": downloaded_products,
+    }
+    cache_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_manifest_path.write_text(yaml.safe_dump(staged_manifest, sort_keys=False), encoding="utf-8")
+    return {
+        "schema_version": "swiss_public_geodata_cache_download_report_v1",
+        "staging_status": overall_status,
+        "cache_manifest_path": str(cache_manifest_path),
+        "product_count": len(downloaded_products),
+        "staged_product_count": staged_manifest["staged_product_count"],
+        "optional_missing_product_count": staged_manifest["optional_missing_product_count"],
+        "missing_product_count": staged_manifest["missing_product_count"],
+        "checksum_mismatch_product_count": staged_manifest["checksum_mismatch_product_count"],
+        "metadata_mismatch_product_count": staged_manifest["metadata_mismatch_product_count"],
+        "unsupported_product_count": staged_manifest["unsupported_product_count"],
+        "products": downloaded_products,
+        "claim_boundaries": PREFLIGHT.claim_boundaries(),
+    }
+
+
 def stage_public_geodata_cache_with_wizard(
     cache_manifest_path: Path,
     manifest: dict[str, Any],
@@ -190,18 +342,34 @@ def stage_public_geodata_cache_with_wizard(
     if not apply or proposal["proposal_status"] not in WIZARD_READY_STATUSES:
         return proposal
 
+    for proposal_product in proposal["products"]:
+        applied_record = proposal_product.get("applied_record") if isinstance(proposal_product, dict) else {}
+        source_path = resolve_optional_path((applied_record or {}).get("source_local_path"), manifest_base=cache_manifest_path.parent)
+        target_path = resolve_optional_path((applied_record or {}).get("target_staged_path"), manifest_base=cache_manifest_path.parent)
+        source_metadata_path = resolve_optional_path((applied_record or {}).get("source_local_metadata_path"), manifest_base=cache_manifest_path.parent)
+        target_metadata_path = resolve_optional_path((applied_record or {}).get("target_metadata_path"), manifest_base=cache_manifest_path.parent)
+        if source_path and target_path and source_path != target_path:
+            copy_public_geodata_asset(source_path, target_path)
+        if source_metadata_path and target_metadata_path and source_metadata_path != target_metadata_path:
+            copy_public_geodata_asset(source_metadata_path, target_metadata_path)
+
+    final_products = [
+        stage_public_geodata_cache_product(proposal_product["applied_record"], cache_manifest_path.parent)
+        for proposal_product in proposal["products"]
+    ]
+
     applied_manifest = {
         **manifest,
         "schema_version": manifest.get("schema_version") or PREFLIGHT.PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION,
         "staging_status": "verified",
         "cache_manifest_path": str(cache_manifest_path),
-        "staged_product_count": proposal["staged_product_count"],
-        "optional_missing_product_count": proposal["optional_missing_product_count"],
-        "missing_product_count": proposal["missing_product_count"],
-        "checksum_mismatch_product_count": proposal["checksum_mismatch_product_count"],
-        "metadata_mismatch_product_count": proposal["metadata_mismatch_product_count"],
-        "unsupported_product_count": proposal["unsupported_product_count"],
-        "products": proposal["applied_products"],
+        "staged_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "verified"),
+        "optional_missing_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "optional_missing"),
+        "missing_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "missing"),
+        "checksum_mismatch_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "checksum_mismatch"),
+        "metadata_mismatch_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "metadata_mismatch"),
+        "unsupported_product_count": sum(1 for entry in final_products if entry.get("staging_status") == "unsupported_product"),
+        "products": final_products,
     }
     cache_manifest_path.parent.mkdir(parents=True, exist_ok=True)
     cache_manifest_path.write_text(yaml.safe_dump(applied_manifest, sort_keys=False), encoding="utf-8")
@@ -212,14 +380,14 @@ def stage_public_geodata_cache_with_wizard(
         "proposal_status": proposal["proposal_status"],
         "staging_status": "verified",
         "cache_manifest_path": str(cache_manifest_path),
-        "product_count": proposal["product_count"],
-        "staged_product_count": proposal["staged_product_count"],
-        "optional_missing_product_count": proposal["optional_missing_product_count"],
-        "missing_product_count": proposal["missing_product_count"],
-        "checksum_mismatch_product_count": proposal["checksum_mismatch_product_count"],
-        "metadata_mismatch_product_count": proposal["metadata_mismatch_product_count"],
-        "unsupported_product_count": proposal["unsupported_product_count"],
-        "products": proposal["applied_products"],
+        "product_count": len(final_products),
+        "staged_product_count": applied_manifest["staged_product_count"],
+        "optional_missing_product_count": applied_manifest["optional_missing_product_count"],
+        "missing_product_count": applied_manifest["missing_product_count"],
+        "checksum_mismatch_product_count": applied_manifest["checksum_mismatch_product_count"],
+        "metadata_mismatch_product_count": applied_manifest["metadata_mismatch_product_count"],
+        "unsupported_product_count": applied_manifest["unsupported_product_count"],
+        "products": final_products,
         "proposal": proposal,
         "claim_boundaries": PREFLIGHT.claim_boundaries(),
     }
@@ -241,7 +409,7 @@ def build_public_geodata_cache_stage_proposal(
             continue
         proposal_product = propose_public_geodata_cache_product(record, cache_manifest_path.parent, candidates)
         proposed_products.append(proposal_product)
-        applied_products.append(proposal_product["applied_record"])
+        applied_products.append(proposal_product["preview_product"])
         status = PREFLIGHT.text_value(proposal_product.get("proposal_status")) or "missing"
         if status == "optional_deferred":
             if overall_status == "ready_to_apply":
@@ -315,26 +483,33 @@ def propose_public_geodata_cache_product(
     )
     matched_candidate = choose_public_geodata_stage_candidate(record, candidates)
     candidate_was_ambiguous = bool(matched_candidate and matched_candidate.get("ambiguous"))
+    source_path = matched_candidate["path"] if matched_candidate and not candidate_was_ambiguous else expected_stage
+    source_metadata_path = (
+        PREFLIGHT.resolve_repo_path(matched_candidate.get("metadata_path"), base=manifest_base)
+        if matched_candidate and not candidate_was_ambiguous and matched_candidate.get("metadata_path")
+        else expected_metadata
+    )
     applied_record = {
         **record,
         "required": required,
-        "staged_path": (
-            format_public_geodata_manifest_path(matched_candidate["path"])
-            if matched_candidate and not candidate_was_ambiguous
-            else format_public_geodata_manifest_path(expected_stage)
-        ),
-        "metadata_path": (
-            format_public_geodata_manifest_path(PREFLIGHT.resolve_repo_path(matched_candidate.get("metadata_path"), base=manifest_base))
-            if matched_candidate and not candidate_was_ambiguous and matched_candidate.get("metadata_path")
-            else format_public_geodata_manifest_path(expected_metadata)
-        ),
+        "staged_path": format_public_geodata_manifest_path(expected_stage),
+        "metadata_path": format_public_geodata_manifest_path(expected_metadata),
+        "target_staged_path": format_public_geodata_manifest_path(expected_stage),
+        "target_metadata_path": format_public_geodata_manifest_path(expected_metadata),
+        "source_local_path": format_public_geodata_manifest_path(source_path),
+        "source_local_metadata_path": format_public_geodata_manifest_path(source_metadata_path) if source_metadata_path else "",
     }
     if matched_candidate is not None and not candidate_was_ambiguous:
         applied_record["checksum_sha256"] = PREFLIGHT.text_value(record.get("checksum_sha256")) or PREFLIGHT.text_value(record.get("processed_checksum"))
         applied_record["raw_checksum"] = PREFLIGHT.text_value(record.get("raw_checksum"))
         applied_record["processed_checksum"] = PREFLIGHT.text_value(record.get("processed_checksum"))
 
-    staged_product = stage_public_geodata_cache_product(applied_record, manifest_base)
+    preview_record = {
+        **applied_record,
+        "staged_path": applied_record["source_local_path"] or applied_record["staged_path"],
+        "metadata_path": applied_record["source_local_metadata_path"] or applied_record["metadata_path"],
+    }
+    staged_product = stage_public_geodata_cache_product(preview_record, manifest_base)
     proposal_status = staged_product["staging_status"]
     blocking_reasons: list[str] = []
     if candidate_was_ambiguous:
@@ -363,7 +538,8 @@ def propose_public_geodata_cache_product(
         "expected_metadata_path": format_public_geodata_manifest_path(expected_metadata),
         "matched_staged_path": staged_product.get("staged_path"),
         "matched_metadata_path": staged_product.get("metadata_path"),
-        "applied_record": staged_product,
+        "preview_product": staged_product,
+        "applied_record": applied_record,
     }
 
 
@@ -387,6 +563,13 @@ def choose_public_geodata_stage_candidate(record: dict[str, Any], candidates: li
             "ambiguous": True,
         }
     return scored_candidates[0][1]
+
+
+def resolve_optional_path(value: Any, *, manifest_base: Path | None = None) -> Path | None:
+    text = PREFLIGHT.text_value(value)
+    if not text:
+        return None
+    return PREFLIGHT.resolve_repo_path(text, base=manifest_base or PREFLIGHT.ROOT)
 
 
 def score_public_geodata_stage_candidate(record: dict[str, Any], candidate: dict[str, Any]) -> tuple[int, int, int, int]:
@@ -621,6 +804,163 @@ def stage_public_geodata_cache_product(record: dict[str, Any], manifest_base: Pa
             or f"PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest {cache_manifest_path_for_record(record, manifest_base)}"
         )
     return normalized_record
+
+
+def download_public_geodata_cache_product(record: dict[str, Any], manifest_base: Path) -> dict[str, Any]:
+    category = PREFLIGHT.text_value(record.get("category")) or PREFLIGHT.text_value(record.get("product_id")) or PREFLIGHT.text_value(record.get("source_product_id"))
+    required = bool(record.get("required", True))
+    if not category or category not in STAGED_PRODUCT_CATEGORIES:
+        return {
+            **record,
+            "required": required,
+            "staging_status": "unsupported_product",
+            "verification_status": "unsupported_product",
+            "observed_checksum_sha256": "",
+            "observed_metadata_mismatches": [],
+        }
+
+    staged_path = PREFLIGHT.resolve_repo_path(
+        record.get("target_staged_path") or record.get("staged_path") or record.get("expected_staged_path"),
+        base=manifest_base,
+    )
+    metadata_path = PREFLIGHT.resolve_repo_path(
+        record.get("target_metadata_path") or record.get("metadata_path") or record.get("expected_metadata_path"),
+        base=manifest_base,
+    )
+    source_url = PREFLIGHT.text_value(record.get("source_url_or_download_record")) or PREFLIGHT.text_value(record.get("source_url"))
+    if not source_url:
+        status = "missing" if required else "optional_missing"
+        return {
+            **record,
+            "required": required,
+            "staging_status": status,
+            "verification_status": status,
+            "missing_paths": ["source_url_or_download_record"],
+            "observed_checksum_sha256": "",
+            "observed_metadata_mismatches": [],
+        }
+
+    payload_path = staged_path if staged_path.suffix else staged_path / download_payload_filename(source_url, record)
+    if staged_path.suffix:
+        staged_path.parent.mkdir(parents=True, exist_ok=True)
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        staged_path.mkdir(parents=True, exist_ok=True)
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    downloaded_bytes = download_public_geodata_asset(source_url, payload_path)
+    raw_checksum = PREFLIGHT.sha256_path(payload_path)
+    if staged_path.suffix:
+        processed_checksum = raw_checksum
+    else:
+        staged_path.mkdir(parents=True, exist_ok=True)
+        processed_checksum = PREFLIGHT.sha256_path(staged_path, exclude_paths={metadata_path})
+
+    metadata = build_download_metadata(record, staged_path, metadata_path, raw_checksum=raw_checksum, processed_checksum=processed_checksum)
+    write_public_geodata_product_metadata(metadata_path, metadata)
+
+    staged_product = stage_public_geodata_cache_product(
+        {
+            **record,
+            "staged_path": format_public_geodata_manifest_path(staged_path),
+            "metadata_path": format_public_geodata_manifest_path(metadata_path),
+            "checksum_sha256": PREFLIGHT.text_value(record.get("checksum_sha256")) or processed_checksum,
+            "raw_checksum": raw_checksum,
+            "processed_checksum": processed_checksum,
+            "source_url_or_download_record": source_url,
+            "preprocessing_command_and_timestamp": metadata["preprocessing_command_and_timestamp"],
+        },
+        manifest_base,
+    )
+    staged_product["downloaded_bytes"] = downloaded_bytes
+    return staged_product
+
+
+def missing_download_urls(products: list[Any]) -> list[str]:
+    missing: list[str] = []
+    for record in products:
+        if not isinstance(record, dict):
+            continue
+        if not bool(record.get("required", True)):
+            continue
+        source_url = PREFLIGHT.text_value(record.get("source_url_or_download_record")) or PREFLIGHT.text_value(record.get("source_url"))
+        if source_url:
+            continue
+        category = PREFLIGHT.text_value(record.get("category")) or PREFLIGHT.text_value(record.get("product_id")) or "unspecified"
+        missing.append(f"{category}: missing source_url_or_download_record for download mode")
+    return missing
+
+
+def download_public_geodata_asset(source_url: str, destination: Path) -> int:
+    with urllib.request.urlopen(source_url, timeout=120) as response, destination.open("wb") as out:
+        total_bytes = 0
+        while True:
+            chunk = response.read(8 * 1024 * 1024)
+            if not chunk:
+                break
+            out.write(chunk)
+            total_bytes += len(chunk)
+    return total_bytes
+
+
+def download_payload_filename(source_url: str, record: dict[str, Any]) -> str:
+    parsed = urllib.parse.urlparse(source_url)
+    candidate = Path(parsed.path).name
+    if candidate:
+        return candidate
+    fallback = PREFLIGHT.text_value(record.get("source_product_id")) or PREFLIGHT.text_value(record.get("product_id")) or "downloaded_asset.bin"
+    return f"{fallback}.bin"
+
+
+def build_download_metadata(
+    record: dict[str, Any],
+    staged_path: Path,
+    metadata_path: Path,
+    *,
+    raw_checksum: str,
+    processed_checksum: str,
+) -> dict[str, Any]:
+    preprocessing_timestamp = dt.datetime.now(dt.timezone.utc).isoformat()
+    return {
+        "source_product_id": PREFLIGHT.text_value(record.get("source_product_id")),
+        "source_product_name": PREFLIGHT.text_value(record.get("source_product_name")),
+        "source_url_or_download_record": PREFLIGHT.text_value(record.get("source_url_or_download_record")) or PREFLIGHT.text_value(record.get("source_url")),
+        "product_version_or_date": PREFLIGHT.text_value(record.get("product_version_or_date")) or PREFLIGHT.text_value(record.get("product_version")),
+        "tile_id_or_delivery_identifier": PREFLIGHT.text_value(record.get("tile_id_or_delivery_identifier")) or PREFLIGHT.text_value(record.get("tile_id")),
+        "checksum_sha256": PREFLIGHT.text_value(record.get("checksum_sha256")) or processed_checksum,
+        "crs": PREFLIGHT.text_value(record.get("crs")),
+        "resolution_m": PREFLIGHT.normalize_resolution_m(record.get("resolution_m")),
+        "crop_extent_lv95_m": record.get("crop_extent_lv95_m") if isinstance(record.get("crop_extent_lv95_m"), dict) else {},
+        "license_or_terms_reference": PREFLIGHT.text_value(record.get("license_or_terms_reference")) or PREFLIGHT.text_value(record.get("license_note")),
+        "raw_checksum": raw_checksum,
+        "processed_checksum": processed_checksum,
+        "preprocessing_command_and_timestamp": preprocessing_timestamp,
+        "staged_path": format_public_geodata_manifest_path(staged_path),
+        "metadata_path": format_public_geodata_manifest_path(metadata_path),
+    }
+
+
+def write_public_geodata_product_metadata(path: Path, metadata: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+    else:
+        path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def copy_public_geodata_asset(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if source.is_dir():
+        if destination.exists():
+            if destination.is_file() or destination.is_symlink():
+                destination.unlink()
+            else:
+                shutil.rmtree(destination)
+        shutil.copytree(source, destination)
+        return
+    if destination.exists() or destination.is_symlink():
+        destination.unlink()
+    shutil.copy2(source, destination)
 
 
 def compare_metadata(record: dict[str, Any], metadata: dict[str, Any]) -> list[str]:

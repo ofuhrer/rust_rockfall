@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-316: Swisstopo Public Data Acquisition Driver
-
-Goal: Add an explicit opt-in public-data acquisition driver that can fetch or stage required swisstopo products for a user-defined AOI while preserving license, source, checksum, CRS, and provenance records.
-
-Capability gap reduced: User-defined AOI workflows still depend on manually downloaded or pre-staged public geodata.
-
-Why this outranks alternatives: The biggest user friction after AOI definition is getting required terrain/context inputs into the verified cache manifest.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-- `tests/test_public_geodata_cache_stager.py`
-
-Deliverables:
-
-- An opt-in acquisition driver with dry-run, local-copy, and download-enabled modes, defaulting to no network mutation unless the user explicitly passes a download/apply flag.
-- Cache-manifest updates with source URL or delivery record, product version/date, tile id, raw checksum, processed checksum, CRS, resolution, extent, license reference, and preprocessing timestamp.
-- Tests for dry-run, local-copy, blocked missing URL, checksum mismatch, and no-hidden-download behavior.
-
-Definition of done:
-
-- A user-defined AOI can move from resolved product rows to verified local cache inputs through a documented, auditable acquisition command.
-
-Boundaries: Public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no operational claim, no physical validation claim, and no large swisstopo products committed.
-
 ### TB-317: User-Defined AOI End-To-End Local Demonstration
 
 Goal: Demonstrate a new small user-defined AOI path from bounds through verified inputs, prepared pilot, local execution, map package, and QA review using the guided frontend.
