@@ -1931,3 +1931,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: evidence integration only; no live Balfrin submission, no retry, no generated heavy outputs, no physical credibility upgrade, no annual-frequency claim, no risk/exposure/vulnerability claim, no distributed-execution or scale-up claim, and no operational claim.
 - Next task: `TB-266`
+
+### TB-266: Smallest Multi-Zone Handoff Budget Repair
+
+- Date: 2026-05-19
+- Commit: `c18afd1`
+- Objective: tighten the smallest multi-zone handoff so the compact projection, reducer budget, and smallest-review preflight either pass or report the exact replay-critical blocker with before/after budget evidence.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Kept the compact handoff projection fail-closed while threading the retained replay-critical families into the budget recheck reason so the blocker names the exact manifest-size limit and the preserved replay set.
+  - Added `replay_critical_field_paths` / retained-family reporting to the compact manifest-pruning report and surfaced the before/after manifest, output-file, sidecar, and reducer-manifest counts in the smallest multi-zone preflight text report.
+  - Updated the reducer-pressure and output-budget docs with the reviewed two-release-zone before/after budget envelope, then tightened the regressions so replay-critical metadata, merge order, hashes, and output-profile semantics remain required.
+  - Removed TB-266 from the active backlog before recording this work-log entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: handoff budget repair only; no live Balfrin submission, no loss of replayability, no distributed reducer, no physics change, and no operational claim.
+- Next task: `TB-267`
