@@ -387,6 +387,32 @@ def _smallest_multi_zone_row() -> dict[str, Any]:
     }
 
 
+def _two_zone_failed_closed_row() -> dict[str, Any]:
+    return {
+        "tier_id": "two_zone_failed_closed",
+        "tier_label": "two-zone review result",
+        "evidence_label": "failed_closed",
+        "measurement_status": "failed_closed",
+        "classification": "failed_closed_submit_contract_mismatch",
+        "output_budget_status": "failed_closed_before_sbatch",
+        "execution_efficiency_status": "failed_closed_before_live_execution",
+        "file_count": None,
+        "bytes": None,
+        "manifest_bytes": None,
+        "reducer_sidecars": None,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "failed_closed_pre_submit",
+        "replayability_status": "submit_contract_schema_mismatch",
+        "authorization_status": "reviewed_but_not_executed",
+        "next_evidence_field": "submit_manifest_schema",
+        "blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+        "summary": (
+            "TB-309 reached authorization review for the reviewed two-zone package, but the submit helper failed closed before sbatch because the manifest schema_version did not match the executable pilot-run contract."
+        ),
+    }
+
+
 def _postproc_microbenchmark_row() -> dict[str, Any]:
     return {
         "tier_id": "postproc_microbenchmark",
@@ -512,6 +538,7 @@ def build_report() -> dict[str, Any]:
         _single_zone_row(single_job_summary),
         _target_area_row(),
         _smallest_multi_zone_row(),
+        _two_zone_failed_closed_row(),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
         _scratch_local_reducer_row(),
@@ -528,15 +555,20 @@ def build_report() -> dict[str, Any]:
     scratch_local = [row["tier_id"] for row in rows if row["evidence_label"] == "scratch_local"]
     projected = [row["tier_id"] for row in rows if row["measurement_status"] == "projection_only"]
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
-    overall_status = "blocked_reducer_budget" if blocked else "measured"
+    overall_status = "failed_closed" if failed_closed else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
+    next_recommended_scaling_task = (
+        "remote_cleanup_rerun" if failed_closed else recommended.get("action_id") or recommended.get("option_id")
+    )
+    live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     return {
         "schema_version": SCHEMA_VERSION,
         "matrix_status": overall_status,
         "dashboard_status": overall_status,
         "summary": (
             "Single-zone evidence and TB-307 target-area metrics-completion evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
-            "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
+            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, TB-305 contributes synthetic postproc efficiency evidence only, "
+            "fixture and scratch-local tiers remain non-promotable, "
             "and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
@@ -549,7 +581,7 @@ def build_report() -> dict[str, Any]:
             "scratch_local": "Local /tmp measurement or generated scratch evidence; useful for bottleneck discovery but not Balfrin evidence.",
             "projection_only": "Planner extrapolation from measured coefficients; not an executed scale tier.",
             "blocked_pre_submit": "A live path stopped before sbatch or live execution and promoted no measured run-root evidence.",
-            "failed_closed": "A bounded path failed or was stopped with a recorded blocker and no promoted measured capability.",
+            "failed_closed": "A bounded path failed closed before live execution because the reviewed package or manifest contract did not match the executable run contract.",
         },
         "tiers": rows,
         "measured_tiers": measured,
@@ -586,16 +618,16 @@ def build_report() -> dict[str, Any]:
         "live_run_authorization_status": {
             "live_submission_authorized": False,
             "decision_status": decision_report.get("decision_status"),
-            "recommended_next_action": recommended.get("action_id") or recommended.get("option_id"),
+            "recommended_next_action": live_recommended_next_action,
             "recommended_next_action_status": recommended.get("status"),
             "blocked_reason": decision_report.get("blocked_reason"),
         },
-        "next_recommended_scaling_task": recommended.get("action_id") or "second_site_public_context_progress",
+        "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-307 closes the target-area execution-metrics gap; the next measured-action ranking now comes from the live-run decision gate while multi-zone remains blocked by current evidence gates."
+            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, so the next safe action is to repair or rerun the package before any new live scale step."
         ),
-        "next_evidence_field": recommended.get("action_id") or "second_site_public_context_progress",
-        "blocked_reason": "smallest_multi_zone.manifest_size_bytes",
+        "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
+        "blocked_reason": "two_zone_failed_closed.submit_manifest_schema",
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "physical_probability_claims_allowed": False,

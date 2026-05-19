@@ -68,10 +68,13 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertIn("reducer_pressure:multi_zone_dry_run_blocked", multi_zone["exact_evidence_blockers"])
         self.assertIn("multi_zone_package:mixed_provenance", multi_zone["exact_evidence_blockers"])
         self.assertIn("output_pressure:no_go", multi_zone["exact_evidence_blockers"])
-        self.assertIn("multi_zone_evidence:blocked_reducer_budget:manifest_size_bytes", multi_zone["exact_evidence_blockers"])
+        self.assertIn(
+            "multi_zone_evidence:failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+            multi_zone["exact_evidence_blockers"],
+        )
         self.assertIn("live_multi_zone_measurement_unauthorized", multi_zone["exact_evidence_blockers"])
-        self.assertEqual(multi_zone["scaling_frontier_branch"], "blocked_pre_authorization")
-        self.assertIn("manifest_size_bytes", multi_zone["next_safe_expansion"])
+        self.assertEqual(multi_zone["scaling_frontier_branch"], "failed_closed_two_zone_boundary")
+        self.assertIn("repair or rerun the reviewed two-zone package", multi_zone["next_safe_expansion"])
         self.assertIn("distributed execution", multi_zone["boundary_that_prevents_claim_upgrade"])
 
     def test_measured_two_zone_evidence_moves_frontier_without_authorizing_larger_run(self) -> None:
@@ -99,6 +102,32 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         )
         self.assertEqual(multi_zone["scaling_frontier_branch"], "measured_two_zone_boundary")
         self.assertIn("live_multi_zone_measurement_unauthorized", multi_zone["exact_evidence_blockers"])
+        self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
+        self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
+
+    def test_failed_closed_two_zone_evidence_keeps_live_scale_blocked(self) -> None:
+        bundle = self.load_fixture("defer_bundle.json")
+        bundle["multi_zone_balfrin_evidence"] = {
+            "status": "failed_closed",
+            "evidence_type": "failed_closed",
+            "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/failed_closed_two_zone",
+            "release_zone_count": 2,
+            "preflight_status": "ready_for_authorization_review",
+            "authorization_record_status": "reviewed",
+            "next_blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+        }
+        bundle["balfrin_access"]["live_submission_authorized"] = False
+
+        report = MODULE.build_report(bundle)
+        multi_zone = report["option_assessments"]["smallest_bounded_multi_zone_probe"]
+
+        self.assertEqual(report["criteria"]["multi_zone_balfrin_evidence"]["status"], "failed_closed")
+        self.assertEqual(
+            report["criteria"]["multi_zone_balfrin_evidence"]["scaling_frontier_branch"],
+            "failed_closed_two_zone_boundary",
+        )
+        self.assertEqual(multi_zone["scaling_frontier_branch"], "failed_closed_two_zone_boundary")
+        self.assertIn("repair or rerun the reviewed two-zone package", report["criteria"]["multi_zone_balfrin_evidence"]["next_safe_expansion"])
         self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
         self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
 

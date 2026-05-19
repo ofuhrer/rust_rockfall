@@ -53,6 +53,25 @@ TB267_MULTI_ZONE_BLOCKED_EVIDENCE = {
         "manifest_size_bytes and the authorization record was missing."
     ),
 }
+TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE = {
+    "status": "failed_closed",
+    "evidence_type": "failed_closed",
+    "root_class": "failed_closed_two_zone_root",
+    "preflight_status": "ready_for_authorization_review",
+    "authorization_record_status": "reviewed",
+    "first_bottleneck_label": "manifest_schema_version",
+    "slurm_job_id": None,
+    "metrics_json_promoted": False,
+    "preservation_checked": False,
+    "preservation_gate_promoted": False,
+    "post_run_collector_promoted": False,
+    "release_zone_count": 2,
+    "source_paths": ["docs/balfrin_two_zone_probe_tb309.md", "docs/agent_work_log.md"],
+    "summary": (
+        "TB-309 reached ready_for_authorization_review, but the reviewed smallest two-zone submit command failed closed before sbatch because the submit helper expected a public_real_site_conditional_pilot_run_v1 manifest and the reviewed command supplied the target-area wrapper manifest instead."
+    ),
+    "next_blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+}
 ALLOWED_METRICS_COMPLETION_SOURCES = {
     "recovered_existing_run_root",
     "new_metrics_completion_rerun",
@@ -435,11 +454,22 @@ def build_bundle_report(
 
 def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
     if evidence is None:
-        return dict(TB267_MULTI_ZONE_BLOCKED_EVIDENCE)
+        return dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
     if isinstance(evidence, str):
         return classify_multi_zone_balfrin_root({"run_root": evidence, "source_paths": [evidence]})
     if not isinstance(evidence, dict):
-        return dict(TB267_MULTI_ZONE_BLOCKED_EVIDENCE)
+        return dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+    if evidence.get("status") == "failed_closed":
+        payload = dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+        payload.update(evidence)
+        payload["status"] = "failed_closed"
+        payload["evidence_type"] = "failed_closed"
+        payload["root_class"] = "failed_closed_two_zone_root"
+        payload["first_bottleneck_label"] = str(payload.get("first_bottleneck_label") or "manifest_schema_version")
+        payload["next_blocker"] = str(
+            payload.get("next_blocker") or "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch"
+        )
+        return payload
     if evidence.get("preflight_status") == "blocked_reducer_budget" or evidence.get("status") in {
         "blocked_incomplete",
         "blocked_reducer_budget",
@@ -474,9 +504,16 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
             and evidence.get("post_run_collector_promoted") is True
             and evidence.get("metrics_json_promoted") is True
         )
-        status = "measured" if measured_flags else "blocked_incomplete"
-        evidence_type = "measured" if measured_flags else "blocked"
-        root_class = "measured_multi_zone_balfrin_root" if measured_flags else "incomplete_multi_zone_root"
+        failed_closed_flags = evidence.get("status") == "failed_closed"
+        status = "measured" if measured_flags else "failed_closed" if failed_closed_flags else "blocked_incomplete"
+        evidence_type = "measured" if measured_flags else "failed_closed" if failed_closed_flags else "blocked"
+        root_class = (
+            "measured_multi_zone_balfrin_root"
+            if measured_flags
+            else "failed_closed_two_zone_root"
+            if failed_closed_flags
+            else "incomplete_multi_zone_root"
+        )
     first_bottleneck = str(evidence.get("first_bottleneck_label") or evidence.get("first_bottleneck") or "none")
     release_zone_count = evidence.get("release_zone_count")
     return {
@@ -500,6 +537,8 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
             if status == "fixture_backed"
             else "scratch_root_not_live_balfrin"
             if status == "scratch_root"
+            else "failed_closed_submit_package_schema_mismatch"
+            if status == "failed_closed"
             else f"incomplete_multi_zone_evidence:{first_bottleneck}"
         ),
         "summary": (

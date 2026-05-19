@@ -2923,3 +2923,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: exact smallest two-zone `postproc` attempt only; no job reached `sbatch`, no job id or run root was produced, no measured multi-zone evidence was promoted, no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-310`
+
+### TB-310: Two-Zone Balfrin Evidence Integration And Scale Decision
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: integrate the TB-309 failed-closed two-zone outcome into the reducer-pressure docs, evidence bundle, scale dashboard, Swiss-wide envelope, and next safe scale decision without upgrading it to Swiss-wide proof.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted the current Balfrin evidence bundle to carry TB-309 as a `failed_closed` two-zone branch with the executable-manifest schema mismatch recorded explicitly, while keeping the bundle claim boundaries unchanged.
+  - Added a dedicated failed-closed two-zone row to the scale dashboard, updated the matrix frontier to `failed_closed`, and set the next safe action to `remote_cleanup_rerun`.
+  - Extended the Swiss-wide envelope and next-live-run decision criteria so the failed-closed frontier now reports a repaired-package / no-live-scale path instead of reusing the reducer-budget blocker.
+  - Updated the reducer-pressure prose and maturity snapshot so the two-zone result is described as a fail-closed submit-path mismatch, not as measured multi-zone evidence or Swiss-wide support.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_next_live_run_decision_gate`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json`
+- Result/status: implemented_blocked_report
+- Boundaries: evidence integration and decision support only; no live Balfrin submission, no larger run, no Swiss-wide claim, no distributed execution, no annual/physical/risk semantics, and no operational claim.
+- Next task: `TB-311`

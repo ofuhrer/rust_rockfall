@@ -161,10 +161,14 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["planning_labels"]["defer"], "defer_scale_up_authorized_false")
         self.assertEqual(
             report["planning_labels"]["allowed_next_probe"],
-            "allowed_next_probe_blocked_multi_zone_evidence",
+            "allowed_next_probe_blocked_failed_closed",
         )
-        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "blocked_incomplete")
-        self.assertEqual(report["multi_zone_scaling_frontier"]["next_blocker"], "blocked_reducer_budget:manifest_size_bytes")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "failed_closed")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "remote_cleanup_rerun")
+        self.assertEqual(
+            report["multi_zone_scaling_frontier"]["next_blocker"],
+            "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+        )
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)
         self.assertEqual(report["storage_bytes"]["nominal"], 31200)
@@ -176,7 +180,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("measurement_status: measured_existing_artifacts", text)
         self.assertIn("aoi_count_exceeds_measured_support", text)
         self.assertIn("planning_labels:", text)
-        self.assertIn("allowed_next_probe: allowed_next_probe_blocked_multi_zone_evidence", text)
+        self.assertIn("allowed_next_probe: allowed_next_probe_blocked_failed_closed", text)
         self.assertIn("multi_zone_scaling_frontier:", text)
         self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
@@ -225,10 +229,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         )
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
-        self.assertEqual(
-            report["planning_labels"]["allowed_next_probe"],
-            "allowed_next_probe_blocked_multi_zone_evidence",
-        )
+        self.assertEqual(report["planning_labels"]["allowed_next_probe"], "allowed_next_probe_blocked_failed_closed")
 
     def test_missing_measured_evidence_returns_blocked_report(self) -> None:
         estimator.load_measured_coefficients.cache_clear()

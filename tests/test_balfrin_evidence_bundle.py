@@ -209,14 +209,15 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
         self.assertIn("metrics_remediation:", bundle.render_text_report(report))
 
-    def test_current_multi_zone_evidence_records_tb267_blocker(self) -> None:
+    def test_current_multi_zone_evidence_records_tb309_failed_closed_branch(self) -> None:
         report = bundle.build_current_report()
         multi_zone = report["multi_zone_balfrin_evidence"]
 
-        self.assertEqual(multi_zone["status"], "blocked_incomplete")
-        self.assertEqual(multi_zone["evidence_type"], "blocked")
-        self.assertEqual(multi_zone["preflight_status"], "blocked_reducer_budget")
-        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_size_bytes")
+        self.assertEqual(multi_zone["status"], "failed_closed")
+        self.assertEqual(multi_zone["evidence_type"], "failed_closed")
+        self.assertEqual(multi_zone["preflight_status"], "ready_for_authorization_review")
+        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_schema_version")
+        self.assertIn("public_real_site_conditional_pilot_run_v1_schema_mismatch", multi_zone["next_blocker"])
         self.assertIsNone(multi_zone["slurm_job_id"])
         self.assertFalse(multi_zone["metrics_json_promoted"])
         self.assertFalse(multi_zone["preservation_gate_promoted"])
@@ -241,6 +242,16 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
                 "post_run_collector_promoted": True,
             }
         )
+        failed_closed = bundle.build_multi_zone_balfrin_evidence(
+            {
+                "status": "failed_closed",
+                "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/two_zone_failed_closed",
+                "release_zone_count": 2,
+                "preflight_status": "ready_for_authorization_review",
+                "authorization_record_status": "reviewed",
+                "next_blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+            }
+        )
 
         self.assertEqual(scratch["root_class"], "scratch_reducer_probe")
         self.assertEqual(scratch["evidence_type"], "fixture_backed")
@@ -248,6 +259,9 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(fixture["evidence_type"], "fixture_backed")
         self.assertEqual(measured["root_class"], "measured_multi_zone_balfrin_root")
         self.assertEqual(measured["evidence_type"], "measured")
+        self.assertEqual(failed_closed["root_class"], "failed_closed_two_zone_root")
+        self.assertEqual(failed_closed["evidence_type"], "failed_closed")
+        self.assertEqual(failed_closed["status"], "failed_closed")
 
     def test_metrics_evidence_state_propagates_recovered_run_root_fields(self) -> None:
         summary = self.single_job_summary()

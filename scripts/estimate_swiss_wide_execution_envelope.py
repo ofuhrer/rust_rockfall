@@ -726,6 +726,7 @@ def build_multi_zone_scaling_frontier(canonical_bundle_report: dict[str, Any]) -
     first_bottleneck = str(evidence.get("first_bottleneck_label") or "manifest_size_bytes")
     release_zone_count = evidence.get("release_zone_count")
     measured_two_zone = status == "measured" and release_zone_count == 2
+    failed_closed_two_zone = status == "failed_closed" and release_zone_count == 2
     if measured_two_zone:
         frontier_status = "measured_two_zone_boundary"
         next_branch = "review_next_larger_balfrin_package"
@@ -733,6 +734,13 @@ def build_multi_zone_scaling_frontier(canonical_bundle_report: dict[str, Any]) -
         summary = (
             "Measured two-zone Balfrin evidence is present, so the scaling frontier can move to a reviewed "
             "next-larger package; this report still does not authorize a larger run."
+        )
+    elif failed_closed_two_zone:
+        frontier_status = "failed_closed"
+        next_branch = "remote_cleanup_rerun"
+        next_blocker = "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch"
+        summary = (
+            "TB-309 reached authorization review for a two-zone package but failed closed before sbatch because the reviewed submit command and executable pilot-run manifest schema did not match."
         )
     elif status.startswith("blocked"):
         frontier_status = "blocked_incomplete"
@@ -1110,6 +1118,8 @@ def build_planning_labels(
         if measurement_status != "measured_existing_artifacts"
         else "allowed_next_probe_measured_two_zone_review_only"
         if frontier_status == "measured_two_zone_boundary"
+        else "allowed_next_probe_blocked_failed_closed"
+        if frontier_status == "failed_closed"
         else "allowed_next_probe_blocked_multi_zone_evidence"
         if frontier_status.startswith("blocked")
         else "allowed_next_probe_measured_existing_artifacts"

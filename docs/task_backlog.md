@@ -39,37 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-310: Two-Zone Balfrin Evidence Integration And Scale Decision
-
-Goal: Integrate the TB-309 outcome into reducer-pressure docs, evidence bundles, scale dashboard, Swiss-wide envelope, and the next scale decision without treating it as Swiss-wide proof.
-
-Capability gap reduced: A measured or blocked two-zone branch must update the scaling frontier and determine whether the next action is four-zone review, hazard optimization, or deferral.
-
-Why this outranks alternatives: Multi-zone evidence changes the ordering of every later Balfrin scale task.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_swiss_wide_execution_envelope.py`
-
-Deliverables:
-
-- Updated classifiers for `measured_two_zone_balfrin`, `blocked_pre_submit`, `failed_closed`, or `budget_no_go`.
-- Scale-dashboard and Swiss-wide envelope updates that keep `scale_up_authorized=false` unless a later task explicitly scopes the next probe.
-- A concrete next recommendation: four-zone review package, hazard accumulation optimization, remote cleanup rerun, or no live scale action.
-
-Definition of done:
-
-- The repository's scaling frontier reflects the two-zone result and names the next safe scaling action.
-
-Boundaries: Evidence integration and decision support only; no live Balfrin submission, no larger run, no Swiss-wide claim, no distributed execution, no annual/physical/risk semantics, and no operational claim.
-
 ### TB-311: Four-Zone Balfrin Review Package
 
 Goal: Generate a review-only four-zone Balfrin package using the post-TB-309 evidence and current output-budget thresholds.

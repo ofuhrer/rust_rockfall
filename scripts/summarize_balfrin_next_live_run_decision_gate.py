@@ -396,6 +396,7 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
     first_bottleneck = _status(evidence.get("first_bottleneck_label"), "manifest_size_bytes")
     release_zone_count = evidence.get("release_zone_count")
     measured = status == "measured" and evidence_type == "measured"
+    failed_closed = status == "failed_closed"
     blocked = status.startswith("blocked")
     return {
         "status": "measured" if measured else "blocked" if blocked else status,
@@ -414,6 +415,8 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "scaling_frontier_branch": (
             "measured_two_zone_boundary"
             if measured and release_zone_count == 2
+            else "failed_closed_two_zone_boundary"
+            if failed_closed and release_zone_count == 2
             else "blocked_pre_authorization"
             if blocked
             else "not_measured_balfrin_root"
@@ -421,6 +424,8 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "next_safe_expansion": (
             "prepare reviewed next-larger package only after explicit authorization; this helper does not authorize it"
             if measured and release_zone_count == 2
+            else "repair or rerun the reviewed two-zone package before any live scale action; this helper does not authorize it"
+            if failed_closed and release_zone_count == 2
             else f"no-go until {first_bottleneck} reducer-budget blocker and missing authorization record are resolved"
             if blocked
             else "no-go until scratch or fixture-backed evidence is replaced by preservation-checked measured Balfrin output"

@@ -280,5 +280,7 @@ The attempt failed closed before `sbatch`: the reviewed submit command supplies
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml` to
 `scripts/submit_balfrin_probe.py`, but that helper currently requires a
 `public_real_site_conditional_pilot_run_v1` probe manifest. No job id, run root,
-metrics JSON, preservation gate, or measured result was produced. See
-`docs/balfrin_two_zone_probe_tb309.md` for the checksums and exact error block.
+metrics JSON, preservation gate, or measured result was produced. The next safe
+action is a remote cleanup / package-regeneration rerun, not a live scale step.
+See `docs/balfrin_two_zone_probe_tb309.md` for the checksums and exact error
+block.
