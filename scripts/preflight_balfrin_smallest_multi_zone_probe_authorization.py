@@ -112,6 +112,8 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         "release_zone_count": minimum.get("release_zone_count"),
         "scenario_count": minimum.get("scenario_count"),
         "trajectory_count_target": minimum.get("trajectory_count_target"),
+        "release_cell_count": minimum.get("release_cell_count"),
+        "seed_policy": minimum.get("seed_policy", {}),
         "trajectory_workers": minimum.get("trajectory_workers"),
         "reducer_workers": minimum.get("reducer_workers")
         or reducer_pressure.get("requested_reducer_worker_count"),
@@ -135,8 +137,12 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
             "manifest_pressure_bytes": minimum.get("estimated_manifest_pressure_bytes"),
         },
         "preservation_checklist": list(minimum.get("preservation_gate_checklist") or []),
+        "output_roots": dict(minimum.get("output_roots") or {}),
         "reviewed_handoff_package_path": minimum.get("reviewed_handoff_package_path"),
         "authorization_record_path": minimum.get("authorization_record_path"),
+        "authorization_review_command": minimum.get("authorization_review_command")
+        or follow_up.get("authorization_review_command")
+        or package.get("authorization_review_command"),
         "authorization_submit_command": minimum.get("authorization_submit_command")
         or follow_up.get("authorization_submit_command")
         or package.get("authorization_submit_command"),
@@ -189,6 +195,7 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         "manifest_pruning_mode": manifest_pruning.get("mode"),
         "manifest_pruning_before": manifest_pruning.get("before"),
         "manifest_pruning_after": manifest_pruning.get("after"),
+        "manifest_pruning_replay_critical_contract": manifest_pruning.get("replay_critical_contract", {}),
         "manifest_pruning_exact_blocking_fields": list(manifest_pruning.get("exact_blocking_fields") or []),
         "blocked_reasons": blocked_reasons,
     }
@@ -412,10 +419,15 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- After manifest bytes: `{manifest_pruning_after.get('manifest_size_bytes')}`",
         f"- Before sidecar files: `{manifest_pruning_before.get('sidecar_file_count')}`",
         f"- After sidecar files: `{manifest_pruning_after.get('sidecar_file_count')}`",
+        f"- Before reducer manifest files: `{manifest_pruning_before.get('reducer_manifest_file_count')}`",
+        f"- After reducer manifest files: `{manifest_pruning_after.get('reducer_manifest_file_count')}`",
         f"- Before output files: `{manifest_pruning_before.get('output_file_count')}`",
         f"- After output files: `{manifest_pruning_after.get('output_file_count')}`",
         f"- Before reducer manifest bytes: `{manifest_pruning_before.get('reducer_manifest_bytes')}`",
         f"- After reducer manifest bytes: `{manifest_pruning_after.get('reducer_manifest_bytes')}`",
+        f"- Replay-critical contract families: `{reducer_budget.get('manifest_pruning_replay_critical_contract', {}).get('families', [])}`",
+        f"- Replay-critical merge proof: `{reducer_budget.get('manifest_pruning_replay_critical_contract', {}).get('merge_order_proof', {})}`",
+        f"- Replay-critical output-profile semantics: `{reducer_budget.get('manifest_pruning_replay_critical_contract', {}).get('output_profile_semantics', {})}`",
         f"- Exact blocking fields: `{reducer_budget.get('manifest_pruning_exact_blocking_fields')}`",
         f"- Constraint summary: {reducer_budget.get('constraint_summary')}",
         "",

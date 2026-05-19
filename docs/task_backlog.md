@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-285: Reducer Manifest Budget Compression
-
-Goal: Reduce smallest multi-zone manifest pressure while retaining replay-critical metadata, hashes, merge order, and output-profile semantics.
-
-Capability gap reduced: The smallest multi-zone Balfrin path is blocked by manifest-size pressure before execution.
-
-Why this outranks alternatives: Multi-zone execution is the next architectural scaling milestone, but it should not proceed until the handoff package fits the reducer/output budget.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- A compact manifest representation or pruning mode that removes redundant data while preserving replay-critical families and deterministic merge proof.
-- Before/after budget evidence for manifest bytes, file counts, sidecars, reducer manifests, and replay-critical retained fields.
-- Regression tests proving the smallest two-zone package is either under budget or reports the exact irreducible blocker.
-
-Definition of done:
-
-- The smallest multi-zone handoff no longer blocks on avoidable manifest-size pressure, or the remaining blocker is proven replay-critical and explicitly named.
-
-Boundaries: Handoff/budget compression only; no live Balfrin submission, no dropped replayability, no distributed reducer, no physics change, no scale-up authorization, and no operational claim.
-
 ### TB-286: Smallest Multi-Zone Authorization Package Refresh
 
 Goal: Rebuild the smallest two-zone Balfrin authorization package after reducer-budget compression and produce a clean authorization-ready record.

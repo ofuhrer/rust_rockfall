@@ -103,7 +103,10 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 "projection_mode": "compact",
                 "manifest_size_bytes": 17788,
                 "output_file_count": 39,
+                "output_byte_count": 22563,
                 "sidecar_file_count": 2,
+                "sidecar_byte_count": 214,
+                "reducer_manifest_file_count": 0,
                 "reducer_manifest_bytes": 0,
                 "replay_critical_retained_output_families": [
                     "trajectory_csv",
@@ -132,6 +135,32 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                         "trajectory_merge_state, reducer_merge_state"
                     ),
                 },
+                "replay_critical_contract": {
+                    "families": [
+                        "trajectory_csv",
+                        "deposition_csv",
+                        "impact_events_csv",
+                        "trajectory_merge_state",
+                        "reducer_merge_state",
+                    ],
+                    "merge_order_proof": {
+                        "merge_order": "sorted_chunk_id",
+                        "merge_order_independent": True,
+                        "merge_order_deterministic": True,
+                    },
+                    "output_profile_semantics": {
+                        "classification": "blocked_unscalable_default",
+                        "summary": "one or more command-plan profiles request heavy output defaults without an explicit override",
+                        "required_scalable_controls": [
+                            "--conditional-curve-export summary-only",
+                            "--grid-csv-export none",
+                            "--no-plots",
+                        ],
+                        "scalable_policy_labels": ["minimum_measured_multi_zone_run"],
+                        "blocked_policy_labels": ["current_target_gate_profile"],
+                        "policy_count": 2,
+                    },
+                },
             }
             constraint["handoff_output_budget_projection"] = compact_projection
             if compact_handoff_budget_status == "blocked_budget_reduction_needed":
@@ -141,8 +170,22 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             manifest_pruning = {
                 "status": compact_handoff_budget_status,
                 "mode": "compact",
-                "before": {"manifest_size_bytes": 26057, "output_file_count": 62, "sidecar_file_count": 21},
-                "after": {"manifest_size_bytes": 17788, "output_file_count": 39, "sidecar_file_count": 2},
+                "before": {
+                    "manifest_size_bytes": 24042,
+                    "output_file_count": 62,
+                    "sidecar_file_count": 21,
+                    "sidecar_byte_count": 4123,
+                    "reducer_manifest_file_count": 4,
+                    "reducer_manifest_bytes": 964,
+                },
+                "after": {
+                    "manifest_size_bytes": 17788,
+                    "output_file_count": 39,
+                    "sidecar_file_count": 2,
+                    "sidecar_byte_count": 214,
+                    "reducer_manifest_file_count": 0,
+                    "reducer_manifest_bytes": 0,
+                },
                 "exact_blocking_fields": [
                     "trajectory_csv",
                     "deposition_csv",
@@ -150,6 +193,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                     "trajectory_merge_state",
                     "reducer_merge_state",
                 ],
+                "replay_critical_contract": compact_projection["replay_critical_contract"],
                 "blocked_reason": compact_projection["budget_recheck"]["reason"],
             }
         payload = {
@@ -237,6 +281,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         text_report = MODULE.render_text_report(report)
         self.assertIn("Before manifest bytes", text_report)
         self.assertIn("Exact blocking fields", text_report)
+        self.assertIn("Replay-critical contract families", text_report)
 
     def test_missing_authorization_record_blocks_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
@@ -359,6 +404,10 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertIn("Before manifest bytes", MODULE.render_text_report(report))
         self.assertIn("manifest_size_bytes", report["blocked_reason"])
         self.assertEqual(report["authorization_record_status"], "missing")
+        self.assertEqual(
+            report["reducer_budget_requirement"]["manifest_pruning_replay_critical_contract"]["families"],
+            ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
+        )
 
 
 if __name__ == "__main__":

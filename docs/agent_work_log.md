@@ -2352,3 +2352,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence integration only; no `sbatch`, no live Balfrin submission, no new run, no remote cleanup, no claim upgrade beyond execution-metric completeness, no annual-frequency semantics, and no operational, risk, exposure, vulnerability, distributed-execution, scale-up, or physical-probability claim.
 - Next task: `TB-285`
+
+### TB-285: Reducer Manifest Budget Compression
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: compress the smallest multi-zone handoff report so it keeps replay-critical metadata, hashes, merge-order proof, and output-profile semantics while reporting the exact remaining blocker.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Collapsed the multi-zone manifest-pruning report into a compact contract with prefix-based replay-critical field inventories, retained family lists, merge-order proof, output-profile semantics, and before/after evidence for manifest bytes, sidecar counts, reducer-manifest counts, and output file counts.
+  - Removed redundant top-level projection copies from the package report and kept the smallest-run summary on the canonical follow-up path, cutting the package JSON size while preserving the replay-critical blocker evidence.
+  - Expanded the smallest-multi-zone preflight to surface the compact replay-critical contract and the reducer-manifest file-count evidence while continuing to fail closed on the manifest-size blocker.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-285 --format json`
+  - `rg -n "^### TB-285:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: handoff and budget compression only; no live Balfrin submission, no `sbatch`, no dropped replayability, no distributed reducer, no physics change, no scale-up authorization, and no operational claim.
+- Next task: `TB-286`

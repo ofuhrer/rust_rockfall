@@ -560,23 +560,6 @@ def build_report(
             pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
         ),
     )
-    manifest_pruning_report = build_manifest_pruning_report(
-        command_plan=command_plan,
-        pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
-    )
-    handoff_output_budget_projection = dict(
-        manifest_pruning_report.get("active_handoff_output_budget_projection")
-        or manifest_pruning_report.get("baseline_handoff_output_budget_projection")
-        or {}
-    )
-    constraint_pressure_report = build_constraint_pressure_report(
-        pressure_report=pressure_report,
-        requested_release_zone_batch_size=requested_release_zone_batch_size,
-        requested_reducer_chunk_count=requested_reducer_chunk_count,
-        requested_reducer_worker_count=requested_reducer_worker_count,
-        handoff_output_budget_projection=handoff_output_budget_projection,
-    )
-
     current_target_profile = dict(output_profile_report.get("current_target_gate_profile") or {})
     current_plots_enabled = current_target_profile.get("plots_enabled")
     current_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
@@ -594,6 +577,49 @@ def build_report(
     command_plan["output_profile_policy"] = OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
         [current_output_profile_policy, minimum_output_profile_policy],
         label="balfrin_multi_release_zone_demo_command_plan",
+    )
+    manifest_pruning_report = build_manifest_pruning_report(
+        command_plan=command_plan,
+        pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
+    )
+    replay_critical_contract = dict(manifest_pruning_report.get("replay_critical_contract") or {})
+    if replay_critical_contract:
+        replay_critical_contract["output_profile_semantics"] = {
+            "classification": dict(command_plan.get("output_profile_policy") or {}).get("classification"),
+            "summary": dict(command_plan.get("output_profile_policy") or {}).get("summary"),
+            "required_scalable_controls": list(
+                dict(command_plan.get("output_profile_policy") or {}).get("required_scalable_controls") or []
+            ),
+            "scalable_policy_labels": list(
+                dict(command_plan.get("output_profile_policy") or {}).get("scalable_policy_labels") or []
+            ),
+            "blocked_policy_labels": list(
+                dict(command_plan.get("output_profile_policy") or {}).get("blocked_policy_labels") or []
+            ),
+            "policy_count": dict(command_plan.get("output_profile_policy") or {}).get("policy_count"),
+            "policy_states": [
+                {
+                    "label": policy.get("label"),
+                    "classification": policy.get("classification"),
+                    "conditional_curve_export": policy.get("conditional_curve_export"),
+                    "grid_csv_export": policy.get("grid_csv_export"),
+                    "no_plots": policy.get("no_plots"),
+                }
+                for policy in list(dict(command_plan.get("output_profile_policy") or {}).get("policy_states") or [])
+            ],
+        }
+        manifest_pruning_report["replay_critical_contract"] = replay_critical_contract
+    handoff_output_budget_projection = dict(
+        manifest_pruning_report.get("active_handoff_output_budget_projection")
+        or manifest_pruning_report.get("baseline_handoff_output_budget_projection")
+        or {}
+    )
+    constraint_pressure_report = build_constraint_pressure_report(
+        pressure_report=pressure_report,
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
+        requested_reducer_chunk_count=requested_reducer_chunk_count,
+        requested_reducer_worker_count=requested_reducer_worker_count,
+        handoff_output_budget_projection=handoff_output_budget_projection,
     )
 
     package_status = classify_package_status(
@@ -637,7 +663,16 @@ def build_report(
         "authorization_classification": "blocked_pending_authorization",
         "live_execution_requires_new_human_authorization": True,
         "package_constraint_status": constraint_pressure_report["status"],
-        "package_constraint_summary": constraint_pressure_report,
+        "package_constraint_summary": {
+            "status": constraint_pressure_report.get("status"),
+            "summary": constraint_pressure_report.get("summary"),
+            "requested_release_zone_batch_size": constraint_pressure_report.get("requested_release_zone_batch_size"),
+            "requested_reducer_chunk_count": constraint_pressure_report.get("requested_reducer_chunk_count"),
+            "requested_reducer_worker_count": constraint_pressure_report.get("requested_reducer_worker_count"),
+            "requested_constraint_status": constraint_pressure_report.get("requested_constraint_status"),
+            "constraint_source": constraint_pressure_report.get("constraint_source", {}),
+            "measured_constraints": constraint_pressure_report.get("measured_constraints", {}),
+        },
         "package_summary": {
             "status": package_status,
             "summary": (
@@ -680,12 +715,6 @@ def build_report(
         "multi_zone_pressure": pressure_report,
         "handoff_output_budget_projection": handoff_output_budget_projection,
         "manifest_pruning": manifest_pruning_report,
-        "baseline_handoff_output_budget_projection": manifest_pruning_report.get(
-            "baseline_handoff_output_budget_projection"
-        ),
-        "compact_handoff_output_budget_projection": manifest_pruning_report.get(
-            "compact_handoff_output_budget_projection"
-        ),
         "constraint_pressure": constraint_pressure_report,
         "uncertainty_post_processing": build_uncertainty_post_processing(
             single_job_report=single_job_report,
@@ -695,7 +724,6 @@ def build_report(
         "follow_up_recommendation": follow_up_recommendation,
         "authorization_review_command": follow_up_recommendation["authorization_review_command"],
         "authorization_submit_command": follow_up_recommendation["authorization_submit_command"],
-        "smallest_measured_multi_zone_run": follow_up_recommendation["minimum_measured_multi_zone_run"],
         "output_profile_policy": command_plan.get("output_profile_policy", {}),
         "command_plan": command_plan,
         "claim_boundaries": claim_boundaries(target_area_contract),
@@ -1528,15 +1556,16 @@ def build_manifest_pruning_report(
             "status": "budget_passes_no_reduction_needed",
             "summary": "current handoff projection already fits the budget; manifest pruning is not needed",
             "mode": "full",
-            "baseline_handoff_output_budget_projection": baseline_projection,
-            "compact_handoff_output_budget_projection": None,
             "active_handoff_output_budget_projection": baseline_projection,
             "before": summarize_projection_budget(baseline_projection),
             "after": summarize_projection_budget(baseline_projection),
             "delta": zero_projection_delta(),
             "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
-            "pruned_output_families": [],
             "retained_output_families": list(baseline_projection.get("output_family_mix") or []),
+            "replay_critical_contract": build_replay_critical_contract(
+                command_plan=command_plan,
+                projection=baseline_projection,
+            ),
             "projection_hashes": dict(baseline_projection.get("projection_file_hashes") or {}),
             "blocked_reason": None,
         }
@@ -1552,15 +1581,16 @@ def build_manifest_pruning_report(
             "status": "blocked_manifest_pruning_impossible",
             "summary": str(exc),
             "mode": "compact",
-            "baseline_handoff_output_budget_projection": baseline_projection,
-            "compact_handoff_output_budget_projection": None,
             "active_handoff_output_budget_projection": baseline_projection,
             "before": summarize_projection_budget(baseline_projection),
             "after": None,
             "delta": None,
             "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
-            "pruned_output_families": list(PRUNED_OUTPUT_FAMILIES),
             "retained_output_families": list(baseline_projection.get("output_family_mix") or []),
+            "replay_critical_contract": build_replay_critical_contract(
+                command_plan=command_plan,
+                projection=baseline_projection,
+            ),
             "projection_hashes": dict(baseline_projection.get("projection_file_hashes") or {}),
             "blocked_reason": str(exc),
         }
@@ -1570,7 +1600,10 @@ def build_manifest_pruning_report(
     comparison_status = compact_status if compact_status else "blocked_replay_contract_ambiguity"
     retained_output_families = list(compact_projection.get("output_family_mix") or [])
     exact_blocking_fields = list(retained_output_families)
-    replay_critical_field_paths = list(build_replay_critical_field_inventory().get("manifest_pruning") or [])
+    replay_critical_contract = build_replay_critical_contract(
+        command_plan=command_plan,
+        projection=compact_projection,
+    )
     summary = (
         "manifest pruning reduced the projected handoff pressure from "
         f"{baseline_projection.get('manifest_size_bytes')} manifest bytes / "
@@ -1587,23 +1620,20 @@ def build_manifest_pruning_report(
     elif comparison_status == "blocked_budget_reduction_needed":
         summary = (
             "manifest pruning remains blocked because the replay-safe compact projection still includes "
-            f"{', '.join(retained_output_families)}; replay-critical field paths remain explicit in "
-            f"{', '.join(replay_critical_field_paths)}."
+            f"{', '.join(retained_output_families)}; replay-critical contract remains explicit in the compact field inventory."
         )
     return {
         "status": comparison_status,
         "summary": summary,
         "mode": "compact",
-        "baseline_handoff_output_budget_projection": baseline_projection,
-        "compact_handoff_output_budget_projection": compact_projection,
         "active_handoff_output_budget_projection": compact_projection,
         "before": summarize_projection_budget(baseline_projection),
         "after": summarize_projection_budget(compact_projection),
         "delta": delta,
         "replay_critical_output_families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
-        "replay_critical_field_paths": replay_critical_field_paths,
         "pruned_output_families": list(PRUNED_OUTPUT_FAMILIES),
         "retained_output_families": retained_output_families,
+        "replay_critical_contract": replay_critical_contract,
         "exact_blocking_fields": exact_blocking_fields,
         "projection_hashes": dict(compact_projection.get("projection_file_hashes") or {}),
         "blocked_reason": compact_projection.get("budget_recheck", {}).get("reason")
@@ -1652,6 +1682,43 @@ def zero_projection_delta() -> dict[str, int]:
         "output_byte_count": 0,
         "reducer_manifest_bytes": 0,
         "reducer_manifest_file_count": 0,
+    }
+
+
+def build_replay_critical_contract(
+    *,
+    command_plan: dict[str, Any],
+    projection: dict[str, Any],
+) -> dict[str, Any]:
+    projected_profile = dict(projection.get("projected_profile") or {})
+    output_profile_policy = dict(command_plan.get("output_profile_policy") or {})
+    return {
+        "families": list(REPLAY_CRITICAL_OUTPUT_FAMILIES),
+        "merge_order_proof": {
+            "merge_order": projected_profile.get("merge_order"),
+            "merge_order_independent": projected_profile.get("merge_order_independent"),
+            "merge_order_deterministic": projected_profile.get("merge_order_deterministic"),
+        },
+        "output_profile_semantics": {
+            "classification": output_profile_policy.get("classification"),
+            "summary": output_profile_policy.get("summary"),
+            "required_scalable_controls": list(output_profile_policy.get("required_scalable_controls") or []),
+            "scalable_policy_labels": list(output_profile_policy.get("scalable_policy_labels") or []),
+            "blocked_policy_labels": list(output_profile_policy.get("blocked_policy_labels") or []),
+            "policy_count": output_profile_policy.get("policy_count"),
+            "policy_states": [
+                {
+                    "label": policy.get("label"),
+                    "classification": policy.get("classification"),
+                    "conditional_curve_export": policy.get("conditional_curve_export"),
+                    "grid_csv_export": policy.get("grid_csv_export"),
+                    "no_plots": policy.get("no_plots"),
+                }
+                for policy in list(output_profile_policy.get("policy_states") or [])
+            ],
+        },
+        "projection_hashes": dict(projection.get("projection_file_hashes") or {}),
+        "field_inventory": build_replay_critical_field_inventory(),
     }
 
 
@@ -1829,104 +1896,132 @@ def build_handoff_budget_recheck(
     }
 
 
-def build_replay_critical_field_inventory() -> dict[str, list[str]]:
+def build_replay_critical_field_inventory() -> dict[str, dict[str, Any]]:
     return {
-        "command_plan": [
-            "command_plan.command_ids",
-            "command_plan.command_descriptions",
-            "command_plan.blocked_template_commands",
-            "command_plan.command_groups",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].group",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].id",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].command",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].expected_inputs",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].expected_outputs",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].read_only",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].may_produce_ignored_outputs",
-            "command_plan.commands[id=multi_zone_reducer_pressure_summary].ignored_output_paths",
-        ],
-        "projection": [
-            "handoff_output_budget_projection.status",
-            "handoff_output_budget_projection.gate_status",
-            "handoff_output_budget_projection.projection_provenance",
-            "handoff_output_budget_projection.command_id",
-            "handoff_output_budget_projection.source_command",
-            "handoff_output_budget_projection.planned_pressure_probe_root",
-            "handoff_output_budget_projection.release_zone_count",
-            "handoff_output_budget_projection.reducer_chunk_count",
-            "handoff_output_budget_projection.reducer_worker_count",
-            "handoff_output_budget_projection.output_family_mix",
-            "handoff_output_budget_projection.primary_output_file_count",
-            "handoff_output_budget_projection.primary_output_byte_count",
-            "handoff_output_budget_projection.sidecar_file_count",
-            "handoff_output_budget_projection.sidecar_byte_count",
-            "handoff_output_budget_projection.reducer_manifest_file_count",
-            "handoff_output_budget_projection.reducer_manifest_bytes",
-            "handoff_output_budget_projection.manifest_size_bytes",
-            "handoff_output_budget_projection.output_file_count",
-            "handoff_output_budget_projection.output_byte_count",
-            "handoff_output_budget_projection.first_bottleneck_labels.first_relevant",
-            "handoff_output_budget_projection.projection_mode",
-            "handoff_output_budget_projection.full_output_family_mix",
-            "handoff_output_budget_projection.pruned_output_family_mix",
-            "handoff_output_budget_projection.projection_file_hashes.probe_manifest_sha256",
-            "handoff_output_budget_projection.projection_file_hashes.command_plan_sha256",
-            "handoff_output_budget_projection.projection_file_hashes.output_manifest_sha256",
-        ],
-        "thresholds": [
-            "handoff_output_budget_projection.threshold_provenance",
-            "handoff_output_budget_projection.budget_checks",
-            "handoff_output_budget_projection.family_count_checks",
-            "handoff_output_budget_projection.family_byte_checks",
-            "handoff_output_budget_projection.blocked_reasons",
-            "handoff_output_budget_projection.warning_reasons",
-        ],
-        "constraints": [
-            "constraint_pressure.status",
-            "constraint_pressure.summary",
-            "constraint_pressure.requested_release_zone_batch_size",
-            "constraint_pressure.requested_reducer_chunk_count",
-            "constraint_pressure.requested_reducer_worker_count",
-            "constraint_pressure.requested_constraint_status",
-            "constraint_pressure.constraint_source.source_document",
-            "constraint_pressure.constraint_source.source_script",
-            "constraint_pressure.constraint_source.probe_root",
-            "constraint_pressure.constraint_source.output_family_mix",
-            "constraint_pressure.measured_constraints.simultaneous_release_zone_batch_max",
-            "constraint_pressure.measured_constraints.reducer_chunk_count_max",
-            "constraint_pressure.measured_constraints.reducer_worker_count_max",
-            "constraint_pressure.measured_constraints.manifest_size_bytes_max",
-            "constraint_pressure.measured_constraints.output_file_count_max",
-            "constraint_pressure.measured_constraints.root_file_count_max",
-        ],
-        "smallest_run": [
-            "follow_up_recommendation.minimum_measured_multi_zone_run.release_zone_count",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.scenario_count",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.trajectory_count_target",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.trajectory_workers",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.reducer_workers",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.conditional_curve_export",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.grid_csv_export",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.export_geotiff",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.pilot_gis_package",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.output_profile_policy.classification",
-            "follow_up_recommendation.minimum_measured_multi_zone_run.preservation_gate_checklist",
-        ],
-        "manifest_pruning": [
-            "manifest_pruning.status",
-            "manifest_pruning.summary",
-            "manifest_pruning.before.manifest_size_bytes",
-            "manifest_pruning.after.manifest_size_bytes",
-            "manifest_pruning.before.sidecar_file_count",
-            "manifest_pruning.after.sidecar_file_count",
-            "manifest_pruning.before.output_file_count",
-            "manifest_pruning.after.output_file_count",
-            "manifest_pruning.before.reducer_manifest_bytes",
-            "manifest_pruning.after.reducer_manifest_bytes",
-            "manifest_pruning.replay_critical_output_families",
-            "manifest_pruning.pruned_output_families",
-            "manifest_pruning.exact_blocking_fields",
-        ],
+        "command_plan": {
+            "prefix": "command_plan.commands[id=multi_zone_reducer_pressure_summary].",
+            "fields": [
+                "group",
+                "id",
+                "command",
+                "expected_inputs",
+                "expected_outputs",
+                "read_only",
+                "may_produce_ignored_outputs",
+                "ignored_output_paths",
+            ],
+            "section_fields": [
+                "command_plan.command_ids",
+                "command_plan.command_descriptions",
+                "command_plan.blocked_template_commands",
+                "command_plan.command_groups",
+            ],
+        },
+        "projection": {
+            "prefix": "handoff_output_budget_projection.",
+            "fields": [
+                "status",
+                "gate_status",
+                "projection_provenance",
+                "command_id",
+                "source_command",
+                "planned_pressure_probe_root",
+                "release_zone_count",
+                "reducer_chunk_count",
+                "reducer_worker_count",
+                "output_family_mix",
+                "primary_output_file_count",
+                "primary_output_byte_count",
+                "sidecar_file_count",
+                "sidecar_byte_count",
+                "reducer_manifest_file_count",
+                "reducer_manifest_bytes",
+                "manifest_size_bytes",
+                "output_file_count",
+                "output_byte_count",
+                "first_bottleneck_labels.first_relevant",
+                "projection_mode",
+            ],
+            "section_fields": [
+                "handoff_output_budget_projection.full_output_family_mix",
+                "handoff_output_budget_projection.pruned_output_family_mix",
+                "handoff_output_budget_projection.projection_file_hashes.probe_manifest_sha256",
+                "handoff_output_budget_projection.projection_file_hashes.command_plan_sha256",
+                "handoff_output_budget_projection.projection_file_hashes.output_manifest_sha256",
+            ],
+        },
+        "thresholds": {
+            "prefix": "handoff_output_budget_projection.",
+            "fields": [
+                "threshold_provenance",
+                "budget_checks",
+                "family_count_checks",
+                "family_byte_checks",
+                "blocked_reasons",
+                "warning_reasons",
+            ],
+        },
+        "constraints": {
+            "prefix": "constraint_pressure.",
+            "fields": [
+                "status",
+                "summary",
+                "requested_release_zone_batch_size",
+                "requested_reducer_chunk_count",
+                "requested_reducer_worker_count",
+                "requested_constraint_status",
+                "constraint_source.source_document",
+                "constraint_source.source_script",
+                "constraint_source.probe_root",
+                "constraint_source.output_family_mix",
+                "measured_constraints.simultaneous_release_zone_batch_max",
+                "measured_constraints.reducer_chunk_count_max",
+                "measured_constraints.reducer_worker_count_max",
+                "measured_constraints.manifest_size_bytes_max",
+                "measured_constraints.output_file_count_max",
+                "measured_constraints.root_file_count_max",
+            ],
+        },
+        "smallest_run": {
+            "prefix": "follow_up_recommendation.minimum_measured_multi_zone_run.",
+            "fields": [
+                "release_zone_count",
+                "scenario_count",
+                "trajectory_count_target",
+                "trajectory_workers",
+                "reducer_workers",
+                "conditional_curve_export",
+                "grid_csv_export",
+                "export_geotiff",
+                "pilot_gis_package",
+                "output_profile_policy.classification",
+                "preservation_gate_checklist",
+            ],
+        },
+        "manifest_pruning": {
+            "prefix": "manifest_pruning.",
+            "fields": [
+                "status",
+                "summary",
+                "before.manifest_size_bytes",
+                "before.sidecar_file_count",
+                "before.sidecar_byte_count",
+                "before.output_file_count",
+                "before.output_byte_count",
+                "before.reducer_manifest_bytes",
+                "before.reducer_manifest_file_count",
+                "after.manifest_size_bytes",
+                "after.sidecar_file_count",
+                "after.sidecar_byte_count",
+                "after.output_file_count",
+                "after.output_byte_count",
+                "after.reducer_manifest_bytes",
+                "after.reducer_manifest_file_count",
+                "replay_critical_output_families",
+                "retained_output_families",
+                "exact_blocking_fields",
+            ],
+        },
     }
 
 
@@ -2668,10 +2763,15 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- After manifest bytes: `{report.get('manifest_pruning', {}).get('after', {}).get('manifest_size_bytes')}`",
         f"- Before sidecar files: `{report.get('manifest_pruning', {}).get('before', {}).get('sidecar_file_count')}`",
         f"- After sidecar files: `{report.get('manifest_pruning', {}).get('after', {}).get('sidecar_file_count')}`",
+        f"- Before reducer manifest files: `{report.get('manifest_pruning', {}).get('before', {}).get('reducer_manifest_file_count')}`",
+        f"- After reducer manifest files: `{report.get('manifest_pruning', {}).get('after', {}).get('reducer_manifest_file_count')}`",
         f"- Before output files: `{report.get('manifest_pruning', {}).get('before', {}).get('output_file_count')}`",
         f"- After output files: `{report.get('manifest_pruning', {}).get('after', {}).get('output_file_count')}`",
         f"- Before reducer manifest bytes: `{report.get('manifest_pruning', {}).get('before', {}).get('reducer_manifest_bytes')}`",
         f"- After reducer manifest bytes: `{report.get('manifest_pruning', {}).get('after', {}).get('reducer_manifest_bytes')}`",
+        f"- Replay-critical contract families: `{report.get('manifest_pruning', {}).get('replay_critical_contract', {}).get('families', [])}`",
+        f"- Replay-critical merge proof: `{report.get('manifest_pruning', {}).get('replay_critical_contract', {}).get('merge_order_proof', {})}`",
+        f"- Replay-critical output-profile semantics: `{report.get('manifest_pruning', {}).get('replay_critical_contract', {}).get('output_profile_semantics', {})}`",
         f"- Replay-critical output families: `{report.get('manifest_pruning', {}).get('replay_critical_output_families', [])}`",
         f"- Pruned output families: `{report.get('manifest_pruning', {}).get('pruned_output_families', [])}`",
         f"- Exact blocking fields: `{report.get('manifest_pruning', {}).get('exact_blocking_fields', [])}`",
