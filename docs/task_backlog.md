@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-275: Public Geodata Local Staging Wizard
-
-Goal: Add a local staging wizard that matches user-supplied swisstopo files or directories to the AOI cache manifest and proposes deterministic manifest updates.
-
-Capability gap reduced: Users with downloaded swisstopo files still need to understand internal cache-manifest fields and staging paths before the workflow can proceed.
-
-Why this outranks alternatives: Real AOI progress is currently blocked most often at local public-data staging, not at simulation mechanics.
-
-Inspect first:
-
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_public_geodata_cache_stager.py`
-- `tests/test_public_geodata_cache_verifier.py`
-
-Deliverables:
-
-- A staging-wizard mode that scans caller-provided local paths, matches candidates to expected product rows, and writes a dry-run proposal before mutating any manifest.
-- Fail-closed classifications for ambiguous matches, missing metadata, checksum mismatch, unsupported products, and optional-deferred products.
-- Tests using small fixture files and directories only.
-
-Definition of done:
-
-- A user can point the workflow at local swisstopo files and receive either verified manifest updates or an exact reason why staging cannot proceed.
-
-Boundaries: Local file staging only; no network download, no simulation, no source-frequency semantics, no physical validation claim, no operational claim, and no heavy public geodata committed.
-
 ### TB-276: Real AOI Golden Fixture Package
 
 Goal: Add one compact clean-checkout-safe AOI fixture package that exercises the AOI workflow with minimized real-like public-data metadata instead of only synthetic terrain assumptions.

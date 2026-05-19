@@ -30,6 +30,158 @@ verifier = _load_module(VERIFY_SCRIPT_PATH, "verify_public_geodata_cache_for_sta
 
 
 class PublicGeodataCacheStagerTests(unittest.TestCase):
+    def test_wizard_mode_writes_proposal_before_applying_verified_inputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            terrain_path, terrain_metadata_path, context_path, context_metadata_path, context_dir = self._write_wizard_inputs(root)
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            original_verify_root = verifier.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            verifier.PREFLIGHT.ROOT = root
+            try:
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                            "candidate_site_id": SITE_ID,
+                            "candidate_site_name": "Demo Site",
+                            "products": [
+                                self._terrain_product_row(root, terrain_path, terrain_metadata_path),
+                                self._context_product_row(root, context_path, context_metadata_path),
+                                self._optional_barrier_row(root),
+                            ],
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
+
+                proposal_output = site_root / "input" / "wizard_proposal.json"
+                dry_run_report = stager.stage_public_geodata_cache(
+                    manifest_path,
+                    local_paths=[terrain_path, terrain_metadata_path, context_dir],
+                    proposal_output=proposal_output,
+                )
+                self.assertTrue(proposal_output.exists())
+                applied_report = stager.stage_public_geodata_cache(
+                    manifest_path,
+                    local_paths=[terrain_path, terrain_metadata_path, context_dir],
+                    proposal_output=proposal_output,
+                    apply=True,
+                )
+                verified_manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+                verification_report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+                verifier.PREFLIGHT.ROOT = original_verify_root
+
+        self.assertEqual(dry_run_report["wizard_mode"], True)
+        self.assertIn(dry_run_report["proposal_status"], {"ready_to_apply", "ready_with_optional_deferred"})
+        self.assertEqual(applied_report["wizard_mode"], True)
+        self.assertEqual(applied_report["staging_status"], "verified")
+        self.assertEqual(applied_report["proposal"]["proposal_status"], dry_run_report["proposal_status"])
+        self.assertEqual(verified_manifest["staging_status"], "verified")
+        self.assertEqual(verified_manifest["products"][0]["staging_status"], "verified")
+        self.assertEqual(verified_manifest["products"][1]["staging_status"], "verified")
+        self.assertEqual(verified_manifest["products"][2]["staging_status"], "optional_missing")
+        self.assertEqual(verification_report["verification_status"], "verified")
+
+    def test_wizard_mode_reports_missing_metadata_before_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            terrain_path = site_root / "input" / "terrain.asc"
+            terrain_path.parent.mkdir(parents=True, exist_ok=True)
+            terrain_path.write_text("terrain-bytes\n", encoding="utf-8")
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                            "candidate_site_id": SITE_ID,
+                            "candidate_site_name": "Demo Site",
+                            "products": [self._terrain_product_row(root, terrain_path, None)],
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
+
+                report = stager.stage_public_geodata_cache(manifest_path, local_paths=[terrain_path])
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertEqual(report["wizard_mode"], True)
+        self.assertEqual(report["proposal_status"], "blocked_missing_metadata")
+        self.assertEqual(report["products"][0]["proposal_status"], "missing_metadata")
+        self.assertIn("missing metadata", report["products"][0]["blocking_reasons"])
+
+    def test_wizard_mode_reports_ambiguous_directory_match(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            ambiguous_root = root / "downloads"
+            bundle_a = ambiguous_root / "alpha" / "swisstlm3d"
+            bundle_b = ambiguous_root / "beta" / "swisstlm3d"
+            self._write_directory_bundle(bundle_a)
+            self._write_directory_bundle(bundle_b)
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            try:
+                manifest_path.parent.mkdir(parents=True, exist_ok=True)
+                manifest_path.write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                            "candidate_site_id": SITE_ID,
+                            "candidate_site_name": "Demo Site",
+                            "products": [
+                                {
+                                    "category": "swisstlm3d_context",
+                                    "product_id": "swisstlm3d_context",
+                                    "source_product_id": "swisstlm3d",
+                                    "source_product_name": "swissTLM3D",
+                                    "source_url_or_download_record": "https://example.invalid/swisstlm3d",
+                                    "product_version_or_date": "2026.1",
+                                    "tile_id_or_delivery_identifier": "tile-1",
+                                    "checksum_sha256": stager.PREFLIGHT.sha256_path(bundle_a / "payload.bin"),
+                                    "crs": "EPSG:2056",
+                                    "resolution_m": 1.0,
+                                    "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                    "license_or_terms_reference": "example terms",
+                                    "raw_checksum": stager.PREFLIGHT.sha256_path(bundle_a / "payload.bin"),
+                                    "processed_checksum": stager.PREFLIGHT.sha256_path(bundle_a / "payload.bin"),
+                                    "preprocessing_command_and_timestamp": "manual fixture staging",
+                                    "required": True,
+                                    "staged_path": str(SITE_ROOT_RELATIVE / "context" / "swisstlm3d.bin"),
+                                    "metadata_path": str(SITE_ROOT_RELATIVE / "context" / "swisstlm3d" / "metadata.json"),
+                                }
+                            ],
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
+
+                report = stager.stage_public_geodata_cache(manifest_path, local_paths=[ambiguous_root])
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+
+        self.assertEqual(report["wizard_mode"], True)
+        self.assertEqual(report["proposal_status"], "blocked_ambiguous_match")
+        self.assertEqual(report["products"][0]["proposal_status"], "ambiguous_match")
+
     def test_verified_manifest_records_file_and_directory_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -206,6 +358,48 @@ class PublicGeodataCacheStagerTests(unittest.TestCase):
         context_metadata_path.write_text(json.dumps(context_metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return terrain_path, terrain_metadata_path, context_path, context_metadata_path
 
+    def _write_wizard_inputs(self, root: Path) -> tuple[Path, Path, Path, Path, Path]:
+        terrain_path = root / SITE_ROOT_RELATIVE / "input" / "terrain.asc"
+        terrain_metadata_path = root / SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"
+        context_dir = root / SITE_ROOT_RELATIVE / "context" / "swisstlm3d"
+        terrain_path.parent.mkdir(parents=True, exist_ok=True)
+        context_dir.mkdir(parents=True, exist_ok=True)
+        terrain_path.write_text("terrain-bytes\n", encoding="utf-8")
+        terrain_checksum = stager.PREFLIGHT.sha256_path(terrain_path)
+        terrain_metadata = {
+            "source_product_id": "swissalti3d_2m",
+            "source_product_name": "swissALTI3D",
+            "source_url_or_download_record": "https://example.invalid/swissalti3d",
+            "product_version_or_date": "2026.1",
+            "tile_id_or_delivery_identifier": "2793-1180",
+            "crs": "EPSG:2056",
+            "resolution_m": 2.0,
+            "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+            "license_or_terms_reference": "example terms",
+            "raw_checksum": terrain_checksum,
+            "processed_checksum": terrain_checksum,
+            "preprocessing_command_and_timestamp": "manual fixture staging",
+        }
+        terrain_metadata_path.write_text(yaml.safe_dump(terrain_metadata, sort_keys=False), encoding="utf-8")
+        context_path = context_dir / "swisstlm3d.bin"
+        context_path.write_text("context-bytes\n", encoding="utf-8")
+        context_metadata = {
+            "source_product_id": "swisstlm3d",
+            "source_product_name": "swissTLM3D",
+            "source_url_or_download_record": "https://example.invalid/swisstlm3d",
+            "product_version_or_date": "2026.1",
+            "tile_id_or_delivery_identifier": "tile-1",
+            "crs": "EPSG:2056",
+            "resolution_m": 1.0,
+            "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+            "license_or_terms_reference": "example terms",
+            "raw_checksum": stager.PREFLIGHT.sha256_path(context_path),
+            "processed_checksum": stager.PREFLIGHT.sha256_path(context_path),
+            "preprocessing_command_and_timestamp": "manual fixture staging",
+        }
+        (context_dir / "metadata.json").write_text(json.dumps(context_metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return terrain_path, terrain_metadata_path, context_path, context_dir / "metadata.json", context_dir
+
     def _write_missing_inputs(self, root: Path) -> None:
         (root / SITE_ROOT_RELATIVE / "input").mkdir(parents=True, exist_ok=True)
 
@@ -336,6 +530,26 @@ class PublicGeodataCacheStagerTests(unittest.TestCase):
             "staged_path": str(root / SITE_ROOT_RELATIVE / "context" / "barriers"),
             "metadata_path": str(root / SITE_ROOT_RELATIVE / "context" / "barriers" / "metadata.yaml"),
         }
+
+    def _write_directory_bundle(self, bundle_root: Path) -> None:
+        bundle_root.mkdir(parents=True, exist_ok=True)
+        payload_path = bundle_root / "payload.bin"
+        payload_path.write_text("bundle-bytes\n", encoding="utf-8")
+        payload_checksum = stager.PREFLIGHT.sha256_path(payload_path)
+        metadata = {
+            "source_product_id": "swisstlm3d",
+            "source_product_name": "swissTLM3D",
+            "source_url_or_download_record": "https://example.invalid/swisstlm3d",
+            "product_version_or_date": "2026.1",
+            "tile_id_or_delivery_identifier": "tile-1",
+            "crs": "EPSG:2056",
+            "resolution_m": 1.0,
+            "license_or_terms_reference": "example terms",
+            "raw_checksum": payload_checksum,
+            "processed_checksum": payload_checksum,
+            "preprocessing_command_and_timestamp": "manual fixture staging",
+        }
+        (bundle_root / "metadata.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

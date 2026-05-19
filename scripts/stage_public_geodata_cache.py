@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,16 @@ STAGED_PRODUCT_CATEGORIES = {
     "swissbuildings3d_context",
     "barrier_inventory",
 }
+STAGING_WIZARD_SCHEMA_VERSION = "swiss_public_geodata_cache_stage_proposal_v1"
+WIZARD_READY_STATUSES = {"ready_to_apply", "ready_with_optional_deferred"}
+WIZARD_BLOCKING_STATUSES = {
+    "ambiguous_match",
+    "checksum_mismatch",
+    "metadata_mismatch",
+    "missing",
+    "missing_metadata",
+    "unsupported_product",
+}
 
 
 def _load_preflight_module():
@@ -52,11 +63,21 @@ PREFLIGHT = _load_preflight_module()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache-manifest", type=Path, required=True)
+    parser.add_argument("--local-path", action="append", type=Path, default=[], help="local file or directory to match against the cache manifest")
+    parser.add_argument("--scan-root", action="append", type=Path, default=[], help="directory root to scan recursively for staging candidates")
+    parser.add_argument("--proposal-output", type=Path, default=None, help="write the dry-run staging proposal before any manifest update")
+    parser.add_argument("--apply", action="store_true", help="apply the wizard proposal to the manifest after a successful dry run")
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = stage_public_geodata_cache(args.cache_manifest)
+    report = stage_public_geodata_cache(
+        args.cache_manifest,
+        local_paths=args.local_path,
+        scan_roots=args.scan_root,
+        proposal_output=args.proposal_output,
+        apply=args.apply,
+    )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -64,15 +85,35 @@ def main(argv: list[str] | None = None) -> int:
 
     output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
+    if report.get("wizard_mode"):
+        return 0 if report.get("proposal_status") in WIZARD_READY_STATUSES else 2
     return 0 if report["staging_status"] == "verified" else 2
 
 
-def stage_public_geodata_cache(cache_manifest_path: Path) -> dict[str, Any]:
+def stage_public_geodata_cache(
+    cache_manifest_path: Path,
+    *,
+    local_paths: list[Path] | None = None,
+    scan_roots: list[Path] | None = None,
+    proposal_output: Path | None = None,
+    apply: bool = False,
+) -> dict[str, Any]:
     if not cache_manifest_path.exists():
         raise SystemExit(f"missing cache manifest: {cache_manifest_path}")
     manifest = PREFLIGHT.load_site_config(cache_manifest_path)
     if not isinstance(manifest, dict):
         manifest = {}
+    local_paths = list(local_paths or [])
+    scan_roots = list(scan_roots or [])
+    if local_paths or scan_roots:
+        return stage_public_geodata_cache_with_wizard(
+            cache_manifest_path,
+            manifest,
+            local_paths=local_paths,
+            scan_roots=scan_roots,
+            proposal_output=proposal_output,
+            apply=apply,
+        )
     products = manifest.get("products") or []
     staged_products: list[dict[str, Any]] = []
     overall_status = "verified"
@@ -131,6 +172,377 @@ def stage_public_geodata_cache(cache_manifest_path: Path) -> dict[str, Any]:
         "products": staged_products,
         "claim_boundaries": PREFLIGHT.claim_boundaries(),
     }
+
+
+def stage_public_geodata_cache_with_wizard(
+    cache_manifest_path: Path,
+    manifest: dict[str, Any],
+    *,
+    local_paths: list[Path],
+    scan_roots: list[Path],
+    proposal_output: Path | None,
+    apply: bool,
+) -> dict[str, Any]:
+    candidate_roots = [*local_paths, *scan_roots]
+    proposal = build_public_geodata_cache_stage_proposal(cache_manifest_path, manifest, candidate_roots)
+    if proposal_output is not None:
+        write_public_geodata_cache_stage_proposal(proposal_output, proposal)
+    if not apply or proposal["proposal_status"] not in WIZARD_READY_STATUSES:
+        return proposal
+
+    applied_manifest = {
+        **manifest,
+        "schema_version": manifest.get("schema_version") or PREFLIGHT.PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION,
+        "staging_status": "verified",
+        "cache_manifest_path": str(cache_manifest_path),
+        "staged_product_count": proposal["staged_product_count"],
+        "optional_missing_product_count": proposal["optional_missing_product_count"],
+        "missing_product_count": proposal["missing_product_count"],
+        "checksum_mismatch_product_count": proposal["checksum_mismatch_product_count"],
+        "metadata_mismatch_product_count": proposal["metadata_mismatch_product_count"],
+        "unsupported_product_count": proposal["unsupported_product_count"],
+        "products": proposal["applied_products"],
+    }
+    cache_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_manifest_path.write_text(yaml.safe_dump(applied_manifest, sort_keys=False), encoding="utf-8")
+
+    return {
+        "schema_version": STAGING_WIZARD_SCHEMA_VERSION,
+        "wizard_mode": True,
+        "proposal_status": proposal["proposal_status"],
+        "staging_status": "verified",
+        "cache_manifest_path": str(cache_manifest_path),
+        "product_count": proposal["product_count"],
+        "staged_product_count": proposal["staged_product_count"],
+        "optional_missing_product_count": proposal["optional_missing_product_count"],
+        "missing_product_count": proposal["missing_product_count"],
+        "checksum_mismatch_product_count": proposal["checksum_mismatch_product_count"],
+        "metadata_mismatch_product_count": proposal["metadata_mismatch_product_count"],
+        "unsupported_product_count": proposal["unsupported_product_count"],
+        "products": proposal["applied_products"],
+        "proposal": proposal,
+        "claim_boundaries": PREFLIGHT.claim_boundaries(),
+    }
+
+
+def build_public_geodata_cache_stage_proposal(
+    cache_manifest_path: Path,
+    manifest: dict[str, Any],
+    candidate_roots: list[Path],
+) -> dict[str, Any]:
+    products = manifest.get("products") or []
+    candidates = collect_public_geodata_stage_candidates(candidate_roots)
+    proposed_products: list[dict[str, Any]] = []
+    applied_products: list[dict[str, Any]] = []
+    overall_status = "ready_to_apply"
+
+    for record in products:
+        if not isinstance(record, dict):
+            continue
+        proposal_product = propose_public_geodata_cache_product(record, cache_manifest_path.parent, candidates)
+        proposed_products.append(proposal_product)
+        applied_products.append(proposal_product["applied_record"])
+        status = PREFLIGHT.text_value(proposal_product.get("proposal_status")) or "missing"
+        if status == "optional_deferred":
+            if overall_status == "ready_to_apply":
+                overall_status = "ready_with_optional_deferred"
+            continue
+        if status in WIZARD_BLOCKING_STATUSES:
+            overall_status = f"blocked_{status}"
+
+    staged_count = sum(1 for entry in applied_products if entry.get("staging_status") == "verified")
+    optional_missing_count = sum(1 for entry in applied_products if entry.get("staging_status") == "optional_missing")
+    missing_count = sum(1 for entry in applied_products if entry.get("staging_status") == "missing")
+    checksum_mismatch_count = sum(1 for entry in applied_products if entry.get("staging_status") == "checksum_mismatch")
+    metadata_mismatch_count = sum(1 for entry in applied_products if entry.get("staging_status") == "metadata_mismatch")
+    unsupported_count = sum(1 for entry in applied_products if entry.get("staging_status") == "unsupported_product")
+
+    proposal = {
+        "schema_version": STAGING_WIZARD_SCHEMA_VERSION,
+        "wizard_mode": True,
+        "proposal_status": overall_status,
+        "cache_manifest_path": str(cache_manifest_path),
+        "product_count": len(applied_products),
+        "staged_product_count": staged_count,
+        "optional_missing_product_count": optional_missing_count,
+        "missing_product_count": missing_count,
+        "checksum_mismatch_product_count": checksum_mismatch_count,
+        "metadata_mismatch_product_count": metadata_mismatch_count,
+        "unsupported_product_count": unsupported_count,
+        "candidate_root_count": len(candidate_roots),
+        "candidate_count": len(candidates),
+        "candidate_roots": [format_public_geodata_manifest_path(path) for path in candidate_roots],
+        "products": proposed_products,
+        "applied_products": applied_products,
+        "claim_boundaries": PREFLIGHT.claim_boundaries(),
+    }
+    return proposal
+
+
+def propose_public_geodata_cache_product(
+    record: dict[str, Any],
+    manifest_base: Path,
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    category = PREFLIGHT.text_value(record.get("category")) or PREFLIGHT.text_value(record.get("product_id")) or PREFLIGHT.text_value(record.get("source_product_id"))
+    required = bool(record.get("required", True))
+    if not category or category not in STAGED_PRODUCT_CATEGORIES:
+        applied_record = {
+            **record,
+            "required": required,
+            "staging_status": "unsupported_product",
+            "verification_status": "unsupported_product",
+            "observed_checksum_sha256": "",
+            "observed_metadata_mismatches": [],
+        }
+        return {
+            "category": category or "unsupported_product",
+            "required": required,
+            "proposal_status": "unsupported_product",
+            "blocking_reasons": ["unsupported product"],
+            "matched_candidate_paths": [],
+            "matched_candidate_kinds": [],
+            "applied_record": applied_record,
+        }
+
+    expected_stage = PREFLIGHT.resolve_repo_path(
+        record.get("staged_path") or record.get("expected_staged_path"),
+        base=manifest_base,
+    )
+    expected_metadata = PREFLIGHT.resolve_repo_path(
+        record.get("metadata_path") or record.get("expected_metadata_path"),
+        base=manifest_base,
+    )
+    matched_candidate = choose_public_geodata_stage_candidate(record, candidates)
+    candidate_was_ambiguous = bool(matched_candidate and matched_candidate.get("ambiguous"))
+    applied_record = {
+        **record,
+        "required": required,
+        "staged_path": (
+            format_public_geodata_manifest_path(matched_candidate["path"])
+            if matched_candidate and not candidate_was_ambiguous
+            else format_public_geodata_manifest_path(expected_stage)
+        ),
+        "metadata_path": (
+            format_public_geodata_manifest_path(PREFLIGHT.resolve_repo_path(matched_candidate.get("metadata_path"), base=manifest_base))
+            if matched_candidate and not candidate_was_ambiguous and matched_candidate.get("metadata_path")
+            else format_public_geodata_manifest_path(expected_metadata)
+        ),
+    }
+    if matched_candidate is not None and not candidate_was_ambiguous:
+        applied_record["checksum_sha256"] = PREFLIGHT.text_value(record.get("checksum_sha256")) or PREFLIGHT.text_value(record.get("processed_checksum"))
+        applied_record["raw_checksum"] = PREFLIGHT.text_value(record.get("raw_checksum"))
+        applied_record["processed_checksum"] = PREFLIGHT.text_value(record.get("processed_checksum"))
+
+    staged_product = stage_public_geodata_cache_product(applied_record, manifest_base)
+    proposal_status = staged_product["staging_status"]
+    blocking_reasons: list[str] = []
+    if candidate_was_ambiguous:
+        proposal_status = "ambiguous_match"
+        blocking_reasons.append("ambiguous match")
+    elif matched_candidate is None:
+        proposal_status = "optional_deferred" if not required else "missing"
+        if required:
+            blocking_reasons.append("missing candidate")
+    elif proposal_status == "missing" and matched_candidate and not Path(applied_record["metadata_path"]).exists():
+        proposal_status = "missing_metadata"
+        blocking_reasons.append("missing metadata")
+    elif proposal_status == "optional_missing":
+        proposal_status = "optional_deferred"
+    elif proposal_status in {"checksum_mismatch", "metadata_mismatch", "unsupported_product"}:
+        blocking_reasons.append(proposal_status.replace("_", " "))
+
+    return {
+        "category": category,
+        "required": required,
+        "proposal_status": proposal_status,
+        "blocking_reasons": blocking_reasons,
+        "matched_candidate_paths": [format_public_geodata_manifest_path(matched_candidate["path"])] if matched_candidate and not candidate_was_ambiguous else [],
+        "matched_candidate_kinds": [matched_candidate["kind"]] if matched_candidate and not candidate_was_ambiguous else [],
+        "expected_staged_path": format_public_geodata_manifest_path(expected_stage),
+        "expected_metadata_path": format_public_geodata_manifest_path(expected_metadata),
+        "matched_staged_path": staged_product.get("staged_path"),
+        "matched_metadata_path": staged_product.get("metadata_path"),
+        "applied_record": staged_product,
+    }
+
+
+def choose_public_geodata_stage_candidate(record: dict[str, Any], candidates: list[dict[str, Any]]) -> dict[str, Any] | None:
+    expected_kind = "directory" if not Path(PREFLIGHT.text_value(record.get("staged_path")) or PREFLIGHT.text_value(record.get("expected_staged_path")) or "").suffix else "file"
+    scored_candidates: list[tuple[tuple[int, int, int, int], dict[str, Any]]] = []
+    for candidate in candidates:
+        if candidate["kind"] != expected_kind:
+            continue
+        score = score_public_geodata_stage_candidate(record, candidate)
+        if score > (0, 0):
+            scored_candidates.append((score, candidate))
+    if not scored_candidates:
+        return None
+    scored_candidates.sort(key=lambda item: item[0], reverse=True)
+    if len(scored_candidates) > 1 and scored_candidates[0][0] == scored_candidates[1][0]:
+        return {
+            "path": "",
+            "kind": "ambiguous",
+            "metadata_path": "",
+            "ambiguous": True,
+        }
+    return scored_candidates[0][1]
+
+
+def score_public_geodata_stage_candidate(record: dict[str, Any], candidate: dict[str, Any]) -> tuple[int, int, int, int]:
+    record_tokens = public_geodata_stage_tokens(
+        *[
+            record.get("category"),
+            record.get("product_id"),
+            record.get("source_product_id"),
+            record.get("source_product_name"),
+            record.get("tile_id_or_delivery_identifier"),
+            record.get("tile_id"),
+        ]
+    )
+    candidate_tokens = set(candidate.get("tokens") or [])
+    token_overlap = len(record_tokens & candidate_tokens)
+    metadata_matches = 0
+    candidate_metadata = candidate.get("metadata") if isinstance(candidate.get("metadata"), dict) else {}
+    expected_source_product_id = PREFLIGHT.text_value(record.get("source_product_id"))
+    expected_source_product_name = PREFLIGHT.text_value(record.get("source_product_name"))
+    expected_tile_id = PREFLIGHT.text_value(record.get("tile_id_or_delivery_identifier")) or PREFLIGHT.text_value(record.get("tile_id"))
+    expected_checksum = PREFLIGHT.text_value(record.get("checksum_sha256")) or PREFLIGHT.text_value(record.get("processed_checksum"))
+    if expected_source_product_id and PREFLIGHT.text_value(candidate_metadata.get("source_product_id")) == expected_source_product_id:
+        metadata_matches += 1
+    if expected_source_product_name and PREFLIGHT.text_value(candidate_metadata.get("source_product_name")) == expected_source_product_name:
+        metadata_matches += 1
+    if expected_tile_id and (
+        PREFLIGHT.text_value(candidate_metadata.get("tile_id")) == expected_tile_id
+        or PREFLIGHT.text_value(candidate_metadata.get("tile_id_or_delivery_identifier")) == expected_tile_id
+    ):
+        metadata_matches += 1
+    if expected_checksum and PREFLIGHT.text_value(candidate.get("checksum_sha256")) == expected_checksum:
+        metadata_matches += 1
+    candidate_name = candidate["path"].name.lower()
+    metadata_penalty = 10 if candidate["kind"] == "file" and (candidate["path"].suffix.lower() in {".json", ".yaml", ".yml"} or "metadata" in candidate_name) else 0
+    data_bonus = 1 if candidate["kind"] == "file" and candidate["path"].suffix.lower() not in {".json", ".yaml", ".yml"} and "metadata" not in candidate_name else 0
+    return (metadata_matches, token_overlap + data_bonus - metadata_penalty)
+
+
+def collect_public_geodata_stage_candidates(local_roots: list[Path]) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    seen_paths: set[Path] = set()
+    for root in local_roots:
+        resolved_root = root.expanduser().resolve()
+        if not resolved_root.exists() or resolved_root in seen_paths:
+            continue
+        seen_paths.add(resolved_root)
+        if resolved_root.is_file():
+            candidates.append(build_public_geodata_stage_candidate(resolved_root, root=resolved_root))
+            continue
+        candidates.append(build_public_geodata_stage_candidate(resolved_root, root=resolved_root))
+        for path in sorted(resolved_root.rglob("*")):
+            if not path.is_file() and not path.is_dir():
+                continue
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            candidates.append(build_public_geodata_stage_candidate(path, root=resolved_root))
+    return candidates
+
+
+def build_public_geodata_stage_candidate(path: Path, *, root: Path) -> dict[str, Any]:
+    metadata = {}
+    metadata_path = ""
+    if path.is_file():
+        metadata, metadata_path = load_public_geodata_stage_file_metadata(path)
+    elif path.is_dir():
+        metadata, metadata_path = load_public_geodata_stage_directory_metadata(path)
+    token_values = [
+        path.name,
+        path.stem,
+        *(metadata.get(key) for key in ("source_product_id", "source_product_name", "tile_id", "tile_id_or_delivery_identifier", "product_id") if isinstance(metadata.get(key), (str, int, float))),
+    ]
+    tokens = public_geodata_stage_tokens(*token_values)
+    if path.is_dir():
+        for descendant in sorted(path.rglob("*")):
+            if descendant.is_file():
+                tokens.update(public_geodata_stage_tokens(descendant.name, descendant.stem))
+    return {
+        "path": path,
+        "root": root,
+        "kind": "directory" if path.is_dir() else "file",
+        "metadata": metadata,
+        "metadata_path": metadata_path,
+        "checksum_sha256": PREFLIGHT.sha256_path(path, exclude_paths=None) if path.is_file() else "",
+        "tokens": sorted(tokens),
+    }
+
+
+def load_public_geodata_stage_metadata(path: Path) -> tuple[dict[str, Any], str]:
+    if path.suffix.lower() not in {".yaml", ".yml", ".json"}:
+        return {}, ""
+    metadata = PREFLIGHT.load_site_config(path)
+    return (metadata if isinstance(metadata, dict) else {}, str(path) if metadata else "")
+
+
+def load_public_geodata_stage_file_metadata(path: Path) -> tuple[dict[str, Any], str]:
+    if path.suffix.lower() in {".yaml", ".yml", ".json"}:
+        return load_public_geodata_stage_metadata(path)
+
+    sibling_candidates = [
+        path.with_name("metadata.json"),
+        path.with_name("metadata.yaml"),
+        path.with_name(f"{path.stem}_metadata.json"),
+        path.with_name(f"{path.stem}_metadata.yaml"),
+        path.with_suffix(".json"),
+        path.with_suffix(".yaml"),
+    ]
+    for candidate in sibling_candidates:
+        if not candidate.exists() or not candidate.is_file():
+            continue
+        metadata = PREFLIGHT.load_site_config(candidate)
+        if isinstance(metadata, dict) and metadata:
+            return metadata, str(candidate)
+    return {}, ""
+
+
+def load_public_geodata_stage_directory_metadata(path: Path) -> tuple[dict[str, Any], str]:
+    for metadata_path in sorted(path.rglob("*")):
+        if not metadata_path.is_file():
+            continue
+        if metadata_path.name not in {"metadata.json", "metadata.yaml"} and not metadata_path.name.endswith("_metadata.yaml") and not metadata_path.name.endswith("_metadata.json"):
+            continue
+        metadata = PREFLIGHT.load_site_config(metadata_path)
+        if isinstance(metadata, dict) and metadata:
+            return metadata, str(metadata_path)
+    return {}, ""
+
+
+def public_geodata_stage_tokens(*values: Any) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        text = PREFLIGHT.text_value(value).lower()
+        if not text:
+            continue
+        for token in re.split(r"[^a-z0-9]+", text):
+            if token and len(token) >= 3:
+                tokens.add(token)
+    return tokens
+
+
+def write_public_geodata_cache_stage_proposal(path: Path, proposal: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        path.write_text(yaml.safe_dump(proposal, sort_keys=False), encoding="utf-8")
+    else:
+        path.write_text(json.dumps(proposal, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def format_public_geodata_manifest_path(path: Path) -> str:
+    if not isinstance(path, Path):
+        path = Path(path)
+    resolved = path.expanduser().resolve()
+    try:
+        return str(resolved.relative_to(PREFLIGHT.ROOT))
+    except ValueError:
+        return str(resolved)
 
 
 def stage_public_geodata_cache_product(record: dict[str, Any], manifest_base: Path) -> dict[str, Any]:
