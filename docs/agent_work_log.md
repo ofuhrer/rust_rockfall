@@ -2449,3 +2449,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: real-input staging/rejection only; no synthetic upgrade to real readiness, no second-site ensemble execution, no live Balfrin submission, no physical validation claim, and no operational claim.
 - Next task: `TB-289`
+
+### TB-289: Physical Evidence Overlay Acquisition Pass
+
+- Date: 2026-05-19
+- Commit: `ea4c7a7`
+- Objective: add an explicit observed-runout/deposition acquisition review surface and keep the AOI overlay intake fail-closed unless real benchmark evidence is staged.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an `acquisition_review_report` that packages the observed intake's geometry, provenance, licensing, uncertainty, role, and claim-boundary fields into one explicit rejection/acceptance surface.
+  - Kept the AOI map packager gate unchanged in behavior and verified the existing overlay path still accepts real intake evidence while blocking fixture-only and ambiguous-role packages.
+  - Extended the focused intake tests to assert the blocked and ready shapes of the new acquisition review report, then removed TB-289 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_aoi_hazard_map_packager -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_observed_runout_deposition_intake_contract.py tests/test_observed_runout_deposition_intake_contract.py scripts/package_aoi_hazard_map.py tests/test_aoi_hazard_map_packager.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: acquisition/rejection only; no calibration, no parameter fitting, no physical-probability product, no annual-frequency semantics, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-290`
