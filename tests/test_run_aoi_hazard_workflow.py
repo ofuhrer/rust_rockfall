@@ -117,6 +117,81 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
 
+    def test_prepare_clean_checkout_reports_product_resolution_as_the_first_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+            )
+
+        self.assertEqual(report["schema_version"], "aoi_hazard_prepare_front_door_v1")
+        self.assertEqual(report["status"], "blocked_missing_inputs")
+        self.assertEqual(report["first_blocker"]["step_id"], "product_resolution")
+        self.assertIn("plan_swisstopo_aoi_acquisition.py", report["next_command"])
+        self.assertTrue(report["workflow_steps"][0]["status"] == "ready")
+        self.assertEqual(report["workflow_steps"][1]["status"], "blocked_missing_inputs")
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["scale_up_authorized"])
+
+    def test_prepare_partial_path_reports_release_candidate_planning_as_the_first_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._write_real_public_context_bundles(repo_root)
+            self._write_real_context_cache_manifest(repo_root)
+            self._write_real_core_inputs(
+                repo_root,
+                categories={
+                    "terrain_crop",
+                    "terrain_metadata",
+                    "aoi_tile_catalog",
+                },
+            )
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+            )
+
+        self.assertEqual(report["first_blocker"]["step_id"], "release_candidate_planning")
+        self.assertEqual(report["workflow_steps"][1]["status"], "ready")
+        self.assertEqual(report["workflow_steps"][2]["status"], "ready")
+        self.assertEqual(report["workflow_steps"][3]["status"], "ready")
+        self.assertEqual(report["workflow_steps"][4]["status"], "blocked_missing_inputs")
+        self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_prepare_ready_path_reports_release_candidate_planning_next(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._write_real_public_context_bundles(repo_root)
+            self._write_real_context_cache_manifest(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+            )
+
+        self.assertEqual(report["status"], "ready_for_planning")
+        self.assertIsNone(report["first_blocker"])
+        self.assertEqual(report["next_step"], "release_candidate_planning")
+        self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
+        self.assertTrue(all(step["status"] == "ready" for step in report["workflow_steps"]))
+        self.assertEqual(report["workflow_summary"]["blocked_step_count"], 0)
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
     def test_fixture_backed_status_aggregation_surfaces_expected_paths_and_claim_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as scratch:
             repo_root = Path(tmp)
@@ -271,6 +346,29 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
         )
+        input_root = repo_root / "data/processed/swisstopo" / candidate_site_id / "input"
+        context_root = repo_root / "data/processed/swisstopo" / candidate_site_id / "context"
+        validation_root = repo_root / "validation/private" / candidate_site_id
+        hazard_root = repo_root / "hazard/results" / candidate_site_id
+        policy_root = repo_root / "validation/policies"
+        config_data["expected_processed_input_root"] = str(input_root)
+        config_data["expected_processed_context_root"] = str(context_root)
+        config_data["expected_validation_private_root"] = str(validation_root)
+        config_data["expected_hazard_results_root"] = str(hazard_root)
+        config_data["expected_terrain_crop_path"] = str(input_root / "terrain.asc")
+        config_data["expected_terrain_metadata_path"] = str(input_root / "terrain_metadata.yaml")
+        config_data["expected_source_zone_metadata_path"] = str(input_root / "source_zone_metadata.yaml")
+        config_data["expected_scenario_table_path"] = str(input_root / "scenario_table.csv")
+        config_data["expected_aoi_tile_catalog_path"] = str(input_root / "aoi_tile_catalog.yaml")
+        config_data["expected_source_scenario_policy_path"] = str(
+            policy_root / f"{candidate_site_id}_source_scenario_policy_v1.yaml"
+        )
+        config_data["expected_swissimage_context_root"] = str(context_root / "swissimage")
+        config_data["expected_swisstlm3d_context_root"] = str(context_root / "swisstlm3d")
+        config_data["expected_swisstlm3d_metadata_path"] = str(context_root / "swisstlm3d" / "metadata.json")
+        config_data["expected_swisssurface3d_context_root"] = str(context_root / "swisssurface3d")
+        config_data["expected_swisssurface3d_raster_context_root"] = str(context_root / "swisssurface3d_raster")
+        config_data["expected_swissbuildings3d_context_root"] = str(context_root / "swissbuildings3d")
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
@@ -359,6 +457,44 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             "products": records,
         }
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+
+    def _write_real_public_context_bundles(
+        self,
+        repo_root: Path,
+        *,
+        candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1",
+    ) -> None:
+        context_root = repo_root / f"data/processed/swisstopo/{candidate_site_id}/context"
+        for product_id in [
+            "swissimage_context",
+            "swisstlm3d_context",
+            "swisssurface3d_context",
+            "swisssurface3d_raster_context",
+            "swissbuildings3d_context",
+        ]:
+            product_root = context_root / product_id
+            product_root.mkdir(parents=True, exist_ok=True)
+            (product_root / "payload.bin").write_bytes(f"payload-{product_id}".encode("utf-8"))
+            if product_id == "swisstlm3d_context":
+                (product_root / "metadata.json").write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": 1,
+                            "source_product_id": product_id,
+                            "source_product_name": "swissTLM3D",
+                            "source_url_or_download_record": "https://example.invalid/swisstlm3d",
+                            "product_version_or_date": "2026-05-17",
+                            "tile_id_or_delivery_identifier": "tile-1",
+                            "checksum_sha256": hashlib.sha256(f"payload-{product_id}".encode("utf-8")).hexdigest(),
+                            "crs": "EPSG:2056",
+                            "resolution_m": 1.0,
+                            "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                            "license_or_terms_reference": "example terms",
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
 
     def _write_real_core_inputs(self, repo_root: Path, *, categories: set[str]) -> None:
         base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"

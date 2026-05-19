@@ -32,6 +32,7 @@ DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.yaml"
 DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
 SUPPORTED_COMMANDS = ("status", "prepare", "plan", "run-local-smoke", "submit-balfrin", "collect", "package-map")
+PREPARE_SCHEMA_VERSION = "aoi_hazard_prepare_front_door_v1"
 
 
 def _load_module(module_name: str, filename: str):
@@ -46,6 +47,10 @@ def _load_module(module_name: str, filename: str):
 
 
 AOI_WORKFLOW = _load_module("aoi_hazard_front_door_aoi_workflow", "summarize_chant_sura_fluelapass_dry_run_report.py")
+PREFLIGHT = _load_module("aoi_hazard_front_door_preflight", "check_second_site_public_geodata_preflight.py")
+AOI_ACQUISITION = _load_module("aoi_hazard_front_door_aoi_acquisition", "plan_swisstopo_aoi_acquisition.py")
+TERRAIN_PREP = _load_module("aoi_hazard_front_door_terrain_prep", "plan_aoi_terrain_preprocessing.py")
+RELEASE_CANDIDATES = _load_module("aoi_hazard_front_door_release_candidates", "plan_terrain_release_zone_candidates.py")
 COMMAND_PLAN = _load_module("aoi_hazard_front_door_command_plan", "generate_pilot_command_plan.py")
 GIS_COG = _load_module("aoi_hazard_front_door_gis_cog", "audit_gis_cog_package_readiness.py")
 
@@ -99,6 +104,11 @@ def build_report(
     smoke_case_path: Path | None = None,
     smoke_output_root: Path | None = None,
 ) -> dict[str, Any]:
+    if command == "prepare":
+        return build_prepare_report(
+            site_config=site_config,
+            repo_root=repo_root,
+        )
     if command == "run-local-smoke":
         return build_local_smoke_report(
             repo_root=repo_root,
@@ -140,6 +150,98 @@ def build_report(
             "portable_command_plan_schema_version": command_plan_report.get("schema_version", ""),
             "gis_cog_schema_version": package_report.get("schema_version", ""),
         },
+    }
+    return report
+
+
+def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any]:
+    with patched_preflight_root(repo_root):
+        config = PREFLIGHT.load_site_config(site_config) if site_config.exists() else {}
+        candidate_site_id = PREFLIGHT.text_value(config.get("candidate_site_id")) or "unspecified_second_site"
+        candidate_site_name = PREFLIGHT.text_value(config.get("candidate_site_name")) or "unspecified"
+        paths = PREFLIGHT.build_paths(candidate_site_id, config) if config else {}
+        acquisition_manifest_path = resolve_acquisition_manifest_path(site_config, config, repo_root)
+
+        bootstrap_report = build_bootstrap_step(site_config=site_config, config=config, candidate_site_id=candidate_site_id)
+        acquisition_report = build_acquisition_step(site_config=site_config, repo_root=repo_root)
+        cache_report = build_cache_step(repo_root=repo_root, candidate_site_id=candidate_site_id, paths=paths)
+        terrain_report = build_terrain_step(repo_root=repo_root, site_config=site_config, paths=paths)
+        release_candidate_report = build_release_candidate_step(repo_root=repo_root, paths=paths)
+        scenario_freeze_report = build_scenario_freeze_step(
+            repo_root=repo_root,
+            candidate_site_id=candidate_site_id,
+            release_candidate_report=release_candidate_report,
+            paths=paths,
+        )
+
+    workflow_steps = [
+        bootstrap_report,
+        acquisition_report,
+        cache_report,
+        terrain_report,
+        release_candidate_report,
+        scenario_freeze_report,
+    ]
+    first_blocker = first_unready_step(workflow_steps)
+    if first_blocker is None:
+        next_step = release_candidate_report
+        status = "ready_for_planning"
+    else:
+        next_step = first_blocker
+        status = str(first_blocker.get("status") or "blocked_missing_inputs")
+
+    expected_paths = {
+        "site_config": str(site_config),
+        "acquisition_manifest": str(acquisition_manifest_path),
+        "cache_manifest": cache_report.get("expected_input_path", ""),
+        "terrain_crop": terrain_report.get("expected_input_paths", [""])[0] if terrain_report.get("expected_input_paths") else "",
+        "terrain_metadata": terrain_report.get("expected_input_paths", ["", ""])[1] if len(terrain_report.get("expected_input_paths") or []) > 1 else "",
+        "source_zone_metadata": release_candidate_report.get("expected_input_paths", ["", "", ""])[2] if len(release_candidate_report.get("expected_input_paths") or []) > 2 else "",
+        "scenario_table": scenario_freeze_report.get("expected_input_path", ""),
+        "source_scenario_policy": scenario_freeze_report.get("expected_input_paths", [""])[0] if scenario_freeze_report.get("expected_input_paths") else "",
+    }
+
+    report = {
+        "schema_version": PREPARE_SCHEMA_VERSION,
+        "command": "prepare",
+        "status": status,
+        "next_command": next_step.get("command", ""),
+        "next_step": next_step.get("step_id", ""),
+        "first_blocker": first_blocker,
+        "expected_input_path": first_blocker.get("expected_input_path", "") if first_blocker is not None else release_candidate_report.get("expected_input_path", ""),
+        "expected_paths": expected_paths,
+        "workflow_steps": workflow_steps,
+        "workflow_summary": {
+            "step_count": len(workflow_steps),
+            "ready_step_count": len([step for step in workflow_steps if step.get("status") == "ready"]),
+            "blocked_step_count": len([step for step in workflow_steps if step.get("status") != "ready"]),
+            "first_blocked_step": first_blocker.get("step_id", "") if first_blocker is not None else "",
+        },
+        "claim_boundaries": prepare_claim_boundaries(
+            bootstrap_report=bootstrap_report,
+            acquisition_report=acquisition_report,
+            cache_report=cache_report,
+            terrain_report=terrain_report,
+            release_candidate_report=release_candidate_report,
+            scenario_freeze_report=scenario_freeze_report,
+        ),
+        "delegate_statuses": {
+            "bootstrap": bootstrap_report.get("status", "blocked_missing_inputs"),
+            "acquisition_resolution": acquisition_report.get("status", "blocked_missing_inputs"),
+            "public_geodata_cache": cache_report.get("status", "blocked_missing_inputs"),
+            "terrain_preparation": terrain_report.get("status", "blocked_missing_inputs"),
+            "release_candidate_planning": release_candidate_report.get("status", "blocked_missing_inputs"),
+            "scenario_freeze_readiness": scenario_freeze_report.get("status", "blocked_missing_inputs"),
+        },
+        "delegate_reports": {
+            "bootstrap_schema_version": bootstrap_report.get("schema_version", ""),
+            "acquisition_schema_version": acquisition_report.get("schema_version", ""),
+            "terrain_schema_version": terrain_report.get("schema_version", ""),
+            "release_candidate_schema_version": release_candidate_report.get("schema_version", ""),
+            "scenario_freeze_schema_version": scenario_freeze_report.get("schema_version", ""),
+        },
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
     }
     return report
 
@@ -626,6 +728,8 @@ def first_non_ready_step(aoi_report: dict[str, Any]) -> str:
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    if report.get("command") == "prepare":
+        return render_prepare_text_report(report)
     lines = [
         f"schema_version: {report['schema_version']}",
         f"command: {report['command']}",
@@ -648,6 +752,252 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"- validation_output_root: {smoke.get('validation_output_root', '')}")
         lines.append(f"- hazard_output_root: {smoke.get('hazard_output_root', '')}")
         lines.append(f"- validation_output_mode: {smoke.get('no_heavy_debug_defaults', {}).get('validation_output_mode', '')}")
+    return "\n".join(lines)
+
+
+def build_bootstrap_step(*, site_config: Path, config: dict[str, Any], candidate_site_id: str) -> dict[str, Any]:
+    has_bootstrap_inputs = site_config.exists() and bool(candidate_site_id.strip())
+    expected_input_path = str(site_config)
+    command = (
+        f"PYENV_VERSION=system uv run python scripts/bootstrap_aoi_manifest.py --output-root <site-root> "
+        f"--site-id {candidate_site_id} --bounds <xmin> <ymin> <xmax> <ymax>"
+    )
+    return {
+        "step_id": "bootstrap_aoi_manifest",
+        "label": "AOI bootstrap manifest",
+        "status": "ready" if has_bootstrap_inputs else "blocked_missing_inputs",
+        "blocked_reason": "" if has_bootstrap_inputs else "missing AOI site config",
+        "expected_input_path": expected_input_path,
+        "expected_input_paths": [expected_input_path],
+        "command": command,
+    }
+
+
+def build_acquisition_step(*, site_config: Path, repo_root: Path) -> dict[str, Any]:
+    report = AOI_ACQUISITION.build_report(site_config)
+    expected_input_path = str(report.get("acquisition_manifest_path") or "")
+    command = f"PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config {site_config} --format json"
+    status = str(report.get("planner_status") or "blocked_missing_inputs")
+    return {
+        "step_id": "product_resolution",
+        "label": "AOI product resolution",
+        "status": "ready" if status == "ready" else status,
+        "blocked_reason": "" if status == "ready" else str(report.get("blocked_reason") or "acquisition planning is not ready"),
+        "expected_input_path": expected_input_path,
+        "expected_input_paths": [expected_input_path] if expected_input_path else [],
+        "command": command,
+        "report": report,
+    }
+
+
+def build_cache_step(*, repo_root: Path, candidate_site_id: str, paths: dict[str, Path]) -> dict[str, Any]:
+    cache_manifest_path = paths.get("processed_input_root", repo_root / "data/processed/swisstopo" / candidate_site_id / "input") / "public_geodata_cache_manifest.yaml"
+    command = f"PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest {cache_manifest_path} --format json"
+    if not cache_manifest_path.exists():
+        return {
+            "step_id": "public_geodata_cache_verification",
+            "label": "Public geodata cache verification",
+            "status": "blocked_missing_inputs",
+            "blocked_reason": "missing public geodata cache manifest",
+            "expected_input_path": str(cache_manifest_path),
+            "expected_input_paths": [str(cache_manifest_path)],
+            "command": command,
+        }
+    report = PREFLIGHT.verify_public_geodata_cache(cache_manifest_path)
+    status = str(report.get("verification_status") or "blocked_missing_inputs")
+    return {
+        "step_id": "public_geodata_cache_verification",
+        "label": "Public geodata cache verification",
+        "status": "ready" if status == "verified" else status,
+        "blocked_reason": "" if status == "verified" else "public geodata cache verification did not pass",
+        "expected_input_path": str(cache_manifest_path),
+        "expected_input_paths": [str(cache_manifest_path)],
+        "command": command,
+        "report": report,
+    }
+
+
+def build_terrain_step(*, repo_root: Path, site_config: Path, paths: dict[str, Path]) -> dict[str, Any]:
+    terrain_crop = paths.get("terrain_crop", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain.asc")
+    terrain_metadata = paths.get("terrain_metadata", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain_metadata.yaml")
+    aoi_tile_catalog = paths.get("aoi_tile_catalog", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "aoi_tile_catalog.yaml")
+    command = (
+        f"PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --repo-root {repo_root} "
+        f"--site-config {site_config} --format json"
+    )
+    report = TERRAIN_PREP.build_report(
+        repo_root=repo_root,
+        site_config=site_config,
+        terrain_crop_path=terrain_crop,
+        terrain_metadata_path=terrain_metadata,
+        aoi_tile_catalog_path=aoi_tile_catalog,
+    )
+    status = str(report.get("terrain_preprocessing_status") or "blocked_missing_inputs")
+    expected_input_paths = [str(terrain_crop), str(terrain_metadata)]
+    if aoi_tile_catalog:
+        expected_input_paths.append(str(aoi_tile_catalog))
+    return {
+        "step_id": "terrain_preparation",
+        "label": "Terrain preparation",
+        "status": "ready" if status == "ready" else status,
+        "blocked_reason": "" if status == "ready" else str(report.get("blocked_reason") or "terrain preparation is not ready"),
+        "expected_input_path": str(terrain_crop),
+        "expected_input_paths": expected_input_paths,
+        "command": command,
+        "report": report,
+    }
+
+
+def build_release_candidate_step(*, repo_root: Path, paths: dict[str, Path]) -> dict[str, Any]:
+    terrain_crop = paths.get("terrain_crop", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain.asc")
+    terrain_metadata = paths.get("terrain_metadata", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain_metadata.yaml")
+    source_zone_metadata = paths.get("source_zone_metadata", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "source_zone_metadata.yaml")
+    command = (
+        f"PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --repo-root {repo_root} "
+        f"--terrain-crop {terrain_crop} --terrain-metadata {terrain_metadata} --source-zone-metadata {source_zone_metadata} --format json"
+    )
+    report = RELEASE_CANDIDATES.build_report(
+        repo_root=repo_root,
+        terrain_crop_path=terrain_crop,
+        terrain_metadata_path=terrain_metadata,
+        source_zone_metadata_path=source_zone_metadata,
+    )
+    status = str(report.get("candidate_metrics_status") or "blocked_missing_inputs")
+    expected_input_paths = [str(terrain_crop), str(terrain_metadata), str(source_zone_metadata)]
+    return {
+        "step_id": "release_candidate_planning",
+        "label": "Release-candidate planning",
+        "status": "ready" if status == "ready" else status,
+        "blocked_reason": "" if status == "ready" else str(report.get("blocked_reason") or "release-candidate planning is not ready"),
+        "expected_input_path": str(source_zone_metadata),
+        "expected_input_paths": expected_input_paths,
+        "command": command,
+        "report": report,
+    }
+
+
+def build_scenario_freeze_step(*, repo_root: Path, candidate_site_id: str, release_candidate_report: dict[str, Any], paths: dict[str, Path]) -> dict[str, Any]:
+    source_scenario_policy = paths.get("source_scenario_policy", repo_root / "validation/policies" / f"{candidate_site_id}_source_scenario_policy_v1.yaml")
+    scenario_table = paths.get("scenario_table", repo_root / "data/processed/swisstopo" / candidate_site_id / "input" / "scenario_table.csv")
+    command = (
+        "PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py "
+        f"--mode freeze --review-package <candidate-review-package> --output-root <freeze-output-root> --format json"
+    )
+    ready = str(release_candidate_report.get("status") or "") == "ready"
+    return {
+        "step_id": "scenario_freeze_readiness",
+        "label": "Scenario-freeze readiness",
+        "status": "ready" if ready else "blocked_missing_inputs",
+        "blocked_reason": "" if ready else "release-candidate planning is not ready",
+        "expected_input_path": str(scenario_table) if scenario_table.exists() else str(source_scenario_policy),
+        "expected_input_paths": [str(source_scenario_policy), str(scenario_table)],
+        "command": command,
+        "report": {
+            "schema_version": "aoi_scenario_freeze_readiness_v1",
+            "status": "ready" if ready else "blocked_missing_inputs",
+            "review_package_required": True,
+            "review_package_ready": ready,
+        },
+    }
+
+
+def first_unready_step(steps: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for step in steps:
+        if str(step.get("status") or "") != "ready":
+            return step
+    return None
+
+
+def prepare_claim_boundaries(
+    *,
+    bootstrap_report: dict[str, Any],
+    acquisition_report: dict[str, Any],
+    cache_report: dict[str, Any],
+    terrain_report: dict[str, Any],
+    release_candidate_report: dict[str, Any],
+    scenario_freeze_report: dict[str, Any],
+) -> dict[str, Any]:
+    claim_boundaries: dict[str, Any] = {
+        "operational_claims_allowed": False,
+        "scale_up_authorized": False,
+        "annual_frequency_claims_allowed": False,
+        "physical_probability_claims_allowed": False,
+        "risk_exposure_vulnerability_claims_allowed": False,
+    }
+    for candidate in (
+        bootstrap_report.get("claim_boundaries"),
+        acquisition_report.get("claim_boundaries"),
+        cache_report.get("report", {}).get("claim_boundaries"),
+        terrain_report.get("report", {}).get("claim_boundaries"),
+        release_candidate_report.get("report", {}).get("claim_boundaries"),
+        scenario_freeze_report.get("report", {}).get("claim_boundaries"),
+    ):
+        if isinstance(candidate, dict):
+            claim_boundaries.update(candidate)
+    claim_boundaries.setdefault("notes", [
+        "guided prepare mode is read-only and does not authorize simulation or operational claims",
+        "no annual-frequency, physical-probability, risk, exposure, or vulnerability claim is authorized here",
+    ])
+    return claim_boundaries
+
+
+def patched_preflight_root(repo_root: Path):
+    class _PreflightRootContext:
+        def __enter__(self) -> None:
+            self.original_root = PREFLIGHT.ROOT
+            PREFLIGHT.ROOT = repo_root
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            PREFLIGHT.ROOT = self.original_root
+
+    return _PreflightRootContext()
+
+
+def resolve_acquisition_manifest_path(site_config: Path, config: dict[str, Any], repo_root: Path) -> Path:
+    acquisition_manifest = config.get("acquisition_manifest_path")
+    if acquisition_manifest:
+        return PREFLIGHT.resolve_repo_path(acquisition_manifest, base=repo_root)
+    return site_config.parent / "public_geodata_acquisition.yaml"
+
+
+def render_prepare_text_report(report: dict[str, Any]) -> str:
+    lines = [
+        f"schema_version: {report['schema_version']}",
+        f"command: {report['command']}",
+        f"status: {report['status']}",
+        f"next_command: {report['next_command']}",
+        f"next_step: {report.get('next_step', '')}",
+        f"expected_input_path: {report.get('expected_input_path', '')}",
+        f"candidate_site_id: {report.get('candidate_site_id', '')}",
+        f"candidate_site_name: {report.get('candidate_site_name', '')}",
+        "",
+        "workflow_steps:",
+    ]
+    for step in report.get("workflow_steps", []):
+        lines.append(f"- {step.get('step_id', '')}: {step.get('status', '')}")
+        if step.get("expected_input_path"):
+            lines.append(f"  expected_input_path: {step['expected_input_path']}")
+        if step.get("blocked_reason"):
+            lines.append(f"  blocked_reason: {step['blocked_reason']}")
+    lines.extend(["", "first_blocker:"])
+    first_blocker = report.get("first_blocker")
+    if isinstance(first_blocker, dict):
+        lines.append(f"- step_id: {first_blocker.get('step_id', '')}")
+        lines.append(f"- status: {first_blocker.get('status', '')}")
+        lines.append(f"- expected_input_path: {first_blocker.get('expected_input_path', '')}")
+        lines.append(f"- blocked_reason: {first_blocker.get('blocked_reason', '')}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "claim_boundaries:"])
+    for key, value in sorted(report.get("claim_boundaries", {}).items()):
+        if key == "notes" and isinstance(value, list):
+            lines.append(f"- {key}:")
+            lines.extend(f"  - {item}" for item in value)
+        else:
+            lines.append(f"- {key}: {value}")
+    lines.extend(["", "expected_paths:"])
+    for key, value in sorted(report.get("expected_paths", {}).items()):
+        lines.append(f"- {key}: {value}")
     return "\n".join(lines)
 
 
