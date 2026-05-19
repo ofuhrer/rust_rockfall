@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-309: Smallest Two-Zone Balfrin Postproc Probe
-
-Goal: Submit the smallest bounded two-zone Balfrin `postproc` probe under standing clearance once the current access, remote-hygiene, authorization-audit, reducer-budget, output-profile, and preservation gates pass.
-
-Capability gap reduced: The project still lacks measured live Balfrin evidence beyond single-zone/target-area comfort; multi-zone remains blocked/pre-submit only.
-
-Why this outranks alternatives: The compact manifest and output-budget work has made the two-zone package technically ready except for the current dirty remote checkout blocker.
-
-Inspect first:
-
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A GPT-5.5-routed `postproc` submission for the exact two-zone package if all gates pass, using the reviewed/authorized audit record as a reproducibility artifact.
-- Preserved job id, run root, runtime, memory, reducer timing, output counts/bytes, manifest bytes, sidecar counts, hashes, replay metadata, and run-root output-budget audit.
-- A fail-closed pre-submit report if any gate remains blocked.
-
-Definition of done:
-
-- The smallest multi-zone branch is either measured on Balfrin and preserved or blocked at one exact current technical gate.
-
-Boundaries: Exact smallest two-zone postproc probe only; no larger ensemble, no non-postproc partition, no distributed execution, no scale-up claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-310: Two-Zone Balfrin Evidence Integration And Scale Decision
 
 Goal: Integrate the TB-309 outcome into reducer-pressure docs, evidence bundles, scale dashboard, Swiss-wide envelope, and the next scale decision without treating it as Swiss-wide proof.

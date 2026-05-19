@@ -2894,3 +2894,32 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence integration only; no live Balfrin submission, no remote mutation, no fabricated metrics, no multi-zone run, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-309`
+
+### TB-309: Smallest Two-Zone Balfrin Postproc Probe
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: submit the smallest bounded two-zone Balfrin `postproc` probe only if the current access, remote-hygiene, authorization-audit, reducer-budget, output-profile, output-budget, and preservation gates passed.
+- Files changed: `docs/balfrin_two_zone_probe_tb309.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the Balfrin access preflight, found the remote checkout clean but behind current `origin/main`, fast-forwarded `/users/olifu/work/rust_rockfall` from `722f7c7ebb7ace7927b5502c46ea3cec99b48ce9` to `34ead5c8e39842e66c1051a7e474180296a1bbd6`, and reran the access gate to `ready_for_read_only_collection` with `ready_for_pre_submit=true`, dirty path count `0`, and no untracked generated files.
+  - Validated the reviewed two-zone handoff package and authorization audit record: package checksum `8e0a01fd787f941775c51ef7ade12cf18ab370796f6b518be0fd1dd9b5d6e808`, original authorization-record checksum `a92371d0117f39ba5657480090d8173a9cc50808174afa38101c1c80e4291fe4`, and Balfrin remote-path audit-copy checksum `7bbde4900c4389ceab74e1b4bf909f164444c4dc0697c7985865e20204759cc5`.
+  - The final authorization preflight on Balfrin passed with `preflight_status=ready_for_authorization_review`, `authorization_record_status=reviewed`, `reviewed_handoff_package_status=reviewed`, `balfrin_access_status=ready_for_read_only_collection`, `reducer_budget_status=ready`, `output_profile_status=ready`, and `output_budget_acceptance_status=accepted` for the two-release-zone, two-scenario, two-reducer-chunk shape.
+  - Attempted the bounded `--authorized-submit` path from the current Balfrin checkout on `postproc`, but it failed before `sbatch`: the reviewed submit command supplies `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`, while `scripts/submit_balfrin_probe.py` currently requires `schema_version=public_real_site_conditional_pilot_run_v1`.
+  - Confirmed no scheduler job id was produced, `squeue -u "$USER"` showed no TB-309 job, and the intended writable run root `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1` was absent after the failed pre-scheduler attempt.
+  - Added a fail-closed TB-309 report and removed TB-309 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-309 --format json`
+  - `rg -n "^### TB-309:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb309_balfrin_access_preflight.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git status --short --branch && git rev-parse HEAD'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb309_balfrin_access_preflight_after_pull.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb309_balfrin_access_preflight_after_pull.json --json-output /tmp/tb309_smallest_two_zone_authorization_preflight.json --text-output /tmp/tb309_smallest_two_zone_authorization_preflight.txt --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/tb309_balfrin_multi_zone_live_authorization_record_remote_path_v1.yaml --balfrin-access-preflight-json /tmp/tb309_balfrin_access_preflight_after_pull.json --json-output /tmp/tb309_smallest_two_zone_authorization_preflight_remote_paths.json --format json`
+  - `ssh ... PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_remote_path_v1.yaml --balfrin-access-preflight-json /tmp/rust_rockfall/tb309/tb309_balfrin_access_preflight_after_pull.json --json-output /tmp/rust_rockfall/tb309/tb309_remote_authorization_preflight.json --text-output /tmp/rust_rockfall/tb309/tb309_remote_authorization_preflight.txt --format json`
+  - `ssh ... SCRATCH=/scratch/mch/olifu PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_remote_path_v1.yaml --balfrin-access-preflight-json /tmp/rust_rockfall/tb309/tb309_balfrin_access_preflight_after_pull.json` (failed before `sbatch` with `schema_version must be public_real_site_conditional_pilot_run_v1`)
+  - `ssh ... 'squeue -u "$USER" ...; test run-root presence'` (no job shown; run root missing)
+- Result/status: implemented_blocked_report
+- Boundaries: exact smallest two-zone `postproc` attempt only; no job reached `sbatch`, no job id or run root was produced, no measured multi-zone evidence was promoted, no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-310`

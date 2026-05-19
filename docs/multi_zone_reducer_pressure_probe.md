@@ -267,3 +267,18 @@ Measured rung summary:
 The first blocked rung is `8` zones, with `accumulation_seconds` as the first
 bottleneck label. That gives the repo a compact local breakpoint surface before
 any live Balfrin scale step is considered.
+
+## TB-309 Smallest Two-Zone Probe Result
+
+TB-309 did not produce measured two-zone Balfrin evidence. The live access and
+remote-hygiene gate passed after fast-forwarding the Balfrin checkout to
+`34ead5c8e39842e66c1051a7e474180296a1bbd6`, and the smallest authorization
+preflight reported `ready_for_authorization_review` with reducer budget
+`ready`, output profile `ready`, and output-budget acceptance `accepted`.
+
+The attempt failed closed before `sbatch`: the reviewed submit command supplies
+`validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml` to
+`scripts/submit_balfrin_probe.py`, but that helper currently requires a
+`public_real_site_conditional_pilot_run_v1` probe manifest. No job id, run root,
+metrics JSON, preservation gate, or measured result was produced. See
+`docs/balfrin_two_zone_probe_tb309.md` for the checksums and exact error block.

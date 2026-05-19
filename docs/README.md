@@ -82,6 +82,8 @@ starting context for implementation unless a task explicitly asks for them.
 ## Current Balfrin And Tschamut Evidence
 
 - `balfrin_probe_slurm_driver.md`: SLURM-first Balfrin probe driver.
+- `balfrin_two_zone_probe_tb309.md`: TB-309 fail-closed smallest two-zone
+  probe attempt and current pre-scheduler blocker.
 - `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic
   postproc overhead evidence from Balfrin `postproc`.
 - `balfrin_remote_checkout_hygiene_tb304.md`: TB-304 before/after remote
