@@ -2010,3 +2010,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: evidence integration only; no live Balfrin submission, no Swiss-wide authorization, no distributed execution, no scale-up authorization, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-269`
+
+### TB-269: AOI Hazard Map Product Packager
+
+- Date: 2026-05-19
+- Commit: `1283656`
+- Objective: package AOI hazard-layer outputs into a compact review bundle with COG rasters where available, vector overlays, checksums, a manifest, and an explicit claim boundary.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/script_inventory.md`
+- Implementation summary:
+  - Added a new AOI hazard-map packager CLI that consumes an existing hazard output root, converts declared GeoTIFFs to COG when possible, and falls back cleanly to a reviewable GeoTIFF package when conversion is blocked.
+  - Emitted compact release-zone and scenario-table GeoJSON overlays from the committed source-zone metadata and scenario table, plus a manifest, summary text, and inventory/checksum metadata.
+  - Classified package runs as `map_package_ready`, `cog_blocked`, or `blocked_missing_hazard_outputs`, and preserved claim-boundary metadata that explicitly excludes annual-frequency, physical-probability, risk, exposure, and operational claims.
+  - Added focused regressions for the real fixture hazard package, missing-layer blocking, COG conversion failure fallback, and manifest/inventory consistency.
+  - Removed TB-269 from the active backlog and registered the new command in the script inventory.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_gis_cog_package_readiness tests.test_same_scale_cog_package_conversion tests.test_aoi_hazard_map_packager -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: packaging only; no hazard-value change, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
+- Next task: `TB-270`
