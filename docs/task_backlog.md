@@ -39,37 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-317: User-Defined AOI End-To-End Local Demonstration
-
-Goal: Demonstrate a new small user-defined AOI path from bounds through verified inputs, prepared pilot, local execution, map package, and QA review using the guided frontend.
-
-Capability gap reduced: The AOI path is currently strongest on fixtures and known sites; the project needs a user-defined region demonstration that exercises the frontend.
-
-Why this outranks alternatives: A project goal demonstration should show the workflow from user AOI definition to hazard map, not only internal helper interoperability.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_golden_fixture_package.py`
-
-Deliverables:
-
-- A bounded local demonstration for one small user-defined AOI using verified fixture or staged public inputs, reduced-output local execution, map packaging, and static QA review.
-- A reproducible command transcript or test that proves the same path works from a clean checkout plus allowed fixture/staged inputs.
-- Explicit non-operational, conditional-only, and no-annual-frequency labels in the generated package and docs.
-
-Definition of done:
-
-- The repo can show a user-facing AOI-to-review-map demonstration that starts from AOI definition and ends with an openable diagnostic hazard-map package.
-
-Boundaries: Local bounded demonstration only; no live Balfrin submission, no Swiss-wide claim, no physical-probability semantics, no annual-frequency product, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-318: AOI Frontend Review Surface Polish
 
 Goal: Improve the generated AOI review surface so users can inspect layers, warnings, provenance, and next actions without reading raw JSON manifests.

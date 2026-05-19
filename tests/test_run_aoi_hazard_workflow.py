@@ -702,6 +702,132 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             self.assertTrue((review_root / "index.html").exists())
             self.assertFalse(package_report["claim_boundary"]["annualized"])
 
+    def test_user_defined_aoi_bounds_guided_front_door_prepared_pilot_and_review_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            work_root = Path(tmp)
+            repo_root = work_root / "repo"
+            repo_root.mkdir(parents=True, exist_ok=True)
+            site_root = work_root / "site"
+            workflow_root = work_root / "workflow"
+            bounds = [2696376.0, 1167384.0, 2696476.0, 1167484.0]
+
+            bootstrap_code, bootstrap_output = self._run_module_main(
+                bootstrap,
+                [
+                    "--output-root",
+                    str(site_root),
+                    "--site-id",
+                    "chant_sura_fluelapass_portability_example_v1",
+                    "--bounds",
+                    *[str(value) for value in bounds],
+                    "--format",
+                    "json",
+                ],
+            )
+            self.assertEqual(bootstrap_code, 0)
+            bootstrap_report = json.loads(bootstrap_output)
+            self.assertEqual(bootstrap_report["bootstrap_status"], "ready")
+            self.assertTrue((site_root / "aoi_manifest.yaml").exists())
+
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_prepared_pilot_inputs(repo_root, config_path)
+            self._write_real_context_cache_manifest(repo_root)
+            guided_input_root = repo_root / "input"
+            guided_input_root.mkdir(parents=True, exist_ok=True)
+            staged_input_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"
+            for filename in (
+                "terrain.asc",
+                "terrain_metadata.yaml",
+                "aoi_tile_catalog.yaml",
+                "source_zone_metadata.yaml",
+                "scenario_table.csv",
+                "public_geodata_cache_manifest.yaml",
+            ):
+                self._copy_repo_file(staged_input_root / filename, guided_input_root / filename)
+            release_polygon_path = self._write_release_polygon(repo_root)
+
+            guided_report = workflow.build_workflow_report(
+                site_config=site_root / "aoi_manifest.yaml",
+                bounds=bounds,
+                site_id="chant_sura_fluelapass_portability_example_v1",
+                site_name="Chant Sura / Flüelapass portability example",
+                workflow_output_root=workflow_root,
+                repo_root=repo_root,
+                execute_safe_local_steps=False,
+            )
+            self.assertEqual(guided_report["status"], "blocked_missing_inputs")
+            self.assertEqual(guided_report["next_action"], "prepare")
+            self.assertEqual(guided_report["first_blocker"]["step_id"], "tiny_bounded_ensemble_handoff")
+            self.assertEqual(guided_report["stage_reports"]["status"]["workflow_status"], "blocked_missing_inputs")
+            self.assertEqual(guided_report["stage_reports"]["prepare"]["status"], "ready_for_planning")
+            self.assertEqual(guided_report["workflow_steps"][0]["status"], "blocked_missing_inputs")
+            self.assertEqual(guided_report["workflow_steps"][1]["status"], "ready_for_planning")
+            self.assertEqual([step["step_id"] for step in guided_report["workflow_steps"]], ["status", "prepare"])
+            self.assertTrue(guided_report["generated_artifact_paths"]["workflow_output_root"].endswith("workflow"))
+
+            prepared_report = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=Path(output_tmp)
+                / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run",
+            )
+            prepared_report_path = repo_root / "prepared_pilot_report.yaml"
+            prepared_report_path.write_text(yaml.safe_dump(prepared_report, sort_keys=False), encoding="utf-8")
+
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/prepared_local_execution"
+            def fake_cog_conversion_ready(input_path: Path, output_path: Path, *, overwrite: bool = False) -> dict[str, object]:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(f"converted:{input_path.name}".encode("utf-8"))
+                return {
+                    "status": "cog_conversion_sample_ready",
+                    "input_path": str(input_path),
+                    "output_path": str(output_path),
+                    "verification": {
+                        "status": "ok",
+                        "sample_raster_tiled": True,
+                        "sample_raster_overviews": True,
+                        "sample_raster_cog_layout": True,
+                    },
+                    "output_exists": True,
+                    "output_bytes": output_path.stat().st_size,
+                    "blockers": [],
+                }
+
+            with mock.patch("scripts.package_aoi_hazard_map.convert_to_cog", side_effect=fake_cog_conversion_ready):
+                local_report = workflow.build_report(
+                    command="run-prepared-pilot-local",
+                    site_config=config_path,
+                    repo_root=ROOT,
+                    prepared_pilot_report_path=prepared_report_path,
+                    prepared_pilot_output_root=output_root,
+                    validation_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+                    overwrite=True,
+                )
+
+            self.assertEqual(prepared_report["prepared_pilot_compiler"]["classification"], "ready_for_balfrin_postproc")
+            self.assertEqual(prepared_report["prepared_pilot_compiler"]["execution_hints"]["local"]["status"], "ready_for_local_smoke")
+            self.assertEqual(local_report["status"], "local_execution_ready")
+            self.assertEqual(local_report["workflow_steps"][0]["status"], "smoke_completed")
+            self.assertIn(local_report["workflow_steps"][1]["status"], {"map_package_ready", "cog_blocked"})
+            self.assertTrue(str(local_report["workflow_steps"][2]["status"]).startswith("review_ready"))
+            self.assertTrue(Path(local_report["expected_paths"]["qa_review_html"]).exists())
+            self.assertFalse(local_report["claim_boundaries"]["operational_claims_allowed"])
+            self.assertFalse(local_report["claim_boundaries"]["annual_frequency_claims_allowed"])
+            self.assertFalse(local_report["package_report"]["claim_boundary"]["annualized"])
+            self.assertIn(
+                "conditional-only weights",
+                "\n".join(local_report["review_report"]["warnings"]),
+            )
+            self.assertIn(
+                "non-operational status",
+                "\n".join(local_report["review_report"]["warnings"]),
+            )
+            self.assertIn(
+                "annual_intensity_frequency",
+                local_report["review_report"]["claim_boundary"]["future_unsupported_product_labels"],
+            )
+
     def test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             smoke_root = Path(tmp) / "tb263_smoke"

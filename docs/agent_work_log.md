@@ -3079,3 +3079,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no operational claim, no physical validation claim, and no large swisstopo products committed.
 - Next task: `TB-317`
+
+### TB-317: User-Defined AOI End-To-End Local Demonstration
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: demonstrate a small user-defined AOI path from bounds through verified inputs, guided workflow status, prepared-pilot local execution, map packaging, and QA review while keeping the package and docs explicitly non-operational and conditional-only.
+- Files changed: `tests/test_run_aoi_hazard_workflow.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a focused regression that bootstraps a user-defined AOI from LV95 bounds, exercises the guided workflow front door on staged inputs, compiles a prepared-pilot report, and runs the bounded local execution through map packaging and static QA review.
+  - Kept the local execution deterministic by patching the COG conversion helper in the regression and checking the resulting non-operational, conditional-only, and no-annual-frequency claim labels.
+  - Updated the public real-site geodata preparation guidance to show the user-defined AOI command chain and removed TB-317 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_documented_aoi_bounds_to_review_map_command_chain_smoke tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_writes_validation_hazard_package_and_review tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_user_defined_aoi_bounds_guided_front_door_prepared_pilot_and_review_bundle`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_golden_fixture_package.AoiGoldenFixturePackageTests tests.test_aoi_map_qa_review.AoiMapQaReviewTests tests.test_aoi_hazard_map_packager.AoiHazardMapPackagerTests`
+- Result/status: implemented_fixture_backed
+- Boundaries: local bounded AOI demonstration only; no live Balfrin submission, no Swiss-wide claim, no physical-probability semantics, no annual-frequency product, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-318`

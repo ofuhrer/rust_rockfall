@@ -259,6 +259,47 @@ steps for you.
    stay blocked, and the package still does not imply calibration, physical
    probability, annual frequency, risk, or operational readiness.
 
+### User-Defined AOI Demonstration
+
+The repository also carries a clean-checkout regression that starts from
+explicit LV95 bounds, verifies staged inputs, compiles a prepared pilot, runs
+the bounded local execution, packages the map, and writes the QA review
+surface. The covered path is
+`tests/test_run_aoi_hazard_workflow.py::RunAoiHazardWorkflowTests::test_user_defined_aoi_bounds_guided_front_door_prepared_pilot_and_review_bundle`.
+
+The same path can be followed manually with a staged repo root and the guided
+frontend:
+
+```bash
+PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/bootstrap_aoi_manifest.py \
+  --output-root /tmp/aoi_guided/site \
+  --site-id chant_sura_fluelapass_portability_example_v1 \
+  --bounds 2696376 1167384 2696476 1167484 \
+  --format json
+
+PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+  workflow \
+  --site-config /tmp/aoi_guided/site/aoi_manifest.yaml \
+  --repo-root /tmp/aoi_guided/repo \
+  --workflow-output-root /tmp/aoi_guided/workflow \
+  --format json
+
+PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
+  run-prepared-pilot-local \
+  --site-config /tmp/aoi_guided/repo/site_config.yaml \
+  --repo-root . \
+  --prepared-pilot-report-path /tmp/aoi_guided/repo/prepared_pilot_report.yaml \
+  --prepared-pilot-output-root /tmp/aoi_guided/local_execution \
+  --validation-case-path validation/cases/probabilistic_phase1_smoke.yaml \
+  --overwrite \
+  --format json
+```
+
+The generated package and review bundle stay diagnostic and non-operational:
+`operational_claims_allowed: false`, `annual_frequency_claims_allowed:
+false`, and the QA review surface reports conditional-only weights rather than
+physical-probability or annual-frequency semantics.
+
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
 does not prove scientific skill; it only gates provenance and claim hygiene.
