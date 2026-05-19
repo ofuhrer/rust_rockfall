@@ -2798,3 +2798,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: remote checkout hygiene only; no `sbatch`, no run submission, no deletion of preserved run roots or `/scratch` evidence roots, no non-`postproc` work, no distributed execution, no scale-up claim, no scientific/operational claim upgrade, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-305`
+
+### TB-305: Balfrin Postproc Microbenchmark Live Run
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: run the exact bounded TB-296 synthetic postproc microbenchmark under standing `postproc` clearance and preserve measured overhead evidence.
+- Files changed: `docs/balfrin_postproc_microbenchmark_tb305.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to local `main` at `6cd2d30d7fecec294a16d3b678cc7f455c09f91f` and reran the access/remote-hygiene/scheduler preflight to `ready_for_read_only_collection`.
+  - Generated the exact TB-296 package shape in scratch with `file_count=128`, `manifest_size_bytes=65536`, `sidecar_count=16`, `reducer_chunk_count=8`, and `payload_bytes=128`; the package readiness gate passed with `97982` bytes against a `10000000` byte microbenchmark cap.
+  - Submitted one single-node, single-task `postproc` SLURM job, `4339870`, which completed with state `COMPLETED`, exit `0:0`, elapsed `00:00:01`, scheduler `TotalCPU=00:00.233`, and batch `MaxRSS=5456K`.
+  - Preserved the run root at `/scratch/mch/olifu/rust_rockfall/probes/balfrin_postproc_microbenchmark_v1/tb305_20260519T190459Z` with job id, sbatch script, package/readiness reports, runner JSON, `/usr/bin/time -v` output, checksums, and empty SLURM stdout/stderr logs.
+  - Recorded runner measurements: `0.6338623960000405` wall seconds, `0.048968283` CPU seconds, `32624` kbytes peak RSS, `154` files touched, `89802` bytes touched, and phase times for file scan, manifest scan, reducer merge, and package assembly.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb305_balfrin_access_preflight.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb305_balfrin_access_preflight_after_pull.json`
+  - `ssh ... PYENV_VERSION=system uv run python scripts/generate_balfrin_postproc_microbenchmark_package.py --output-root /scratch/mch/olifu/rust_rockfall/probes/balfrin_postproc_microbenchmark_v1/tb305_20260519T190459Z/package --file-count 128 --manifest-size-bytes 65536 --sidecar-count 16 --reducer-chunk-count 8 --payload-bytes 128 --force --format json`
+  - `sbatch --parsable /scratch/mch/olifu/rust_rockfall/probes/balfrin_postproc_microbenchmark_v1/tb305_20260519T190459Z/postproc_microbenchmark.sbatch`
+  - `sacct -j 4339870 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,TotalCPU,AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir -P`
+- Result/status: implemented_measured
+- Boundaries: exact synthetic postproc microbenchmark only; no physics simulation, no hazard result, no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no scale-up claim, no scientific/operational claim upgrade, no annual-frequency or physical-probability claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-306`

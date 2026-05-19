@@ -101,6 +101,19 @@ removed only the listed untracked checkout clutter, and reran the read-only
 access preflight to `ready_for_read_only_collection`. No `sbatch` command was
 run.
 
+TB-305 ran that exact bounded synthetic postproc microbenchmark on Balfrin under
+standing `postproc` clearance. Job `4339870` completed on `postproc` with
+exit `0:0`; the preserved run root is
+`/scratch/mch/olifu/rust_rockfall/probes/balfrin_postproc_microbenchmark_v1/tb305_20260519T190459Z`.
+The runner measured `0.6338623960000405` wall seconds,
+`0.048968283` CPU seconds, `32624` kbytes peak RSS, `154` files touched, and
+`89802` bytes touched. Phase timings were `0.1271800529975735` seconds for file
+scan, `0.2482742709980812` seconds for manifest scan,
+`0.17694826799925067` seconds for reducer merge, and
+`0.08144542599984561` seconds for package assembly. See
+`docs/balfrin_postproc_microbenchmark_tb305.md` for checksums, logs, scheduler
+accounting, and the non-operational evidence boundary.
+
 ## Balfrin checkout and scratch boundary
 
 Run submission commands from the Balfrin checkout:

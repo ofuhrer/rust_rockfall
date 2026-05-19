@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-305: Balfrin Postproc Microbenchmark Live Run
-
-Goal: Run the exact bounded postproc microbenchmark under standing `postproc` clearance to measure workflow-shell overhead on Balfrin.
-
-Capability gap reduced: Execution efficiency is still mostly local/fixture-backed for filesystem scan, manifest scan, reducer merge, and packaging overhead.
-
-Why this outranks alternatives: The microbenchmark is the lowest-risk live Balfrin measurement after remote hygiene because it isolates postprocessing overhead without simulation or scientific outputs.
-
-Inspect first:
-
-- `scripts/generate_balfrin_postproc_microbenchmark_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `tests/test_balfrin_postproc_microbenchmark_package.py`
-
-Deliverables:
-
-- One GPT-5.5-routed Balfrin `postproc` submission for the fixed TB-296 microbenchmark shape or an intentionally smaller shape if needed to pass gates.
-- Preserved run root with job id, scheduler state, wall time, CPU time, peak RSS, file scan time, manifest scan time, reducer merge time, package time, files/bytes touched, checksums, and logs.
-- A fail-closed blocker report if access, remote hygiene, package readiness, output budget, or preservation gates fail before submission.
-
-Definition of done:
-
-- The repo has measured Balfrin postproc overhead evidence for a bounded synthetic scale point, or one exact pre-submit blocker remains.
-
-Boundaries: Exact synthetic postproc microbenchmark only; standing clearance applies only to `postproc`; no physics simulation, no multi-zone hazard result, no retry loop without diagnosis, no non-postproc partition, no distributed execution, no scale-up claim, and no scientific/operational claim upgrade.
-
 ### TB-306: Postproc Efficiency Evidence Integration
 
 Goal: Integrate the measured or blocked TB-305 postproc microbenchmark outcome into the scale dashboard, output-budget docs, and Balfrin driver without promoting synthetic overhead evidence to hazard-scale capability.
