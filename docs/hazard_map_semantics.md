@@ -139,6 +139,28 @@ exposure, vulnerability, consequence, and occupancy assumptions that are outside
 the current simulator and must not be implied by hazard-layer names, legends, or
 reports.
 
+## Optional Observed-Evidence Overlays
+
+AOI map packages may include optional observed runout/deposition overlays or
+field-supported release-zone provenance overlays when real accepted evidence is
+staged. These overlays are review evidence attached to a diagnostic map
+package. They do not calibrate the simulator, define source-frequency records,
+turn conditional sampling weights into physical probabilities, or upgrade the
+hazard layers to annual, risk, regulatory, or operational products.
+
+The packager must keep the roles separate in manifest fields:
+
+- diagnostic hazard outputs;
+- observed evidence overlays;
+- calibration inputs;
+- holdout evidence;
+- deferred source-frequency records.
+
+Fixture-only evidence, ambiguous-role evidence, or missing schema fields must be
+reported as blocked overlay inputs rather than accepted physical validation.
+Accepted observed overlays can support map review and future evidence
+acquisition planning only within the claim boundaries above.
+
 ## Allowed And Disallowed Language Examples
 
 These examples apply to current products. Disallowed phrases may become allowed

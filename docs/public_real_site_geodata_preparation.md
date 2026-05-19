@@ -141,6 +141,33 @@ the cache manifest in place after checking local staged paths and metadata
 sidecars, and it fails closed on missing files, checksum mismatch, metadata
 mismatch, or unsupported products.
 
+## AOI-To-Map Review Path
+
+The current AOI workflow is no longer only a preparation dry run. It now has a
+clean-checkout-safe, fixture-backed path that exercises the user-facing flow
+from AOI preparation to a tiny diagnostic map package:
+
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py` composes prepared inputs,
+  command-plan state, output-root planning, and first-blocker reporting.
+- `scripts/package_aoi_hazard_map.py` turns an existing hazard output root into
+  a compact map package with raster inventory, checksums, release/scenario
+  overlays, COG-ready or `cog_blocked` classification, and explicit
+  non-operational claim boundaries.
+- `scripts/generate_aoi_map_qa_review.py` writes a static review surface with
+  layer-presence and boundary warnings for terrain, source/scenario metadata,
+  hazard layers, context availability, COG status, fixture-backed inputs, and
+  conditional-only weights.
+- The AOI regression in `tests/test_aoi_to_prepared_pilot_dry_run.py` runs the
+  compact path under `/tmp` and asserts the first broken workflow step when the
+  prepared-pilot command path remains blocked.
+
+Optional observed-evidence overlays can be attached to map packages only when
+real accepted observed runout/deposition evidence or field-supported
+release-zone provenance is staged. Fixture-only, ambiguous-role, or schema-gap
+inputs remain blocked. Overlay support is for diagnostic review and evidence
+planning only; it does not imply calibration, physical probability, annual
+frequency, risk, or operational readiness.
+
 For a local real pilot, use the same validator after the manifest records real
 tile ids, raw checksums, processed DEM metadata, and QA statuses. The validator
 does not prove scientific skill; it only gates provenance and claim hygiene.

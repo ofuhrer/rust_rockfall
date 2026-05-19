@@ -165,11 +165,14 @@ preserved for the next authorized live run, and it reports
 same `metrics_completion_source` label so preserved, rerun, and blocked
 metrics stay traceable through the gate.
 
-For a dry-run rerun package that closes only the missing target-area
-peak-memory and split validation/hazard output metrics, use
-`scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`.
+For a dry-run rerun package that targets target-area metrics-completion gaps,
+use `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`.
 It keeps the rerun plan, SBATCH handoff, preservation checklist, and recorded
-target-area comparison separate without authorizing a live submission.
+target-area comparison separate without authorizing a live submission. The
+latest read-only recovery path recovered the target-area metrics from preserved
+sources; TB-264's attempted metrics-completion postproc submission still failed
+closed before launch because the remote Balfrin checkout was dirty. Treat that
+branch as `incomplete`, not measured evidence.
 
 Before requesting that rerun, use the read-only recovery helper against the
 preserved target-area run root:
@@ -181,7 +184,7 @@ PYENV_VERSION=system uv run python scripts/recover_balfrin_target_area_metrics_f
   --artifact-dir validation/private/tschamut_public_pilot/balfrin_target_area_metrics_recovery_v1
 ```
 
-The helper consumes the TB-223 access preflight, reads the existing authorized
+The helper consumes the Balfrin access preflight, reads the existing authorized
 run root, classifies each required metrics-completion field as `recovered`,
 `still_missing`, `unavailable_from_preserved_root`, or `blocked_access`, and
 compares the result against the current metrics-completion rerun package. It
@@ -232,17 +235,14 @@ interpretation checks into one read-only review artifact, and it now carries a
 machine-readable failure taxonomy report for operational recovery handoff.
 Its bundle summary also records measured, fixture-backed, and blocked section
 counts so the canonical review path can distinguish live Balfrin evidence from
-fixture-only or blocked sections. The probe-metrics section now makes the
+fixture-only or blocked sections. The probe-metrics section makes the
 mandatory, ancillary, measured, unavailable, and blocked fields explicit so a
-reader can see which fields are measured in the live run-root collector and
-which fields are unavailable in the canonical summary because the preserved
-bundle does not retain the run-root `output_root.scaling_summary` tree.
+reader can see which fields came from live run-root collection, read-only
+recovery, or a blocked/incomplete branch.
 The probe-metrics section also exposes `metrics_remediation`, a deterministic
-next-run checklist that enumerates the remaining missing mandatory metrics and
-the high-value ancillary fields that must be preserved in the next measured
-run. It now also exposes `metrics_completion_source` so recovered existing run
-roots, new metrics-completion reruns, and blocked-missing-metrics branches stay
-distinct in the canonical bundle.
+checklist for any future measured run, and `metrics_completion_source` so
+recovered existing run roots, new metrics-completion reruns, and
+blocked-missing-metrics branches stay distinct in the canonical bundle.
 The preservation gate helper above is the deterministic evidence-preservation
 check that combines that metrics contract with the preserved run-root files,
 output-family counts, and declared GIS paths. Treat a run as evidence only
