@@ -2200,3 +2200,25 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: UX/status normalization only; no simulation, no live Balfrin submission, no claim upgrade, and no heavy outputs committed.
 - Next task: `TB-278`
+
+### TB-278: AOI Release Candidate Review Editing Loop
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a deterministic review-apply command for release-zone candidate packages and validate the edited review state before freezing.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a review-apply mode to the terrain candidate planner that applies explicit candidate decisions, rewrites the reviewed package outputs, and validates unknown IDs, unreviewed accepted candidates, mixed-provenance overclaims, empty accepted sets, and allowed provenance labels.
+  - Required the freezer mode to consume only review-applied packages whose review application is validated, then freeze only the validated accepted candidates.
+  - Added focused regression coverage for successful review application, each blocking diagnostic, and the freezer path that consumes the validated accepted review package.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/generate_candidate_source_zone_scenarios.py tests/test_plan_terrain_release_zone_candidates.py tests/test_candidate_source_zone_freezer.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_candidate_source_zone_freezer`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: review editing and validation only; no physical source validation claim, no calibration, no annual-frequency semantics, no operational claim, and no heavy outputs committed.
+- Next task: `TB-279`

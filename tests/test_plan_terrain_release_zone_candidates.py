@@ -27,6 +27,57 @@ planner = load_module(SCRIPT_PATH, "plan_terrain_release_zone_candidates")
 staging = load_module(STAGING_SCRIPT_PATH, "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_terrain_candidate_test")
 
 
+def square_feature(
+    candidate_id: str,
+    xmin: float,
+    ymin: float,
+    size: float,
+    *,
+    provenance_label: str = "workflow_generated",
+    review_decision: str = "needs_field_review",
+    accepted: bool | None = None,
+    rejected: bool | None = None,
+    needs_field_review: bool | None = None,
+) -> dict[str, object]:
+    accepted = review_decision == "accepted" if accepted is None else accepted
+    rejected = review_decision == "rejected" if rejected is None else rejected
+    needs_field_review = review_decision == "needs_field_review" if needs_field_review is None else needs_field_review
+    return {
+        "type": "Feature",
+        "id": candidate_id,
+        "properties": {
+            "candidate_release_zone_id": candidate_id,
+            "review_decision": review_decision,
+            "accepted": accepted,
+            "rejected": rejected,
+            "needs_field_review": needs_field_review,
+            "candidate_generation_label": "heuristic_candidate_generation_only",
+            "candidate_sensitivity_label": "heuristic_sensitive_across_bounded_heuristics",
+            "release_cell_count": 1,
+            "release_cell_ids": [f"{candidate_id}__cell_000"],
+            "provenance_label": provenance_label,
+            "component_cell_count": 1,
+            "component_area_m2": 4.0,
+            "component_slope_min_deg": 31.0,
+            "component_slope_max_deg": 31.0,
+            "component_slope_mean_deg": 31.0,
+            "component_slope_median_deg": 31.0,
+        },
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [xmin, ymin],
+                    [xmin + size, ymin],
+                    [xmin + size, ymin + size],
+                    [xmin, ymin + size],
+                    [xmin, ymin],
+                ]
+            ],
+        },
+    }
+
+
 class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
     def test_committed_tschamut_inputs_produce_deterministic_candidate_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -266,6 +317,182 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(report["screening_criteria"]["terrain_crop_extent_lv95_m"]["xmin"], 2793000.0)
         self.assertEqual(report["screening_criteria"]["terrain_resolution_m"], 2.0)
         self.assertEqual(report["terrain_inputs"]["terrain_preprocessing_package"]["output_roots"]["processed_input_root"], report["terrain_preprocessing"]["output_roots"]["processed_input_root"])
+
+    def test_review_apply_edits_candidates_and_validates_provenance(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            review_package_path = self._write_review_package(
+                workdir,
+                rows=[
+                    square_feature("cand_accept", 2600000.0, 1200000.0, 2.0, review_decision="accepted"),
+                    square_feature("cand_reject", 2600010.0, 1200010.0, 2.0),
+                    square_feature("cand_hold", 2600020.0, 1200020.0, 2.0),
+                ],
+            )
+            output_root = workdir / "reviewed"
+
+            report = planner.build_review_apply_report(
+                review_package_path=review_package_path,
+                candidate_review_decisions={
+                    "cand_accept": "accepted",
+                    "cand_reject": "rejected",
+                    "cand_hold": "needs_field_review",
+                },
+                output_root=output_root,
+            )
+
+            manifest = json.loads(Path(report["outputs"]["manifest"]).read_text(encoding="utf-8"))
+            geojson = json.loads(Path(report["outputs"]["polygon"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(report["review_package_status"], "review_applied")
+        self.assertEqual(report["review_application_status"], "validated")
+        self.assertEqual(report["candidate_metrics_status"], "ready")
+        self.assertEqual(report["accepted_candidate_ids"], ["cand_accept"])
+        self.assertEqual(report["rejected_candidate_ids"], ["cand_reject"])
+        self.assertEqual(report["needs_field_review_candidate_ids"], ["cand_hold"])
+        self.assertEqual(report["review_application"]["validation_status"], "validated")
+        self.assertEqual(report["review_application"]["accepted_candidate_ids"], ["cand_accept"])
+        self.assertEqual(report["review_application"]["validation_checks"]["allowed_provenance_labels"], list(planner.PROVENANCE_LABELS))
+        self.assertEqual(manifest["review_package_status"], "review_applied")
+        self.assertEqual(manifest["review_application_status"], "validated")
+        self.assertEqual(manifest["review_summary"]["review_decision_counts"]["accepted"], 1)
+        self.assertEqual(geojson["features"][0]["properties"]["review_decision"], "accepted")
+        self.assertTrue(geojson["features"][0]["properties"]["accepted"])
+        self.assertEqual(geojson["features"][1]["properties"]["review_decision"], "rejected")
+        self.assertEqual(geojson["features"][2]["properties"]["review_decision"], "needs_field_review")
+        self.assertIn("Candidate Review Apply", planner.render_review_apply_text_report(report))
+
+    def test_review_apply_rejects_unknown_ids_unreviewed_accepts_overclaims_and_empty_acceptance(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            review_package_path = self._write_review_package(workdir)
+
+            with self.assertRaisesRegex(planner.TerrainReleaseZoneCandidateMetricsError, "unknown candidate ids"):
+                planner.build_review_apply_report(
+                    review_package_path=review_package_path,
+                    candidate_review_decisions={"cand_accept": "accepted", "bogus_candidate": "rejected"},
+                    output_root=workdir / "reviewed_unknown",
+                )
+
+            with self.assertRaisesRegex(planner.TerrainReleaseZoneCandidateMetricsError, "unreviewed accepted candidates"):
+                planner.build_review_apply_report(
+                    review_package_path=review_package_path,
+                    candidate_review_decisions={"cand_reject": "rejected", "cand_hold": "needs_field_review"},
+                    output_root=workdir / "reviewed_unreviewed",
+                )
+
+            overclaim_path = self._write_review_package(
+                workdir,
+                rows=[
+                    square_feature("cand_accept", 2600000.0, 1200000.0, 2.0, review_decision="accepted"),
+                    square_feature("cand_reject", 2600010.0, 1200010.0, 2.0, provenance_label="mixed_provenance"),
+                ],
+            )
+            with self.assertRaisesRegex(planner.TerrainReleaseZoneCandidateMetricsError, "mixed-provenance overclaims"):
+                planner.build_review_apply_report(
+                    review_package_path=overclaim_path,
+                    candidate_review_decisions={"cand_accept": "accepted", "cand_reject": "rejected"},
+                    output_root=workdir / "reviewed_overclaim",
+                )
+
+            empty_review_package_path = self._write_review_package(
+                workdir,
+                rows=[
+                    square_feature("cand_accept", 2600000.0, 1200000.0, 2.0),
+                    square_feature("cand_reject", 2600010.0, 1200010.0, 2.0),
+                    square_feature("cand_hold", 2600020.0, 1200020.0, 2.0),
+                ],
+            )
+            with self.assertRaisesRegex(planner.TerrainReleaseZoneCandidateMetricsError, "at least one accepted candidate"):
+                planner.build_review_apply_report(
+                    review_package_path=empty_review_package_path,
+                    candidate_review_decisions={"cand_accept": "rejected", "cand_reject": "rejected", "cand_hold": "needs_field_review"},
+                    output_root=workdir / "reviewed_empty",
+                )
+
+    def _write_review_package(self, workdir: Path, rows: list[dict[str, object]] | None = None) -> Path:
+        rows = rows or [
+            square_feature("cand_accept", 2600000.0, 1200000.0, 2.0, review_decision="accepted"),
+            square_feature("cand_reject", 2600010.0, 1200010.0, 2.0),
+            square_feature("cand_hold", 2600020.0, 1200020.0, 2.0),
+        ]
+        geojson_path = workdir / "candidate_review.geojson"
+        mask_path = workdir / "candidate_review_mask.asc"
+        csv_path = workdir / "candidate_review.csv"
+        manifest_path = workdir / "candidate_review_manifest.json"
+        geojson_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "terrain_release_zone_candidate_review_package_v1",
+                    "type": "FeatureCollection",
+                    "candidate_site_id": "test_site",
+                    "candidate_site_name": "Test Site",
+                    "source_zone_id": "test_source_zone",
+                    "candidate_generation_label": "heuristic_candidate_generation_only",
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": planner.provenance_label_legend(),
+                    "features": rows,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        mask_path.write_text("ncols 1\nnrows 1\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1\n", encoding="utf-8")
+        csv_path.write_text("candidate_release_zone_id\n", encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "terrain_release_zone_candidate_review_package_v1",
+                    "review_package_status": "emitted",
+                    "candidate_site_id": "test_site",
+                    "candidate_site_name": "Test Site",
+                    "source_zone_id": "test_source_zone",
+                    "candidate_release_zone_set_status": "review_ready",
+                    "candidate_release_zone_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": planner.provenance_label_legend(),
+                    "review_summary": {
+                        "review_row_count": len(rows),
+                        "candidate_count": len(rows),
+                        "review_decision_counts": {"accepted": 0, "rejected": 0, "needs_field_review": len(rows)},
+                        "provenance_label_counts": {"workflow_generated": len(rows), "field_supported": 0, "mixed_provenance": 0, "blocked_missing_provenance": 0},
+                        "default_review_decision": "needs_field_review",
+                    },
+                    "candidate_review_rows": [row["properties"] for row in rows],
+                    "candidate_sensitivity_summary": {},
+                    "candidate_footprint_comparison": {},
+                    "frozen_source_zone_footprint": {},
+                    "claim_boundaries": {
+                        "heuristic_workflow_input_only": True,
+                        "validated_release_zone_evidence": False,
+                        "field_validation_claims_allowed": False,
+                        "physical_release_probability_claims_allowed": False,
+                        "scale_up_authorized": False,
+                        "operational_claims_allowed": False,
+                        "notes": [
+                            "candidate review rows remain workflow review inputs until the source zone is frozen",
+                            "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                        ],
+                    },
+                    "outputs": {
+                        "polygon": str(geojson_path),
+                        "mask": str(mask_path),
+                        "csv": str(csv_path),
+                        "manifest": str(manifest_path),
+                    },
+                    "output_root": str(workdir),
+                    "repo_root": str(workdir),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return manifest_path
 
     def _write_site_config(self, repo_root: Path) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"

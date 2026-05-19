@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-278: AOI Release Candidate Review Editing Loop
-
-Goal: Provide a deterministic command for applying user review decisions to release-zone candidate packages and validating the edited review state.
-
-Capability gap reduced: Release-zone review packages exist, but the edit/apply loop is still too manual and schema-sensitive for users.
-
-Why this outranks alternatives: Release-zone acceptance is the first unavoidable expert/user decision before scenario generation, so it needs a robust interface.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/map_physical_credibility_evidence_requirements.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_candidate_source_zone_freezer.py`
-- `docs/source_zone_block_scenario_policy_v1.md`
-
-Deliverables:
-
-- A review-apply command that accepts candidate IDs and decisions, rewrites or emits a reviewed package, and validates allowed provenance labels.
-- Blocking diagnostics for unknown candidate IDs, unreviewed accepted candidates, mixed-provenance overclaims, and empty accepted sets.
-- Tests proving the scenario freezer consumes only validated accepted candidates.
-
-Definition of done:
-
-- A user can review, accept, reject, and freeze release candidates without hand-editing low-level JSON/GeoJSON fields.
-
-Boundaries: Review editing and validation only; no physical source validation claim, no calibration, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
-
 ### TB-279: AOI Scenario Preview And Cost Estimate
 
 Goal: Add a pre-execution preview that reports scenario cardinality, trajectory count, expected output profile, estimated runtime/storage, and local-vs-Balfrin suitability.

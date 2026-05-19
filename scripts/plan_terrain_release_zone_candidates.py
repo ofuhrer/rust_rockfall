@@ -5,9 +5,10 @@ This helper stays read-only unless an explicit output root is requested. It
 uses the committed Tschamut public pilot terrain crop, terrain metadata, and
 frozen source-zone metadata to report a fixed heuristic screening over the
 Balfrin/Tschamut AOI and can emit deterministic GIS-readable candidate masks
-and polygon bundles for dry-run workflows. It does not emit a validated
-release zone, tune thresholds, download public data, or authorize any ensemble
-work.
+and polygon bundles for dry-run workflows. It can also apply deterministic
+review decisions to an emitted review package and validate the edited review
+state. It does not emit a validated release zone, tune thresholds, download
+public data, or authorize any ensemble work.
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "terrain_release_zone_candidate_metrics_v1"
 PRODUCT_SCHEMA_VERSION = "terrain_release_zone_candidate_products_v1"
 REVIEW_PACKAGE_SCHEMA_VERSION = "terrain_release_zone_candidate_review_package_v1"
+REVIEW_APPLICATION_SCHEMA_VERSION = "terrain_release_zone_candidate_review_application_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
@@ -75,10 +77,18 @@ WORKFLOW_VALIDATION = _load_module("release_zone_workflow_validation", "lib/work
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("plan", "review-apply"), default="plan")
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--terrain-crop", type=Path, default=None)
     parser.add_argument("--terrain-metadata", type=Path, default=None)
     parser.add_argument("--source-zone-metadata", type=Path, default=None)
+    parser.add_argument("--review-package", type=Path, default=None, help="candidate review package to edit")
+    parser.add_argument(
+        "--candidate-review-decision",
+        action="append",
+        default=[],
+        help="candidate_release_zone_id=review_decision pair; repeat for each edited candidate",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--output-root", type=Path, default=None, help="optional GIS-readable candidate product output root")
@@ -91,14 +101,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        report = build_report(
-            repo_root=args.repo_root,
-            terrain_crop_path=args.terrain_crop,
-            terrain_metadata_path=args.terrain_metadata,
-            source_zone_metadata_path=args.source_zone_metadata,
-            output_root=args.output_root,
-            output_mode=args.output_mode,
-        )
+        if args.mode == "review-apply":
+            report = build_review_apply_report(
+                repo_root=args.repo_root,
+                review_package_path=args.review_package,
+                candidate_review_decisions=parse_candidate_review_decisions(args.candidate_review_decision),
+                output_root=args.output_root,
+            )
+        else:
+            report = build_report(
+                repo_root=args.repo_root,
+                terrain_crop_path=args.terrain_crop,
+                terrain_metadata_path=args.terrain_metadata,
+                source_zone_metadata_path=args.source_zone_metadata,
+                output_root=args.output_root,
+                output_mode=args.output_mode,
+            )
     except TerrainReleaseZoneCandidateMetricsError as exc:
         print(f"terrain release-zone candidate metrics error: {exc}", file=sys.stderr)
         return 2
@@ -107,9 +125,34 @@ def main(argv: list[str] | None = None) -> int:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    if args.format == "json":
+        output = json.dumps(report, indent=2, sort_keys=True)
+    elif args.mode == "review-apply":
+        output = render_review_apply_text_report(report)
+    else:
+        output = render_text_report(report)
     print(output)
     return 0 if report["candidate_metrics_status"] == "ready" else 2
+
+
+def parse_candidate_review_decisions(values: list[str]) -> dict[str, str]:
+    decisions: dict[str, str] = {}
+    for entry in values:
+        if "=" not in entry:
+            raise TerrainReleaseZoneCandidateMetricsError(
+                "candidate-review-decision must be provided as candidate_release_zone_id=review_decision"
+            )
+        candidate_id, decision = entry.split("=", 1)
+        candidate_id = candidate_id.strip()
+        decision = decision.strip()
+        if not candidate_id or not decision:
+            raise TerrainReleaseZoneCandidateMetricsError(
+                "candidate-review-decision must include a nonempty candidate_release_zone_id and review_decision"
+            )
+        if candidate_id in decisions:
+            raise TerrainReleaseZoneCandidateMetricsError(f"duplicate candidate-review-decision for {candidate_id}")
+        decisions[candidate_id] = decision
+    return decisions
 
 
 def build_report(
@@ -249,6 +292,317 @@ def build_report(
         report["candidate_release_zone_products"] = candidate_products
         report["candidate_review_package"] = candidate_review_package
     return report
+
+
+def build_review_apply_report(
+    *,
+    repo_root: Path | None = None,
+    review_package_path: Path | None = None,
+    candidate_review_decisions: dict[str, str] | None = None,
+    output_root: Path | None = None,
+) -> dict[str, Any]:
+    repo_root = repo_root or ROOT
+    if review_package_path is None:
+        raise TerrainReleaseZoneCandidateMetricsError("review-package is required in review-apply mode")
+
+    review_package_path = review_package_path.resolve(strict=False)
+    if not review_package_path.exists():
+        raise TerrainReleaseZoneCandidateMetricsError(f"missing review package: {display_path(review_package_path, repo_root)}")
+
+    output_root = output_root or review_package_path.parent
+    output_root = output_root if output_root.is_absolute() else (repo_root / output_root)
+    if not is_allowed_output_root(output_root):
+        raise TerrainReleaseZoneCandidateMetricsError(
+            f"output-root must stay under /tmp or an ignored repo root: {output_root}"
+        )
+
+    review_package = load_yaml_or_json(review_package_path)
+    report = apply_review_decisions_to_package(
+        review_package_path=review_package_path,
+        review_package=review_package,
+        candidate_review_decisions=candidate_review_decisions or {},
+        repo_root=repo_root,
+        output_root=output_root,
+    )
+
+    review_package_status = text_value(report.get("review_package_status"))
+    review_application_status = text_value(report.get("review_application_status"))
+    if review_package_status != "review_applied" or review_application_status != "validated":
+        raise TerrainReleaseZoneCandidateMetricsError("review package did not validate after applying review decisions")
+
+    write_review_applied_outputs(report)
+    return report
+
+
+def apply_review_decisions_to_package(
+    *,
+    review_package_path: Path,
+    review_package: dict[str, Any],
+    candidate_review_decisions: dict[str, str],
+    repo_root: Path,
+    output_root: Path,
+) -> dict[str, Any]:
+    review_rows = review_package.get("candidate_review_rows", [])
+    if not isinstance(review_rows, list):
+        raise TerrainReleaseZoneCandidateMetricsError("candidate_review_rows must be a list")
+
+    review_rows_by_id: dict[str, dict[str, Any]] = {}
+    review_order: list[str] = []
+    for index, row in enumerate(review_rows, start=1):
+        if not isinstance(row, dict):
+            raise TerrainReleaseZoneCandidateMetricsError(f"candidate_review_rows[{index}] must be an object")
+        candidate_id = text_value(row.get("candidate_release_zone_id"))
+        if not candidate_id:
+            raise TerrainReleaseZoneCandidateMetricsError(f"candidate_review_rows[{index}] must define candidate_release_zone_id")
+        if candidate_id in review_rows_by_id:
+            raise TerrainReleaseZoneCandidateMetricsError(f"duplicate candidate_release_zone_id in review package: {candidate_id}")
+        provenance_label = text_value(row.get("provenance_label"))
+        if provenance_label not in PROVENANCE_LABELS:
+            raise TerrainReleaseZoneCandidateMetricsError(
+                f"candidate_review_rows[{index}].provenance_label must be one of {list(PROVENANCE_LABELS)}"
+            )
+        review_rows_by_id[candidate_id] = dict(row)
+        review_order.append(candidate_id)
+
+    unknown_decision_ids = sorted(set(candidate_review_decisions) - set(review_rows_by_id))
+    if unknown_decision_ids:
+        raise TerrainReleaseZoneCandidateMetricsError(
+            "unknown candidate ids in review decisions: " + ", ".join(unknown_decision_ids)
+        )
+
+    applied_rows: list[dict[str, Any]] = []
+    accepted_ids: list[str] = []
+    rejected_ids: list[str] = []
+    needs_field_review_ids: list[str] = []
+    unreviewed_accepted_ids: list[str] = []
+    mixed_provenance_overclaim_ids: list[str] = []
+    accepted_missing_validation_ids: list[str] = []
+
+    for candidate_id in review_order:
+        row = dict(review_rows_by_id[candidate_id])
+        original_decision = text_value(row.get("review_decision")) or "needs_field_review"
+        decision = candidate_review_decisions.get(candidate_id, original_decision)
+        if decision not in REVIEW_DECISION_OPTIONS:
+            raise TerrainReleaseZoneCandidateMetricsError(
+                f"candidate_review_rows decision for {candidate_id} must be one of {list(REVIEW_DECISION_OPTIONS)}"
+            )
+
+        explicit_review = candidate_id in candidate_review_decisions
+        provenance_label = text_value(row.get("provenance_label"))
+        if provenance_label not in PROVENANCE_LABELS:
+            raise TerrainReleaseZoneCandidateMetricsError(
+                f"candidate_review_rows provenance_label for {candidate_id} must be one of {list(PROVENANCE_LABELS)}"
+            )
+
+        accepted = decision == "accepted"
+        rejected = decision == "rejected"
+        needs_field_review = decision == "needs_field_review"
+
+        if accepted:
+            accepted_ids.append(candidate_id)
+            if not explicit_review and original_decision == "accepted":
+                unreviewed_accepted_ids.append(candidate_id)
+            if provenance_label == "blocked_missing_provenance":
+                accepted_missing_validation_ids.append(candidate_id)
+        else:
+            if provenance_label in {"field_supported", "mixed_provenance"}:
+                mixed_provenance_overclaim_ids.append(candidate_id)
+            if decision == "rejected":
+                rejected_ids.append(candidate_id)
+            else:
+                needs_field_review_ids.append(candidate_id)
+
+        row.update(
+            {
+                "review_decision": decision,
+                "accepted": accepted,
+                "rejected": rejected,
+                "needs_field_review": needs_field_review,
+                "review_application_source": "explicit" if explicit_review else "retained",
+                "review_validation_status": "validated" if accepted else "not_accepted",
+            }
+        )
+        applied_rows.append(row)
+
+    if unreviewed_accepted_ids:
+        raise TerrainReleaseZoneCandidateMetricsError(
+            "unreviewed accepted candidates must be explicitly reviewed: " + ", ".join(unreviewed_accepted_ids)
+        )
+    if mixed_provenance_overclaim_ids:
+        raise TerrainReleaseZoneCandidateMetricsError(
+            "mixed-provenance overclaims are not allowed for non-accepted candidates: "
+            + ", ".join(mixed_provenance_overclaim_ids)
+        )
+    if accepted_missing_validation_ids:
+        raise TerrainReleaseZoneCandidateMetricsError(
+            "accepted candidates cannot use blocked_missing_provenance provenance: "
+            + ", ".join(accepted_missing_validation_ids)
+        )
+    if not accepted_ids:
+        raise TerrainReleaseZoneCandidateMetricsError("reviewed package must contain at least one accepted candidate")
+
+    accepted_rows = [row for row in applied_rows if text_value(row.get("review_decision")) == "accepted"]
+    review_summary = build_candidate_review_summary(applied_rows)
+    review_summary.update(
+        {
+            "accepted_candidate_count": len(accepted_ids),
+            "rejected_candidate_count": len(rejected_ids),
+            "needs_field_review_candidate_count": len(needs_field_review_ids),
+        }
+    )
+
+    review_application = {
+        "schema_version": REVIEW_APPLICATION_SCHEMA_VERSION,
+        "review_package_path": display_path(review_package_path, repo_root),
+        "output_root": display_path(output_root, repo_root),
+        "validation_status": "validated",
+        "validation_checks": {
+            "unknown_candidate_ids": [],
+            "unreviewed_accepted_candidate_ids": [],
+            "mixed_provenance_overclaim_candidate_ids": [],
+            "accepted_missing_validation_candidate_ids": [],
+            "accepted_candidate_count": len(accepted_ids),
+            "reviewed_candidate_count": len(candidate_review_decisions),
+            "allowed_provenance_labels": list(PROVENANCE_LABELS),
+        },
+        "reviewed_candidate_ids": review_order,
+        "explicit_reviewed_candidate_ids": list(candidate_review_decisions),
+        "accepted_candidate_ids": accepted_ids,
+        "rejected_candidate_ids": rejected_ids,
+        "needs_field_review_candidate_ids": needs_field_review_ids,
+    }
+
+    review_package_status = "review_applied"
+    reviewed_package = {
+        **review_package,
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "review_package_status": review_package_status,
+        "review_application_status": "validated",
+        "candidate_metrics_status": "ready",
+        "candidate_release_zone_set_status": "review_applied",
+        "candidate_release_zone_interpretation": "review_application_only",
+        "review_application": review_application,
+        "review_summary": review_summary,
+        "candidate_review_rows": applied_rows,
+        "accepted_candidate_ids": accepted_ids,
+        "rejected_candidate_ids": rejected_ids,
+        "needs_field_review_candidate_ids": needs_field_review_ids,
+        "outputs": build_review_output_paths(review_package, review_package_path, repo_root, output_root),
+        "review_source_outputs": review_package.get("outputs", {}),
+        "output_root": display_path(output_root, repo_root),
+    }
+    reviewed_package["candidate_release_zone_ids"] = [text_value(row.get("candidate_release_zone_id")) for row in applied_rows]
+    reviewed_package["review_decision_options"] = list(REVIEW_DECISION_OPTIONS)
+    reviewed_package["editable_acceptance_fields"] = ["review_decision", "accepted", "rejected", "needs_field_review"]
+    reviewed_package["provenance_label_legend"] = provenance_label_legend()
+    reviewed_package["claim_boundaries"] = review_package.get("claim_boundaries", {})
+    reviewed_package["candidate_sensitivity_summary"] = review_package.get("candidate_sensitivity_summary", {})
+    reviewed_package["candidate_footprint_comparison"] = review_package.get("candidate_footprint_comparison", {})
+    reviewed_package["frozen_source_zone_footprint"] = review_package.get("frozen_source_zone_footprint", {})
+    reviewed_package["review_application"]["validated_candidate_count"] = len(accepted_rows)
+    return reviewed_package
+
+
+def build_review_output_paths(
+    review_package: dict[str, Any],
+    review_package_path: Path,
+    repo_root: Path,
+    output_root: Path,
+) -> dict[str, str | None]:
+    candidate_site_id = text_value(review_package.get("candidate_site_id")) or text_value(review_package_path.stem)
+    polygon_path = output_root / f"{candidate_site_id}_release_zone_candidate_review.geojson"
+    csv_path = output_root / f"{candidate_site_id}_release_zone_candidate_review.csv"
+    mask_path = output_root / f"{candidate_site_id}_release_zone_candidate_review_mask.asc"
+    manifest_path = output_root / f"{candidate_site_id}_release_zone_candidate_review_manifest.json"
+    return {
+        "polygon": str(polygon_path.resolve(strict=False)),
+        "mask": str(mask_path.resolve(strict=False)),
+        "csv": str(csv_path.resolve(strict=False)),
+        "manifest": str(manifest_path.resolve(strict=False)),
+    }
+
+
+def write_review_applied_outputs(review_package: dict[str, Any]) -> None:
+    output_paths = review_package.get("outputs", {}) or {}
+    source_outputs = review_package.get("review_source_outputs", {}) or {}
+    polygon_path = repo_path(output_paths.get("polygon"))
+    csv_path = repo_path(output_paths.get("csv"))
+    mask_path = repo_path(output_paths.get("mask"))
+    manifest_path = repo_path(output_paths.get("manifest"))
+
+    polygon_path.parent.mkdir(parents=True, exist_ok=True)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    mask_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    polygon_path.write_text(
+        json.dumps(build_review_applied_geojson(review_package), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    write_candidate_review_csv(csv_path, review_package["candidate_review_rows"])
+    write_candidate_mask_copy(mask_path, review_package, source_outputs)
+    manifest_path.write_text(json.dumps(review_package, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, Any]:
+    source_outputs = review_package.get("review_source_outputs", {}) or {}
+    polygon_path = source_outputs.get("polygon")
+    geojson: dict[str, Any] = {
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "type": "FeatureCollection",
+        "candidate_site_id": review_package.get("candidate_site_id"),
+        "candidate_site_name": review_package.get("candidate_site_name"),
+        "source_zone_id": review_package.get("source_zone_id"),
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "review_package_status": review_package.get("review_package_status"),
+        "review_application_status": review_package.get("review_application_status"),
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "provenance_label_legend": provenance_label_legend(),
+        "features": [],
+    }
+    if isinstance(polygon_path, str) and polygon_path.strip():
+        polygon_file = package_path(review_package, polygon_path)
+        if polygon_file.exists():
+            payload = load_yaml_or_json(polygon_file)
+            raw_features = payload.get("features", [])
+            if isinstance(raw_features, list):
+                features: list[dict[str, Any]] = []
+                rows_by_id = {
+                    text_value(row.get("candidate_release_zone_id")): row
+                    for row in review_package.get("candidate_review_rows", [])
+                    if isinstance(row, dict)
+                }
+                for feature in raw_features:
+                    if not isinstance(feature, dict):
+                        continue
+                    feature_id = text_value((feature.get("properties") or {}).get("candidate_release_zone_id"))
+                    row = rows_by_id.get(feature_id, {})
+                    new_feature = dict(feature)
+                    new_feature["properties"] = {
+                        **(feature.get("properties") or {}),
+                        "review_decision": row.get("review_decision"),
+                        "accepted": row.get("accepted"),
+                        "rejected": row.get("rejected"),
+                        "needs_field_review": row.get("needs_field_review"),
+                        "review_application_source": row.get("review_application_source"),
+                        "review_validation_status": row.get("review_validation_status"),
+                        "provenance_label": row.get("provenance_label"),
+                    }
+                    features.append(new_feature)
+                geojson["features"] = features
+    return geojson
+
+
+def write_candidate_mask_copy(mask_path: Path, review_package: dict[str, Any], source_outputs: dict[str, Any]) -> None:
+    output_mask = source_outputs.get("mask")
+    if not isinstance(output_mask, str) or not output_mask.strip():
+        mask_path.write_text("", encoding="utf-8")
+        return
+    source_mask = package_path(review_package, output_mask)
+    if source_mask.exists():
+        mask_path.write_text(source_mask.read_text(encoding="utf-8"), encoding="utf-8")
+        return
+    mask_path.write_text("", encoding="utf-8")
 
 
 def blocked_report(
@@ -1886,6 +2240,20 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def load_yaml_or_json(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".json":
+        data = json.loads(text)
+    else:
+        try:
+            data = yaml.safe_load(text)
+        except Exception:
+            data = json.loads(text)
+    if not isinstance(data, dict):
+        raise TerrainReleaseZoneCandidateMetricsError(f"expected YAML or JSON mapping in {path}")
+    return data
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -1901,8 +2269,46 @@ def display_path(path: Path, repo_root: Path) -> str:
         return str(path)
 
 
+def repo_path(value: Any) -> Path:
+    if not isinstance(value, str) or not value.strip():
+        raise TerrainReleaseZoneCandidateMetricsError("missing output path value")
+    path = Path(value)
+    return path if path.is_absolute() else (ROOT / path)
+
+
+def text_value(value: Any) -> str:
+    return str(value).strip() if value not in (None, "") else ""
+
+
+def package_path(review_package: dict[str, Any], value: Any) -> Path:
+    if not isinstance(value, str) or not value.strip():
+        raise TerrainReleaseZoneCandidateMetricsError("missing package path value")
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    repo_root = text_value(review_package.get("repo_root"))
+    base_root = Path(repo_root) if repo_root else ROOT
+    return base_root / path
+
+
 def resolve_path(repo_root: Path, path: Path) -> Path:
     return path if path.is_absolute() else (repo_root / path).resolve()
+
+
+def is_allowed_output_root(output_root: Path) -> bool:
+    resolved = output_root.resolve(strict=False)
+    allowed_roots = [
+        Path("/tmp"),
+        Path("/private/tmp"),
+        ROOT / "validation/private",
+        ROOT / "data/processed/swisstopo",
+        ROOT / "validation/policies",
+        ROOT / "hazard/results",
+        ROOT / "validation/results",
+        ROOT / "verification/results",
+        ROOT / "target",
+    ]
+    return any(resolved == root or resolved.is_relative_to(root) for root in allowed_roots)
 
 
 def default_repo_path(repo_root: Path, path: Path) -> Path:
@@ -1976,6 +2382,32 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.extend(render_mapping(report["claim_boundaries"]))
     lines.append("")
     lines.append(f"blocked_reason: {report['blocked_reason']}")
+    return "\n".join(lines)
+
+
+def render_review_apply_text_report(report: dict[str, Any]) -> str:
+    validation = report.get("review_application", {}).get("validation_checks", {})
+    lines = [
+        "Candidate Review Apply",
+        "",
+        f"- Schema version: `{report['schema_version']}`",
+        f"- Review package status: `{report.get('review_package_status', '')}`",
+        f"- Review application status: `{report.get('review_application_status', '')}`",
+        f"- Accepted candidate count: `{len(report.get('accepted_candidate_ids', []))}`",
+        f"- Rejected candidate count: `{len(report.get('rejected_candidate_ids', []))}`",
+        f"- Needs field review candidate count: `{len(report.get('needs_field_review_candidate_ids', []))}`",
+        "",
+        "Validation",
+        f"- validation_status: `{report.get('review_application', {}).get('validation_status', '')}`",
+        f"- unknown_candidate_ids: `{', '.join(validation.get('unknown_candidate_ids', []))}`",
+        f"- unreviewed_accepted_candidate_ids: `{', '.join(validation.get('unreviewed_accepted_candidate_ids', []))}`",
+        f"- mixed_provenance_overclaim_candidate_ids: `{', '.join(validation.get('mixed_provenance_overclaim_candidate_ids', []))}`",
+        f"- accepted_missing_validation_candidate_ids: `{', '.join(validation.get('accepted_missing_validation_candidate_ids', []))}`",
+        "",
+        "Output Paths",
+    ]
+    for key, value in (report.get("outputs") or {}).items():
+        lines.append(f"- {key}: `{value}`")
     return "\n".join(lines)
 
 

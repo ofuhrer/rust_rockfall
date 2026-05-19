@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
+PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"
 POLICY_VALIDATOR_PATH = ROOT / "scripts" / "validate_source_scenario_policy.py"
 
 
@@ -22,6 +23,7 @@ def load_module(path: Path, name: str):
 
 
 freezer = load_module(SCRIPT_PATH, "generate_candidate_source_zone_scenarios_freezer")
+planner = load_module(PLANNER_SCRIPT_PATH, "plan_terrain_release_zone_candidates_for_freezer_tests")
 policy_validator = load_module(POLICY_VALIDATOR_PATH, "validate_source_scenario_policy_for_freezer_tests")
 
 
@@ -65,18 +67,26 @@ def square_feature(candidate_id: str, xmin: float, ymin: float, size: float) -> 
 
 class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
     def _write_review_package(self, workdir: Path) -> Path:
-        geojson_path = workdir / "review_candidates.geojson"
-        package_path = workdir / "review_package.json"
+        emitted_geojson_path = workdir / "review_candidates.geojson"
+        emitted_mask_path = workdir / "review_candidates_mask.asc"
+        emitted_csv_path = workdir / "review_candidates.csv"
+        emitted_manifest_path = workdir / "review_package_emitted.json"
         features = [
             square_feature("cand_accept_a", 2600000.0, 1200000.0, 2.0),
             square_feature("cand_rejected", 2600010.0, 1200010.0, 2.0),
             square_feature("cand_accept_b", 2600020.0, 1200020.0, 2.0),
         ]
-        geojson_path.write_text(
+        emitted_geojson_path.write_text(
             json.dumps(
                 {
                     "schema_version": "terrain_release_zone_candidate_review_package_v1",
                     "type": "FeatureCollection",
+                    "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+                    "candidate_site_name": "Chant Sura / Fluelapass portability example",
+                    "source_zone_id": "chant_sura_reviewed_source_zone",
+                    "candidate_generation_label": "heuristic_candidate_generation_only",
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": planner.provenance_label_legend(),
                     "features": features,
                 },
                 indent=2,
@@ -85,20 +95,52 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
-        package_path.write_text(
+        emitted_mask_path.write_text("ncols 1\nnrows 1\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1\n", encoding="utf-8")
+        emitted_csv_path.write_text("candidate_release_zone_id\n", encoding="utf-8")
+        emitted_manifest_path.write_text(
             json.dumps(
                 {
-                    "schema_version": "reviewed_candidate_source_zone_freezer_fixture_v1",
+                    "schema_version": "terrain_release_zone_candidate_review_package_v1",
+                    "review_package_status": "emitted",
                     "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
                     "candidate_site_name": "Chant Sura / Fluelapass portability example",
                     "source_zone_id": "chant_sura_reviewed_source_zone",
-                    "candidate_selection_rationale": "reviewed candidate freezer fixture",
-                    "candidate_review_rows": [
-                        features[0]["properties"],
-                        features[1]["properties"],
-                        features[2]["properties"],
-                    ],
-                    "outputs": {"polygon": str(geojson_path)},
+                    "candidate_release_zone_set_status": "review_ready",
+                    "candidate_release_zone_ids": [feature["properties"]["candidate_release_zone_id"] for feature in features],
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": planner.provenance_label_legend(),
+                    "review_summary": {
+                        "review_row_count": len(features),
+                        "candidate_count": len(features),
+                        "review_decision_counts": {"accepted": 0, "rejected": 0, "needs_field_review": len(features)},
+                        "provenance_label_counts": {"workflow_generated": len(features), "field_supported": 0, "mixed_provenance": 0, "blocked_missing_provenance": 0},
+                        "default_review_decision": "needs_field_review",
+                    },
+                    "candidate_review_rows": [feature["properties"] for feature in features],
+                    "candidate_sensitivity_summary": {},
+                    "candidate_footprint_comparison": {},
+                    "frozen_source_zone_footprint": {},
+                    "claim_boundaries": {
+                        "heuristic_workflow_input_only": True,
+                        "validated_release_zone_evidence": False,
+                        "field_validation_claims_allowed": False,
+                        "physical_release_probability_claims_allowed": False,
+                        "scale_up_authorized": False,
+                        "operational_claims_allowed": False,
+                        "notes": [
+                            "candidate review rows remain workflow review inputs until the source zone is frozen",
+                            "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                        ],
+                    },
+                    "outputs": {
+                        "polygon": str(emitted_geojson_path),
+                        "mask": str(emitted_mask_path),
+                        "csv": str(emitted_csv_path),
+                        "manifest": str(emitted_manifest_path),
+                    },
+                    "output_root": str(workdir),
+                    "repo_root": str(workdir),
                 },
                 indent=2,
                 sort_keys=True,
@@ -106,13 +148,24 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
-        return package_path
+        reviewed_output_root = workdir / "reviewed"
+        reviewed = planner.build_review_apply_report(
+            review_package_path=emitted_manifest_path,
+            candidate_review_decisions={
+                "cand_accept_a": "accepted",
+                "cand_rejected": "rejected",
+                "cand_accept_b": "accepted",
+            },
+            output_root=reviewed_output_root,
+        )
+        return Path(reviewed["outputs"]["manifest"])
 
     def test_freezer_generates_deterministic_ids_and_excludes_rejected_candidates(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             workdir = Path(tmp)
             review_package_path = self._write_review_package(workdir)
             output_root = workdir / "validation/private/chant_sura_fluelapass_portability_example_v1"
+            review_manifest = json.loads(review_package_path.read_text(encoding="utf-8"))
 
             first = freezer.build_freezer_report(
                 review_package_path=review_package_path,
@@ -143,6 +196,8 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["freezer_status"], "ready")
+        self.assertEqual(review_manifest["review_package_status"], "review_applied")
+        self.assertEqual(review_manifest["review_application_status"], "validated")
         self.assertEqual(first["accepted_candidate_ids"], ["cand_accept_a", "cand_accept_b"])
         self.assertEqual(first["rejected_candidate_ids"], ["cand_rejected"])
         self.assertEqual(first["release_row_count"], 2)

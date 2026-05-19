@@ -1309,6 +1309,13 @@ def build_freezer_report(
         raise CandidateSourceZoneFreezerError(f"output-root must stay under /tmp or an ignored repo root: {output_root}")
 
     review_package = load_yaml_or_json(review_package_path)
+    if text_value(review_package.get("review_package_status")) != "review_applied":
+        raise CandidateSourceZoneFreezerError("review package must be review-applied before freezing")
+    review_application = review_package.get("review_application", {})
+    if not isinstance(review_application, dict):
+        raise CandidateSourceZoneFreezerError("review package review_application must be an object")
+    if text_value(review_application.get("validation_status")) != "validated":
+        raise CandidateSourceZoneFreezerError("review package review_application must be validated before freezing")
     review_rows = review_package.get("candidate_review_rows", [])
     if not isinstance(review_rows, list):
         raise CandidateSourceZoneFreezerError("review package candidate_review_rows must be a list")
@@ -1326,11 +1333,17 @@ def build_freezer_report(
         review_rows_by_id[candidate_id] = row
         review_order.append(candidate_id)
 
+    validated_accepted_ids = normalize_candidate_ids(review_application.get("accepted_candidate_ids", []))
     explicit_ids = normalize_candidate_ids(accepted_candidate_ids) if accepted_candidate_ids is not None else []
     if explicit_ids:
         missing_ids = [candidate_id for candidate_id in explicit_ids if candidate_id not in review_rows_by_id]
         if missing_ids:
             raise CandidateSourceZoneFreezerError("accepted candidate ids not found in review package: " + ", ".join(missing_ids))
+        missing_validated_ids = [candidate_id for candidate_id in explicit_ids if candidate_id not in validated_accepted_ids]
+        if missing_validated_ids:
+            raise CandidateSourceZoneFreezerError(
+                "accepted candidate ids are not validated in the review application: " + ", ".join(missing_validated_ids)
+            )
         explicit_id_set = set(explicit_ids)
         accepted_ids = [candidate_id for candidate_id in review_order if candidate_id in explicit_id_set]
         rejected_selection = [
@@ -1347,8 +1360,7 @@ def build_freezer_report(
         accepted_ids = [
             candidate_id
             for candidate_id in review_order
-            if bool(review_rows_by_id[candidate_id].get("accepted"))
-            or text_value(review_rows_by_id[candidate_id].get("review_decision")) == "accepted"
+            if candidate_id in validated_accepted_ids
         ]
 
     if not accepted_ids:
