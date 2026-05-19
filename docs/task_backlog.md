@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-296: Authorized Balfrin Postproc Microbenchmark Run
-
-Goal: Execute one exact bounded Balfrin postproc microbenchmark run if separately authorized, or record the exact pre-submit blocker.
-
-Capability gap reduced: Output and reducer efficiency remain projection-heavy without direct postproc-node measurements.
-
-Why this outranks alternatives: A tiny synthetic postproc benchmark is lower risk than a larger multi-zone simulation and directly measures the suspected scaling wall.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-
-Deliverables:
-
-- If separate exact user authorization is present at execution time, one bounded SLURM postproc microbenchmark submission with fixed file-count/manifest-size parameters and deterministic run root.
-- Preserved metrics for wall time, peak memory, file scan time, reducer merge time, package time, file counts, bytes, checksums, and SLURM accounting fields.
-- If any preflight fails, a fail-closed blocker report with no submission.
-
-Definition of done:
-
-- The repo has either measured Balfrin postproc overhead evidence for a bounded synthetic scale point or one exact remaining pre-submit blocker.
-
-Boundaries: Exact postproc microbenchmark only; live Balfrin submission requires separate explicit authorization at execution time; no simulation, no multi-zone hazard claim, no scale-up authorization, no retries without diagnosis, and no operational claim.
-
 ### TB-297: Hazard Builder Phase Timing Instrumentation
 
 Goal: Add structured phase timing and memory telemetry to `build_hazard_layers.py` and its output-writer modules for input reading, accumulation, reducer merge, raster writing, COG/report writing, and manifest generation.

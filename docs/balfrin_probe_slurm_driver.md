@@ -80,6 +80,20 @@ package/harness-generation surface only; a later Balfrin run still needs
 separate exact authorization and must not be inferred from this generated
 package.
 
+TB-296 reviewed the exact bounded postproc microbenchmark gate on 2026-05-19
+without submitting a job. The reviewed synthetic package shape was fixed at
+`file_count=128`, `manifest_size_bytes=65536`, `sidecar_count=16`,
+`reducer_chunk_count=8`, and `payload_bytes=128`, with the deterministic local
+review root `/tmp/rust_rockfall/tb296_postproc_microbenchmark_gate`.
+Live Balfrin execution remains fail-closed because the current conversation did
+not include separate exact authorization for this run. The read-only Balfrin
+access preflight also reported `blocked_dirty_remote_checkout` for
+`/users/olifu/work/rust_rockfall`: SSH and the remote clone were reachable, but
+the remote checkout contained 18 untracked/stale generated files including
+`balfrin_submission_package.json`, `balfrin_submission_package.md`,
+`command_plan.json`, `probe.sbatch`, `logs/slurm-4326016.err`, and
+`logs/slurm-4326016.out`. No `sbatch` command was run.
+
 ## Balfrin checkout and scratch boundary
 
 Run submission commands from the Balfrin checkout:

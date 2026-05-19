@@ -2600,3 +2600,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: package/harness generation only; no live Balfrin submission, no `sbatch`, no simulation execution, no physical-probability claim, no risk/exposure/vulnerability claim, no scale-up or distributed-execution authorization, and no operational claim.
 - Next task: `TB-296`
+
+### TB-296: Authorized Balfrin Postproc Microbenchmark Run
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: execute one exact bounded Balfrin postproc microbenchmark if separately authorized, or record the exact fail-closed pre-submit blocker.
+- Files changed: `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the current conversation did not include separate exact authorization for the TB-296 live Balfrin postproc microbenchmark, so no `sbatch` or live submission command was run.
+  - Generated and locally ran the bounded synthetic postproc package under `/tmp/rust_rockfall/tb296_postproc_microbenchmark_gate` with `file_count=128`, `manifest_size_bytes=65536`, `sidecar_count=16`, `reducer_chunk_count=8`, and `payload_bytes=128`; these `/tmp` artifacts were not committed.
+  - Ran the read-only Balfrin access preflight. SSH and the remote clone were reachable, but the preflight returned `blocked_dirty_remote_checkout` because `/users/olifu/work/rust_rockfall` had 18 untracked/stale generated files, including stale submission package files, `probe.sbatch`, and SLURM logs.
+  - Recorded the fail-closed state in the Balfrin SLURM driver notes and removed TB-296 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-296 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_postproc_microbenchmark_package.py --output-root /tmp/rust_rockfall/tb296_postproc_microbenchmark_gate --package-id tb296_balfrin_postproc_microbenchmark_gate --file-count 128 --manifest-size-bytes 65536 --sidecar-count 16 --reducer-chunk-count 8 --payload-bytes 128 --format json`
+  - `PYENV_VERSION=system uv run python /tmp/rust_rockfall/tb296_postproc_microbenchmark_gate/harness/run_balfrin_postproc_microbenchmark.py --package-root /tmp/rust_rockfall/tb296_postproc_microbenchmark_gate --output-json /tmp/rust_rockfall/tb296_postproc_microbenchmark_gate/output/balfrin_postproc_microbenchmark_measurements.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_postproc_microbenchmark_package`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: fail-closed postproc microbenchmark gate only; no live Balfrin submission, no `sbatch`, no simulation execution, no multi-zone hazard claim, no retry authorization, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-297`
