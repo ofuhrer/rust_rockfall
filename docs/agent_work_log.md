@@ -2078,3 +2078,27 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: conditional convergence only; no live Balfrin submission, no annual-frequency semantics, no physical validation claim, no operational claim, no scale-up authorization, and no distributed-execution claim.
 - Next task: `TB-272`
+
+### TB-272: End-To-End AOI-To-Map Regression Fixture
+
+- Date: 2026-05-19
+- Commit: `40dbb60`
+- Objective: add a compact clean-checkout-safe regression proof for the user-facing AOI-to-map workflow.
+- Files changed: `tests/test_aoi_to_prepared_pilot_dry_run.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a fixture-backed regression inside the AOI prepared-pilot dry-run tests that runs under `/tmp` and composes the AOI dry-run planner, prepared-input contract, tiny hazard-layer smoke build, map-package manifest, pilot GIS manifest, and GIS/COG readiness audit.
+  - Asserted expected command states, claim-boundary fields, generated hazard outputs, map package metadata, pilot GIS QA status, and the maintained `gis_package_ready_cog_blocked` classification for non-COG fixture rasters.
+  - Added a compact first-failure summary tied to the current prepared-pilot command-plan blocker so users and agents see the first broken workflow step instead of scattered helper failures.
+  - Removed TB-272 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_aoi_to_map_regression_fixture_produces_smoke_map_package_and_qa_summary`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: fixture-backed regression only; generated outputs were written under `/tmp`; no live Balfrin submission, no real public-geodata download, no operational claim, and no heavy outputs committed.
+- Next task: `TB-273`

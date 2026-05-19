@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-272: End-To-End AOI-To-Map Regression Fixture
-
-Goal: Add a compact regression fixture that exercises the entire user-facing path from AOI manifest through prepared inputs, reviewed release/scenario plan, local smoke execution, hazard-layer build, map packaging, and QA summary.
-
-Capability gap reduced: The project needs a durable proof that the front-door workflow stays usable as individual helpers evolve.
-
-Why this outranks alternatives: Without an end-to-end regression, improvements to one helper can silently break the user journey from AOI definition to hazard map.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_public_real_site_conditional_pilot_run.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A small fixture-backed end-to-end test or smoke helper that runs under `/tmp` and asserts the expected command states, output manifests, hazard layers, map-package metadata, and claim-boundary fields.
-- A single failure summary that names the first broken workflow step for users and agents.
-- Documentation or README update only if needed to point users at the regression-backed command path.
-
-Definition of done:
-
-- The repository has one maintained, clean-checkout-safe proof that the AOI-to-map workflow can produce a map package on tiny inputs.
-
-Boundaries: Fixture-backed regression only; no live Balfrin submission, no real public-geodata download, no operational claim, and no heavy outputs committed.
-
 ### TB-273: Optional Observed-Evidence Overlay Hook For AOI Maps
 
 Goal: Allow an AOI hazard map package to include optional observed runout/deposition or release-zone provenance overlays when real accepted evidence is staged.
