@@ -2125,3 +2125,20 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: optional overlay integration only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no operational claim, and no claim upgrade beyond accepted evidence.
 - Next task: backlog refill needed
+
+### TB-274: AOI Workflow Guided Prepare Mode
+
+- Date: 2026-05-19
+- Commit: `5465dcf`
+- Objective: add a guided front-door prepare mode that walks the AOI bootstrap, product resolution, cache verification, terrain preparation, release-candidate planning, and scenario-freeze readiness steps in dependency order without changing scientific claims or introducing live compute.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a dedicated `prepare` report path to the AOI front door that composes the existing bootstrap, acquisition, cache verification, terrain-preparation, release-candidate planning, and scenario-freeze readiness helpers into one ordered dependency chain.
+  - Surfaced a compact JSON/text summary with ordered step statuses, the next exact command, the expected input path, the first actionable blocker, and claim-boundary notes so users can stop at the right helper instead of inferring the workflow.
+  - Reworked the test fixture config to point at the temporary repo roots used by the tests, then added fixture-backed regressions for the clean-checkout blocker, a partially prepared path, and a ready-for-planning path.
+  - Removed TB-274 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow -v`
+- Result/status: completed
+- Boundaries: guided preparation only; no network download, no simulation, no live Balfrin submission, no physical-probability semantics, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
+- Next task: `TB-275`
