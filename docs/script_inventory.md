@@ -50,6 +50,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/generate_tschamut_same_scale_cases.py`
 - `scripts/inspect_tschamut_public_context_layers.py`
 - `scripts/measure_hazard_context_overlap.py`
+- `scripts/generate_aoi_map_qa_review.py`
 - `scripts/plan_aoi_terrain_preprocessing.py`
 - `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
 - `scripts/plan_balfrin_single_release_zone_case_dry_run.py`

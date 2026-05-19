@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-270: AOI Map QA Project And Static Review Surface
-
-Goal: Generate a lightweight QA surface for an AOI map package that overlays terrain, release zones, scenario metadata, hazard layers, and context availability.
-
-Capability gap reduced: Users need to inspect whether the map is spatially coherent before interpreting or sharing a hazard product.
-
-Why this outranks alternatives: Rapid AOI-to-map iteration needs visual QA; otherwise users must manually assemble layers in GIS tools and may miss provenance or scope warnings.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/measure_hazard_context_overlap.py`
-- `scripts/summarize_balfrin_target_area_gis_cog_scope.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/hazard_map_semantics.md`
-- `tests/test_pilot_gis_visual_qa.py`
-- `tests/test_balfrin_target_area_gis_cog_scope.py`
-
-Deliverables:
-
-- A QA project generator that emits a QGIS project, static HTML index, or equivalent manifest-driven review surface under an ignored output root.
-- Visible or machine-readable warnings for missing context layers, COG-blocked rasters, fixture-backed inputs, conditional-only weights, and non-operational status.
-- Tests for layer presence, warning propagation, and blocked missing-map-package behavior.
-
-Definition of done:
-
-- A user can inspect the AOI hazard map package with release/scenario/context overlays and understand the current evidence boundaries.
-
-Boundaries: QA/review surface only; no hazard-value changes, no operational claim, no physical-probability semantics, no regulatory-use claim, and no heavy outputs committed.
-
 ### TB-271: Adaptive AOI Ensemble Convergence Controller
 
 Goal: Add a controller that escalates AOI trajectory counts in bounded steps until spatial convergence stabilizes or a runtime/output budget stops the run.
