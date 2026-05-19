@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-283: Balfrin Metrics-Completion Rerun Reattempt Package
-
-Goal: Rebuild the exact target-area metrics-completion rerun package after remote hygiene is ready and preserve either the authorized submission result or the exact fail-closed blocker.
-
-Capability gap reduced: The target-area evidence path still needs a clean, auditable branch for recovering or rerunning missing execution metrics.
-
-Why this outranks alternatives: The decision gate ranks metrics completion first, but the previous attempt stopped on remote checkout hygiene before submission.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- A refreshed metrics-completion rerun package for the exact target-area metrics-completion run root, including remote hygiene state, access preflight, package hash, expected outputs, and preservation contract.
-- If separate exact user authorization is present at execution time, one bounded postproc submission may be attempted; otherwise the task must stop at `ready_for_authorization` or the exact blocker.
-- Post-attempt integration notes that distinguish submitted, blocked_pre_submit, failed_closed, and no_authorization states without promoting incomplete evidence.
-
-Definition of done:
-
-- The metrics-completion branch is either submitted and preserved under the existing evidence gates, or blocked with one exact remaining precondition.
-
-Boundaries: Exact target-area metrics-completion rerun only; live Balfrin submission requires separate explicit authorization at execution time; no retries without a new diagnosis, no multi-zone run, no distributed execution, no physical credibility upgrade, no annual-frequency claim, no risk/exposure/vulnerability claim, and no operational claim.
-
 ### TB-284: Metrics Recovery Integration Refresh
 
 Goal: Integrate any newly recovered or rerun target-area metrics into the Balfrin evidence bundle, closure package, decision gate, and maturity snapshot without overclaiming.

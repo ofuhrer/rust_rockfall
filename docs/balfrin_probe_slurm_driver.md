@@ -308,6 +308,11 @@ target-area peak-memory and split validation/hazard output metrics, use
 It stays read-only, emits the dry-run rerun plan and SBATCH package, and keeps
 the comparison against the recorded target-area run separate from any live
 submission path.
+Its `post_attempt_integration_notes` section classifies the current branch as
+`submitted`, `blocked_pre_submit`, `failed_closed`, or `no_authorization`.
+Only a submitted run that later passes the preservation gate may promote
+measured evidence; blocked, unauthorized, or failed-closed states remain
+planning or failure evidence with one exact remaining precondition.
 
 Before requesting that rerun, use
 `scripts/recover_balfrin_target_area_metrics_from_run_root.py` with the TB-223

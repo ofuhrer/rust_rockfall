@@ -44,6 +44,16 @@ STATUS_BLOCKED_MISSING_PACKAGE = "blocked_missing_package"
 STATUS_BLOCKED_STALE_COMPARISON_BASIS = "blocked_stale_comparison_basis"
 STATUS_BLOCKED_NO_UNRECOVERED_METRICS = "blocked_no_unrecovered_metrics"
 STATUS_BLOCKED_MISSING_EXPLICIT_AUTHORIZATION = "blocked_missing_explicit_authorization"
+POST_ATTEMPT_SUBMITTED = "submitted"
+POST_ATTEMPT_BLOCKED_PRE_SUBMIT = "blocked_pre_submit"
+POST_ATTEMPT_FAILED_CLOSED = "failed_closed"
+POST_ATTEMPT_NO_AUTHORIZATION = "no_authorization"
+POST_ATTEMPT_STATUSES = {
+    POST_ATTEMPT_SUBMITTED,
+    POST_ATTEMPT_BLOCKED_PRE_SUBMIT,
+    POST_ATTEMPT_FAILED_CLOSED,
+    POST_ATTEMPT_NO_AUTHORIZATION,
+}
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_target_area_metrics_completion_rerun_package_v1"
 DEFAULT_PROBE_MANIFEST = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
 DEFAULT_RERUN_RUN_ROOT = Path(
@@ -928,6 +938,75 @@ def _build_authorization_request_preflight(
     }
 
 
+def _build_post_attempt_integration_notes(
+    *,
+    preflight_status: str,
+    package_status: str,
+    authorization_handoff_package: dict[str, Any],
+    evidence_override: dict[str, Any],
+) -> dict[str, Any]:
+    submission_report = _safe_mapping(evidence_override.get("submission_report"))
+    preservation_report = _safe_mapping(evidence_override.get("preservation_gate_report"))
+    explicit_status = str(evidence_override.get("post_attempt_status") or "").strip()
+    submitted_job_id = str(
+        evidence_override.get("submitted_job_id")
+        or submission_report.get("submitted_job_id")
+        or submission_report.get("job_id")
+        or ""
+    ).strip()
+    submission_status = str(submission_report.get("status") or "").strip()
+    preservation_status = str(preservation_report.get("status") or "").strip()
+
+    if explicit_status:
+        if explicit_status not in POST_ATTEMPT_STATUSES:
+            raise BalfrinTargetAreaMetricsCompletionRerunPackageError(
+                f"post_attempt_status must be one of {sorted(POST_ATTEMPT_STATUSES)}"
+            )
+        status = explicit_status
+    elif submitted_job_id or submission_status == POST_ATTEMPT_SUBMITTED:
+        status = POST_ATTEMPT_SUBMITTED
+    elif submission_status in {"failed", "error", "blocked_failed_closed", POST_ATTEMPT_FAILED_CLOSED}:
+        status = POST_ATTEMPT_FAILED_CLOSED
+    elif preflight_status != STATUS_READY_FOR_AUTHORIZATION:
+        status = POST_ATTEMPT_BLOCKED_PRE_SUBMIT
+    else:
+        status = POST_ATTEMPT_NO_AUTHORIZATION
+
+    submit_command_executed = status in {POST_ATTEMPT_SUBMITTED, POST_ATTEMPT_FAILED_CLOSED}
+    measured_evidence_promoted = (
+        status == POST_ATTEMPT_SUBMITTED
+        and preservation_status == "ready_for_demonstration_evidence"
+    )
+    exact_remaining_precondition = ""
+    if status == POST_ATTEMPT_BLOCKED_PRE_SUBMIT:
+        exact_remaining_precondition = preflight_status
+    elif status == POST_ATTEMPT_NO_AUTHORIZATION:
+        exact_remaining_precondition = "separate_explicit_user_authorization_for_this_exact_metrics_completion_rerun"
+    elif status == POST_ATTEMPT_FAILED_CLOSED:
+        exact_remaining_precondition = submission_status or "submission_or_preservation_failed_closed"
+    elif status == POST_ATTEMPT_SUBMITTED and not measured_evidence_promoted:
+        exact_remaining_precondition = preservation_status or "post_run_preservation_gate_not_ready"
+
+    return {
+        "schema_version": "balfrin_target_area_metrics_completion_post_attempt_integration_notes_v1",
+        "status": status,
+        "allowed_statuses": sorted(POST_ATTEMPT_STATUSES),
+        "preflight_status": preflight_status,
+        "package_status": package_status,
+        "authorization_handoff_status": authorization_handoff_package.get("status", "unknown"),
+        "submit_command_executed": submit_command_executed,
+        "submitted_job_id": submitted_job_id or None,
+        "submission_report_status": submission_status or None,
+        "preservation_gate_status": preservation_status or None,
+        "measured_evidence_promoted": measured_evidence_promoted,
+        "exact_remaining_precondition": exact_remaining_precondition,
+        "boundary_note": (
+            "Integration note only: incomplete, blocked, unauthorized, or failed-closed attempts "
+            "are not promoted as measured Balfrin evidence."
+        ),
+    }
+
+
 def _build_hashes(
     *,
     command_plan: dict[str, Any],
@@ -1169,6 +1248,12 @@ def build_report(
         metrics_collection_command=str(metrics_collection_command),
         preservation_gate_command=str(preservation_gate_command),
     )
+    post_attempt_integration_notes = _build_post_attempt_integration_notes(
+        preflight_status=authorization_request_preflight["status"],
+        package_status=package_status,
+        authorization_handoff_package=authorization_handoff_package,
+        evidence_override=evidence_override,
+    )
     measured_count = sum(1 for entry in section_provenance_profile if entry["evidence_type"] == "measured")
     template_count = sum(1 for entry in section_provenance_profile if entry["evidence_type"] == "template_only")
     blocked_count = sum(1 for entry in section_provenance_profile if entry["status"] == "blocked_missing_inputs")
@@ -1201,6 +1286,7 @@ def build_report(
         "authorization_request_preflight": authorization_request_preflight,
         "authorization_handoff_status": authorization_handoff_package["status"],
         "authorization_handoff_package": authorization_handoff_package,
+        "post_attempt_integration_notes": post_attempt_integration_notes,
         "balfrin_access_preflight_requirement": access_requirement,
         "pre_authorization_inputs": pre_authorization_inputs,
         "rerun_command_plan": rerun_command_plan,
@@ -1317,6 +1403,12 @@ def blocked_report(
         metrics_collection_command="blocked_missing_inputs",
         preservation_gate_command="blocked_missing_inputs",
     )
+    post_attempt_integration_notes = _build_post_attempt_integration_notes(
+        preflight_status=authorization_request_preflight["status"],
+        package_status="missing_rerun_package",
+        authorization_handoff_package=authorization_handoff_package,
+        evidence_override={},
+    )
     section_names = (
         "authorization_request_preflight",
         "balfrin_access_preflight_requirement",
@@ -1366,6 +1458,7 @@ def blocked_report(
         "authorization_request_preflight": authorization_request_preflight,
         "authorization_handoff_status": authorization_handoff_package["status"],
         "authorization_handoff_package": authorization_handoff_package,
+        "post_attempt_integration_notes": post_attempt_integration_notes,
         "balfrin_access_preflight_requirement": access_requirement,
         "pre_authorization_inputs": pre_authorization_inputs,
         "rerun_command_plan": rerun_command_plan,
@@ -1394,6 +1487,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     handoff = report.get("authorization_handoff_package", {}) if isinstance(report, dict) else {}
     access_requirement = report.get("balfrin_access_preflight_requirement", {}) if isinstance(report, dict) else {}
     pre_authorization_inputs = report.get("pre_authorization_inputs", {}) if isinstance(report, dict) else {}
+    post_attempt = report.get("post_attempt_integration_notes", {}) if isinstance(report, dict) else {}
     expected_metrics = preflight.get("expected_metrics", {}) if isinstance(preflight, dict) else {}
     lines = [
         "Balfrin Target-Area Metrics Completion Rerun Package",
@@ -1429,6 +1523,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  explicit_authorization_required: {handoff.get('explicit_authorization_required', True)}",
         f"  live_submission_authorized: {handoff.get('live_submission_authorized', False)}",
         f"  blocked_reasons: {handoff.get('blocked_reasons', [])}",
+        "post_attempt_integration_notes:",
+        f"  status: {post_attempt.get('status', 'unknown')}",
+        f"  allowed_statuses: {post_attempt.get('allowed_statuses', [])}",
+        f"  submit_command_executed: {post_attempt.get('submit_command_executed', False)}",
+        f"  submitted_job_id: {post_attempt.get('submitted_job_id')}",
+        f"  measured_evidence_promoted: {post_attempt.get('measured_evidence_promoted', False)}",
+        f"  exact_remaining_precondition: {post_attempt.get('exact_remaining_precondition', '')}",
         "balfrin_access_preflight_requirement:",
         f"  command: {access_requirement.get('command', '')}",
         f"  required_status: {access_requirement.get('required_status', '')}",

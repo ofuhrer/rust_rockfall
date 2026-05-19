@@ -2308,3 +2308,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: read-only hygiene/preflight only; no remote deletion, no live Balfrin submission, no SLURM job, no scale-up authorization, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability product.
 - Next task: `TB-283`
+
+### TB-283: Balfrin Metrics-Completion Rerun Reattempt Package
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: refresh the exact target-area metrics-completion rerun package and preserve either the authorized submission result or the exact fail-closed blocker.
+- Files changed: `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`, `tests/test_balfrin_target_area_metrics_completion_rerun_package.py`, `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `post_attempt_integration_notes` to the metrics-completion rerun package so downstream integration can distinguish `submitted`, `blocked_pre_submit`, `failed_closed`, and `no_authorization` without promoting incomplete evidence.
+  - Refreshed the read-only Balfrin access preflight and package under `/tmp/tb283_metrics_completion_package`; the measured state is `preflight_status=blocked_dirty_remote_checkout`, `post_attempt_status=blocked_pre_submit`, and exact remaining precondition `blocked_dirty_remote_checkout`.
+  - Preserved the package hashes in the `/tmp` report: command plan `0d564cf7bc2ffab4d31b8b1f3fc78b8e9424c53700d1367c3ed33710ec3e68f8`, SBATCH script `0dcd75fe7fbbed17e5dce3e0180a55cbe395ff3ffd345660cecd3c4032cc5d1f`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-283 --format json`
+  - `rg -n "^### TB-283:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py tests/test_balfrin_target_area_metrics_completion_rerun_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_metrics_completion_rerun_package -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb283_balfrin_access_preflight.json` (exit 2, expected fail-closed blocker)
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py --balfrin-access-json /tmp/tb283_balfrin_access_preflight.json --format json --artifact-dir /tmp/tb283_metrics_completion_package` (exit 2, expected fail-closed package)
+- Result/status: implemented_blocked_report
+- Boundaries: read-only package refresh only; no `sbatch`, no live Balfrin submission, no remote cleanup, no retry, no multi-zone or distributed execution, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability product.
+- Next task: `TB-284`

@@ -72,6 +72,13 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
             handoff["fail_closed_classifications"]["missing_explicit_authorization"]["status"],
             "blocked_missing_explicit_authorization",
         )
+        self.assertEqual(report["post_attempt_integration_notes"]["status"], "no_authorization")
+        self.assertFalse(report["post_attempt_integration_notes"]["submit_command_executed"])
+        self.assertFalse(report["post_attempt_integration_notes"]["measured_evidence_promoted"])
+        self.assertIn(
+            "separate_explicit_user_authorization",
+            report["post_attempt_integration_notes"]["exact_remaining_precondition"],
+        )
         self.assertFalse(handoff["live_submission_authorized"])
         self.assertEqual(
             report["balfrin_access_preflight_requirement"]["consumed_status"],
@@ -106,6 +113,7 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
         self.assertIn("no live submission is authorized", report["package_summary"]["summary"])
         self.assertIn("preflight_status: ready_for_authorization_request", MODULE.render_text_report(report))
         self.assertIn("authorization_handoff_status: ready_for_authorization_review", MODULE.render_text_report(report))
+        self.assertIn("post_attempt_integration_notes:", MODULE.render_text_report(report))
         self.assertIn("Balfrin Target-Area Metrics Completion Rerun Package", MODULE.render_text_report(report))
 
     def test_authorization_handoff_ready_for_authorization_review(self) -> None:
@@ -259,6 +267,36 @@ class BalfrinTargetAreaMetricsCompletionRerunPackageTests(unittest.TestCase):
             "balfrin_access:blocked_dirty_remote_checkout",
             report["authorization_request_preflight"]["blocked_reasons"],
         )
+        self.assertEqual(report["post_attempt_integration_notes"]["status"], "blocked_pre_submit")
+        self.assertEqual(
+            report["post_attempt_integration_notes"]["exact_remaining_precondition"],
+            "blocked_dirty_remote_checkout",
+        )
+        self.assertFalse(report["post_attempt_integration_notes"]["measured_evidence_promoted"])
+
+    def test_post_attempt_notes_distinguish_failed_closed_and_submitted_without_promotion(self) -> None:
+        failed_report = MODULE.build_report(
+            {
+                "balfrin_access_preflight": self._ready_access(),
+                "post_attempt_status": "failed_closed",
+                "submission_report": {"status": "failed"},
+            }
+        )
+
+        self.assertEqual(failed_report["post_attempt_integration_notes"]["status"], "failed_closed")
+        self.assertTrue(failed_report["post_attempt_integration_notes"]["submit_command_executed"])
+        self.assertFalse(failed_report["post_attempt_integration_notes"]["measured_evidence_promoted"])
+
+        submitted_report = MODULE.build_report(
+            {
+                "balfrin_access_preflight": self._ready_access(),
+                "submission_report": {"status": "submitted", "submitted_job_id": "987654"},
+            }
+        )
+
+        self.assertEqual(submitted_report["post_attempt_integration_notes"]["status"], "submitted")
+        self.assertEqual(submitted_report["post_attempt_integration_notes"]["submitted_job_id"], "987654")
+        self.assertFalse(submitted_report["post_attempt_integration_notes"]["measured_evidence_promoted"])
 
     def test_missing_package_inputs_return_a_fail_closed_report(self) -> None:
         report = MODULE.build_report(
