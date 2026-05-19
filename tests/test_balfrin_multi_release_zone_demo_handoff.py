@@ -263,6 +263,8 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("--reducer-chunk-count 2", pressure_command)
         self.assertIn("--output-family-mix", pressure_command)
         self.assertIn("scripts/submit_balfrin_probe.py", authorization_review_command)
+        self.assertIn("validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml", authorization_review_command)
+        self.assertNotIn("validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml", authorization_review_command)
         self.assertIn("--generate-only", authorization_review_command)
         self.assertIn("generate_balfrin_multi_release_zone_demo_handoff.py", command_plan["commands"][-1]["command"])
         self.assertEqual(command_plan["command_ids"], COMMAND_PLAN.command_ids(command_plan["commands"]))
@@ -288,6 +290,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("Blocked classification: blocked_pending_authorization", sbatch_script)
         self.assertIn("Later review command:", sbatch_script)
         self.assertIn("--authorized-submit", smallest_run["authorization_submit_command"])
+        self.assertIn(
+            "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml",
+            smallest_run["authorization_submit_command"],
+        )
+        self.assertNotIn(
+            "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml",
+            smallest_run["authorization_submit_command"],
+        )
         self.assertIn("--authorization-record", smallest_run["authorization_submit_command"])
         self.assertIn("balfrin_multi_zone_live_authorization_record_v1.yaml", smallest_run["authorization_submit_command"])
         self.assertIn("Deterministic merge order: sorted_chunk_id", sbatch_script)

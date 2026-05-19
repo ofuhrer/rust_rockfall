@@ -61,6 +61,22 @@ submit package so the package, authorization audit record, and
 `submit_balfrin_probe.py` agree on an executable manifest before any new live
 submission attempt.
 
+TB-320 repair: regenerate the handoff package with:
+
+```bash
+PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json
+```
+
+The repaired review and submit commands now pass
+`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`, whose
+schema is `public_real_site_conditional_pilot_run_v1`, to
+`scripts/submit_balfrin_probe.py`. The old target-area wrapper path remains a
+fail-closed contract mismatch. Before a GPT-5.5 Balfrin worker submits the
+two-zone job, the remaining live-run gates are Balfrin access/checkout hygiene,
+reviewed handoff package and authorization-record checksum agreement,
+reducer/output-budget readiness, preservation-gate planning, and the explicit
+`postproc` scheduler submit step.
+
 Boundary: this is not measured multi-zone Balfrin evidence. It does not
 authorize a larger run, non-`postproc` partition, distributed execution,
 scale-up claim, annual-frequency or physical-probability claim,

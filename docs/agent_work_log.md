@@ -3139,3 +3139,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: synthesis/docs/helper refresh only; no live Balfrin submission, no new simulation, no generated artifact commit, no scale-up claim, no annual/physical/risk semantics, and no operational claim.
 - Next task: backlog refill required.
+
+### TB-320: Repair Two-Zone Balfrin Submit Contract
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: repair the failed-closed two-zone Balfrin submit package path so the reviewed command uses the executable `public_real_site_conditional_pilot_run_v1` manifest contract instead of the target-area wrapper.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`, `tests/test_balfrin_authorized_multi_zone_submit.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/balfrin_two_zone_probe_tb309.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the multi-release-zone handoff generator and fallback measurement-path command to pass `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` into `scripts/submit_balfrin_probe.py`.
+  - Added a pre-submit contract gate to the smallest multi-zone authorization preflight so the TB-309 target-area wrapper mismatch fails closed as `blocked_submit_contract` before any access or scheduler submit path can pass.
+  - Regenerated a repaired handoff under `/tmp/rust_rockfall/tb320_repaired_two_zone_handoff` and verified with a temporary matching authorization record and fixture ready-access report that the local preflight reaches `ready_for_authorization_review` with `submit_contract_status=ready`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/submit_balfrin_probe.py scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py tests/test_balfrin_authorized_multi_zone_submit.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorized_multi_zone_submit tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb320_repaired_two_zone_handoff --format json --json-output /tmp/tb320_repaired_two_zone_handoff.json --text-output /tmp/tb320_repaired_two_zone_handoff.txt`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb320_repaired_two_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb320_repaired_two_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/rust_rockfall/tb320_repaired_two_zone_handoff/fixture_ready_access.json --format json --json-output /tmp/tb320_repaired_preflight.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: contract repair and local pre-submit validation only; no live Balfrin submission, no scale-up claim, no distributed execution claim, no operational claim, no annual/physical/risk semantics, and no generated run artifacts committed.
+- Next task: `TB-321`

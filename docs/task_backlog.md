@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-320: Repair Two-Zone Balfrin Submit Contract
-
-Goal: Repair or regenerate the failed-closed two-zone Balfrin submit package so it uses the executable `public_real_site_conditional_pilot_run_v1` contract instead of the target-area wrapper manifest.
-
-Capability gap reduced: The smallest multi-zone Balfrin path is currently blocked before `sbatch` by a manifest-contract mismatch.
-
-Why this outranks alternatives: No larger Balfrin scale measurement is meaningful until the first multi-zone submit contract can pass the existing access, readiness, output-budget, and preservation gates.
-
-Inspect first:
-
-- `docs/balfrin_two_zone_probe_tb309.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `tests/test_balfrin_authorized_multi_zone_submit.py`
-
-Deliverables:
-
-- A corrected two-zone submit package or package generator path that points at the executable pilot-run manifest contract.
-- Focused tests proving the previous TB-309 mismatch fails and the repaired package passes pre-submit contract validation.
-- Updated docs naming the repaired command and the remaining live-run gates.
-
-Definition of done:
-
-- The two-zone submit package passes local contract/preflight checks and is ready for a GPT-5.5 Balfrin worker to run through the live `postproc` gates.
-
-Boundaries: Contract repair only; no live Balfrin submission in this task, no scale-up claim, no operational claim, no annual/physical/risk semantics.
-
 ### TB-321: Execute Repaired Two-Zone Balfrin Probe
 
 Goal: Run the repaired bounded two-zone Balfrin probe on `postproc` after all access, submit-contract, output-budget, preservation, and evidence gates pass.

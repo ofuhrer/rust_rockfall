@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,7 @@ STATUS_BLOCKED_REDUCER_BUDGET = "blocked_reducer_budget"
 STATUS_BLOCKED_ACCESS = "blocked_access"
 STATUS_BLOCKED_PACKAGE = "blocked_reviewed_package"
 STATUS_BLOCKED_ACCESS_NOT_CHECKED = "blocked_balfrin_access_not_checked"
+STATUS_BLOCKED_SUBMIT_CONTRACT = "blocked_submit_contract"
 
 ACCESS_PREFLIGHT_COMMAND = (
     "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json"
@@ -113,9 +115,9 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
     review_only = dict(package.get("review_only_four_zone_package") or {})
     follow_up = dict(package.get("follow_up_recommendation") or {})
     minimum = dict(
-        review_only
-        or follow_up.get("minimum_measured_multi_zone_run")
+        follow_up.get("minimum_measured_multi_zone_run")
         or package.get("smallest_measured_multi_zone_run")
+        or review_only
         or {}
     )
     reducer_pressure = dict(
@@ -337,10 +339,69 @@ def _authorization_requirement(
     }
 
 
+def _submit_contract_status(run_shape: dict[str, Any]) -> dict[str, Any]:
+    command = str(run_shape.get("authorization_submit_command") or "").strip()
+    if not command:
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "command": command,
+            "probe_manifest_path": None,
+            "run_id": None,
+            "blocked_reason": "authorization submit command is missing from the reviewed handoff package",
+        }
+    try:
+        tokens = shlex.split(command)
+    except ValueError as exc:
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "command": command,
+            "probe_manifest_path": None,
+            "run_id": None,
+            "blocked_reason": f"authorization submit command could not be parsed: {exc}",
+        }
+
+    manifest_token: str | None = None
+    for idx, token in enumerate(tokens):
+        if token.endswith("scripts/submit_balfrin_probe.py") or token == "submit_balfrin_probe.py":
+            if idx + 1 < len(tokens):
+                manifest_token = tokens[idx + 1]
+            break
+    if manifest_token is None:
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "command": command,
+            "probe_manifest_path": None,
+            "run_id": None,
+            "blocked_reason": "authorization submit command does not name a probe manifest after scripts/submit_balfrin_probe.py",
+        }
+
+    manifest_path = Path(manifest_token)
+    if not manifest_path.is_absolute():
+        manifest_path = (ROOT / manifest_path).resolve()
+    try:
+        _command_plan, run_id = submit_driver._read_command_plan(manifest_path)
+    except Exception as exc:
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "command": command,
+            "probe_manifest_path": str(manifest_path),
+            "run_id": None,
+            "blocked_reason": str(exc),
+        }
+    return {
+        "status": "ready",
+        "command": command,
+        "probe_manifest_path": str(manifest_path),
+        "run_id": run_id,
+        "blocked_reason": "",
+    }
+
+
 def _overall_status(
     *,
     package_review: dict[str, Any],
     authorization_requirement: dict[str, Any],
+    submit_contract: dict[str, Any],
     access_report: dict[str, Any],
     reducer_budget: dict[str, Any],
     output_profile: dict[str, Any],
@@ -351,6 +412,8 @@ def _overall_status(
         return STATUS_BLOCKED_REDUCER_BUDGET, "; ".join(reducer_budget["blocked_reasons"])
     if output_profile["status"] != "ready":
         return STATUS_BLOCKED_REDUCER_BUDGET, "; ".join(output_profile["blocked_reasons"])
+    if submit_contract["status"] != "ready":
+        return STATUS_BLOCKED_SUBMIT_CONTRACT, submit_contract.get("blocked_reason", "")
     access_status = str(access_report.get("status") or STATUS_BLOCKED_ACCESS_NOT_CHECKED)
     if access_status != access_preflight.STATUS_READY:
         return STATUS_BLOCKED_ACCESS, f"Balfrin access preflight status is {access_status}"
@@ -383,9 +446,11 @@ def build_report(
     access_report = dict(balfrin_access_preflight or _missing_access_report())
     reducer_budget = _reducer_budget_status(package, run_shape)
     output_profile = _output_profile_status(run_shape)
+    submit_contract = _submit_contract_status(run_shape)
     preflight_status, blocked_reason = _overall_status(
         package_review=package_review,
         authorization_requirement=authorization_requirement,
+        submit_contract=submit_contract,
         access_report=access_report,
         reducer_budget=reducer_budget,
         output_profile=output_profile,
@@ -411,12 +476,14 @@ def build_report(
         "balfrin_access_status": access_report.get("status"),
         "reducer_budget_status": reducer_budget.get("status"),
         "output_profile_status": output_profile.get("status"),
+        "submit_contract_status": submit_contract.get("status"),
         "output_budget_acceptance_status": reducer_budget.get("output_budget_acceptance_status"),
         "output_budget_acceptance_validation": reducer_budget.get("output_budget_acceptance_validation", {}),
         "output_budget_acceptance_thresholds": reducer_budget.get("output_budget_acceptance_thresholds", {}),
         "authorization_record_allows_one_bounded_probe": authorization_requirement.get("status") == "authorized",
         "reviewed_handoff_package_requirement": package_review,
         "authorization_record_requirement": authorization_requirement,
+        "submit_contract_requirement": submit_contract,
         "balfrin_access_preflight_requirement": {
             "required": True,
             "command": ACCESS_PREFLIGHT_COMMAND,
@@ -452,6 +519,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     run_shape = dict(report.get("smallest_multi_zone_run_shape") or {})
     reducer_budget = dict(report.get("reducer_budget_requirement") or {})
     access_requirement = dict(report.get("balfrin_access_preflight_requirement") or {})
+    submit_contract = dict(report.get("submit_contract_requirement") or {})
     manifest_pruning_before = dict(reducer_budget.get("manifest_pruning_before") or {})
     manifest_pruning_after = dict(reducer_budget.get("manifest_pruning_after") or {})
     lines = [
@@ -468,6 +536,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reviewed package SHA-256: `{report.get('reviewed_handoff_package_sha256')}`",
         f"- Authorization record: `{report.get('authorization_record_path')}`",
         f"- Authorization record status: `{report.get('authorization_record_status')}`",
+        f"- Submit contract status: `{submit_contract.get('status')}`",
+        f"- Submit probe manifest: `{submit_contract.get('probe_manifest_path')}`",
         f"- Balfrin access status: `{access_requirement.get('consumed_status')}`",
         "",
         "## Smallest Run Shape",

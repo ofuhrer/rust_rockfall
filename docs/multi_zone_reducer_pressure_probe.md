@@ -290,3 +290,19 @@ metrics JSON, preservation gate, or measured result was produced. The next safe
 action is submit-contract repair or package regeneration, not a live scale step.
 See `docs/balfrin_two_zone_probe_tb309.md` for the checksums and exact error
 block.
+
+## TB-320 Submit-Contract Repair
+
+TB-320 repairs the package generator so the reviewed two-zone command uses the
+executable pilot-run manifest:
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml
+```
+
+The pre-submit authorization helper now validates that submit command's probe
+manifest contract before access or scheduler submission can pass. The remaining
+live-run gates are access/checkout hygiene, reviewed package and authorization
+record agreement, output-budget readiness, preservation/output-budget evidence
+capture, and the actual `postproc` `sbatch` execution. This is still only
+two-zone contract readiness, not measured multi-zone Balfrin evidence.

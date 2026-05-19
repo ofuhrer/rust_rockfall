@@ -72,6 +72,13 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
                         "Review the package JSON and Markdown together before any later authorization request."
                     ],
                     "reducer_pressure": constraint,
+                    "authorization_submit_command": (
+                        "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
+                        "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml "
+                        "--run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 "
+                        "--run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --authorized-submit "
+                        f"--reviewed-handoff-package {path} --authorization-record {path.parent / 'authorization_record.yaml'}"
+                    ),
                 }
             },
         }
@@ -269,6 +276,18 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             self.assertIn("required inputs are missing", report["blocked_reason"])
             write_outputs_mock.assert_not_called()
             run_mock.assert_not_called()
+
+    def test_submit_command_contract_rejects_target_area_wrapper_and_accepts_executable_manifest(self) -> None:
+        wrapper_manifest = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
+        executable_manifest = ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+
+        with self.assertRaisesRegex(ValueError, "schema_version must be public_real_site_conditional_pilot_run_v1"):
+            submit_driver._read_command_plan(wrapper_manifest)
+
+        command_plan, run_id = submit_driver._read_command_plan(executable_manifest)
+
+        self.assertEqual(run_id, "tschamut_public_conditional_gate_v1")
+        self.assertNotEqual(command_plan.get("run_status"), "no_go")
 
     def test_collect_run_metrics_distinguishes_measured_and_incomplete_roots(self) -> None:
         complete_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"

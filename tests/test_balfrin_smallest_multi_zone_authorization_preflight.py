@@ -135,6 +135,11 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         }
         if reducer_status == "blocked":
             constraint["blocked_reason"] = "requested reducer settings exceed measured max"
+        authorization_record_path = path.parent / "authorization.yaml"
+        authorization_submit_command = MODULE.handoff.build_authorized_submit_command(
+            reviewed_handoff_package_path=path,
+            authorization_record_path=authorization_record_path,
+        )
         manifest_pruning = None
         if compact_handoff_budget_status is not None:
             compact_projection = {
@@ -272,6 +277,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                         "Do not submit a live Balfrin job unless the conversation explicitly authorizes execution later.",
                     ],
                     "reducer_pressure": constraint,
+                    "authorization_submit_command": authorization_submit_command,
                 }
             },
         }
@@ -316,6 +322,12 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertEqual(report["balfrin_access_preflight_requirement"]["remote_checkout_hygiene"]["status"], "pass")
         self.assertEqual(report["reducer_budget_status"], "ready")
         self.assertEqual(report["output_profile_status"], "ready")
+        self.assertEqual(report["submit_contract_status"], "ready")
+        self.assertTrue(
+            report["submit_contract_requirement"]["probe_manifest_path"].endswith(
+                "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+            )
+        )
         self.assertEqual(report["output_budget_acceptance_status"], "accepted")
         self.assertEqual(
             report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
@@ -334,6 +346,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertIn("Before manifest bytes", text_report)
         self.assertIn("Exact blocking fields", text_report)
         self.assertIn("Replay-critical contract families", text_report)
+        self.assertIn("Submit contract status", text_report)
 
     def test_missing_authorization_record_blocks_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
@@ -375,6 +388,37 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "blocked_ssh_unavailable",
         )
         self.assertIn("blocked_ssh_unavailable", report["blocked_reason"])
+
+    def test_target_area_wrapper_submit_contract_fails_closed_before_access(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            package_sha = self._write_package(package)
+            payload = json.loads(package.read_text(encoding="utf-8"))
+            payload["follow_up_recommendation"]["minimum_measured_multi_zone_run"][
+                "authorization_submit_command"
+            ] = (
+                "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
+                "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml "
+                "--run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 "
+                "--run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --authorized-submit "
+                f"--reviewed-handoff-package {package} --authorization-record {auth}"
+            )
+            package.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            package_sha = hashlib.sha256(package.read_bytes()).hexdigest()
+            self._write_authorization(auth, package, package_sha)
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_submit_contract")
+        self.assertEqual(report["submit_contract_status"], "blocked_submit_contract")
+        self.assertIn("schema_version must be public_real_site_conditional_pilot_run_v1", report["blocked_reason"])
 
     def test_dirty_remote_checkout_blocks_multi_zone_pre_submit_gate(self) -> None:
         access = self._ready_access()

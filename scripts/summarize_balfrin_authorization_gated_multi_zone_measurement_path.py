@@ -180,7 +180,7 @@ def _submit_command(preflight: dict[str, Any], run_root: Path) -> str:
             return command.strip()
     return (
         "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
-        f"{authorization_preflight.handoff.DEFAULT_TARGET_AREA_CONTRACT} "
+        f"{authorization_preflight.handoff.DEFAULT_EXECUTABLE_PILOT_RUN_CONTRACT} "
         f"--run-root {run_root} "
         "--run-id tschamut_public_balfrin_multi_release_zone_v1 "
         "--partition postproc --authorized-submit "

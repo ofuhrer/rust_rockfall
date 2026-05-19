@@ -38,6 +38,7 @@ DEFAULT_ARTIFACT_DIR = Path("/tmp/rust_rockfall/balfrin_multi_release_zone_demo_
 DEFAULT_CANDIDATE_OUTPUT_ROOT = DEFAULT_ARTIFACT_DIR / "candidate_outputs"
 DEFAULT_TARGET_AREA_OUTPUT_ROOT = DEFAULT_ARTIFACT_DIR / "target_area_handoff"
 DEFAULT_TARGET_AREA_CONTRACT = ROOT / "validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml"
+DEFAULT_EXECUTABLE_PILOT_RUN_CONTRACT = ROOT / "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
 DEFAULT_OUTPUT_PROFILE_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "output_profile"
 DEFAULT_REDUCER_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "reducer_pressure"
 DEFAULT_RESTARTABILITY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "restartability"
@@ -2492,7 +2493,7 @@ def build_authorization_review_command() -> str:
             "run",
             "python",
             rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
-            rel(DEFAULT_TARGET_AREA_CONTRACT),
+            rel(DEFAULT_EXECUTABLE_PILOT_RUN_CONTRACT),
             "--run-root",
             str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
             "--run-id",
@@ -2520,7 +2521,7 @@ def build_authorized_submit_command(*, reviewed_handoff_package_path: Path, auth
             "run",
             "python",
             rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
-            rel(DEFAULT_TARGET_AREA_CONTRACT),
+            rel(DEFAULT_EXECUTABLE_PILOT_RUN_CONTRACT),
             "--run-root",
             str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
             "--run-id",
