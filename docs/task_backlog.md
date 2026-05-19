@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-276: Real AOI Golden Fixture Package
-
-Goal: Add one compact clean-checkout-safe AOI fixture package that exercises the AOI workflow with minimized real-like public-data metadata instead of only synthetic terrain assumptions.
-
-Capability gap reduced: The current end-to-end AOI proof is useful, but it remains too fixture/synthetic-heavy to protect the real-user path from schema and provenance drift.
-
-Why this outranks alternatives: A small golden fixture gives every later UX and workflow task a stable regression target without requiring large ignored geodata roots.
-
-Inspect first:
-
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/fixtures/second_site_public_geodata_preflight/minimal_synthetic_aoi.yaml`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A minimized committed fixture package with AOI manifest, terrain/cache metadata, tiny terrain crop, source/scenario records, and provenance fields sufficient for clean-checkout regression.
-- Tests proving the fixture can pass bootstrap, staging verification, prepared-input building, command planning, tiny smoke, packaging, and QA review without ignored local state.
-- Explicit labels that the fixture is a regression fixture, not physical validation evidence.
-
-Definition of done:
-
-- The repo has one stable AOI-to-map regression fixture that catches user-workflow breakage without needing private or ignored artifacts.
-
-Boundaries: Fixture/regression only; no heavy data, no live Balfrin submission, no physical credibility claim, no annual-frequency semantics, no operational claim, and no real-world hazard product.
-
 ### TB-277: AOI Front-Door Status UX Tightening
 
 Goal: Normalize the AOI front-door status output so the text and JSON modes are concise, stable, and directly actionable for a new user.

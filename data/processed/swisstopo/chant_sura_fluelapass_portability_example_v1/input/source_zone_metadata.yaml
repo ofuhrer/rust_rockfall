@@ -1,0 +1,36 @@
+schema_version: source_zone_metadata_v1
+zone_id: chant_sura_fluelapass_real_zone_001
+source_zone_id: chant_sura_fluelapass_real_zone_001
+title: Chant Sura / Fluelapass AOI regression source-zone metadata
+source_dataset: chant_sura_fluelapass_regression_fixture
+source_url: https://example.invalid/chant-sura-fluelapass/aoi-regression-fixture
+license: regression fixture for repository tests; real source-area inputs must retain their own license/provenance
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+geometry:
+  type: polygon
+  coordinates:
+    - [2793001.0, 1180201.0]
+    - [2793006.0, 1180201.0]
+    - [2793006.0, 1180206.0]
+    - [2793001.0, 1180206.0]
+  vertices:
+    - [2793001.0, 1180201.0]
+    - [2793006.0, 1180201.0]
+    - [2793006.0, 1180206.0]
+    - [2793001.0, 1180206.0]
+release_points:
+  - release_point_id: chant_sura_fluelapass_real_release_001
+    x: 2793002.0
+    y: 1180202.0
+    z_offset_m: 0.05
+    notes: regression fixture release point for preflight and packaging tests
+provenance:
+  intended_use: chant_sura_fluelapass_aoi_regression_fixture
+  notes:
+    - Regression fixture source-zone metadata; not a real field survey.
+    - Exercises the site-specific source-zone contract shape.

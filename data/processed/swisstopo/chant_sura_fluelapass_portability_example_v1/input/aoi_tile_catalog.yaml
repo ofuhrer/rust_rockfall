@@ -1,0 +1,23 @@
+schema_version: swisstopo_aoi_tile_catalog_v1
+catalog_status: metadata_only
+source_product: swissALTI3D
+product_id: swissalti3d_2m
+crs: EPSG:2056
+resolution_m: 2
+expected_staging_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1
+tile_size_m: 1000
+tiles:
+  - tile_id: 2793-1180
+    source_product: swissALTI3D
+    source_filename: swissalti3d_2019_2793-1180_2_2056_5728.tif
+    source_url: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    product_version: 2019
+    product_date: 2019-01-01
+    license: swisstopo open data terms; verify current terms before redistribution
+    extent_lv95_m:
+      xmin: 2793000.0
+      ymin: 1180000.0
+      xmax: 2794000.0
+      ymax: 1181000.0
+    notes:
+      - Regression fixture tile catalog entry for clean-checkout AOI planning.

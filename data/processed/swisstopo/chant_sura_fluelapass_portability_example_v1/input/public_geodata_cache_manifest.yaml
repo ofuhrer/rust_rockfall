@@ -1,0 +1,21 @@
+schema_version: public_geodata_cache_verification_manifest_v1
+candidate_site_id: chant_sura_fluelapass_portability_example_v1
+candidate_site_name: Chant Sura / Fluelapass portability example
+products:
+  - product_id: terrain_crop
+    source_product_id: swissalti3d_fixture_terrain_crop
+    source_product_name: swissALTI3D
+    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    product_version_or_date: 2019-01-01
+    tile_id_or_delivery_identifier: 2793-1180
+    checksum_sha256: d6d70bad700a5f587cd3294d7c67dfc46c2ba9e5b0003373c58d5ec0e0ba2741
+    crs: EPSG:2056
+    resolution_m: 2.0
+    crop_extent_lv95_m:
+      xmin: 2793000.0
+      ymin: 1180200.0
+      xmax: 2793008.0
+      ymax: 1180208.0
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    staged_path: terrain.asc
+    metadata_path: terrain_metadata.yaml

@@ -157,6 +157,10 @@ from AOI preparation to a tiny diagnostic map package:
   layer-presence and boundary warnings for terrain, source/scenario metadata,
   hazard layers, context availability, COG status, fixture-backed inputs, and
   conditional-only weights.
+- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/`
+  is the checked-in AOI regression fixture package that keeps the clean
+  checkout path honest with a tiny terrain crop, cache metadata, source and
+  scenario records, and explicit regression-only labeling.
 - The AOI regression in `tests/test_aoi_to_prepared_pilot_dry_run.py` runs the
   compact path under `/tmp` and asserts the first broken workflow step when the
   prepared-pilot command path remains blocked.

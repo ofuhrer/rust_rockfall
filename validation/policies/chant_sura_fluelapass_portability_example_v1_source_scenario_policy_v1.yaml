@@ -1,17 +1,28 @@
-# Synthetic Chant Sura / Fluelapass source-scenario policy fixture.
-# The policy records the portable contract shape only; it does not authorize
-# any second-site validation ensemble or hazard build.
 schema_version: 1
-policy_id: chant_sura_fluelapass_fixture_source_scenario_policy_v1
+policy_id: chant_sura_fluelapass_real_source_scenario_policy_v1
 site_id: chant_sura_fluelapass_portability_example_v1
-source_zone_id_pattern: chant_sura_*
+source_zone_id_pattern: chant_sura_fluelapass_real_*
 source_zone_geometry: LV95 polygon
 release_point_table: one row per release point
 block_scenario_table: CSV table with one row per block / scenario record
 scenario_probability_semantics: normalized within a block family; no annual frequency claim
 observed_deposition_or_field_observation: optional if a site-specific QA source exists
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
 provenance:
-  intended_use: chant_sura_fluelapass_minimal_preflight_fixture
+  intended_use: chant_sura_fluelapass_aoi_regression_fixture
   notes:
-    - Synthetic source-scenario policy fixture for preflight staging only.
+    - Regression fixture policy for preflight and packaging tests only.
     - No annual-frequency, operational, risk, or exposure claims are authorized.

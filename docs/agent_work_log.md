@@ -2161,3 +2161,19 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: local file staging only; no network download, no simulation, no source-frequency semantics, no physical validation claim, no operational claim, and no heavy public geodata committed.
 - Next task: `TB-276`
+
+### TB-276: Real AOI Golden Fixture Package
+
+- Date: 2026-05-19
+- Commit: to be recorded
+- Objective: add a compact clean-checkout-safe AOI regression fixture package with minimized public-data-like metadata and explicit regression-only labeling.
+- Files changed: `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/README.md`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/aoi_manifest.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv`, `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`, `tests/test_aoi_golden_fixture_package.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a committed AOI regression fixture package under `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/` with an AOI manifest, cache manifest, tiny terrain crop, terrain metadata, AOI tile catalog, source-zone metadata, scenario table, and regression-only policy labels.
+  - Added a dedicated integration test that copies the fixture package into a temporary clean checkout and exercises bootstrap, cache verification, prepared-input building, command planning, tiny smoke hazard packaging, and QA review without ignored local state.
+  - Updated the preparation docs to point at the new regression fixture package and removed TB-276 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_golden_fixture_package tests.test_aoi_terrain_preprocessing`
+- Result/status: completed
+- Boundaries: fixture/regression only; no heavy data, no live Balfrin submission, no physical credibility claim, no annual-frequency semantics, no operational claim, and no real-world hazard product.
+- Next task: `TB-277`

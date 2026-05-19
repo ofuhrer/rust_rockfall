@@ -1,0 +1,71 @@
+schema_version: 1
+manifest_type: aoi_golden_fixture_package_v1
+pilot_id: chant_sura_fluelapass_portability_example_v1
+pilot_status: regression_fixture
+operational_status: research_diagnostic
+validation_evidence_status: not_validation_evidence
+fixture_label: clean_checkout_aoi_regression_fixture
+selected_domain:
+  name: Chant Sura / Fluelapass AOI regression fixture
+  purpose: aoi_workflow_regression_target
+  selection_status: regression_fixture
+  coordinate_reference_system:
+    epsg: 2056
+    horizontal_name: CH1903+ / LV95
+    vertical_datum: LN02
+    coordinate_unit: m
+    height_unit: m
+  extent_lv95_m:
+    xmin: 2793000.0
+    ymin: 1180200.0
+    xmax: 2793008.0
+    ymax: 1180208.0
+  source_zone_status: regression_fixture_source_zone_record_present
+  source_scenario_policy_path: validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+local_layout:
+  raw_root: data/raw/swisstopo
+  processed_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1
+  private_validation_root: validation/private/chant_sura_fluelapass_portability_example_v1
+  hazard_results_root: hazard/results/chant_sura_fluelapass_portability_example_v1
+  raw_files_committed: false
+  processed_large_files_committed: false
+expected_processed_input_root: input
+expected_processed_context_root: context
+expected_terrain_crop_path: input/terrain.asc
+expected_aoi_tile_catalog_path: input/aoi_tile_catalog.yaml
+expected_terrain_metadata_path: input/terrain_metadata.yaml
+expected_source_zone_metadata_path: input/source_zone_metadata.yaml
+expected_scenario_table_path: input/scenario_table.csv
+expected_source_scenario_policy_path: validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+expected_validation_private_root: validation/private/chant_sura_fluelapass_portability_example_v1
+expected_hazard_results_root: hazard/results/chant_sura_fluelapass_portability_example_v1
+cache_contract_path: input/public_geodata_cache_manifest.yaml
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - Regression fixture only; not physical validation evidence.
+    - Current outputs remain diagnostic or conditional and must not be read as operational hazard products.
+aoi_geometry:
+  geometry_type: polygon
+  coordinates:
+    - - 2793001.0
+      - 1180201.0
+    - - 2793006.0
+      - 1180201.0
+    - - 2793006.0
+      - 1180206.0
+    - - 2793001.0
+      - 1180206.0
+  geometry_hash: 3f99ed6b12c6a8e4d8e9e9fbf0e8f39f32e3e7d4d44dd28fefbc5b7fd9e97d45
