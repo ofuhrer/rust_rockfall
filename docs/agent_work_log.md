@@ -1953,3 +1953,33 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: handoff budget repair only; no live Balfrin submission, no loss of replayability, no distributed reducer, no physics change, and no operational claim.
 - Next task: `TB-267`
+
+### TB-267: Smallest Multi-Zone Balfrin Postproc Probe
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: submit the exact smallest bounded two-zone Balfrin postproc probe only if access, reviewed handoff, authorization, reducer-budget, output-profile, and preservation gates were ready; otherwise record the exact pre-submit blocker.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the Balfrin access preflight successfully and preserved the JSON at `/tmp/tb267_balfrin_access_preflight.json`; SSH, remote checkout visibility, preserved target-area run-root visibility, and scheduler query all passed read-only.
+  - Ran the smallest multi-zone authorization preflight with that access report and preserved JSON/text outputs at `/tmp/tb267_authorization_preflight.json` and `/tmp/tb267_authorization_preflight.txt`.
+  - Stopped before submission because the preflight reported `blocked_reducer_budget`: the reviewed package hash was `0a3802882b1fefb3ee35b63962fca2befb24e4003d213bacb53fdf085a61d5e1`, Balfrin access was `ready_for_read_only_collection`, the output profile was `ready`, but the reducer budget remained blocked at first bottleneck `manifest_size_bytes`; the authorization record was also missing.
+  - Recorded the exact blocker: `blocked: requested reducer_worker_count=2 reaches measured max 2; handoff output-budget projection blocked: first bottleneck manifest_size_bytes; current handoff projection remains blocked_fixture_backed at first bottleneck manifest_size_bytes; replay-critical families retained: trajectory_csv, deposition_csv, impact_events_csv, trajectory_merge_state, reducer_merge_state`.
+  - No SLURM job was submitted, no job id was produced, and no metrics JSON, preservation gate, or post-run collector output was promoted as measured evidence.
+  - Removed TB-267 from the active backlog before recording this work-log entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-267 --format json`
+  - `rg -n "^### TB-267:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb267_balfrin_access_preflight.json --json-output /tmp/tb267_authorization_preflight.json --text-output /tmp/tb267_authorization_preflight.txt --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py --authorization-preflight /tmp/tb267_authorization_preflight.json --balfrin-access-json /tmp/tb267_balfrin_access_preflight.json --json-output /tmp/tb267_measurement_path.json --text-output /tmp/tb267_measurement_path.txt --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorization_gated_multi_zone_measurement_path tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: blocked_unresolved
+- Boundaries: fail-closed pre-submit blocker only; no live Balfrin submission, no retry, no larger ensemble, no distributed execution, no scale-up, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-268`

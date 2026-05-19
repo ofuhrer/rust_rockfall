@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-267: Smallest Multi-Zone Balfrin Postproc Probe
-
-Goal: Submit the exact smallest bounded multi-zone Balfrin probe on postprocessing nodes once TB-266 and the authorization preflight are ready.
-
-Capability gap reduced: The repository lacks measured many-release-zone Balfrin evidence, which is the next architectural step toward a fuller demonstration.
-
-Why this outranks alternatives: After target-area metrics are closed and the smallest handoff budget is repaired, a measured two-zone probe is more informative than more dry-run packaging.
-
-Inspect first:
-
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `tests/test_balfrin_authorization_gated_multi_zone_measurement_path.py`
-
-Deliverables:
-
-- A live Balfrin postproc submission for the exact smallest multi-zone run shape: 2 release zones, 2 scenarios, 1000 target trajectories, 2 trajectory workers, 2 reducer workers, 2 reducer chunks, summary-only conditional curves, no grid CSV export, and a deterministic run root under `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`.
-- Recorded SLURM job id, command plan, reviewed handoff package hash, authorization record, metrics JSON, preservation gate, and post-run collector output.
-- A blocked report if access, budget, authorization preflight, or preservation requirements fail before submission.
-
-Definition of done:
-
-- The project has either measured smallest multi-zone Balfrin evidence or a precise pre-submit blocker, with no partial run promoted as evidence.
-
-Boundaries: This task explicitly allows one bounded Balfrin `postproc` submission for the named two-zone probe only; no retries without blocker analysis, no larger ensemble, no distributed execution, no annual-frequency or physical-probability semantics, no risk/exposure/vulnerability product, and no operational claim.
-
 ### TB-268: Multi-Zone Evidence Integration And Reducer Scaling Update
 
 Goal: Integrate the TB-267 multi-zone result into reducer-pressure, evidence-bundle, closure, and Swiss-wide envelope helpers.
