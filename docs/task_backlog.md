@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-297: Hazard Builder Phase Timing Instrumentation
-
-Goal: Add structured phase timing and memory telemetry to `build_hazard_layers.py` and its output-writer modules for input reading, accumulation, reducer merge, raster writing, COG/report writing, and manifest generation.
-
-Capability gap reduced: Hazard-building efficiency cannot be controlled without phase-level measurements from real and fixture runs.
-
-Why this outranks alternatives: Previous throughput evidence points at Python accumulation and output writing, but future optimization needs stable per-phase telemetry.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_output_writers.py`
-- `scripts/hazard_output_manifests.py`
-- `scripts/hazard_output_reports.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A stable timing JSON emitted by hazard-layer builds with per-phase wall time, input/output counts, bytes, grid dimensions, output-profile settings, and optional peak memory where available.
-- Tests proving telemetry exists for fixture builds and does not change hazard outputs or manifest semantics.
-- Documentation of timing fields in the throughput report or output-profile contract.
-
-Definition of done:
-
-- Every relevant hazard-layer build can produce comparable phase timing evidence without changing numerical outputs.
-
-Boundaries: Instrumentation only; no performance optimization, no behavior change, no live Balfrin submission, no hazard-value changes, and no operational claim.
-
 ### TB-298: Hazard Accumulation Optimization Hypothesis Bench
 
 Goal: Build a benchmark harness for candidate hazard-accumulation optimizations and require before/after evidence before any implementation is accepted.

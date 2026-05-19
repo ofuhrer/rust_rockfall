@@ -401,6 +401,7 @@ class HazardLayerTests(unittest.TestCase):
 
             metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
             manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            phase_timing = json.loads((output_dir / "hazard_fixture_plane_phase_timing.json").read_text())
             self.assertTrue(metadata["hazard_only"])
             self.assertFalse(metadata["risk_modeling_included"])
             self.assertEqual(metadata["inputs"]["trajectory_count"], 2)
@@ -447,10 +448,20 @@ class HazardLayerTests(unittest.TestCase):
             self.assertGreaterEqual(manifest["performance"]["json_serialization_seconds"], 0.0)
             self.assertGreaterEqual(manifest["performance"]["manifest_write_seconds"], 0.0)
             self.assertGreaterEqual(manifest["performance"]["output_write_kind_seconds"].get("json", 0.0), 0.0)
+            self.assertEqual(manifest["performance"]["output_file_count"], len(manifest["outputs"]))
+            self.assertFalse(any(output["path"].endswith("_phase_timing.json") for output in manifest["outputs"]))
             hazard_outputs = [output for output in manifest["outputs"] if output["kind"] == "hazard_layer"]
             self.assertTrue(hazard_outputs)
             self.assertRegex(hazard_outputs[0]["sha256"], r"^[0-9a-f]{64}$")
             self.assertFalse(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
+            self.assertEqual(phase_timing["schema_version"], "hazard_builder_phase_timing_v1")
+            self.assertEqual(phase_timing["grid"]["ncols"], manifest["grid"]["ncols"])
+            self.assertEqual(phase_timing["grid"]["nrows"], manifest["grid"]["nrows"])
+            self.assertEqual(phase_timing["output_profile"]["grid_csv_export"], manifest["raster_exports"]["grid_csv_export"])
+            self.assertGreaterEqual(phase_timing["phase_seconds"]["input_read_seconds"], 0.0)
+            self.assertGreaterEqual(phase_timing["phase_seconds"]["accumulation_seconds"], 0.0)
+            self.assertEqual(phase_timing["phase_seconds"]["report_write_seconds"], 0.0)
+            self.assertIsNone(phase_timing["output"]["phase_timing"]["total_bytes"])
             artifacts = {artifact["kind"]: artifact for artifact in manifest["input_artifacts"]}
             self.assertEqual(artifacts["trajectory_samples"]["file_count"], 2)
             self.assertRegex(artifacts["trajectory_samples"]["sha256"], r"^[0-9a-f]{64}$")
@@ -897,6 +908,7 @@ class HazardLayerTests(unittest.TestCase):
                 self.assertEqual(png_files, [])
 
             manifest = json.loads((plotted_dir / "hazard_fixture_plane_manifest.json").read_text())
+            phase_timing = json.loads((plotted_dir / "hazard_fixture_plane_phase_timing.json").read_text())
             self.assertTrue(manifest["performance"]["plots_enabled"])
             self.assertGreaterEqual(manifest["performance"]["plot_render_seconds"], 0.0)
             self.assertGreaterEqual(manifest["performance"]["core_output_write_seconds"], 0.0)
@@ -904,6 +916,8 @@ class HazardLayerTests(unittest.TestCase):
                 self.assertIn("png", manifest["performance"]["output_write_kind_seconds"])
             self.assertIn("html", manifest["performance"]["output_write_kind_seconds"])
             self.assertTrue(any(output["kind"] == "hazard_report" for output in manifest["outputs"]))
+            self.assertGreater(phase_timing["phase_seconds"]["report_write_seconds"], 0.0)
+            self.assertTrue(phase_timing["output_profile"]["plots_enabled"])
 
     def test_exceedance_layers_are_additive_and_manifested(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

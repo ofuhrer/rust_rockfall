@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -73,3 +74,22 @@ def write_file_text(
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
+
+
+def write_json_text(
+    path: Path,
+    payload: Any,
+    kind: str,
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> None:
+    write_file_text(
+        path,
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        kind,
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )

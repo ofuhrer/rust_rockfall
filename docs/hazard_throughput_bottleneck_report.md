@@ -93,6 +93,24 @@ The safest next implementation slice is therefore an explicit-grid benchmark
 mode/update for the synthetic benchmark runner, followed by a focused
 trajectory-accumulation optimization pass.
 
+## Phase Timing Contract
+
+`scripts/build_hazard_layers.py` now emits a stable sidecar timing file next to
+each hazard manifest: `<prefix>_phase_timing.json`. The file is fixture-friendly
+JSON with `schema_version: hazard_builder_phase_timing_v1` and records:
+
+- `grid`: output grid dimensions and source.
+- `output_profile`: the writer and profile settings that affect comparable runs.
+- `input`: file counts, bytes, and hazard-input row counts.
+- `output`: total output counts/bytes plus raster, report, and manifest groups.
+- `phase_seconds`: input reading, accumulation, reducer merge, raster write,
+  report write, manifest generation, COG export, and total wall time.
+- `memory.peak_rss_kb`: optional peak RSS when the platform exposes it.
+
+`input_read_seconds` includes direct file reads and bounds discovery. The timing
+file is a sidecar artifact and does not change hazard-layer values or manifest
+semantics.
+
 ## Multi-Zone Scratch Profile
 
 TB-209 added a deterministic multi-zone scratch-root profiler at

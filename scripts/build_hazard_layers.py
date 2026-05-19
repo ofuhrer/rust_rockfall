@@ -14,6 +14,7 @@ import hashlib
 import os
 import json
 import math
+import resource
 import socket
 import struct
 import time
@@ -36,6 +37,7 @@ from scripts.hazard_output_writers import (
     register_written_output as _register_written_output,
     safe_sha256_hex as _safe_sha256_hex,
     sha256_file,
+    write_json_text,
     write_file_text,
     write_text,
 )
@@ -717,6 +719,7 @@ def run_trajectory_chunk(
     partial_state_path: Path,
     execution_signature: str,
     merge_group_id: str | None = None,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
 ) -> TrajectoryChunkResult:
     warnings: list[str] = []
     trajectory_started = time.perf_counter()
@@ -728,7 +731,11 @@ def run_trajectory_chunk(
     completion_reason = None
     try:
         for trajectory_path in chunk.trajectory_paths:
-            batch = read_trajectory_sample_batch(trajectory_path, warnings)
+            batch = read_trajectory_sample_batch(
+                trajectory_path,
+                warnings,
+                phase_telemetry=phase_telemetry,
+            )
             if batch is None:
                 continue
             trajectory_sample_count += len(batch.samples)
@@ -886,6 +893,7 @@ def run_trajectory_generation(
     scheduler_count: int = 1,
     max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
     lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
 ) -> tuple[TrajectoryExecutionSummary, list[TrajectoryChunk]]:
     if worker_count < 1:
         raise SystemExit("--trajectory-workers must be at least 1")
@@ -1139,6 +1147,7 @@ def run_trajectory_generation(
                         partial_state_path=trajectory_chunk_state_path(spec[0].chunk_id, chunk_dir),
                         execution_signature=spec[4],
                         merge_group_id=chunk_plan.get("merge_group_id"),
+                        phase_telemetry=phase_telemetry,
                     ),
                     scheduled_run_specs,
                 )
@@ -1797,6 +1806,34 @@ class HazardAccumulationTimings:
     trajectory_accumulation_seconds: float = 0.0
     impact_accumulation_seconds: float = 0.0
     normalization_seconds: float = 0.0
+
+
+@dataclass
+class HazardBuildPhaseTelemetry:
+    input_read_seconds: float = 0.0
+    reducer_merge_seconds: float = 0.0
+
+    def add_input_read(self, elapsed_seconds: float) -> None:
+        self.input_read_seconds += max(0.0, elapsed_seconds)
+
+    def add_reducer_merge(self, elapsed_seconds: float) -> None:
+        self.reducer_merge_seconds += max(0.0, elapsed_seconds)
+
+
+def peak_rss_kb() -> int | None:
+    try:
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    except Exception:  # pragma: no cover - platform-specific fallback
+        return None
+    if sys.platform == "darwin":
+        return int(rss // 1024)
+    return int(rss)
+
+
+def number_or_zero(value: Any) -> float:
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return float(value)
+    return 0.0
 
 
 @dataclass
@@ -2581,14 +2618,18 @@ def main_with_args(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-plots", action="store_true", help="write core hazard outputs only; skip PNG and HTML report rendering")
     args = parser.parse_args(argv)
 
+    case_started = time.perf_counter()
     case = load_yaml(args.case) if args.case else {}
     if args.case:
         case["_path"] = str(args.case)
+
     case_id = str(case.get("case_id") or args.prefix or "hazard_layers")
     prefix = args.prefix or case_id
     output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    phase_telemetry = HazardBuildPhaseTelemetry()
+    phase_telemetry.add_input_read(time.perf_counter() - case_started)
     trajectory_paths = resolve_trajectory_paths(case, args.trajectory, args.ensemble_trajectories_dir)
     deposition_path = args.deposition or first_case_output_path(case, "ensemble_deposition_csv")
     explicit_csv_impact_inputs = bool(args.impact_events or args.ensemble_impact_events_dir)
@@ -2608,14 +2649,30 @@ def main_with_args(argv: list[str] | None = None) -> int:
     diagnostics_path = args.diagnostics or first_case_output_path(case, "diagnostics_json")
 
     input_warnings: list[str] = []
+    diagnostics_started = time.perf_counter()
     diagnostics = read_json(diagnostics_path) if diagnostics_path and diagnostics_path.exists() else {}
+    phase_telemetry.add_input_read(time.perf_counter() - diagnostics_started)
     if diagnostics_path:
         diagnostics["_path"] = str(diagnostics_path)
+
+    probability_started = time.perf_counter()
     probability_config = parse_hazard_probability(case)
+    probability_state = load_hazard_probability_state(
+        probability_config,
+        trajectory_paths,
+        deposition_path,
+        impact_event_paths,
+        impact_event_parquet_paths,
+    )
+    phase_telemetry.add_input_read(time.perf_counter() - probability_started)
+
+    map_package_started = time.perf_counter()
     map_package_config = parse_hazard_map_package(case, args)
     raster_export_config = parse_raster_export_config(case, args)
     conditional_curve_export = parse_conditional_curve_export(case, args)
     pilot_gis_package_config = parse_pilot_gis_package(case, args, raster_export_config)
+    map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
+    phase_telemetry.add_input_read(time.perf_counter() - map_package_started)
 
     explicit_grid = parse_explicit_grid(args)
     if explicit_grid:
@@ -2633,18 +2690,11 @@ def main_with_args(argv: list[str] | None = None) -> int:
             input_warnings,
         )
         bounds_discovery_seconds = time.perf_counter() - bounds_started
+        phase_telemetry.add_input_read(bounds_discovery_seconds)
         grid, grid_source = bounds.to_grid(args.cell_size), "auto"
     terrain = TerrainSampler.from_case(case)
     block_radius_m = float((case.get("block") or {}).get("radius", 0.0) or 0.0)
     statistic_config = parse_hazard_statistics(case, args)
-    probability_state = load_hazard_probability_state(
-        probability_config,
-        trajectory_paths,
-        deposition_path,
-        impact_event_paths,
-        impact_event_parquet_paths,
-    )
-    map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
 
     accumulation_started = time.perf_counter()
     trajectory_execution = None
@@ -2660,6 +2710,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             scheduler_count=args.scheduler_count,
             max_chunk_attempts=args.max_chunk_attempts,
             lease_seconds=args.chunk_claim_ttl_seconds,
+            phase_telemetry=phase_telemetry,
         )
         trajectory_chunk_manifests = [
             output_dir / "trajectory_chunks" / f"{chunk_id}_manifest.json"
@@ -2695,6 +2746,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         scheduler_count=args.scheduler_count,
         max_chunk_attempts=args.max_chunk_attempts,
         lease_seconds=args.chunk_claim_ttl_seconds,
+        phase_telemetry=phase_telemetry,
     )
     input_warnings.extend(reducer_warnings)
     deposition_accumulation_seconds = reducer_timings.deposition_accumulation_seconds
@@ -3015,10 +3067,13 @@ def main_with_args(argv: list[str] | None = None) -> int:
         raster_export_config,
     )
     manifest["performance"]["manifest_write_seconds"] = 0.0
+    manifest_serialization_started = time.perf_counter()
+    manifest_text = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    manifest_serialization_seconds = time.perf_counter() - manifest_serialization_started
     manifest_start = time.perf_counter()
     write_file_text(
         hazard_manifest_path,
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        manifest_text,
         "json",
         output_file_metadata,
         output_write_kind_seconds,
@@ -3026,19 +3081,145 @@ def main_with_args(argv: list[str] | None = None) -> int:
         elapsed_seconds=0.0,
     )
     manifest["performance"]["manifest_write_seconds"] = time.perf_counter() - manifest_start
+    manifest["performance"]["manifest_serialization_seconds"] = manifest_serialization_seconds
 
+    cog_export_seconds = 0.0
     if raster_export_config.cog:
         if map_package_state is None or pilot_gis_package_config is None:
             raise SystemExit("--export-cog requires both map-package metadata and --pilot-gis-package")
         cog_package_output_root = args.cog_package_output_root or output_dir.parent / f"{output_dir.name}_cog_poc"
         if cog_package_output_root == output_dir:
             raise SystemExit("--cog-package-output-root must differ from --output-dir")
+        cog_started = time.perf_counter()
         cog_package_report = export_cog_package(output_dir, cog_package_output_root, overwrite=True)
         if cog_package_report.get("status") not in {"cog_package_ready", "cog_package_poc_ready"}:
             raise SystemExit(
                 f"COG post-export failed for {output_dir}: {cog_package_report.get('error') or cog_package_report.get('status')}"
             )
+        cog_export_seconds = time.perf_counter() - cog_started
         print(f"wrote COG-ready GIS package to {cog_package_output_root}")
+
+    json_write_seconds_before_timing = output_write_kind_seconds.get("json", 0.0)
+    phase_timing_path = output_dir / f"{prefix}_phase_timing.json"
+    hazard_manifest_bytes = hazard_manifest_path.stat().st_size if hazard_manifest_path.exists() else 0
+    raster_output_files = [
+        output
+        for output in manifest["outputs"]
+        if output.get("kind") == "hazard_layer" and output.get("format") in {"csv_grid", "esri_ascii_grid", "geotiff"}
+    ]
+    report_output_files = [
+        output
+        for output in manifest["outputs"]
+        if output.get("kind") == "hazard_report" or output.get("format") in {"png", "html"}
+    ]
+    manifest_output_files = [
+        output
+        for output in manifest["outputs"]
+        if output.get("kind") in {
+            "hazard_metadata",
+            "map_package_manifest",
+            "pilot_gis_package_manifest",
+            "reducer_execution_plan",
+            "reducer_execution_index",
+            "reducer_merge_state",
+            "reducer_chunk_manifest",
+            "trajectory_execution_plan",
+            "trajectory_execution_index",
+            "trajectory_merge_state",
+            "trajectory_chunk_manifest",
+        }
+    ]
+    phase_timing_report = {
+        "schema_version": "hazard_builder_phase_timing_v1",
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "case_id": manifest.get("case_id"),
+        "case_title": case.get("title"),
+        "output_dir": str(output_dir),
+        "phase_timing_path": str(phase_timing_path),
+        "grid": manifest.get("grid"),
+        "output_profile": {
+            "grid_csv_export": raster_export_config.grid_csv_export,
+            "geotiff": raster_export_config.geotiff,
+            "cog": raster_export_config.cog,
+            "plots_enabled": plots_enabled,
+            "conditional_curve_export": conditional_curve_export.mode,
+            "trajectory_workers": args.trajectory_workers,
+            "reducer_workers": args.reducer_workers,
+            "export_cog_requested": bool(raster_export_config.cog),
+            "pilot_gis_package": pilot_gis_package_config is not None,
+            "map_package_manifest": map_package_state is not None,
+        },
+        "input": {
+            "file_count": sum(int(artifact.get("file_count") or 0) for artifact in manifest.get("input_artifacts", [])),
+            "total_bytes": sum(int(artifact.get("total_bytes") or 0) for artifact in manifest.get("input_artifacts", [])),
+            "trajectory_files_scanned": manifest["performance"].get("trajectory_files_scanned", 0),
+            "deposition_files_scanned": manifest["performance"].get("deposition_files_scanned", 0),
+            "impact_csv_files_scanned": manifest["performance"].get("impact_csv_files_scanned", 0),
+            "impact_parquet_tables_scanned": manifest["performance"].get("impact_parquet_tables_scanned", 0),
+            "trajectory_sample_rows_read": manifest["performance"].get("trajectory_sample_rows_read", 0),
+            "deposition_rows_read": manifest["performance"].get("deposition_rows_read", 0),
+            "impact_event_rows_read": manifest["performance"].get("impact_event_rows_read", 0),
+            "total_hazard_input_rows_read": manifest["performance"].get("total_hazard_input_rows_read", 0),
+        },
+        "output": {
+            "file_count": manifest["performance"].get("output_file_count", 0),
+            "total_bytes": manifest["performance"].get("output_bytes", 0),
+            "raster": {
+                "file_count": sum(int(output.get("file_count") or 0) for output in raster_output_files),
+                "total_bytes": sum(int(output.get("total_bytes") or 0) for output in raster_output_files),
+            },
+            "report": {
+                "file_count": sum(int(output.get("file_count") or 0) for output in report_output_files),
+                "total_bytes": sum(int(output.get("total_bytes") or 0) for output in report_output_files),
+            },
+            "manifest": {
+                "file_count": 1 + sum(int(output.get("file_count") or 0) for output in manifest_output_files),
+                "total_bytes": hazard_manifest_bytes
+                + sum(int(output.get("total_bytes") or 0) for output in manifest_output_files),
+            },
+            "phase_timing": {
+                "file_count": 1,
+                "total_bytes": None,
+            },
+        },
+        "phase_seconds": {
+            "input_read_seconds": round(phase_telemetry.input_read_seconds, 6),
+            "bounds_discovery_seconds": round(max(0.0, bounds_discovery_seconds), 6),
+            "accumulation_seconds": round(max(0.0, accumulation_seconds), 6),
+            "reducer_merge_seconds": round(phase_telemetry.reducer_merge_seconds, 6),
+            "raster_write_seconds": round(
+                number_or_zero(output_write_kind_seconds.get("csv_grid", 0.0))
+                + number_or_zero(output_write_kind_seconds.get("esri_ascii_grid", 0.0))
+                + number_or_zero(output_write_kind_seconds.get("geotiff", 0.0)),
+                6,
+            ),
+            "report_write_seconds": round(max(0.0, plot_render_seconds), 6),
+            "manifest_generation_seconds": round(
+                manifest_serialization_seconds
+                + number_or_zero(manifest["performance"].get("json_serialization_seconds"))
+                + json_write_seconds_before_timing,
+                6,
+            ),
+            "cog_export_seconds": round(max(0.0, cog_export_seconds), 6),
+            "total_wall_seconds": round(max(0.0, time.perf_counter() - total_started), 6),
+        },
+        "memory": {
+            "peak_rss_kb": peak_rss_kb(),
+        },
+        "limitations": [
+            "Local diagnostic hazard builder telemetry only; not operational hazard evidence.",
+            "Phase timing records wall time and optional peak RSS for reproducibility and throughput analysis.",
+            "The timing JSON is a sidecar artifact and does not alter hazard-layer values or manifest semantics.",
+        ],
+    }
+    write_json_text(
+        phase_timing_path,
+        phase_timing_report,
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+    )
 
     print(f"wrote hazard layers to {output_dir}")
     return 0
@@ -3464,6 +3645,7 @@ def run_reducer_accumulation(
     scheduler_count: int = 1,
     max_chunk_attempts: int = CHUNK_REDUCTION_MAX_ATTEMPTS,
     lease_seconds: int = CHUNK_CLAIM_TTL_SECONDS,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
 ) -> tuple[HazardAccumulator, list[str], dict[str, Any] | None, list[Path], HazardAccumulationTimings]:
     if worker_count < 1:
         raise SystemExit("--reducer-workers must be at least 1")
@@ -3478,6 +3660,7 @@ def run_reducer_accumulation(
             deposition_path,
             impact_event_paths,
             impact_event_parquet_paths,
+            phase_telemetry=phase_telemetry,
         )
 
     if scheduler_count < 1:
@@ -3778,6 +3961,7 @@ def run_reducer_accumulation(
                 partial_state_path=chunk_partial_state_path(chunk.chunk_id, chunk_dir),
                 execution_signature=execution_signature,
                 merge_group_id=chunk_plan.get("merge_group_id"),
+                phase_telemetry=phase_telemetry,
             )
 
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
@@ -3799,7 +3983,10 @@ def run_reducer_accumulation(
         completion_status = str(manifest.get("completion_status") or "unknown")
         execution_status = str(manifest.get("execution_status") or "unknown")
         if completion_status == "completed":
+            merge_started = time.perf_counter()
             accumulator.merge(result.accumulator)
+            if phase_telemetry is not None:
+                phase_telemetry.add_reducer_merge(time.perf_counter() - merge_started)
         else:
             failed_chunks.append(chunk_id)
         warnings.extend(result.warnings)
@@ -3962,22 +4149,37 @@ def run_serial_reducer_accumulation(
     deposition_path: Path | None,
     impact_event_paths: list[Path],
     impact_event_parquet_paths: list[Path],
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
 ) -> tuple[HazardAccumulator, list[str], None, list[Path], HazardAccumulationTimings]:
     warnings: list[str] = []
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
+    deposition_batch = read_deposition_batch(
+        deposition_path,
+        warnings,
+        phase_telemetry=phase_telemetry,
+    )
     deposition_started = time.perf_counter()
-    accumulator.accumulate_deposition(read_deposition_batch(deposition_path, warnings))
+    accumulator.accumulate_deposition(deposition_batch)
     deposition_accumulation_seconds = time.perf_counter() - deposition_started
-    trajectory_started = time.perf_counter()
+    trajectory_accumulation_seconds = 0.0
     for trajectory_path in trajectory_paths:
-        batch = read_trajectory_sample_batch(trajectory_path, warnings)
+        batch = read_trajectory_sample_batch(
+            trajectory_path,
+            warnings,
+            phase_telemetry=phase_telemetry,
+        )
         if batch is not None:
+            accumulation_started = time.perf_counter()
             accumulator.accumulate_trajectory(batch)
-    trajectory_accumulation_seconds = time.perf_counter() - trajectory_started
+            trajectory_accumulation_seconds += time.perf_counter() - accumulation_started
     impact_started = time.perf_counter()
-    for batch in read_impact_event_csv_batches(impact_event_paths, warnings):
+    for batch in read_impact_event_csv_batches(impact_event_paths, warnings, phase_telemetry=phase_telemetry):
         accumulator.accumulate_impacts(batch)
-    for batch in read_impact_event_parquet_batches(impact_event_parquet_paths, warnings):
+    for batch in read_impact_event_parquet_batches(
+        impact_event_parquet_paths,
+        warnings,
+        phase_telemetry=phase_telemetry,
+    ):
         accumulator.accumulate_impacts(batch)
     impact_accumulation_seconds = time.perf_counter() - impact_started
     timings = HazardAccumulationTimings(
@@ -4053,6 +4255,7 @@ def run_reducer_chunk(
     partial_state_path: Path,
     execution_signature: str,
     merge_group_id: str | None = None,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
 ) -> ReducerChunkResult:
     warnings: list[str] = []
     accumulator = HazardAccumulator(grid, terrain, block_radius_m, statistics, probability)
@@ -4064,22 +4267,37 @@ def run_reducer_chunk(
     impact_seconds = 0.0
     prior_attempt_count = max(0, int(attempt_count))
     prior_retry_count = max(0, int(retry_count))
-    deposition_started = time.perf_counter()
-    trajectory_started = time.perf_counter()
-    impact_started = time.perf_counter()
     try:
-        accumulator.accumulate_deposition(read_deposition_batch(chunk.deposition_path, warnings))
+        deposition_batch = read_deposition_batch(
+            chunk.deposition_path,
+            warnings,
+            phase_telemetry=phase_telemetry,
+        )
+        deposition_started = time.perf_counter()
+        accumulator.accumulate_deposition(deposition_batch)
         deposition_seconds = time.perf_counter() - deposition_started
-        trajectory_started = time.perf_counter()
         for trajectory_path in chunk.trajectory_paths:
-            batch = read_trajectory_sample_batch(trajectory_path, warnings)
+            batch = read_trajectory_sample_batch(
+                trajectory_path,
+                warnings,
+                phase_telemetry=phase_telemetry,
+            )
             if batch is not None:
+                trajectory_started = time.perf_counter()
                 accumulator.accumulate_trajectory(batch)
-        trajectory_seconds = time.perf_counter() - trajectory_started
+                trajectory_seconds += time.perf_counter() - trajectory_started
         impact_started = time.perf_counter()
-        for batch in read_impact_event_csv_batches(list(chunk.impact_event_paths), warnings):
+        for batch in read_impact_event_csv_batches(
+            list(chunk.impact_event_paths),
+            warnings,
+            phase_telemetry=phase_telemetry,
+        ):
             accumulator.accumulate_impacts(batch)
-        for batch in read_impact_event_parquet_batches(list(chunk.impact_event_parquet_paths), warnings):
+        for batch in read_impact_event_parquet_batches(
+            list(chunk.impact_event_parquet_paths),
+            warnings,
+            phase_telemetry=phase_telemetry,
+        ):
             accumulator.accumulate_impacts(batch)
         impact_seconds = time.perf_counter() - impact_started
         completion_status = "completed"
@@ -4731,41 +4949,61 @@ def discover_bounds(
     return bounds, stats
 
 
-def read_trajectory_sample_batch(path: Path, warnings: list[str]) -> TrajectorySampleBatch | None:
+def read_trajectory_sample_batch(
+    path: Path,
+    warnings: list[str],
+    *,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
+) -> TrajectorySampleBatch | None:
+    started = time.perf_counter()
     if not path.exists():
         return None
-    samples: list[TrajectorySample] = []
-    trajectory_id: str | None = None
-    for row in iter_numeric_csv(path, f"trajectory:{path}", warnings):
-        row_trajectory_id = trajectory_id_from_sample_or_path(row, path)
-        if trajectory_id is None:
-            trajectory_id = row_trajectory_id
-        elif row_trajectory_id != trajectory_id:
-            raise SystemExit(
-                f"trajectory CSV {path} contains multiple trajectory_id values; "
-                "current hazard-layer accumulation expects one trajectory per CSV"
+    try:
+        samples: list[TrajectorySample] = []
+        trajectory_id: str | None = None
+        for row in iter_numeric_csv(path, f"trajectory:{path}", warnings):
+            row_trajectory_id = trajectory_id_from_sample_or_path(row, path)
+            if trajectory_id is None:
+                trajectory_id = row_trajectory_id
+            elif row_trajectory_id != trajectory_id:
+                raise SystemExit(
+                    f"trajectory CSV {path} contains multiple trajectory_id values; "
+                    "current hazard-layer accumulation expects one trajectory per CSV"
+                )
+            samples.append(
+                TrajectorySample(
+                    x_m=numeric(row.get("x_m")),
+                    y_m=numeric(row.get("y_m")),
+                    z_m=numeric(row.get("z_m")),
+                    kinetic_j=numeric(row.get("kinetic_j")),
+                    speed_mps=numeric(row.get("speed_mps")),
+                )
             )
-        samples.append(
-            TrajectorySample(
-                x_m=numeric(row.get("x_m")),
-                y_m=numeric(row.get("y_m")),
-                z_m=numeric(row.get("z_m")),
-                kinetic_j=numeric(row.get("kinetic_j")),
-                speed_mps=numeric(row.get("speed_mps")),
-            )
-        )
-    return TrajectorySampleBatch(path=path, trajectory_id=trajectory_id, samples=tuple(samples))
+        return TrajectorySampleBatch(path=path, trajectory_id=trajectory_id, samples=tuple(samples))
+    finally:
+        if phase_telemetry is not None:
+            phase_telemetry.add_input_read(time.perf_counter() - started)
 
 
-def read_deposition_batch(path: Path | None, warnings: list[str]) -> DepositionPointBatch:
+def read_deposition_batch(
+    path: Path | None,
+    warnings: list[str],
+    *,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
+) -> DepositionPointBatch:
+    started = time.perf_counter()
     if path is None or not path.exists():
         return DepositionPointBatch(points=())
-    return DepositionPointBatch(
-        points=tuple(
-            deposition_point_from_row(row)
-            for row in iter_numeric_csv(path, f"deposition:{path}", warnings)
+    try:
+        return DepositionPointBatch(
+            points=tuple(
+                deposition_point_from_row(row)
+                for row in iter_numeric_csv(path, f"deposition:{path}", warnings)
+            )
         )
-    )
+    finally:
+        if phase_telemetry is not None:
+            phase_telemetry.add_input_read(time.perf_counter() - started)
 
 
 def deposition_point_from_row(row: dict[str, float | str]) -> DepositionPoint:
@@ -4778,41 +5016,61 @@ def deposition_point_from_row(row: dict[str, float | str]) -> DepositionPoint:
     )
 
 
-def read_impact_event_csv_batches(paths: list[Path], warnings: list[str]) -> Iterator[ImpactEventBatch]:
+def read_impact_event_csv_batches(
+    paths: list[Path],
+    warnings: list[str],
+    *,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
+) -> Iterator[ImpactEventBatch]:
     for path in paths:
         if not path.exists():
             continue
+        started = time.perf_counter()
         event_count = 0
         significant_event_count = 0
         significant_points: list[SignificantImpactPoint] = []
-        for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
-            event_count += 1
-            if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
-                continue
-            significant_event_count += 1
-            x = numeric(event.get("x_m"))
-            y = numeric(event.get("y_m"))
-            if x is not None and y is not None:
-                significant_points.append(
-                    SignificantImpactPoint(
-                        x_m=x,
-                        y_m=y,
-                        trajectory_id=trajectory_id_from_impact_event_or_path(event, path),
+        try:
+            for event in iter_numeric_csv(path, f"impact_events:{path}", warnings):
+                event_count += 1
+                if (numeric(event.get("incoming_normal_speed_mps")) or 0.0) < SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS:
+                    continue
+                significant_event_count += 1
+                x = numeric(event.get("x_m"))
+                y = numeric(event.get("y_m"))
+                if x is not None and y is not None:
+                    significant_points.append(
+                        SignificantImpactPoint(
+                            x_m=x,
+                            y_m=y,
+                            trajectory_id=trajectory_id_from_impact_event_or_path(event, path),
+                        )
                     )
-                )
-        yield ImpactEventBatch(
-            source_path=path,
-            event_count=event_count,
-            significant_event_count=significant_event_count,
-            significant_points=tuple(significant_points),
-        )
+            yield ImpactEventBatch(
+                source_path=path,
+                event_count=event_count,
+                significant_event_count=significant_event_count,
+                significant_points=tuple(significant_points),
+            )
+        finally:
+            if phase_telemetry is not None:
+                phase_telemetry.add_input_read(time.perf_counter() - started)
 
 
-def read_impact_event_parquet_batches(paths: list[Path], warnings: list[str]) -> Iterator[ImpactEventBatch]:
+def read_impact_event_parquet_batches(
+    paths: list[Path],
+    warnings: list[str],
+    *,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
+) -> Iterator[ImpactEventBatch]:
     for path in paths:
         if not path.exists():
             continue
-        yield from iter_impact_event_parquet_batches(path, warnings)
+        started = time.perf_counter()
+        try:
+            yield from iter_impact_event_parquet_batches(path, warnings)
+        finally:
+            if phase_telemetry is not None:
+                phase_telemetry.add_input_read(time.perf_counter() - started)
 
 
 def iter_numeric_csv(

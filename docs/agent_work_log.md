@@ -2626,3 +2626,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: fail-closed postproc microbenchmark gate only; no live Balfrin submission, no `sbatch`, no simulation execution, no multi-zone hazard claim, no retry authorization, no scale-up or distributed-execution authorization, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-297`
+
+### TB-297: Hazard Builder Phase Timing Instrumentation
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add stable phase timing and memory telemetry to the hazard-layer builder without changing hazard outputs or manifest semantics.
+- Files changed: `scripts/build_hazard_layers.py`, `scripts/hazard_output_writers.py`, `docs/hazard_throughput_bottleneck_report.md`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `hazard_builder_phase_timing_v1` sidecar JSON emitted by hazard-layer builds with grid metadata, output-profile settings, per-phase seconds, input/output counts and bytes, and optional peak RSS.
+  - Threaded a compact phase-telemetry collector through the hazard builder's input-reading, reducer merge, and output-writing paths so the build can report input reading, accumulation, reducer merge, raster write, report write, manifest generation, and COG export phases.
+  - Added fixture-backed regressions that verify the new timing sidecar exists, the manifest contract stays intact, and report-rendering runs move the timing fields without changing hazard-layer values.
+  - Documented the phase-timing fields in the throughput report and removed TB-297 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_hazard_layers.py scripts/hazard_output_writers.py tests/test_hazard_layers.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_plotted_mode_preserves_report_outputs_without_changing_layers -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: instrumentation only; no optimization, no hazard-value changes, no live Balfrin submission, no operational claim, no scale-up claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-298`
