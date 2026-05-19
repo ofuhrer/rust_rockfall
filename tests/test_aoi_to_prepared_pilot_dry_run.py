@@ -10,6 +10,8 @@ import unittest
 from pathlib import Path
 
 import yaml
+import scripts.build_hazard_layers as hazard
+from scripts.audit_gis_cog_package_readiness import build_gis_cog_readiness_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -214,6 +216,100 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertTrue(run_manifest["execution_hints"]["local"]["output_root"].endswith("aoi_to_prepared_pilot_dry_run"))
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", compiler["run_manifest_path"])
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
+
+    def test_aoi_to_map_regression_fixture_produces_smoke_map_package_and_qa_summary(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            dry_run_root = (
+                Path(output_tmp)
+                / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            )
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=dry_run_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=dry_run_root,
+            )
+            smoke = self._build_aoi_to_map_smoke_fixture(repo_root, output_tmp)
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["workflow_status"], "deferred_public_context_inputs")
+        self.assertEqual(first["prepared_pilot_compiler"]["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(first["prepared_pilot_compiler"]["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(
+            first["prepared_pilot_compiler"]["first_blocker"]["first_missing_input"],
+            "second_site_benchmark_preparation_template",
+        )
+        self.assertTrue(first["case_skeleton_output"]["output_root"].startswith("/tmp/"))
+        self.assertIn(
+            "validation/private/chant_sura_fluelapass_portability_example_v1",
+            first["case_skeleton_output"]["case_skeleton"]["expected_output_roots"],
+        )
+        self.assertFalse(first["scenario_generation_inputs"]["claim_boundary"]["annual_frequency_supported"])
+        self.assertFalse(first["scenario_generation_inputs"]["claim_boundary"]["physical_probability_supported"])
+        self.assertFalse(first["scenario_generation_inputs"]["claim_boundary"]["return_period_supported"])
+        self.assertFalse(first["scenario_generation_inputs"]["claim_boundary"]["risk_or_exposure_supported"])
+        self.assertFalse(first["scenario_generation_inputs"]["claim_boundary"]["operational_hazard_map_supported"])
+        self.assertFalse(first["preparation_input"]["gis_scope_summary"]["non_operational_gis_boundaries"]["distributed_execution_authorized"])
+        self.assertFalse(first["preparation_input"]["gis_scope_summary"]["non_operational_gis_boundaries"]["annual_frequency_claims_allowed"])
+        self.assertFalse(first["preparation_input"]["gis_scope_summary"]["non_operational_gis_boundaries"]["physical_probability_claims_allowed"])
+        self.assertTrue(any(step["step_id"] == "prepared_pilot_command_plan" for step in first["workflow_steps"]))
+        self.assertTrue(first["workflow_generated_output_roots"])
+
+        hazard_manifest = smoke["hazard_manifest"]
+        map_manifest = smoke["map_manifest"]
+        pilot_manifest = smoke["pilot_manifest"]
+        audit_report = smoke["audit_report"]
+
+        self.assertEqual(hazard_manifest["schema_version"], "run_manifest_v1")
+        self.assertTrue(any(output["kind"] == "hazard_layer" for output in hazard_manifest["outputs"]))
+        self.assertTrue(any(output["kind"] == "map_package_manifest" for output in hazard_manifest["outputs"]))
+        self.assertTrue(any(output["kind"] == "pilot_gis_package_manifest" for output in hazard_manifest["outputs"]))
+        self.assertGreater(len(hazard_manifest["layers"]), 0)
+        self.assertEqual(map_manifest["schema_version"], "map_package_manifest_v1")
+        self.assertEqual(map_manifest["map_product_id"], "aoi_to_map_smoke_fixture")
+        self.assertEqual(map_manifest["map_product_version"], "map_package_v1")
+        self.assertEqual(map_manifest["operational_status"], "research_diagnostic")
+        self.assertEqual(map_manifest["probability_mode"], "unweighted_diagnostic")
+        self.assertEqual(map_manifest["normalization_scope"], "conditioned_on_filter")
+        self.assertEqual(map_manifest["source_zone_id"], "tschamut_public_lps_release_bbox")
+        self.assertEqual(
+            map_manifest["scenario_table_path"],
+            str(
+                repo_root
+                / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
+            ),
+        )
+        self.assertEqual(pilot_manifest["schema_version"], "pilot_gis_package_manifest_v1")
+        self.assertEqual(pilot_manifest["package_version"], "pilot_gis_package_v1")
+        self.assertEqual(pilot_manifest["operational_status"], "research_diagnostic")
+        self.assertFalse(pilot_manifest["probability_claim_boundary"]["annualized"])
+        self.assertIn("return_period", pilot_manifest["probability_claim_boundary"]["future_unsupported_product_labels"])
+        self.assertEqual(pilot_manifest["visual_qa"]["status"], "inconclusive")
+        self.assertFalse(pilot_manifest["visual_qa"]["accepted_for_operational_use"])
+
+        self.assertEqual(audit_report["gis_cog_readiness_status"], "gis_package_ready_cog_blocked")
+        audit_artifact_id = next(iter(audit_report["manifest_completeness"]))
+        self.assertEqual(audit_report["manifest_completeness"][audit_artifact_id]["map_package_manifest_complete"], True)
+        self.assertEqual(audit_report["manifest_completeness"][audit_artifact_id]["pilot_gis_package_manifest_complete"], True)
+        self.assertEqual(audit_report["manifest_completeness"][audit_artifact_id]["missing_raster_outputs"], [])
+        self.assertEqual(audit_report["blockers"][audit_artifact_id], ["manifest_cloud_optimized_false"])
+
+        summary = self._build_first_failure_summary(first, audit_report)
+        self.assertEqual(summary["first_broken_step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(summary["first_broken_input"], "second_site_benchmark_preparation_template")
+        self.assertIn("gis_package_ready_cog_blocked", summary["summary"])
+        self.assertIn("prepared_pilot_command_plan", summary["summary"])
 
     def test_missing_terrain_blocks_compiler(self) -> None:
         report = self._compiler_report_with_missing_prepared_input("terrain.asc")
@@ -619,6 +715,86 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         path = repo_root / relative_path
         if path.exists():
             path.unlink()
+
+    def _build_aoi_to_map_smoke_fixture(self, repo_root: Path, output_tmp: str) -> dict[str, object]:
+        output_dir = Path(output_tmp) / "smoke" / "hazard"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        status = hazard.main_with_args(
+            [
+                "--case",
+                str(ROOT / "tests/fixtures/hazard/plane_case.yaml"),
+                "--diagnostics",
+                str(ROOT / "tests/fixtures/hazard/diagnostics.json"),
+                "--output-dir",
+                str(output_dir),
+                "--cell-size",
+                "1.0",
+                "--no-plots",
+                "--export-geotiff",
+                "--pilot-gis-package",
+                "--pilot-gis-package-manifest-json",
+                str(output_dir / "plane_pilot_gis_package_manifest.json"),
+                "--map-package-manifest-json",
+                str(output_dir / "plane_map_package_manifest.json"),
+                "--source-zone-metadata-path",
+                str(
+                    repo_root
+                    / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
+                ),
+                "--scenario-table-path",
+                str(
+                    repo_root
+                    / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
+                ),
+                "--map-product-id",
+                "aoi_to_map_smoke_fixture",
+                "--probability-mode",
+                "unweighted_diagnostic",
+                "--normalization-scope",
+                "conditioned_on_filter",
+                "--pilot-gis-qa-status",
+                "inconclusive",
+                "--pilot-gis-qa-note",
+                "Fixture-backed AOI-to-map regression summary.",
+            ]
+        )
+        self.assertEqual(status, 0)
+
+        hazard_manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text(encoding="utf-8"))
+        map_manifest = json.loads((output_dir / "plane_map_package_manifest.json").read_text(encoding="utf-8"))
+        pilot_manifest = json.loads((output_dir / "plane_pilot_gis_package_manifest.json").read_text(encoding="utf-8"))
+        audit_report = build_gis_cog_readiness_report(
+            [output_dir],
+            raster_metadata_provider=lambda path: {
+                "status": "ok",
+                "driver": "GTiff",
+                "epsg": 2056,
+                "overview_count": 1,
+                "block_size": [16, 16],
+                "size": [32, 32],
+                "image_structure": {"LAYOUT": "COG"},
+            },
+        )
+        return {
+            "output_dir": output_dir,
+            "hazard_manifest": hazard_manifest,
+            "map_manifest": map_manifest,
+            "pilot_manifest": pilot_manifest,
+            "audit_report": audit_report,
+        }
+
+    def _build_first_failure_summary(self, dry_run_report: dict[str, object], audit_report: dict[str, object]) -> dict[str, str]:
+        blocker = dry_run_report["prepared_pilot_compiler"]["first_blocker"]  # type: ignore[index]
+        return {
+            "first_broken_step_id": str(blocker.get("step_id", "")),
+            "first_broken_step_label": str(blocker.get("label", "")),
+            "first_broken_input": str(blocker.get("first_missing_input", "")),
+            "summary": (
+                f"first broken workflow step: {blocker.get('step_id', '')} "
+                f"({blocker.get('label', '')}); next input: {blocker.get('first_missing_input', '')}; "
+                f"qa_status={audit_report.get('gis_cog_readiness_status', '')}"
+            ),
+        }
 
     def _write_verified_cache_manifest(self, repo_root: Path, candidate_site_id: str) -> None:
         cache_root = repo_root / "data/processed/swisstopo" / candidate_site_id / "input"
