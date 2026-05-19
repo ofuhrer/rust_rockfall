@@ -21,6 +21,7 @@ from unittest.mock import patch
 
 from scripts.hazard_output_manifests import output_manifest_entry
 from scripts.hazard_output_writers import sha256_file, write_text
+from scripts import generate_aoi_map_qa_review as qa_review
 from scripts.lib.workflow_validation import build_release_zone_provenance_intake
 from scripts.prototype_cog_conversion import convert_to_cog
 from scripts import summarize_observed_runout_deposition_intake_contract as observed_intake_helper
@@ -209,6 +210,7 @@ def package_aoi_hazard_map(
         "limitations": list(map_manifest.get("limitations", [])),
         "cog_blockers": raster_package["cog_blockers"],
         "missing_hazard_outputs": raster_package["missing_hazard_outputs"],
+        "review_surface_paths": {},
         "package_file_count": 0,
         "package_byte_count": 0,
         "package_manifest_sha256": None,
@@ -218,9 +220,16 @@ def package_aoi_hazard_map(
     report["summary_sha256"] = sha256_file(summary_path)
     write_package_manifest(package_manifest_path, report)
     report["package_manifest_sha256"] = sha256_file(package_manifest_path)
+    review_report = qa_review.build_review_surface(input_root=output_root, output_root=output_root)
+    report["review_surface_status"] = review_report.get("status")
+    report["review_surface_paths"] = review_report.get("review_surface_paths") or {}
     file_count, byte_count = count_files_and_bytes(output_root)
     report["package_file_count"] = file_count
     report["package_byte_count"] = byte_count
+    write_summary(summary_path, report)
+    report["summary_sha256"] = sha256_file(summary_path)
+    write_package_manifest(package_manifest_path, report)
+    report["package_manifest_sha256"] = sha256_file(package_manifest_path)
     return report
 
 
@@ -729,6 +738,8 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "limitations": report["limitations"],
         "cog_blockers": report["cog_blockers"],
         "missing_hazard_outputs": report["missing_hazard_outputs"],
+        "review_surface_status": report.get("review_surface_status"),
+        "review_surface_paths": report.get("review_surface_paths", {}),
         "package_manifest_path": report["package_manifest_path"],
         "summary_path": report["summary_path"],
         "summary_sha256": report["summary_sha256"],
@@ -749,6 +760,8 @@ def write_summary(path: Path, report: dict[str, Any]) -> None:
         f"observed_runout_deposition_overlay_status\t{report['observed_evidence_overlay_hook']['observed_runout_deposition_overlay_status']}",
         f"release_zone_provenance_overlay_status\t{report['observed_evidence_overlay_hook']['release_zone_provenance_overlay_status']}",
         f"observed_evidence_overlay_count\t{len(report['observed_evidence_overlays']['items'])}",
+        f"review_entrypoint\t{report.get('review_surface_paths', {}).get('entrypoint')}",
+        f"review_surface_status\t{report.get('review_surface_status')}",
         f"package_file_count\t{report['package_file_count']}",
         f"package_byte_count\t{report['package_byte_count']}",
         f"raster_count\t{len(report['raster_outputs'])}",

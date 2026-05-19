@@ -37,35 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-281: AOI Map Package Openable Review Bundle
-
-Goal: Make the AOI map package directly reviewable as a single openable static bundle with layer toggles, legends, warnings, provenance, and claim boundaries.
-
-Capability gap reduced: Map packaging and QA review exist, but the user-facing artifact is still more manifest-oriented than map-review oriented.
-
-Why this outranks alternatives: The project goal ends in a hazard map; users need an inspectable product, not only machine-readable manifests.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `docs/hazard_map_semantics.md`
-- `tests/test_aoi_hazard_map_packager.py`
-- `tests/test_aoi_map_qa_review.py`
-
-Deliverables:
-
-- A static review bundle entrypoint, such as `index.html`, that links or embeds map layers, overlays, legends, warnings, provenance, and package manifest details.
-- Clear visual/text separation between diagnostic hazard layers, release/scenario overlays, optional observed evidence, missing context, and claim boundaries.
-- Tests for generated file inventory, missing-layer warnings, overlay state, and non-operational boundary text.
-
-Definition of done:
-
-- A user can open one generated review surface and inspect the AOI diagnostic hazard map package without reading raw manifests first.
-
-Boundaries: Review artifact only; no hazard-value changes, no physical validation claim, no operational claim, no annual-frequency semantics, and no heavy outputs committed.
-
 ### TB-282: Balfrin Remote Checkout Hygiene Gate
 
 Goal: Add a Balfrin pre-submit hygiene gate that detects dirty remote checkout state and reports exact safe cleanup actions before any future SLURM attempt.

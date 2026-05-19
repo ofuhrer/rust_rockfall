@@ -128,6 +128,33 @@ def blocked_report(
         "layers": [],
         "warnings": warnings,
         "warning_details": [{"code": "missing_map_package", "severity": "blocked", "message": warnings[0]}],
+        "diagnostic_hazard_outputs": {
+            "schema_version": SCHEMA_VERSION,
+            "role": "diagnostic_hazard_outputs",
+            "status": "absent",
+            "claim_boundary": "diagnostic hazard outputs are unavailable until the map package manifest is present",
+            "items": [],
+        },
+        "vector_overlays": [],
+        "observed_evidence_overlays": {
+            "schema_version": SCHEMA_VERSION,
+            "role": "observed_evidence_overlays",
+            "status": "blocked_missing_map_package",
+            "claim_boundary": "observed evidence overlays are unavailable until the map package manifest is present",
+            "items": [],
+            "blockers": {
+                "observed_runout_deposition": [],
+                "release_zone_provenance": [],
+            },
+        },
+        "package_manifest_details": {
+            "map_product_id": None,
+            "map_product_version": None,
+            "probability_mode": None,
+            "normalization_scope": None,
+            "source_zone_id": None,
+            "operational_status": "unknown",
+        },
         "claim_boundary": {
             "operational_status": "unknown",
             "current_allowed_product_labels": [
@@ -160,6 +187,10 @@ def assemble_report(
     hazard_manifest: dict[str, Any] | None,
 ) -> dict[str, Any]:
     layers = collect_layers(map_manifest, pilot_manifest, hazard_manifest)
+    vector_overlays = [entry for entry in list(map_manifest.get("vector_overlays") or []) if isinstance(entry, dict)]
+    observed_evidence_overlays = [
+        entry for entry in list((map_manifest.get("observed_evidence_overlays") or {}).get("items") or []) if isinstance(entry, dict)
+    ]
     warnings: list[str] = []
     warning_details: list[dict[str, Any]] = []
     layer_presence = {
@@ -234,6 +265,7 @@ def assemble_report(
         )
 
     status = "review_ready_with_warnings" if warnings else "review_ready"
+    hazard_layer_inventory = [layer for layer in layers if layer.get("kind") == "hazard_layer"]
     report = {
         "schema_version": SCHEMA_VERSION,
         "status": status,
@@ -245,6 +277,38 @@ def assemble_report(
         "hazard_manifest_path": str((hazard_manifest or {}).get("path")) if isinstance(hazard_manifest, dict) and hazard_manifest.get("path") else None,
         "layer_presence": layer_presence,
         "layers": layers,
+        "diagnostic_hazard_outputs": {
+            "schema_version": SCHEMA_VERSION,
+            "role": "diagnostic_hazard_outputs",
+            "status": "present" if hazard_layer_inventory else "absent",
+            "claim_boundary": "diagnostic hazard outputs only; not calibration, holdout, or frequency evidence",
+            "items": list(hazard_layer_inventory),
+        },
+        "vector_overlays": vector_overlays,
+        "observed_evidence_overlays": {
+            "schema_version": SCHEMA_VERSION,
+            "role": "observed_evidence_overlays",
+            "status": str((map_manifest.get("observed_evidence_overlays") or {}).get("status") or "blocked_missing_evidence"),
+            "claim_boundary": "observed evidence overlays are optional and do not imply calibration, physical probability, annual frequency, risk, or operational readiness",
+            "items": observed_evidence_overlays,
+            "blockers": (map_manifest.get("observed_evidence_overlays") or {}).get("blockers")
+            or {
+                "observed_runout_deposition": [],
+                "release_zone_provenance": [],
+            },
+        },
+        "package_manifest_details": {
+            "map_product_id": map_manifest.get("map_product_id"),
+            "map_product_version": map_manifest.get("map_product_version"),
+            "probability_mode": map_manifest.get("probability_mode"),
+            "normalization_scope": map_manifest.get("normalization_scope"),
+            "source_zone_id": map_manifest.get("source_zone_id"),
+            "operational_status": map_manifest.get("operational_status") or pilot_manifest.get("operational_status") or "unknown",
+            "source_zone_metadata_path": str(map_manifest.get("source_zone_metadata_path") or ""),
+            "scenario_table_path": str(map_manifest.get("scenario_table_path") or ""),
+            "terrain_path": str((pilot_manifest.get("terrain") or {}).get("path") or ""),
+            "terrain_metadata_path": str((pilot_manifest.get("terrain") or {}).get("metadata_path") or (pilot_manifest.get("terrain_metadata") or {}).get("path") or ""),
+        },
         "warnings": warnings,
         "warning_details": warning_details,
         "claim_boundary": claim_boundary(map_manifest, pilot_manifest),
@@ -432,7 +496,7 @@ def write_review_surface(output_root: Path, report: dict[str, Any]) -> dict[str,
     html_path = output_root / "index.html"
     manifest_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     html_path.write_text(render_html_report(report), encoding="utf-8")
-    return {"manifest": str(manifest_path), "html": str(html_path)}
+    return {"manifest": str(manifest_path), "html": str(html_path), "entrypoint": str(html_path)}
 
 
 def render_text_report(report: dict[str, Any]) -> str:
@@ -449,72 +513,298 @@ def render_text_report(report: dict[str, Any]) -> str:
 
 
 def render_html_report(report: dict[str, Any]) -> str:
-    layer_rows = []
-    for layer in report.get("layers") or []:
-        layer_rows.append(
-            "<tr>"
-            f"<td>{html.escape(str(layer.get('source') or ''))}</td>"
-            f"<td>{html.escape(str(layer.get('layer_name') or ''))}</td>"
-            f"<td>{html.escape(str(layer.get('format') or ''))}</td>"
-            f"<td>{html.escape(str(layer.get('path') or ''))}</td>"
-            f"<td>{html.escape('yes' if layer.get('cloud_optimized') else 'no')}</td>"
-            f"<td>{html.escape('yes' if layer.get('weighted') else 'no')}</td>"
-            "</tr>"
-        )
-
-    warning_items = "".join(f"<li>{html.escape(warning)}</li>" for warning in report.get("warnings") or []) or "<li>No warnings.</li>"
     layer_presence = report.get("layer_presence") or {}
+    package_details = report.get("package_manifest_details") or {}
+    diagnostic_hazard_outputs = report.get("diagnostic_hazard_outputs") or {"items": []}
+    vector_overlays = report.get("vector_overlays") or []
+    observed_overlays_section = report.get("observed_evidence_overlays") or {"items": [], "blockers": {}}
+    observed_overlays = observed_overlays_section.get("items") or []
+    missing_context_paths = layer_presence.get("context_layers", {}).get("paths") or []
+    warning_items = report.get("warning_details") or []
+    if not warning_items and report.get("warnings"):
+        warning_items = [{"severity": "warning", "message": warning} for warning in report.get("warnings") or []]
+
+    hazard_rows = "".join(render_hazard_row(layer) for layer in diagnostic_hazard_outputs.get("items") or [])
+    vector_rows = "".join(render_overlay_row(layer, "overlay") for layer in vector_overlays)
+    observed_rows = "".join(render_overlay_row(layer, "evidence") for layer in observed_overlays)
+    warning_rows = "".join(
+        f"<li class='warning-{html.escape(str(item.get('severity') or 'warning'))}'><strong>{html.escape(str(item.get('code') or 'warning'))}</strong>: {html.escape(str(item.get('message') or ''))}</li>"
+        for item in warning_items
+    ) or "<li>No warnings.</li>"
+    context_rows = "".join(f"<li>{render_path_link(path)}</li>" for path in missing_context_paths) or "<li>No context layers were recorded.</li>"
+    package_rows = [
+        ("Map product", package_details.get("map_product_id")),
+        ("Map version", package_details.get("map_product_version")),
+        ("Probability mode", package_details.get("probability_mode")),
+        ("Normalization scope", package_details.get("normalization_scope")),
+        ("Source zone id", package_details.get("source_zone_id")),
+        ("Operational status", package_details.get("operational_status")),
+        ("Map package manifest", report.get("map_package_manifest_path")),
+        ("Pilot GIS package manifest", report.get("pilot_gis_package_manifest_path")),
+        ("Hazard manifest", report.get("hazard_manifest_path")),
+        ("Output root", report.get("output_root")),
+        ("Input root", report.get("input_root")),
+        ("Source-zone metadata", package_details.get("source_zone_metadata_path")),
+        ("Scenario table", package_details.get("scenario_table_path")),
+        ("Terrain", package_details.get("terrain_path")),
+        ("Terrain metadata", package_details.get("terrain_metadata_path")),
+    ]
+    path_like_labels = {
+        "Map package manifest",
+        "Pilot GIS package manifest",
+        "Hazard manifest",
+        "Output root",
+        "Input root",
+        "Source-zone metadata",
+        "Scenario table",
+        "Terrain",
+        "Terrain metadata",
+    }
+    package_rows_html = "".join(
+        f"<tr><th>{html.escape(str(label))}</th><td>{render_path_link(value) if label in path_like_labels else render_value(value)}</td></tr>"
+        for label, value in package_rows
+    )
+    claim = report.get("claim_boundary") or {}
+    claim_current = "".join(f"<li>{html.escape(str(label))}</li>" for label in claim.get("current_allowed_product_labels") or [])
+    claim_future = "".join(f"<li>{html.escape(str(label))}</li>" for label in claim.get("future_unsupported_product_labels") or [])
+    vector_overlays_summary = render_overlay_summary(vector_overlays)
+    observed_overlays_summary = render_overlay_summary(observed_overlays)
+    diagnostic_summary = render_overlay_summary(diagnostic_hazard_outputs.get("items") or [])
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <title>AOI Map QA Review</title>
   <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 2rem; line-height: 1.45; color: #172033; }}
-    h1, h2 {{ line-height: 1.15; }}
-    .badge {{ display: inline-block; padding: 0.15rem 0.45rem; border-radius: 0.35rem; background: #e8f0fe; color: #174ea6; font-size: 0.86rem; }}
-    table {{ border-collapse: collapse; width: 100%; margin: 1rem 0; }}
-    th, td {{ border: 1px solid #d8dee9; padding: 0.45rem; text-align: left; vertical-align: top; }}
-    th {{ background: #f5f7fb; }}
-    code {{ background: #f5f7fb; padding: 0.1rem 0.25rem; }}
+    :root {{ color-scheme: light; --ink: #172033; --muted: #546179; --paper: #f7f8fb; --panel: #ffffff; --line: #d9e0ea; --hazard: #264653; --overlay: #8d4f12; --evidence: #6b3f93; --context: #4b6a3b; --boundary: #8c2f2f; }}
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; line-height: 1.5; color: var(--ink); background: linear-gradient(180deg, #f8fbff, #eef3f9 54%, #f5f7fb); }}
+    main {{ max-width: 1200px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }}
+    h1, h2, h3 {{ line-height: 1.15; margin: 0 0 0.75rem; }}
+    p {{ margin: 0 0 1rem; }}
+    .hero {{ background: linear-gradient(135deg, #ffffff, #f3f7fc); border: 1px solid var(--line); border-radius: 1rem; padding: 1.2rem 1.4rem; box-shadow: 0 12px 32px rgba(17, 24, 39, 0.05); }}
+    .badges, .legend {{ display: flex; flex-wrap: wrap; gap: 0.5rem; }}
+    .badge {{ display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.28rem 0.55rem; border-radius: 999px; background: #e8f0fe; color: #174ea6; font-size: 0.86rem; }}
+    .badge.neutral {{ background: #eef2f7; color: var(--muted); }}
+    .badge.hazard {{ background: #e5f3f0; color: var(--hazard); }}
+    .badge.overlay {{ background: #f6ebe0; color: var(--overlay); }}
+    .badge.evidence {{ background: #f1e8f8; color: var(--evidence); }}
+    .badge.context {{ background: #e8f2e2; color: var(--context); }}
+    .badge.boundary {{ background: #fbeaea; color: var(--boundary); }}
+    .grid {{ display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }}
+    .panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; padding: 1rem 1.1rem; box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04); }}
+    .panel h2 {{ margin-bottom: 0.5rem; }}
+    .legend-item {{ padding: 0.25rem 0.5rem; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); font-size: 0.88rem; }}
+    .togglebar {{ display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 1rem 0; }}
+    .togglebar label {{ display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.7rem; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; }}
+    details {{ background: var(--panel); border: 1px solid var(--line); border-radius: 1rem; margin-top: 1rem; overflow: hidden; }}
+    details > summary {{ cursor: pointer; list-style: none; padding: 0.9rem 1rem; font-weight: 700; }}
+    details > summary::-webkit-details-marker {{ display: none; }}
+    details .inner {{ padding: 0 1rem 1rem; }}
+    table {{ border-collapse: collapse; width: 100%; margin: 0.75rem 0 0.25rem; }}
+    th, td {{ border: 1px solid var(--line); padding: 0.45rem; text-align: left; vertical-align: top; }}
+    th {{ background: var(--paper); width: 20%; }}
+    code, pre {{ background: #f5f7fb; padding: 0.08rem 0.25rem; border-radius: 0.3rem; }}
+    pre {{ white-space: pre-wrap; word-break: break-word; }}
+    ul, ol {{ margin: 0.45rem 0 0.8rem 1.2rem; }}
+    .warning-block {{ border-left: 4px solid var(--boundary); padding-left: 0.75rem; }}
+    .section-note {{ color: var(--muted); font-size: 0.92rem; }}
+    .layer-row[data-role="hazard"] td:first-child {{ color: var(--hazard); }}
+    .layer-row[data-role="overlay"] td:first-child {{ color: var(--overlay); }}
+    .layer-row[data-role="evidence"] td:first-child {{ color: var(--evidence); }}
+    .layer-row[data-role="context"] td:first-child {{ color: var(--context); }}
+    .layer-row[data-role="boundary"] td:first-child {{ color: var(--boundary); }}
+    .stack {{ display: grid; gap: 0.75rem; }}
+    .stack .panel + .panel {{ margin-top: 0; }}
   </style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {{
+      document.querySelectorAll("[data-toggle-target]").forEach((control) => {{
+        const target = document.getElementById(control.getAttribute("data-toggle-target"));
+        if (!target) {{
+          return;
+        }}
+        const sync = () => {{
+          target.hidden = !control.checked;
+        }};
+        control.addEventListener("change", sync);
+        sync();
+      }});
+    }});
+  </script>
 </head>
 <body>
-  <h1>AOI Map QA Review</h1>
-  <p><span class="badge">{html.escape(str(report.get("status") or "unknown"))}</span> <span class="badge">diagnostic review only</span> <span class="badge">not operational</span></p>
-  <p>This static review surface overlays terrain, release-zone metadata, scenario metadata, hazard-layer inventory, and context availability from existing manifests. It does not change hazard values, authorize operational use, or imply physical-probability or annual-frequency semantics.</p>
-  <h2>Inputs</h2>
-  <ul>
-    <li>Input root: <code>{html.escape(str(report.get("input_root") or ""))}</code></li>
-    <li>Map package manifest: <code>{html.escape(str(report.get("map_package_manifest_path") or "missing"))}</code></li>
-    <li>Pilot GIS package manifest: <code>{html.escape(str(report.get("pilot_gis_package_manifest_path") or "missing"))}</code></li>
-    <li>Hazard manifest: <code>{html.escape(str(report.get("hazard_manifest_path") or "missing"))}</code></li>
-  </ul>
-  <h2>Layer Presence</h2>
-  <ul>
-    <li>Terrain: {html.escape(str(layer_presence.get("terrain", {}).get("present", False)))}</li>
-    <li>Release zone metadata: {html.escape(str(layer_presence.get("release_zone", {}).get("present", False)))}</li>
-    <li>Scenario metadata: {html.escape(str(layer_presence.get("scenario_metadata", {}).get("present", False)))}</li>
-    <li>Hazard layers: {html.escape(str(layer_presence.get("hazard_layers", {}).get("count", 0)))}</li>
-    <li>Context layers: {html.escape(str(layer_presence.get("context_layers", {}).get("count", 0)))}</li>
-  </ul>
-  <h2>Layer Inventory</h2>
-  <table>
-    <thead><tr><th>Source</th><th>Layer</th><th>Format</th><th>Path</th><th>COG</th><th>Weighted</th></tr></thead>
-    <tbody>{''.join(layer_rows) if layer_rows else '<tr><td colspan="6">No layers recorded.</td></tr>'}</tbody>
-  </table>
-  <h2>Warnings</h2>
-  <ul>{warning_items}</ul>
-  <h2>Claim Boundary</h2>
-  <ul>
-    <li>Operational status: <code>{html.escape(str(report.get("claim_boundary", {}).get("operational_status") or "unknown"))}</code></li>
-    <li>Operational claims allowed: <code>{html.escape(str(report.get("claim_boundary", {}).get("operational_claims_allowed", False)))}</code></li>
-    <li>Current allowed product labels: <code>{html.escape(", ".join(report.get("claim_boundary", {}).get("current_allowed_product_labels") or []))}</code></li>
-    <li>Unsupported product labels: <code>{html.escape(", ".join(report.get("claim_boundary", {}).get("future_unsupported_product_labels") or []))}</code></li>
-  </ul>
+<main>
+  <section class="hero">
+    <h1>AOI Map QA Review</h1>
+    <div class="badges">
+      <span class="badge">{html.escape(str(report.get("status") or "unknown"))}</span>
+      <span class="badge neutral">diagnostic review only</span>
+      <span class="badge neutral">single openable bundle</span>
+      <span class="badge boundary">not operational</span>
+    </div>
+    <p>This static review bundle keeps the diagnostic hazard layers, release and scenario overlays, optional observed evidence, provenance, warnings, and claim boundaries in one openable entrypoint. It does not change hazard values, authorize operational use, or imply physical-probability or annual-frequency semantics.</p>
+    <div class="legend">
+      <span class="legend-item">Hazard: diagnostic rasters and cellwise layers</span>
+      <span class="legend-item">Overlay: release-zone and scenario geometry</span>
+      <span class="legend-item">Evidence: optional observed evidence overlays</span>
+      <span class="legend-item">Context: missing or present source-zone context</span>
+      <span class="legend-item">Boundary: non-operational claim limits</span>
+    </div>
+  </section>
+
+  <div class="togglebar">
+    <label><input type="checkbox" checked data-toggle-target="diagnostic-panel">Diagnostic hazard layers</label>
+    <label><input type="checkbox" checked data-toggle-target="overlay-panel">Release and scenario overlays</label>
+    <label><input type="checkbox" checked data-toggle-target="evidence-panel">Optional observed evidence</label>
+    <label><input type="checkbox" checked data-toggle-target="context-panel">Missing context</label>
+    <label><input type="checkbox" checked data-toggle-target="provenance-panel">Provenance and package manifest</label>
+    <label><input type="checkbox" checked data-toggle-target="boundary-panel">Claim boundaries</label>
+  </div>
+
+  <details id="diagnostic-panel" open>
+    <summary>Diagnostic hazard layers</summary>
+    <div class="inner">
+      <p class="section-note">{html.escape(diagnostic_summary)}</p>
+      <table>
+        <thead><tr><th>Layer</th><th>Source</th><th>Format</th><th>Path</th><th>COG</th><th>Weighted</th></tr></thead>
+        <tbody>{hazard_rows or '<tr><td colspan="6">No diagnostic hazard layers recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="overlay-panel" open>
+    <summary>Release and scenario overlays</summary>
+    <div class="inner">
+      <p class="section-note">{html.escape(vector_overlays_summary)}</p>
+      <table>
+        <thead><tr><th>Overlay</th><th>Role</th><th>Path</th><th>Claim boundary</th></tr></thead>
+        <tbody>{vector_rows or '<tr><td colspan="4">No release or scenario overlays recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="evidence-panel" open>
+    <summary>Optional observed evidence</summary>
+    <div class="inner">
+      <p class="section-note">{html.escape(observed_overlays_summary)}</p>
+      <table>
+        <thead><tr><th>Evidence</th><th>Role</th><th>Path</th><th>Claim boundary</th></tr></thead>
+        <tbody>{observed_rows or '<tr><td colspan="4">No observed evidence overlays recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="context-panel" open>
+    <summary>Missing context</summary>
+    <div class="inner">
+      <p class="section-note">Terrain and release-zone provenance are separated from context availability. When context layers are absent, that absence is surfaced here instead of being folded into the hazard layer table.</p>
+      <ul>
+        <li>Terrain present: <code>{html.escape(str(layer_presence.get("terrain", {}).get("present", False)))}</code></li>
+        <li>Release zone metadata present: <code>{html.escape(str(layer_presence.get("release_zone", {}).get("present", False)))}</code></li>
+        <li>Scenario metadata present: <code>{html.escape(str(layer_presence.get("scenario_metadata", {}).get("present", False)))}</code></li>
+        <li>Context layer count: <code>{html.escape(str(layer_presence.get("context_layers", {}).get("count", 0)))}</code></li>
+      </ul>
+      <ul>{context_rows}</ul>
+    </div>
+  </details>
+
+  <details id="provenance-panel" open>
+    <summary>Provenance and package manifest</summary>
+    <div class="inner">
+      <table>
+        <tbody>{package_rows_html}</tbody>
+      </table>
+      <p class="section-note">The manifest details are shown here so the bundle can be reviewed without opening raw JSON first.</p>
+    </div>
+  </details>
+
+  <details id="boundary-panel" open>
+    <summary>Claim boundaries</summary>
+    <div class="inner warning-block">
+      <p>This bundle is diagnostic and non-operational. It does not assert annual frequency, physical probability, risk, exposure, vulnerability, or distributed-execution semantics.</p>
+      <table>
+        <tbody>
+          <tr><th>Operational status</th><td><code>{html.escape(str(claim.get("operational_status") or "unknown"))}</code></td></tr>
+          <tr><th>Annualized</th><td><code>{html.escape(str(claim.get("annualized", False)))}</code></td></tr>
+          <tr><th>Operational claims allowed</th><td><code>{html.escape(str(claim.get("operational_claims_allowed", False)))}</code></td></tr>
+          <tr><th>Current allowed labels</th><td><ul>{claim_current or '<li>None recorded</li>'}</ul></td></tr>
+          <tr><th>Deferred or unsupported labels</th><td><ul>{claim_future or '<li>None recorded</li>'}</ul></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Warnings</summary>
+    <div class="inner warning-block">
+      <ul>{warning_rows}</ul>
+    </div>
+  </details>
+</main>
 </body>
 </html>
 """
+
+
+def render_hazard_row(layer: dict[str, Any]) -> str:
+    label = layer.get("layer_name") or layer.get("overlay_role") or "hazard_layer"
+    role_text = layer.get("source") or "hazard"
+    path_text = str(layer.get("path") or "")
+    claim = str(layer.get("claim_boundary") or "")
+    return (
+        f'<tr class="layer-row" data-role="hazard">'
+        f"<td>{render_value(label)}</td>"
+        f"<td>{html.escape(str(role_text))}</td>"
+        f"<td>{render_value(layer.get('format') or layer.get('evidence_category') or '')}</td>"
+        f"<td>{render_path_link(path_text)}</td>"
+        f"<td>{html.escape('yes' if layer.get('cloud_optimized') else 'no')}</td>"
+        f"<td>{html.escape('yes' if layer.get('weighted') else 'no')}</td>"
+        f"</tr>"
+        f"<tr class=\"layer-row\" data-role=\"hazard\">"
+        f"<td colspan=\"6\"><span class=\"section-note\">{html.escape(claim)}</span></td>"
+        "</tr>"
+    )
+
+
+def render_overlay_row(layer: dict[str, Any], role: str) -> str:
+    label = layer.get("layer_name") or layer.get("overlay_role") or role
+    role_text = layer.get("overlay_role") or layer.get("evidence_category") or role
+    path_text = str(layer.get("path") or layer.get("source_path") or layer.get("source_record_path") or "")
+    claim = str(layer.get("claim_boundary") or "")
+    return (
+        f'<tr class="layer-row" data-role="{html.escape(role)}">'
+        f"<td>{render_value(label)}</td>"
+        f"<td>{html.escape(str(role_text))}</td>"
+        f"<td>{render_path_link(path_text)}</td>"
+        f"<td>{html.escape(claim)}</td>"
+        "</tr>"
+    )
+
+
+def render_overlay_summary(items: list[dict[str, Any]]) -> str:
+    if not items:
+        return "No overlay records are available for this category."
+    labels = []
+    for item in items:
+        label = item.get("layer_name") or item.get("overlay_role") or item.get("evidence_category") or "overlay"
+        labels.append(str(label))
+    return f"{len(items)} item(s): {', '.join(labels)}"
+
+
+def render_value(value: Any) -> str:
+    if value in (None, ""):
+        return "<em>missing</em>"
+    return html.escape(str(value))
+
+
+def render_path_link(value: Any) -> str:
+    if value in (None, ""):
+        return "<em>missing</em>"
+    text = str(value)
+    path = Path(text)
+    if path.is_absolute():
+        return f'<a href="{html.escape(path.as_uri())}" target="_blank" rel="noreferrer">{html.escape(text)}</a>'
+    return html.escape(text)
 
 
 def discover_single_manifest(root: Path, pattern: str) -> tuple[Path | None, str | None]:

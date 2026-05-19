@@ -2262,3 +2262,23 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: local bounded execution only; no live Balfrin submission, no large AOI execution, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
 - Next task: `TB-281`
+
+### TB-281: AOI Map Package Openable Review Bundle
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: turn the AOI map package into a single openable static review bundle with layer toggles, legends, warnings, provenance, and claim-boundary text.
+- Files changed: `scripts/generate_aoi_map_qa_review.py`, `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`, `tests/test_aoi_map_qa_review.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the AOI QA review renderer into a richer static bundle with toggled sections for diagnostic hazard layers, release/scenario overlays, optional observed evidence, missing context, provenance, and non-operational claim boundaries.
+  - Wired the AOI packager to emit the review surface into the package root so `index.html` is the direct entrypoint for package inspection.
+  - Added regression coverage for the package entrypoint, generated file inventory, overlay state, warning text, and claim-boundary wording.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager tests.test_aoi_map_qa_review -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: review artifact only; no hazard-value changes, no physical validation claim, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability semantics, and no heavy outputs committed.
+- Next task: `TB-282`
