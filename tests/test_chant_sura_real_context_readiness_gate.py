@@ -48,6 +48,17 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertEqual(freeze_report["status_summary"]["fixture_backed_count"], 5)
         self.assertEqual(freeze_report["status_summary"]["missing_count"], 7)
         self.assertEqual(freeze_report["status_summary"]["deferred_count"], 5)
+        self.assertEqual(freeze_report["cache_manifest_path"], "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml")
+        self.assertEqual(
+            freeze_report["expected_cache_paths"],
+            {
+                "raw_swisstopo_cache_root": "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1",
+                "processed_input_root": "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input",
+                "processed_context_root": "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context",
+                "validation_case_root": "validation/private/chant_sura_fluelapass_portability_example_v1",
+                "hazard_results_root": "hazard/results/chant_sura_fluelapass_portability_example_v1",
+            },
+        )
 
         required_rows = {entry["category"]: entry for entry in freeze_report["required_acquisition_items"]}
         self.assertEqual(required_rows["terrain_crop"]["classification"], "missing")
@@ -65,6 +76,24 @@ class ChantSuraRealContextReadinessGateTests(unittest.TestCase):
         self.assertTrue(
             all(entry["classification"] in {"missing", "deferred"} for entry in freeze_report["required_acquisition_items"])
         )
+        source_rows = {entry["category"]: entry for entry in freeze_report["source_records"]}
+        self.assertEqual(source_rows["terrain_crop"]["source_product_id"], "swissalti3d_2m")
+        self.assertEqual(source_rows["terrain_crop"]["license_or_terms_reference"], "swisstopo open data terms; verify current terms before redistribution")
+        self.assertEqual(source_rows["terrain_crop"]["operator_choice"], "local_copy")
+        self.assertEqual(source_rows["swissimage_context"]["operator_choice"], "defer")
+        self.assertEqual(source_rows["source_zone_metadata"]["operator_choice"], "local_copy")
+        self.assertEqual(source_rows["release_observation_evidence"]["operator_choice"], "optional")
+        self.assertEqual(source_rows["release_observation_evidence"]["classification"], "deferred")
+        self.assertEqual(
+            [entry["mode"] for entry in freeze_report["operator_choices"]],
+            ["dry-run", "local-copy", "download"],
+        )
+        self.assertEqual(freeze_report["operator_choices"][0]["observed_status"], "ready_to_apply")
+        self.assertEqual(freeze_report["operator_choices"][1]["observed_product_status"], "verified")
+        self.assertEqual(freeze_report["verification_output"]["planner_status"], "ready")
+        self.assertEqual(freeze_report["verification_output"]["acquisition_boundary_status"], "deferred_public_context_inputs")
+        self.assertIn("terrain_crop", freeze_report["verification_output"]["ready_categories"])
+        self.assertIn("swisstlm3d_metadata", freeze_report["verification_output"]["missing_categories"])
         self.assertEqual(
             [entry["classification"] for entry in freeze_report["expected_local_roots"]],
             ["missing", "missing", "missing", "missing"],

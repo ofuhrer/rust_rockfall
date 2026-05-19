@@ -256,3 +256,218 @@ status_summary:
   missing_count: 7
   deferred_count: 5
   optional_count: 2
+cache_manifest_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml
+expected_cache_paths:
+  raw_swisstopo_cache_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1
+  processed_input_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+  processed_context_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context
+  validation_case_root: validation/private/chant_sura_fluelapass_portability_example_v1
+  hazard_results_root: hazard/results/chant_sura_fluelapass_portability_example_v1
+source_records:
+  - category: terrain_crop
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+    expected_metadata_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swissalti3d_2m
+    source_product_name: swissALTI3D
+    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    product_version_or_date: 2019-01-01
+    tile_id_or_delivery_identifier: 2793-1180
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: terrain_metadata
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+    source_reference: docs/public_real_site_geodata_preparation.md
+    source_product_id: swissalti3d_fixture_terrain_crop
+    source_product_name: swissALTI3D
+    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    product_version_or_date: 2019-01-01
+    tile_id_or_delivery_identifier: 2793-1180
+    license_or_terms_reference: repository-local acquisition metadata contract
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: aoi_tile_catalog
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swissalti3d_2m
+    source_product_name: swissALTI3D
+    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    product_version_or_date: 2019-01-01
+    tile_id_or_delivery_identifier: 2793-1180
+    license_or_terms_reference: repository-local tile catalog metadata contract
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: swissimage_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swissimage
+    source_product_name: SWISSIMAGE
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: swisstlm3d_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swisstlm3d
+    source_product_name: swissTLM3D
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: swisstlm3d_metadata
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json
+    source_reference: docs/public_real_site_geodata_preparation.md
+    source_product_id: swisstlm3d
+    source_product_name: swissTLM3D metadata
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local archive metadata contract
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: swisssurface3d_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swisssurface3d
+    source_product_name: swissSURFACE3D
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: swisssurface3d_raster_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swisssurface3d_raster
+    source_product_name: swissSURFACE3D Raster
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: swissbuildings3d_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+    source_reference: docs/swisstopo_data_strategy.md
+    source_product_id: swissbuildings3d
+    source_product_name: swissBUILDINGS3D
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+    operator_choice: defer
+    current_status: deferred
+    classification: deferred
+  - category: barrier_inventory
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/barriers
+    source_reference: docs/public_real_site_geodata_preparation.md
+    source_product_id: barrier_inventory
+    source_product_name: optional barrier / protection inventory
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local optional site policy record
+    operator_choice: optional
+    current_status: optional
+    classification: deferred
+  - category: source_zone_metadata
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml
+    source_reference: scripts/audit_multisite_source_scenario_contract.py
+    source_product_id: source_zone_metadata
+    source_product_name: release / source-zone metadata
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local source-zone contract record
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: scenario_table
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv
+    source_reference: scripts/audit_multisite_source_scenario_contract.py
+    source_product_id: scenario_table
+    source_product_name: block / scenario table
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local scenario contract record
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: source_scenario_policy
+    expected_staged_path: validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml
+    source_reference: docs/public_real_site_geodata_preparation.md
+    source_product_id: source_scenario_policy
+    source_product_name: source-scenario policy record
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local policy contract record
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
+  - category: release_observation_evidence
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/validation_observations
+    source_reference: docs/public_real_site_geodata_preparation.md
+    source_product_id: release_observation_evidence
+    source_product_name: release/deposition or field-observation evidence
+    source_url_or_download_record: ""
+    product_version_or_date: ""
+    tile_id_or_delivery_identifier: ""
+    license_or_terms_reference: repository-local optional QA record
+    operator_choice: optional
+    current_status: optional
+    classification: deferred
+operator_choices:
+  - mode: dry-run
+    command: PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --mode dry-run --local-path data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc --local-path data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml --format text
+    observed_status: ready_to_apply
+    observed_product_status: verified
+    effect: read-only proposal; no manifest mutation.
+  - mode: local-copy
+    command: PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --mode local-copy --local-path data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc --local-path data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml --format text
+    observed_status: ready_to_apply
+    observed_product_status: verified
+    effect: explicit local-copy proposal; no download and no manifest mutation unless --apply is added.
+  - mode: download
+    command: PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --mode download --download --format text
+    observed_status: not_run
+    observed_product_status: not_run
+    effect: opt-in network fetch only; side effects remain explicit.
+verification_output:
+  planner_status: ready
+  acquisition_boundary_status: deferred_public_context_inputs
+  aoi_tile_discovery_status: ready
+  ready_categories:
+    - terrain_crop
+    - terrain_metadata
+    - aoi_tile_catalog
+    - source_zone_metadata
+    - scenario_table
+    - source_scenario_policy
+  missing_categories:
+    - swisstlm3d_metadata
+  deferred_categories:
+    - swissimage_context
+    - swisstlm3d_context
+    - swisssurface3d_context
+    - swisssurface3d_raster_context
+    - swissbuildings3d_context
+  optional_categories:
+    - barrier_inventory
+    - release_observation_evidence

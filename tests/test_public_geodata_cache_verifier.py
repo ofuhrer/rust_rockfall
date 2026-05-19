@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import hashlib
 import importlib.util
 import tempfile
@@ -70,6 +73,23 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
         self.assertEqual(report["products"][0]["verification_status"], "metadata_mismatch")
         self.assertTrue(report["products"][0]["checksum_match"])
         self.assertIn("resolution_m", report["products"][0]["metadata_mismatches"])
+
+    def test_main_json_output_is_serializable(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = verifier.main(
+                [
+                    "--cache-manifest",
+                    str(ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml"),
+                    "--format",
+                    "json",
+                ]
+            )
+
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(report["verification_status"], "verified")
+        self.assertEqual(report["products"][0]["actual"]["metadata"]["product_version_or_date"], "2019-01-01")
 
     def _write_cache_manifest(
         self,

@@ -92,9 +92,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.json_output.write_text(json.dumps(PREFLIGHT.json_safe(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    output = json.dumps(PREFLIGHT.json_safe(report), indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
     if report.get("wizard_mode"):
         return 0 if report.get("proposal_status") in WIZARD_READY_STATUSES else 2
@@ -1010,9 +1010,11 @@ def cache_manifest_path_for_record(record: dict[str, Any], manifest_base: Path) 
 
 
 def render_text_report(report: dict[str, Any]) -> str:
+    status_label = report.get("proposal_status") if report.get("wizard_mode") else report.get("staging_status")
     lines = [
         f"schema_version: {report['schema_version']}",
-        f"staging_status: {report['staging_status']}",
+        f"wizard_mode: {bool(report.get('wizard_mode'))}",
+        f"status: {status_label}",
         f"cache_manifest_path: {report['cache_manifest_path']}",
         f"product_count: {report['product_count']}",
         f"staged_product_count: {report['staged_product_count']}",
@@ -1024,13 +1026,22 @@ def render_text_report(report: dict[str, Any]) -> str:
         "products:",
     ]
     for product in report["products"]:
-        lines.append(
-            f"- {product.get('category') or product.get('product_id')}: "
-            f"staging_status={product.get('staging_status')}, "
-            f"checksum_match={product.get('staging_status') == 'verified'}, "
-            f"missing_paths={', '.join(product.get('missing_paths') or []) or 'none'}, "
-            f"metadata_mismatches={', '.join(product.get('observed_metadata_mismatches') or []) or 'none'}"
-        )
+        if report.get("wizard_mode"):
+            preview_product = product.get("preview_product") if isinstance(product, dict) else {}
+            lines.append(
+                f"- {product.get('category') or product.get('product_id')}: "
+                f"proposal_status={product.get('proposal_status')}, "
+                f"preview_staging_status={preview_product.get('staging_status', '') if isinstance(preview_product, dict) else ''}, "
+                f"blocking_reasons={', '.join(product.get('blocking_reasons') or []) or 'none'}"
+            )
+        else:
+            lines.append(
+                f"- {product.get('category') or product.get('product_id')}: "
+                f"staging_status={product.get('staging_status')}, "
+                f"checksum_match={product.get('staging_status') == 'verified'}, "
+                f"missing_paths={', '.join(product.get('missing_paths') or []) or 'none'}, "
+                f"metadata_mismatches={', '.join(product.get('observed_metadata_mismatches') or []) or 'none'}"
+            )
     return "\n".join(lines)
 
 

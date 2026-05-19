@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import importlib.util
 import json
 import tempfile
@@ -263,6 +265,23 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(discovery["product_candidates"], [])
         self.assertEqual(report["planner_status"], "blocked_missing_inputs")
         self.assertEqual(report["acquisition_boundary_status"], "deferred_public_context_inputs")
+
+    def test_preflight_main_json_output_is_serializable(self) -> None:
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = preflight.main(
+                [
+                    "--site-config",
+                    str(ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"),
+                    "--format",
+                    "json",
+                ]
+        )
+
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(report["portability_preflight_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["aoi_tile_discovery"]["product_candidates"][0]["product_date"], "2019-01-01")
 
     def _write_site_config(self, repo_root: Path, catalog_fixture: Path | None = None) -> Path:
         config_source = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"

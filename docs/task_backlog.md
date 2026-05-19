@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-323: Real AOI Public-Geodata Acquisition Pack
-
-Goal: Prepare an operator-ready acquisition pack for one small real AOI using the explicit swisstopo acquisition driver without committing large products.
-
-Capability gap reduced: The AOI path remains fixture-backed until real public products can be selected, sourced, checksummed, and staged through the cache manifest.
-
-Why this outranks alternatives: A real AOI feasibility demonstration needs staged public geodata before terrain preprocessing, release candidates, or scenarios matter.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_public_geodata_cache_stager.py`
-
-Deliverables:
-
-- A deterministic acquisition package for one bounded AOI with required products, source records, expected cache paths, license references, and operator choices.
-- Dry-run and local-copy command transcript using ignored roots; download commands remain opt-in and side-effect explicit.
-- Verification output showing which products are ready, missing, or blocked.
-
-Definition of done:
-
-- A user can take the acquisition pack and either stage local public data or see the exact missing source records needed for the AOI.
-
-Boundaries: Public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no large swisstopo products committed, no operational claim.
-
 ### TB-324: Real AOI Terrain And Context Preprocessing Gate
 
 Goal: Extend the AOI preprocessing path so real staged swissALTI3D terrain and selected context products produce deterministic manifests, QA summaries, and blocked/ready classifications.

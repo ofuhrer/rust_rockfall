@@ -11,6 +11,7 @@ Swiss site.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import hashlib
 import json
 import sys
@@ -161,9 +162,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.json_output.write_text(json.dumps(json_safe(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    output = json.dumps(json_safe(report), indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
     return 0 if report["portability_preflight_status"] == "ready" else 2
 
@@ -782,7 +783,7 @@ def catalog_product_entries_for_extent(wanted_tile_ids: list[str], catalog: dict
                 "crs": entry.get("crs"),
                 "resolution_m": entry.get("resolution_m"),
                 "product_version": entry.get("product_version"),
-                "product_date": entry.get("product_date"),
+                "product_date": text_value(entry.get("product_date")),
                 "expected_staging_root": entry.get("expected_staging_root"),
                 "expected_staged_path": entry.get("expected_staged_path"),
                 "tile_ids": [],
@@ -1735,6 +1736,20 @@ def load_site_config(path: Path) -> dict[str, Any]:
 
 def text_value(value: Any) -> str:
     return str(value).strip() if value not in (None, "") else ""
+
+
+def json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {text_value(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [json_safe(item) for item in value]
+    if isinstance(value, (dt.date, dt.datetime)):
+        return value.isoformat()
+    if isinstance(value, Path):
+        return str(value)
+    return value
 
 
 def resolve_repo_path(value: Any, default: Path | None = None, *, base: Path | None = None) -> Path:

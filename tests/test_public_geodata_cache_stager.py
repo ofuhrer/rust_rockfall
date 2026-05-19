@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import datetime as dt
+import io
 import importlib.util
 import json
 import tempfile
@@ -493,6 +496,98 @@ class PublicGeodataCacheStagerTests(unittest.TestCase):
         self.assertEqual(verification_report["verification_status"], "verified")
         self.assertEqual(verification_report["product_count"], 3)
         self.assertEqual(verification_report["products"][2]["verification_status"], "optional_missing")
+
+    def test_cli_json_and_text_reports_handle_wizard_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "input" / "public_geodata_cache_manifest.yaml"
+            terrain_path = site_root / "input" / "terrain.asc"
+            terrain_metadata_path = site_root / "input" / "terrain_metadata.yaml"
+            terrain_path.parent.mkdir(parents=True, exist_ok=True)
+            terrain_path.write_text("terrain-bytes\n", encoding="utf-8")
+            terrain_checksum = stager.PREFLIGHT.sha256_path(terrain_path)
+            terrain_metadata_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "source_product_id": "swissalti3d_fixture_terrain_crop",
+                        "source_product_name": "swissALTI3D",
+                        "source_url_or_download_record": "https://example.invalid/swissalti3d",
+                        "product_version_or_date": dt.date(2026, 3, 1),
+                        "tile_id_or_delivery_identifier": "2793-1180",
+                        "crs": "EPSG:2056",
+                        "resolution_m": 2.0,
+                        "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                        "license_or_terms_reference": "example terms",
+                        "raw_checksum": terrain_checksum,
+                        "processed_checksum": terrain_checksum,
+                        "preprocessing_command_and_timestamp": "local copy source",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swiss_public_geodata_cache_manifest_template_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "products": [
+                            {
+                                "category": "terrain_crop",
+                                "product_id": "terrain_crop",
+                                "source_product_id": "swissalti3d_fixture_terrain_crop",
+                                "source_product_name": "swissALTI3D",
+                                "source_url_or_download_record": "https://example.invalid/swissalti3d",
+                                "product_version_or_date": "2026-03-01",
+                                "tile_id_or_delivery_identifier": "2793-1180",
+                                "checksum_sha256": terrain_checksum,
+                                "crs": "EPSG:2056",
+                                "resolution_m": 2.0,
+                                "crop_extent_lv95_m": {"xmin": 2793000.0, "ymin": 1180200.0, "xmax": 2793008.0, "ymax": 1180208.0},
+                                "license_or_terms_reference": "example terms",
+                                "raw_checksum": terrain_checksum,
+                                "processed_checksum": terrain_checksum,
+                                "preprocessing_command_and_timestamp": "local copy source",
+                                "required": True,
+                                "staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "metadata_path": str(SITE_ROOT_RELATIVE / "input" / "terrain_metadata.yaml"),
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                exit_code = stager.main(
+                    [
+                        "--cache-manifest",
+                        str(manifest_path),
+                        "--mode",
+                        "local-copy",
+                        "--local-path",
+                        str(terrain_path),
+                        "--local-path",
+                        str(terrain_metadata_path),
+                        "--format",
+                        "json",
+                    ]
+                )
+
+            report = json.loads(stdout.getvalue())
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(report["wizard_mode"])
+            self.assertEqual(report["proposal_status"], "ready_to_apply")
+            text_report = stager.render_text_report(report)
+            self.assertIn("wizard_mode: True", text_report)
+            self.assertIn("status: ready_to_apply", text_report)
+            self.assertIn("proposal_status=verified", text_report)
+            self.assertIn("preview_staging_status=verified", text_report)
 
     def test_fail_closed_statuses_cover_missing_checksum_metadata_and_unsupported(self) -> None:
         cases = [

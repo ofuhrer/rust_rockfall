@@ -38,9 +38,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.json_output.write_text(json.dumps(PREFLIGHT.json_safe(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    output = json.dumps(PREFLIGHT.json_safe(report), indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
     return 0 if report["verification_status"] == "verified" else 2
 

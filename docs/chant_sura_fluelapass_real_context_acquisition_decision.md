@@ -9,7 +9,10 @@ The frozen machine-readable acquisition package now lives at
 `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`. It keeps
 the required real inputs, the expected local roots, and the fixture-only paths
 separate, with explicit `real_staged`, `fixture_backed`, `missing`, and
-`deferred` classifications.
+`deferred` classifications. The same pack now also carries source records,
+expected cache paths, operator choices, and the current dry-run/local-copy
+transcript summary so an operator can stage or stop without reconstructing the
+contract from scattered docs.
 
 ## Machine-Readable Decision
 
