@@ -450,6 +450,11 @@ extent, resolution, CRS, nodata policy, source tile ids, and deterministic
 output roots, then feeds those fields into the release-zone candidate planner
 when a local AOI tile catalog is present.
 
+The same helper now also emits a gate classification and QA blockers so the
+guided `scripts/run_aoi_hazard_workflow.py workflow` front door can distinguish
+fixture-backed, real-staged, missing, and metadata-mismatched preprocessing
+states before any smoke, package, or review step runs.
+
 The current decision pack for the Chant Sura / Flüelapass candidate lives at
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`. It records a
 defer recommendation, the cache/output roots, the required public-context

@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-324: Real AOI Terrain And Context Preprocessing Gate
-
-Goal: Extend the AOI preprocessing path so real staged swissALTI3D terrain and selected context products produce deterministic manifests, QA summaries, and blocked/ready classifications.
-
-Capability gap reduced: The current terrain/context preprocessing surface is strongest on fixtures and needs a real-staged-input gate before arbitrary AOIs are credible.
-
-Why this outranks alternatives: Release-zone candidate generation on real terrain is only meaningful after the terrain/context preprocessing contract is deterministic and auditable.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/swiss_terrain_ingestion_pilot.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_terrain_preprocessing.py`
-
-Deliverables:
-
-- Preprocessing report fields for real staged terrain/context provenance, CRS, extent, resolution, nodata, source tile ids, and QA blockers.
-- Tests for verified real-input-like fixtures, missing context, CRS/extent mismatch, and deterministic output roots.
-- Documentation showing how the gate feeds the guided AOI workflow.
-
-Definition of done:
-
-- The AOI front door can distinguish fixture-backed, missing, mismatched, and real-staged preprocessing readiness without generating heavy outputs.
-
-Boundaries: Preprocessing gate only; no release-zone validation claim, no simulation, no Balfrin submission, no operational claim.
-
 ### TB-325: Real-Terrain Release-Zone Candidate Sweep
 
 Goal: Run the deterministic terrain-driven release-zone candidate generator across a larger real or real-like staged AOI and measure candidate counts, geometry sizes, runtime, and output pressure.

@@ -152,6 +152,12 @@ def build_report(
         terrain_extent_for_tiles["crs"] = "EPSG:2056"
         source_tile_plan = build_source_tile_plan(terrain_extent_for_tiles, aoi_tile_catalog, repo_root)
         metadata_mismatches = compare_metadata(terrain_summary, terrain_metadata, source_tile_plan["source_tile_ids"])
+        terrain_provenance = build_terrain_provenance_summary(
+            terrain_metadata=terrain_metadata,
+            terrain_summary=terrain_summary,
+            source_tile_plan=source_tile_plan,
+            metadata_mismatches=metadata_mismatches,
+        )
         if source_tile_plan["missing_tile_ids"]:
             preprocessing_status = "blocked_missing_tile"
         elif metadata_mismatches:
@@ -168,6 +174,7 @@ def build_report(
             terrain_summary=terrain_summary,
             terrain_metadata=terrain_metadata,
             source_tile_plan=source_tile_plan,
+            terrain_provenance=terrain_provenance,
             metadata_mismatches=metadata_mismatches,
             preprocessing_status=preprocessing_status,
         )
@@ -180,6 +187,13 @@ def build_report(
         report = {
             "schema_version": SCHEMA_VERSION,
             "terrain_preprocessing_status": preprocessing_status,
+            "preprocessing_gate_classification": (
+                "blocked_missing_terrain"
+                if preprocessing_status in {"blocked_missing_inputs", "blocked_missing_tile"}
+                else "metadata_mismatch"
+                if preprocessing_status == "metadata_mismatch"
+                else terrain_provenance["classification"]
+            ),
             "candidate_site_id": candidate_site_id,
             "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
             "site_extent": site_extent if site_extent else "placeholder_extent_missing",
@@ -201,6 +215,8 @@ def build_report(
             "blocked_missing_inputs": missing_inputs,
             "missing_tile_ids": source_tile_plan["missing_tile_ids"],
             "metadata_mismatches": metadata_mismatches,
+            "terrain_provenance": terrain_provenance,
+            "qa_blockers": list(terrain_provenance.get("qa_blockers") or missing_inputs),
             "output_roots": package["output_roots"],
             "blocked_reason": blocked_reason,
             "claim_boundaries": {
@@ -281,6 +297,8 @@ def build_prepared_input_report(
             config=config,
             paths=paths,
         )
+        terrain_provenance = dict(base_report.get("terrain_provenance") or {})
+        context_provenance = summarize_context_provenance(context_summary)
         if terrain_status in {"blocked_missing_inputs", "blocked_missing_tile"}:
             prepared_status = "blocked_missing_terrain"
         elif terrain_status == "metadata_mismatch":
@@ -289,6 +307,11 @@ def build_prepared_input_report(
             prepared_status = "ready" if context_summary["missing_context_count"] == 0 else "partial_context"
 
         terrain_qa_summary = build_terrain_qa_summary(paths.get("terrain_crop"), base_report, prepared_status)
+        preprocessing_gate_classification = classify_prepared_input_gate(
+            terrain_status=terrain_status,
+            terrain_provenance=terrain_provenance,
+            context_summary=context_summary,
+        )
         if prepared_status in {"ready", "partial_context"}:
             materialize_prepared_input_root(
                 prepared_input_root=prepared_input_root,
@@ -309,10 +332,13 @@ def build_prepared_input_report(
             "prepared_input_manifest_path": str(prepared_input_root / "prepared_input_manifest.json"),
             "prepared_input_written": prepared_status in {"ready", "partial_context"},
             "terrain_preprocessing_status": terrain_status,
+            "preprocessing_gate_classification": preprocessing_gate_classification,
             "terrain_preprocessing": base_report,
+            "terrain_provenance": terrain_provenance,
             "terrain_qa_summary": terrain_qa_summary,
             "terrain_qa_summary_path": str(qa_root / "terrain_qa_summary.json"),
             "context_availability_summary": context_summary,
+            "context_provenance": context_provenance,
             "context_availability_summary_path": str(qa_root / "context_availability_summary.json"),
             "output_roots": {
                 "prepared_input_root": str(prepared_input_root),
@@ -374,19 +400,26 @@ def build_context_availability_summary(
                     "source_tile_ids": [],
                     "coordinate_reference_system": {},
                     "context_readiness_status": "missing",
+                    "context_provenance_classification": "missing",
+                    "context_qa_blockers": ["missing_staged_context"],
                 }
             )
         missing_categories = required_categories.copy()
         return {
             "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
             "context_readiness_status": "partial_context",
+            "context_provenance_classification": "missing",
             "expected_context_count": len(entries),
             "ready_context_count": 0,
             "missing_context_count": len(missing_categories),
+            "real_staged_context_count": 0,
+            "fixture_backed_context_count": 0,
+            "metadata_mismatch_context_count": 0,
             "ready_context_categories": [],
             "missing_context_categories": missing_categories,
             "context_entries": entries,
             "optional_context_entries": [],
+            "context_qa_blockers": ["missing_staged_context"],
             "processed_context_root": str(paths["processed_context_root"]) if paths.get("processed_context_root") is not None else None,
             "acquisition_manifest_path": str(acquisition_manifest_path),
         }
@@ -411,6 +444,19 @@ def build_context_availability_summary(
         metadata_present = metadata_path is not None and metadata_path.exists()
         metadata = PREFLIGHT.load_site_config(metadata_path) if metadata_present and metadata_path is not None else {}
         ready = staged_asset_present and metadata_present
+        crs = metadata.get("coordinate_reference_system") if isinstance(metadata.get("coordinate_reference_system"), dict) else {}
+        blockers = []
+        if not staged_asset_present:
+            blockers.append("missing_staged_asset")
+        if not metadata_present:
+            blockers.append("missing_metadata")
+        if metadata_present and PREFLIGHT.text_value(crs.get("epsg")) not in {"2056", "EPSG:2056"}:
+            blockers.append("crs")
+        if metadata_present and PREFLIGHT.text_value(crs.get("vertical_datum")) not in {"LN02", "LN02 / CH1903+"}:
+            blockers.append("vertical_datum")
+        provenance_classification = classify_context_provenance(metadata, ready=ready)
+        if blockers and ready:
+            provenance_classification = "metadata_mismatch"
         if not ready:
             missing_categories.append(category)
         entries.append(
@@ -425,10 +471,10 @@ def build_context_availability_summary(
                 "review_classification": PREFLIGHT.text_value(metadata.get("review_classification")),
                 "source_product": PREFLIGHT.text_value(metadata.get("source_product")),
                 "source_tile_ids": metadata.get("source_tile_ids") if isinstance(metadata.get("source_tile_ids"), list) else [],
-                "coordinate_reference_system": metadata.get("coordinate_reference_system")
-                if isinstance(metadata.get("coordinate_reference_system"), dict)
-                else {},
+                "coordinate_reference_system": crs,
                 "context_readiness_status": "ready" if ready else "missing",
+                "context_provenance_classification": provenance_classification,
+                "context_qa_blockers": blockers,
             }
         )
 
@@ -449,13 +495,22 @@ def build_context_availability_summary(
     return {
         "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
         "context_readiness_status": "ready" if not missing_categories else "partial_context",
+        "context_provenance_classification": summarize_context_entry_provenance(entries),
         "expected_context_count": len(entries),
         "ready_context_count": len([entry for entry in entries if entry["context_readiness_status"] == "ready"]),
         "missing_context_count": len(missing_categories),
+        "real_staged_context_count": len([entry for entry in entries if entry["context_provenance_classification"] == "real_staged"]),
+        "fixture_backed_context_count": len([entry for entry in entries if entry["context_provenance_classification"] == "fixture_backed"]),
+        "metadata_mismatch_context_count": len([entry for entry in entries if entry["context_provenance_classification"] == "metadata_mismatch"]),
         "ready_context_categories": [entry["category"] for entry in entries if entry["context_readiness_status"] == "ready"],
         "missing_context_categories": missing_categories,
         "context_entries": entries,
         "optional_context_entries": optional_entries,
+        "context_qa_blockers": [
+            blocker
+            for entry in entries
+            for blocker in entry.get("context_qa_blockers", [])
+        ],
         "processed_context_root": str(paths["processed_context_root"]) if paths.get("processed_context_root") is not None else None,
         "acquisition_manifest_path": str(acquisition_manifest_path),
     }
@@ -481,11 +536,15 @@ def build_terrain_qa_summary(
     prepared_status: str,
 ) -> dict[str, Any]:
     terrain_summary = base_report.get("terrain_summary") if isinstance(base_report.get("terrain_summary"), dict) else {}
+    terrain_provenance = base_report.get("terrain_provenance") if isinstance(base_report.get("terrain_provenance"), dict) else {}
+    qa_blockers = list(terrain_provenance.get("qa_blockers") or base_report.get("metadata_mismatches") or [])
     if not terrain_summary:
         return {
             "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
             "qa_status": prepared_status,
             "terrain_present": False,
+            "terrain_provenance_classification": PREFLIGHT.text_value(terrain_provenance.get("classification")) or "missing",
+            "qa_blockers": qa_blockers or ["missing_terrain"],
             "summary_status": "blocked_missing_terrain",
             "terrain_cell_count": 0,
             "valid_cell_count": 0,
@@ -503,6 +562,8 @@ def build_terrain_qa_summary(
             "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
             "qa_status": prepared_status,
             "terrain_present": False,
+            "terrain_provenance_classification": PREFLIGHT.text_value(terrain_provenance.get("classification")) or "missing",
+            "qa_blockers": qa_blockers or ["missing_terrain"],
             "summary_status": "blocked_missing_terrain",
             "terrain_cell_count": int(terrain_summary.get("cell_count", 0)),
             "valid_cell_count": 0,
@@ -523,6 +584,8 @@ def build_terrain_qa_summary(
         "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
         "qa_status": prepared_status,
         "terrain_present": True,
+        "terrain_provenance_classification": PREFLIGHT.text_value(terrain_provenance.get("classification")) or "fixture_backed",
+        "qa_blockers": qa_blockers,
         "summary_status": "ready" if prepared_status == "ready" else prepared_status,
         "terrain_cell_count": int(terrain_summary.get("cell_count", terrain["values"].size)),
         "valid_cell_count": int(valid_values.size),
@@ -657,12 +720,40 @@ def render_prepared_input_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"prepared_input_status: {report['prepared_input_status']}",
+        f"preprocessing_gate_classification: {report.get('preprocessing_gate_classification', '')}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         f"prepared_input_root: {report['prepared_input_root']}",
         "",
-        "terrain_qa_summary:",
+        "terrain_provenance:",
     ]
+    for key, value in report.get("terrain_provenance", {}).items():
+        if key == "qa_blockers" and isinstance(value, list):
+            lines.append("- qa_blockers:")
+            lines.extend(f"  - {item}" for item in value)
+        elif key == "provenance_notes" and isinstance(value, list):
+            lines.append("- provenance_notes:")
+            lines.extend(f"  - {item}" for item in value)
+        else:
+            lines.append(f"- {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "context_provenance:",
+        ]
+    )
+    for key, value in report.get("context_provenance", {}).items():
+        if key == "qa_blockers" and isinstance(value, list):
+            lines.append("- qa_blockers:")
+            lines.extend(f"  - {item}" for item in value)
+        else:
+            lines.append(f"- {key}: {value}")
+    lines.extend(
+        [
+            "",
+            "terrain_qa_summary:",
+        ]
+    )
     for key, value in report["terrain_qa_summary"].items():
         lines.append(f"- {key}: {value}")
     lines.append("")
@@ -671,7 +762,10 @@ def render_prepared_input_report(report: dict[str, Any]) -> str:
         if key == "context_entries":
             lines.append("- context_entries:")
             for entry in value:
-                lines.append(f"  - {entry['category']}: {entry['context_readiness_status']}")
+                lines.append(f"  - {entry['category']}: {entry['context_readiness_status']} / {entry.get('context_provenance_classification', '')}")
+                blockers = entry.get("context_qa_blockers") or []
+                if blockers:
+                    lines.append(f"    - blockers: {', '.join(blockers)}")
         elif key == "optional_context_entries":
             lines.append("- optional_context_entries:")
             for entry in value:
@@ -753,6 +847,7 @@ def blocked_report(
     return {
         "schema_version": SCHEMA_VERSION,
         "terrain_preprocessing_status": "blocked_missing_inputs",
+        "preprocessing_gate_classification": "blocked_missing_terrain",
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
         "site_extent": site_extent if site_extent else "placeholder_extent_missing",
@@ -764,11 +859,16 @@ def blocked_report(
         "aoi_tile_catalog_path": display_path(paths["aoi_tile_catalog"], repo_root)
             if paths["aoi_tile_catalog"] is not None
             else None,
-            "terrain_preprocessing_package": {
+        "terrain_preprocessing_package": {
                 "preprocessing_status": "blocked_missing_inputs",
                 "source_tile_ids": [],
                 "source_tiles": [],
                 "output_roots": output_roots,
+                "terrain_provenance": {
+                    "classification": "missing",
+                    "qa_blockers": missing_inputs,
+                },
+                "qa_blockers": missing_inputs,
             },
         },
         "terrain_preprocessing_package": {
@@ -782,6 +882,11 @@ def blocked_report(
             "output_roots": output_roots,
             "output_paths": {},
             "source_tile_count": 0,
+            "terrain_provenance": {
+                "classification": "missing",
+                "qa_blockers": missing_inputs,
+            },
+            "qa_blockers": missing_inputs,
             "manifest_path": str(paths["output_root"] / "terrain_preprocessing_manifest.json"),
         },
         "terrain_summary": {},
@@ -789,6 +894,11 @@ def blocked_report(
         "blocked_missing_inputs": missing_inputs,
         "missing_tile_ids": [],
         "metadata_mismatches": [],
+        "terrain_provenance": {
+            "classification": "missing",
+            "qa_blockers": missing_inputs,
+        },
+        "qa_blockers": missing_inputs,
         "output_roots": output_roots,
         "claim_boundaries": {
             **PREFLIGHT.claim_boundaries(),
@@ -890,6 +1000,130 @@ def compare_metadata(
     return mismatches
 
 
+def build_terrain_provenance_summary(
+    *,
+    terrain_metadata: dict[str, Any],
+    terrain_summary: dict[str, Any],
+    source_tile_plan: dict[str, Any],
+    metadata_mismatches: list[str],
+) -> dict[str, Any]:
+    crs = terrain_metadata.get("coordinate_reference_system") if isinstance(terrain_metadata.get("coordinate_reference_system"), dict) else {}
+    preprocessing = terrain_metadata.get("preprocessing") if isinstance(terrain_metadata.get("preprocessing"), dict) else {}
+    provenance = terrain_metadata.get("provenance") if isinstance(terrain_metadata.get("provenance"), dict) else {}
+    return {
+        "classification": classify_terrain_provenance(terrain_metadata=terrain_metadata, metadata_mismatches=metadata_mismatches),
+        "source_dataset": PREFLIGHT.text_value(terrain_metadata.get("source_dataset")),
+        "source_product": PREFLIGHT.text_value(terrain_metadata.get("source_product")),
+        "source_url": PREFLIGHT.text_value(terrain_metadata.get("source_url")),
+        "source_filename": PREFLIGHT.text_value(terrain_metadata.get("source_filename")),
+        "download_status": PREFLIGHT.text_value(terrain_metadata.get("download_status")),
+        "source_file_present": bool(terrain_metadata.get("source_file_present")),
+        "license": PREFLIGHT.text_value(terrain_metadata.get("license")),
+        "preprocessing_status": PREFLIGHT.text_value(preprocessing.get("status")),
+        "resampling_method": PREFLIGHT.text_value(preprocessing.get("resampling_method")),
+        "source_tile_ids": list(source_tile_plan.get("source_tile_ids") or []),
+        "source_tile_count": len(source_tile_plan.get("source_tiles") or []),
+        "crs_epsg": PREFLIGHT.normalize_resolution_m(crs.get("epsg")) if crs else None,
+        "vertical_datum": PREFLIGHT.text_value(crs.get("vertical_datum")),
+        "extent_lv95_m": terrain_summary["extent_lv95_m"],
+        "resolution_m": terrain_summary["resolution_m"],
+        "nodata": terrain_summary["nodata"],
+        "qa_blockers": list(metadata_mismatches),
+        "intended_use": PREFLIGHT.text_value(provenance.get("intended_use")),
+        "provenance_notes": provenance.get("notes") if isinstance(provenance.get("notes"), list) else [],
+    }
+
+
+def classify_terrain_provenance(*, terrain_metadata: dict[str, Any], metadata_mismatches: list[str]) -> str:
+    if metadata_mismatches:
+        return "metadata_mismatch"
+    source_dataset = PREFLIGHT.text_value(terrain_metadata.get("source_dataset")).lower()
+    source_product = PREFLIGHT.text_value(terrain_metadata.get("source_product")).lower()
+    download_status = PREFLIGHT.text_value(terrain_metadata.get("download_status")).lower()
+    preprocessing_status = PREFLIGHT.text_value(
+        (terrain_metadata.get("preprocessing") or {}).get("status") if isinstance(terrain_metadata.get("preprocessing"), dict) else ""
+    ).lower()
+    license_text = PREFLIGHT.text_value(terrain_metadata.get("license")).lower()
+    synthetic_markers = ("synthetic" in source_dataset) or ("synthetic" in source_product) or ("fixture" in download_status) or ("synthetic" in preprocessing_status) or ("synthetic" in license_text)
+    if synthetic_markers:
+        return "fixture_backed"
+    if source_dataset == "swisstopo_swissalti3d" or source_product == "swissalti3d" or download_status in {"staged_real_input", "downloaded", "staged"} or preprocessing_status in {"staged_real_input", "downloaded", "staged"}:
+        return "real_staged"
+    return "fixture_backed"
+
+
+def classify_context_provenance(metadata: dict[str, Any], *, ready: bool) -> str:
+    if not ready:
+        return "missing"
+    crs = metadata.get("coordinate_reference_system") if isinstance(metadata.get("coordinate_reference_system"), dict) else {}
+    if PREFLIGHT.text_value(crs.get("epsg")) not in {"2056", "EPSG:2056"}:
+        return "metadata_mismatch"
+    if PREFLIGHT.text_value(crs.get("vertical_datum")) not in {"LN02", "LN02 / CH1903+"}:
+        return "metadata_mismatch"
+    review_classification = PREFLIGHT.text_value(metadata.get("review_classification")).lower()
+    inspection_rationale = PREFLIGHT.text_value(metadata.get("inspection_rationale")).lower()
+    if "synthetic" in inspection_rationale or review_classification in {"unresolved", "limiting"}:
+        return "fixture_backed"
+    if review_classification in {"acceptable", "ready"}:
+        return "real_staged"
+    return "fixture_backed"
+
+
+def summarize_context_entry_provenance(entries: list[dict[str, Any]]) -> str:
+    classifications = [PREFLIGHT.text_value(entry.get("context_provenance_classification")) for entry in entries]
+    if not classifications:
+        return "missing"
+    if any(classification == "metadata_mismatch" for classification in classifications):
+        return "metadata_mismatch"
+    if any(classification == "missing" for classification in classifications):
+        return "missing"
+    if all(classification == "real_staged" for classification in classifications):
+        return "real_staged"
+    if all(classification == "fixture_backed" for classification in classifications):
+        return "fixture_backed"
+    if "real_staged" in classifications and "fixture_backed" in classifications:
+        return "mixed_real_fixture"
+    return "fixture_backed"
+
+
+def summarize_context_provenance(context_summary: dict[str, Any]) -> dict[str, Any]:
+    entries = context_summary.get("context_entries") if isinstance(context_summary.get("context_entries"), list) else []
+    classifications = [PREFLIGHT.text_value(entry.get("context_provenance_classification")) for entry in entries if isinstance(entry, dict)]
+    return {
+        "classification": summarize_context_entry_provenance(entries if isinstance(entries, list) else []),
+        "real_staged_context_count": len([classification for classification in classifications if classification == "real_staged"]),
+        "fixture_backed_context_count": len([classification for classification in classifications if classification == "fixture_backed"]),
+        "missing_context_count": len([classification for classification in classifications if classification == "missing"]),
+        "metadata_mismatch_context_count": len([classification for classification in classifications if classification == "metadata_mismatch"]),
+        "qa_blockers": list(context_summary.get("context_qa_blockers") or []),
+    }
+
+
+def classify_prepared_input_gate(
+    *,
+    terrain_status: str,
+    terrain_provenance: dict[str, Any],
+    context_summary: dict[str, Any],
+) -> str:
+    if terrain_status in {"blocked_missing_inputs", "blocked_missing_tile"}:
+        return "blocked_missing_terrain"
+    if terrain_status == "metadata_mismatch":
+        return "blocked_metadata_mismatch"
+    if context_summary.get("missing_context_count", 0):
+        return "blocked_missing_context"
+    if terrain_provenance.get("classification") == "metadata_mismatch" or context_summary.get("context_provenance_classification") == "metadata_mismatch":
+        return "blocked_metadata_mismatch"
+    context_classification = PREFLIGHT.text_value(context_summary.get("context_provenance_classification"))
+    terrain_classification = PREFLIGHT.text_value(terrain_provenance.get("classification"))
+    if terrain_classification == "real_staged" and context_classification == "real_staged":
+        return "real_staged"
+    if terrain_classification == "fixture_backed" or context_classification in {"fixture_backed", "mixed_real_fixture"}:
+        return "fixture_backed"
+    if terrain_classification == "real_staged":
+        return "real_staged"
+    return "fixture_backed"
+
+
 def build_package(
     *,
     repo_root: Path,
@@ -900,6 +1134,7 @@ def build_package(
     terrain_summary: dict[str, Any],
     terrain_metadata: dict[str, Any],
     source_tile_plan: dict[str, Any],
+    terrain_provenance: dict[str, Any],
     metadata_mismatches: list[str],
     preprocessing_status: str,
 ) -> dict[str, Any]:
@@ -935,6 +1170,8 @@ def build_package(
         "output_roots": output_roots,
         "output_paths": output_paths,
         "metadata_mismatches": metadata_mismatches,
+        "terrain_provenance": terrain_provenance,
+        "qa_blockers": list(metadata_mismatches),
         "processing_steps": [
             "inspect staged terrain crop header",
             "read terrain metadata sidecar",
@@ -1002,6 +1239,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"terrain_preprocessing_status: {report['terrain_preprocessing_status']}",
+        f"preprocessing_gate_classification: {report.get('preprocessing_gate_classification', '')}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         "",

@@ -51,6 +51,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
 
         self.assertEqual(report, second)
         self.assertEqual(report["terrain_preprocessing_status"], "ready")
+        self.assertEqual(report["preprocessing_gate_classification"], "fixture_backed")
         self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["xmin"], 2793000.0)
         self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["ymax"], 1180208.0)
         self.assertEqual(report["terrain_preprocessing_package"]["resolution_m"], 2.0)
@@ -58,6 +59,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
         self.assertEqual(report["terrain_preprocessing_package"]["nodata"], -9999.0)
         self.assertEqual(report["terrain_preprocessing_package"]["source_tile_ids"], ["2793-1180"])
         self.assertEqual(report["terrain_preprocessing_package"]["source_tiles"][0]["tile_id"], "2793-1180")
+        self.assertEqual(report["terrain_preprocessing_package"]["terrain_provenance"]["classification"], "fixture_backed")
         self.assertTrue(report["output_roots"]["processed_input_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"))
         self.assertEqual(report["blocked_reason"], "")
 
@@ -78,6 +80,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             report = helper.build_report(repo_root=repo_root, site_config=config_path)
 
         self.assertEqual(report["terrain_preprocessing_status"], "blocked_missing_tile")
+        self.assertEqual(report["preprocessing_gate_classification"], "blocked_missing_terrain")
         self.assertEqual(report["missing_tile_ids"], ["2793-1180"])
         self.assertIn("missing AOI tile catalog coverage", report["blocked_reason"])
         self.assertEqual(report["terrain_preprocessing_package"]["source_tile_count"], 0)
@@ -93,13 +96,17 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             )
             metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
             metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
-            metadata["raster"]["resolution_m"] = 4.0
+            metadata["coordinate_reference_system"]["epsg"] = 21781
+            metadata["extent_lv95_m"]["xmax"] = metadata["extent_lv95_m"]["xmax"] + 2.0
             metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
 
             report = helper.build_report(repo_root=repo_root, site_config=config_path)
 
         self.assertEqual(report["terrain_preprocessing_status"], "metadata_mismatch")
-        self.assertIn("resolution_m", report["metadata_mismatches"])
+        self.assertEqual(report["preprocessing_gate_classification"], "metadata_mismatch")
+        self.assertIn("crs", report["metadata_mismatches"])
+        self.assertIn("extent_lv95_m", report["metadata_mismatches"])
+        self.assertGreater(len(report["qa_blockers"]), 0)
         self.assertIn("terrain metadata does not match staged crop", report["blocked_reason"])
         self.assertEqual(report["terrain_preprocessing_package"]["resolution_m"], 2.0)
 
@@ -112,7 +119,8 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 site_config=config_path,
                 fixture_root=PREPARED_FIXTURE_ROOT,
             )
-            self._stage_context_metadata(repo_root, include_all_required=True)
+            self._stage_context_metadata(repo_root, include_all_required=True, real_staged=True)
+            self._write_real_staged_terrain_metadata(repo_root)
             prepared_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input"
 
             report = helper.build_prepared_input_report(
@@ -128,6 +136,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
 
             self.assertEqual(report, second)
             self.assertEqual(report["prepared_input_status"], "ready")
+            self.assertEqual(report["preprocessing_gate_classification"], "real_staged")
             self.assertTrue(report["prepared_input_written"])
             self.assertTrue((prepared_root / "input" / "terrain.asc").exists())
             self.assertTrue((prepared_root / "input" / "terrain_metadata.yaml").exists())
@@ -136,9 +145,13 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
+            self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
+            self.assertEqual(report["context_provenance"]["classification"], "real_staged")
+            self.assertEqual(report["terrain_qa_summary"]["terrain_provenance_classification"], "real_staged")
             self.assertEqual(report["context_availability_summary"]["context_readiness_status"], "ready")
             self.assertEqual(report["context_availability_summary"]["ready_context_count"], 6)
             self.assertEqual(report["context_availability_summary"]["missing_context_count"], 0)
+            self.assertEqual(report["context_availability_summary"]["context_provenance_classification"], "real_staged")
             self.assertEqual(report["terrain_qa_summary"]["summary_status"], "ready")
             self.assertGreater(report["terrain_qa_summary"]["slope_stats_deg"]["count"], 0)
             self.assertLessEqual(report["terrain_qa_summary"]["hillshade_stats"]["max"], 255.0)
@@ -152,7 +165,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 site_config=config_path,
                 fixture_root=PREPARED_FIXTURE_ROOT,
             )
-            self._stage_context_metadata(repo_root, include_all_required=False)
+            self._stage_context_metadata(repo_root, include_all_required=False, real_staged=False)
             prepared_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input"
 
             report = helper.build_prepared_input_report(
@@ -162,9 +175,11 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             )
 
             self.assertEqual(report["prepared_input_status"], "partial_context")
+            self.assertEqual(report["preprocessing_gate_classification"], "blocked_missing_context")
             self.assertTrue(report["prepared_input_written"])
             self.assertGreater(report["context_availability_summary"]["missing_context_count"], 0)
             self.assertIn("swissbuildings3d", " ".join(report["context_availability_summary"]["missing_context_categories"]))
+            self.assertEqual(report["context_provenance"]["classification"], "missing")
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
 
@@ -177,7 +192,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 site_config=config_path,
                 fixture_root=PREPARED_FIXTURE_ROOT,
             )
-            self._stage_context_metadata(repo_root, include_all_required=True)
+            self._stage_context_metadata(repo_root, include_all_required=True, real_staged=False)
             terrain_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
             terrain_path.unlink()
             prepared_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input"
@@ -190,6 +205,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
 
             self.assertEqual(report["prepared_input_status"], "blocked_missing_terrain")
             self.assertFalse(report["prepared_input_written"])
+            self.assertEqual(report["preprocessing_gate_classification"], "blocked_missing_terrain")
             self.assertEqual(report["terrain_preprocessing_status"], "blocked_missing_inputs")
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
             self.assertFalse((prepared_root / "input" / "terrain.asc").exists())
@@ -203,7 +219,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 site_config=config_path,
                 fixture_root=PREPARED_FIXTURE_ROOT,
             )
-            self._stage_context_metadata(repo_root, include_all_required=True)
+            self._stage_context_metadata(repo_root, include_all_required=True, real_staged=False)
             metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
             metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
             metadata["raster"]["resolution_m"] = 4.0
@@ -218,6 +234,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
 
             self.assertEqual(report["prepared_input_status"], "blocked_metadata_mismatch")
             self.assertFalse(report["prepared_input_written"])
+            self.assertEqual(report["preprocessing_gate_classification"], "blocked_metadata_mismatch")
             self.assertEqual(report["terrain_preprocessing_status"], "metadata_mismatch")
             self.assertIn("resolution_m", report["terrain_preprocessing"]["metadata_mismatches"])
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
@@ -232,7 +249,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
 
-    def _stage_context_metadata(self, repo_root: Path, *, include_all_required: bool) -> None:
+    def _stage_context_metadata(self, repo_root: Path, *, include_all_required: bool, real_staged: bool) -> None:
         context_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context"
         fixtures = {
             "swissimage": CONTEXT_FIXTURE_ROOT / "swissimage" / "metadata.json",
@@ -244,30 +261,31 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             target = context_root / name / "metadata.json"
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+            if real_staged:
+                payload = json.loads(target.read_text(encoding="utf-8"))
+                payload["review_classification"] = "acceptable"
+                payload["inspection_rationale"] = "real staged context input satisfies the local file and metadata contract"
+                payload["source_tile_ids"] = ["2696-1167"]
+                target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
         swisssurface3d = context_root / "swisssurface3d" / "metadata.json"
         swisssurface3d.parent.mkdir(parents=True, exist_ok=True)
         if include_all_required:
-            swisssurface3d.write_text(
-                json.dumps(
-                    {
-                        "review_classification": "acceptable",
-                        "source_product": "swissSURFACE3D",
-                        "source_url": "https://www.swisstopo.admin.ch/en/height-model-swisssurface3d",
-                        "source_tile_ids": ["2696-1167"],
-                        "coordinate_reference_system": {
-                            "epsg": 2056,
-                            "horizontal_name": "CH1903+ / LV95",
-                            "vertical_datum": "LN02",
-                        },
-                        "inspection_rationale": "Synthetic metadata-only fixture exercises the accepted-path summary.",
-                    },
-                    indent=2,
-                    sort_keys=True,
-                )
-                + "\n",
-                encoding="utf-8",
-            )
+            payload = {
+                "review_classification": "acceptable",
+                "source_product": "swissSURFACE3D",
+                "source_url": "https://www.swisstopo.admin.ch/en/height-model-swisssurface3d",
+                "source_tile_ids": ["2696-1167"],
+                "coordinate_reference_system": {
+                    "epsg": 2056,
+                    "horizontal_name": "CH1903+ / LV95",
+                    "vertical_datum": "LN02",
+                },
+                "inspection_rationale": "real staged context input satisfies the local file and metadata contract"
+                if real_staged
+                else "Synthetic metadata-only fixture exercises the accepted-path summary.",
+            }
+            swisssurface3d.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         else:
             swisssurface3d.write_text(
                 json.dumps(
@@ -290,6 +308,24 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             shutil.rmtree(context_root / "swissbuildings3d")
+
+    def _write_real_staged_terrain_metadata(self, repo_root: Path) -> None:
+        metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+        metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
+        metadata["source_dataset"] = "swisstopo_swissalti3d"
+        metadata["source_product"] = "swissALTI3D"
+        metadata["source_url"] = "https://www.swisstopo.admin.ch/en/height-model-swissalti3d"
+        metadata["source_filename"] = "swissalti3d_real_staged_input.asc"
+        metadata["source_file_present"] = True
+        metadata["download_status"] = "staged_real_input"
+        metadata["license"] = "real staged input for repository tests; real swisstopo terms apply"
+        metadata["preprocessing"]["status"] = "staged_real_input"
+        metadata["preprocessing"]["tool"] = "real staged repository test fixture"
+        metadata["provenance"]["notes"] = [
+            "Real staged input for repository tests.",
+            "Do not interpret this fixture as a public release artifact.",
+        ]
+        metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
 
 
 if __name__ == "__main__":

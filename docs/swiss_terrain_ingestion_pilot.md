@@ -6,6 +6,8 @@ Status: minimal `v0.5.x` pilot contract. This document describes the first swiss
 
 The immediate goal is to make Swiss terrain inputs, source areas, and terrain/material classes auditable before adding larger geospatial workflows. The pilot supports small manually supplied or synthetic ESRI ASCII DEM crops with a required terrain-source metadata sidecar. The metadata sidecar records CRS, vertical datum, extent, resolution, nodata handling, source/provenance, license/data-origin notes, and preprocessing status.
 
+The AOI front door now consumes the same terrain preprocessing contract so guided AOI work can stop on missing, mismatched, fixture-backed, or real-staged terrain inputs before any heavier release-zone or hazard step is attempted.
+
 The pilot follows the standard ESRI/GIS raster convention: `xllcorner` and
 `yllcorner` define the outer lower-left cell corner, elevation values are
 cell-center samples, and the LV95 extent records the full outer footprint.
