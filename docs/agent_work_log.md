@@ -2033,3 +2033,25 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: packaging only; no hazard-value change, no operational claim, no annual-frequency semantics, no risk/exposure/vulnerability product, and no heavy outputs committed.
 - Next task: `TB-270`
+
+### TB-270: AOI Map QA Project And Static Review Surface
+
+- Date: 2026-05-19
+- Commit: `8823720`
+- Objective: generate a lightweight AOI map QA review surface that exposes terrain, release-zone, scenario, hazard-layer, and context availability evidence without changing hazard outputs.
+- Files changed: `scripts/generate_aoi_map_qa_review.py`, `tests/test_aoi_map_qa_review.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a manifest-driven static AOI map QA review generator that writes an ignored review root with `index.html` and a JSON manifest, and keeps the review surface diagnostic rather than operational.
+  - Surfaced layer-presence, claim-boundary, and warning details for missing context layers, COG-blocked rasters, fixture-backed inputs, conditional-only weights, and non-operational status.
+  - Added focused regressions for layer presence, warning propagation, and blocked missing-map-package behavior, then removed TB-270 from the active backlog and registered the new generator in the script inventory.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_map_qa_review -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_map_qa_review tests.test_pilot_gis_visual_qa tests.test_balfrin_target_area_gis_cog_scope -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: QA/review surface only; no hazard-value changes, no operational claim, no physical-probability semantics, no annual-frequency semantics, no risk/exposure/vulnerability claim, and no heavy outputs committed.
+- Next task: `TB-271`
