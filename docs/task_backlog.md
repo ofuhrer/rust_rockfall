@@ -37,37 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-271: Adaptive AOI Ensemble Convergence Controller
-
-Goal: Add a controller that escalates AOI trajectory counts in bounded steps until spatial convergence stabilizes or a runtime/output budget stops the run.
-
-Capability gap reduced: Users should not have to choose arbitrary trajectory counts; the workflow needs a measured sufficiency loop for conditional diagnostic maps.
-
-Why this outranks alternatives: A rapid AOI-to-map workflow is only useful if it can say whether the map is stable enough for diagnostic review or blocked by uncertainty/output pressure.
-
-Inspect first:
-
-- `scripts/compare_hazard_map_convergence.py`
-- `scripts/summarize_balfrin_ensemble_frontier.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/submit_balfrin_probe.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_hazard_map_convergence.py`
-- `tests/test_balfrin_ensemble_frontier.py`
-
-Deliverables:
-
-- An adaptive convergence plan that proposes trajectory-count increments, expected output budgets, stop criteria, and local versus Balfrin execution mode.
-- A fixture-backed local loop and a Balfrin-ready command plan for bounded postproc escalation when preflights pass.
-- Tests for converged, budget-stopped, and inconclusive branches.
-
-Definition of done:
-
-- The workflow can recommend or execute the next bounded trajectory-count step based on measured convergence and output budget rather than fixed guesses.
-
-Boundaries: Conditional convergence only; Balfrin submission may be prepared but not run in this task unless explicitly scoped by a later task, no annual-frequency semantics, no physical validation claim, and no operational claim.
-
 ### TB-272: End-To-End AOI-To-Map Regression Fixture
 
 Goal: Add a compact regression fixture that exercises the entire user-facing path from AOI manifest through prepared inputs, reviewed release/scenario plan, local smoke execution, hazard-layer build, map packaging, and QA summary.

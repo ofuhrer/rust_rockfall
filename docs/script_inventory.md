@@ -140,6 +140,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_restartability_recovery.py`
 - `scripts/summarize_balfrin_scientific_delta_report.py`
 - `scripts/summarize_balfrin_single_job_execution.py`
+- `scripts/summarize_adaptive_aoi_ensemble_convergence_controller.py`
 - `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
 - `scripts/recover_balfrin_target_area_metrics_from_run_root.py`
 - `scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py`

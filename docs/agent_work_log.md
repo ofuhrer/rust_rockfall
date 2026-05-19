@@ -2055,3 +2055,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: QA/review surface only; no hazard-value changes, no operational claim, no physical-probability semantics, no annual-frequency semantics, no risk/exposure/vulnerability claim, and no heavy outputs committed.
 - Next task: `TB-271`
+
+### TB-271: Adaptive AOI Ensemble Convergence Controller
+
+- Date: 2026-05-19
+- Commit: `pending`
+- Objective: add a bounded adaptive AOI convergence controller that recommends the next trajectory-count step from measured convergence and output-budget evidence instead of fixed guesses.
+- Files changed: `scripts/summarize_adaptive_aoi_ensemble_convergence_controller.py`, `tests/test_adaptive_aoi_ensemble_convergence_controller.py`, `docs/task_backlog.md`, `docs/script_inventory.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only adaptive convergence controller that composes hazard-map convergence comparisons, the output-budget gate, the Balfrin ensemble frontier, and the bounded next-probe feasibility report into one controller summary.
+  - The controller now classifies converged, budget-stopped, and inconclusive branches, proposes bounded trajectory-count increments with projected output budgets, and exposes a Balfrin-ready command plan only when the preflight evidence is favorable.
+  - Added focused regressions for converged, budget-stopped, and inconclusive branches using fixture-backed comparisons plus a machine-readable JSON smoke path, and registered the new controller in the script inventory.
+  - Removed TB-271 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_adaptive_aoi_ensemble_convergence_controller -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_map_convergence tests.test_balfrin_ensemble_frontier -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: conditional convergence only; no live Balfrin submission, no annual-frequency semantics, no physical validation claim, no operational claim, no scale-up authorization, and no distributed-execution claim.
+- Next task: `TB-272`
