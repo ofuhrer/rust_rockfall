@@ -2102,3 +2102,26 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: fixture-backed regression only; generated outputs were written under `/tmp`; no live Balfrin submission, no real public-geodata download, no operational claim, and no heavy outputs committed.
 - Next task: `TB-273`
+
+### TB-273: Optional Observed-Evidence Overlay Hook For AOI Maps
+
+- Date: 2026-05-19
+- Commit: `0fea046`
+- Objective: allow AOI map packages to carry optional observed-evidence overlays while keeping calibration, annual-frequency, risk, and operational claims out of scope.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an optional overlay hook to the AOI packager that accepts either a real staged observed runout/deposition benchmark or a field-supported release-zone provenance record and emits explicit blocked statuses for missing, fixture-only, or schema-gap inputs.
+  - Extended the AOI package manifest with role-separated sections for diagnostic hazard outputs, observed evidence overlays, calibration inputs, holdout evidence, and deferred source-frequency records, plus summary lines that expose the overlay hook state.
+  - Added regressions covering accepted real evidence, fixture-only observed evidence, and ambiguous mixed-provenance release-zone evidence so the new package path cannot silently upgrade non-accepted inputs into physical validation.
+  - Removed TB-273 from the active backlog after the implementation landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_physical_credibility_evidence_requirements -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: optional overlay integration only; no calibration, no parameter fitting, no source-frequency model, no annual-frequency product, no operational claim, and no claim upgrade beyond accepted evidence.
+- Next task: backlog refill needed
