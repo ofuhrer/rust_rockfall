@@ -1983,3 +1983,30 @@ scan thousands of lines of completed history.
 - Result/status: blocked_unresolved
 - Boundaries: fail-closed pre-submit blocker only; no live Balfrin submission, no retry, no larger ensemble, no distributed execution, no scale-up, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
 - Next task: `TB-268`
+
+### TB-268: Multi-Zone Evidence Integration And Reducer Scaling Update
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: integrate the TB-267 multi-zone outcome into reducer-pressure, evidence-bundle, closure, next-action, and Swiss-wide envelope helpers without promoting blocked pre-submit evidence as measured.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_demonstration_closure_package.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_demonstration_closure_package.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/test_swiss_wide_execution_envelope.py`
+- Implementation summary:
+  - Added a multi-zone Balfrin evidence classifier that distinguishes scratch reducer probes, fixture-backed roots, measured preservation-checked Balfrin roots, and blocked incomplete TB-267 pre-submit evidence.
+  - Recorded the current TB-267 state as `blocked_incomplete`: no SLURM job id, no promoted metrics JSON, no preservation gate, no post-run collector output, missing authorization record, and first bottleneck `manifest_size_bytes`.
+  - Wired the classifier into the evidence bundle, closure package, next live-run decision gate, and Swiss-wide envelope so the scaling frontier stays fail-closed until the reducer-budget blocker and authorization record are resolved.
+  - Added tests proving a future measured two-zone root changes the scaling branch to review-only next-larger package planning while keeping `scale_up_authorized=false` and not authorizing larger runs.
+  - Removed TB-268 from the active backlog before recording this work-log entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-268 --format json`
+  - `rg -n "^### TB-268:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_demonstration_closure_package tests.test_swiss_wide_execution_envelope -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `rg -n "^### TB-268:" docs/task_backlog.md` (exit 1, confirming removal)
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: evidence integration only; no live Balfrin submission, no Swiss-wide authorization, no distributed execution, no scale-up authorization, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-269`

@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-268: Multi-Zone Evidence Integration And Reducer Scaling Update
-
-Goal: Integrate the TB-267 multi-zone result into reducer-pressure, evidence-bundle, closure, and Swiss-wide envelope helpers.
-
-Capability gap reduced: Measured multi-zone evidence must update the scaling frontier and next-action decision rather than remain a detached run root.
-
-Why this outranks alternatives: This is the step that converts a two-zone Balfrin run into actionable scaling evidence for larger Balfrin or Swiss AOI workflows.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_demonstration_closure_package.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- A measured multi-zone reducer/output summary with file counts, manifest bytes, reducer wall time, merge-order proof, restart/replay metadata, and first bottleneck labels.
-- Updated evidence and decision helpers that distinguish scratch, fixture-backed, and measured multi-zone Balfrin roots.
-- Tests proving measured multi-zone evidence changes the scaling branch without authorizing larger runs automatically.
-
-Definition of done:
-
-- The scaling frontier reflects measured two-zone Balfrin evidence and names the next safe expansion or explicit no-go blocker.
-
-Boundaries: Evidence integration only; no additional live run, no Swiss-wide authorization, no distributed execution, no operational claim, and no physical-probability semantics.
-
 ### TB-269: AOI Hazard Map Product Packager
 
 Goal: Package AOI hazard-layer outputs into user-consumable GeoTIFF/COG, GeoJSON/GeoPackage, manifest, and text-summary artifacts.

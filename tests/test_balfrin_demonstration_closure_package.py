@@ -36,6 +36,8 @@ class BalfrinDemonstrationClosurePackageTests(unittest.TestCase):
         self.assertEqual(report["target_area_spatial_artifact_section"]["status"], "not_evaluated_in_closure_refresh")
         self.assertEqual(report["next_measured_action_section"]["status"], "blocked")
         self.assertEqual(report["new_measured_evidence_section"]["evidence_type"], "blocked")
+        self.assertEqual(report["multi_zone_balfrin_evidence_section"]["status"], "blocked_incomplete")
+        self.assertEqual(report["multi_zone_balfrin_evidence_section"]["first_bottleneck_label"], "manifest_size_bytes")
         self.assertEqual(
             report["package_summary"]["section_counts"],
             {

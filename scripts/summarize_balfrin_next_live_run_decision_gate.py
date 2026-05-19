@@ -27,6 +27,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as multi_zone_handoff  # noqa: E402
+from scripts import summarize_balfrin_evidence_bundle as evidence_bundle  # noqa: E402
 from scripts import summarize_balfrin_probe_metrics_report as metrics_report  # noqa: E402
 from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate  # noqa: E402
 from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  # noqa: E402
@@ -180,6 +181,9 @@ def normalize_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     return {
         "schema_version": str(bundle.get("schema_version") or "balfrin_next_live_run_decision_gate_bundle_v1"),
         "sections": sections,
+        "multi_zone_balfrin_evidence": evidence_bundle.build_multi_zone_balfrin_evidence(
+            bundle.get("multi_zone_balfrin_evidence")
+        ),
         "scientific_value": _copy_mapping(bundle.get("scientific_value")),
         "portability_value": _copy_mapping(bundle.get("portability_value")),
         "balfrin_access": _copy_mapping(bundle.get("balfrin_access")),
@@ -207,6 +211,9 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         "preservation_gate_report": preservation_gate.build_report(run_root=DEFAULT_PRESERVATION_RUN_ROOT),
         "multi_zone_reducer_pressure_report": reducer_report,
         "multi_zone_handoff_report": multi_zone_handoff.build_report(),
+        "multi_zone_balfrin_evidence": evidence_bundle.build_multi_zone_balfrin_evidence(
+            default_bundle.get("multi_zone_balfrin_evidence")
+        ),
         "scientific_value": _copy_mapping(default_bundle.get("scientific_value")),
         "portability_value": _copy_mapping(default_bundle.get("portability_value")),
         "balfrin_access": _copy_mapping(default_bundle.get("balfrin_access")),
@@ -223,6 +230,7 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     preservation = bundle["sections"]["preservation_gate_report"]
     reducer = bundle["sections"]["multi_zone_reducer_pressure_report"]
     package = bundle["sections"]["multi_zone_handoff_report"]
+    multi_zone_evidence = bundle["multi_zone_balfrin_evidence"]
     scientific_value = bundle["scientific_value"]
     portability_value = bundle["portability_value"]
     balfrin_access = bundle["balfrin_access"]
@@ -289,6 +297,7 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
             "follow_up_status": _status(package.get("follow_up_recommendation", {}).get("status")),
             "summary": package.get("pressure_checkpoints", {}).get("output_pressure", {}).get("status", ""),
         },
+        "multi_zone_balfrin_evidence": build_multi_zone_balfrin_evidence_criteria(multi_zone_evidence),
         "expected_runtime_output_pressure": {
             "status": "acceptable" if output_pressure.get("status") in {"ready", "acceptable"} else "retained",
             "output_pressure_status": _status(output_pressure.get("status")),
@@ -333,6 +342,45 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict[str, Any]:
+    status = _status(evidence.get("status"), "blocked_incomplete")
+    evidence_type = _status(evidence.get("evidence_type"), "blocked")
+    first_bottleneck = _status(evidence.get("first_bottleneck_label"), "manifest_size_bytes")
+    release_zone_count = evidence.get("release_zone_count")
+    measured = status == "measured" and evidence_type == "measured"
+    blocked = status.startswith("blocked")
+    return {
+        "status": "measured" if measured else "blocked" if blocked else status,
+        "evidence_status": status,
+        "evidence_type": evidence_type,
+        "root_class": _status(evidence.get("root_class"), "blocked_pre_authorization"),
+        "release_zone_count": release_zone_count,
+        "first_bottleneck_label": first_bottleneck,
+        "preflight_status": _status(evidence.get("preflight_status"), "not_supplied"),
+        "authorization_record_status": _status(evidence.get("authorization_record_status"), "not_supplied"),
+        "slurm_job_id": evidence.get("slurm_job_id"),
+        "metrics_json_promoted": bool(evidence.get("metrics_json_promoted")),
+        "preservation_gate_promoted": bool(evidence.get("preservation_gate_promoted")),
+        "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
+        "next_blocker": str(evidence.get("next_blocker") or f"blocked_reducer_budget:{first_bottleneck}"),
+        "scaling_frontier_branch": (
+            "measured_two_zone_boundary"
+            if measured and release_zone_count == 2
+            else "blocked_pre_authorization"
+            if blocked
+            else "not_measured_balfrin_root"
+        ),
+        "next_safe_expansion": (
+            "prepare reviewed next-larger package only after explicit authorization; this helper does not authorize it"
+            if measured and release_zone_count == 2
+            else f"no-go until {first_bottleneck} reducer-budget blocker and missing authorization record are resolved"
+            if blocked
+            else "no-go until scratch or fixture-backed evidence is replaced by preservation-checked measured Balfrin output"
+        ),
+        "summary": str(evidence.get("summary") or ""),
+    }
+
+
 def build_balfrin_access_criteria(access: dict[str, Any]) -> dict[str, Any]:
     status = _status(access.get("status"), "not_checked_not_needed_for_decision_refresh")
     path_state = _status(access.get("path_state"), "not_required_for_refresh")
@@ -364,6 +412,7 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     preservation = criteria["preservation_gate_readiness"]
     reducer = criteria["reducer_pressure"]
     package = criteria["multi_zone_package_readiness"]
+    multi_zone_evidence = criteria["multi_zone_balfrin_evidence"]
     runtime_pressure = criteria["expected_runtime_output_pressure"]
     scientific = criteria["scientific_value"]
     portability = criteria["portability_or_physical_evidence_value"]
@@ -393,6 +442,8 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         multi_zone_blockers.append(f"reducer_pressure:{reducer['bottleneck_classification']}")
     if package["status"] != "ready":
         multi_zone_blockers.append(f"multi_zone_package:{package['package_status']}")
+    if multi_zone_evidence["status"] != "measured":
+        multi_zone_blockers.append(f"multi_zone_evidence:{multi_zone_evidence['next_blocker']}")
     if runtime_pressure["status"] != "acceptable":
         multi_zone_blockers.append(f"output_pressure:{runtime_pressure['output_pressure_status']}")
     if scientific["status"] not in {"high", "ready"}:
@@ -476,9 +527,12 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
                 "preservation_gate_readiness",
                 "reducer_pressure",
                 "multi_zone_package_readiness",
+                "multi_zone_balfrin_evidence",
                 "expected_runtime_output_pressure",
                 "scientific_value",
             ],
+            "scaling_frontier_branch": multi_zone_evidence["scaling_frontier_branch"],
+            "next_safe_expansion": multi_zone_evidence["next_safe_expansion"],
         },
         OPTION_DEFER: {
             "status": "defer" if metrics["status"] == "complete" and multi_zone_blockers else "blocked",
@@ -672,6 +726,7 @@ def build_evidence_sources(bundle: dict[str, Any]) -> dict[str, Any]:
         "preservation_gate_report": source_paths.get("preservation_gate_report"),
         "multi_zone_reducer_pressure_report": source_paths.get("multi_zone_reducer_pressure_report"),
         "multi_zone_handoff_report": source_paths.get("multi_zone_handoff_report"),
+        "multi_zone_balfrin_evidence": source_paths.get("multi_zone_balfrin_evidence") or "docs/agent_work_log.md",
         "balfrin_access": source_paths.get("balfrin_access"),
         "second_site_progress": source_paths.get("second_site_progress"),
         "physical_evidence_acquisition": source_paths.get("physical_evidence_acquisition"),
@@ -706,6 +761,14 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
             "preservation_gate_readiness": {"status": "blocked_missing_inputs"},
             "reducer_pressure": {"status": "blocked_missing_inputs"},
             "multi_zone_package_readiness": {"status": "blocked_missing_inputs"},
+            "multi_zone_balfrin_evidence": {
+                "status": "blocked",
+                "evidence_status": "blocked_missing_inputs",
+                "first_bottleneck_label": "missing_inputs",
+                "next_blocker": "missing_inputs",
+                "scaling_frontier_branch": "blocked_missing_inputs",
+                "next_safe_expansion": "no-go until required evidence inputs are supplied",
+            },
             "expected_runtime_output_pressure": {"status": "blocked_missing_inputs"},
             "scientific_value": {"status": "blocked_missing_inputs"},
             "portability_or_physical_evidence_value": {"status": "blocked_missing_inputs"},
@@ -827,6 +890,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "preservation_gate_readiness",
         "reducer_pressure",
         "multi_zone_package_readiness",
+        "multi_zone_balfrin_evidence",
         "expected_runtime_output_pressure",
         "scientific_value",
         "portability_or_physical_evidence_value",
@@ -849,6 +913,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         if key == "multi_zone_package_readiness":
             lines.append(f"    package_status: {entry.get('package_status', '')}")
             lines.append(f"    output_pressure_status: {entry.get('output_pressure_status', '')}")
+        if key == "multi_zone_balfrin_evidence":
+            lines.append(f"    evidence_status: {entry.get('evidence_status', '')}")
+            lines.append(f"    first_bottleneck_label: {entry.get('first_bottleneck_label', '')}")
+            lines.append(f"    scaling_frontier_branch: {entry.get('scaling_frontier_branch', '')}")
+            lines.append(f"    next_safe_expansion: {entry.get('next_safe_expansion', '')}")
         if key == "scientific_value":
             lines.append(f"    summary: {entry.get('summary', '')}")
         if key == "balfrin_access":
@@ -876,6 +945,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"    blockers: {option.get('exact_evidence_blockers', [])}")
         if option_key == OPTION_METRICS:
             lines.append(f"    metrics_completion_source: {option.get('metrics_completion_source', 'unknown')}")
+        if option_key == OPTION_MULTI_ZONE:
+            lines.append(f"    scaling_frontier_branch: {option.get('scaling_frontier_branch', 'unknown')}")
+            lines.append(f"    next_safe_expansion: {option.get('next_safe_expansion', 'unknown')}")
         lines.append(f"    boundary: {option.get('boundary_that_prevents_claim_upgrade', '')}")
         lines.append(f"    summary: {option.get('summary', '')}")
 

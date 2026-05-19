@@ -161,8 +161,10 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["planning_labels"]["defer"], "defer_scale_up_authorized_false")
         self.assertEqual(
             report["planning_labels"]["allowed_next_probe"],
-            "allowed_next_probe_measured_existing_artifacts",
+            "allowed_next_probe_blocked_multi_zone_evidence",
         )
+        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "blocked_incomplete")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["next_blocker"], "blocked_reducer_budget:manifest_size_bytes")
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)
         self.assertEqual(report["storage_bytes"]["nominal"], 31200)
@@ -174,7 +176,8 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("measurement_status: measured_existing_artifacts", text)
         self.assertIn("aoi_count_exceeds_measured_support", text)
         self.assertIn("planning_labels:", text)
-        self.assertIn("allowed_next_probe: allowed_next_probe_measured_existing_artifacts", text)
+        self.assertIn("allowed_next_probe: allowed_next_probe_blocked_multi_zone_evidence", text)
+        self.assertIn("multi_zone_scaling_frontier:", text)
         self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
 
@@ -224,7 +227,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
         self.assertEqual(
             report["planning_labels"]["allowed_next_probe"],
-            "allowed_next_probe_measured_existing_artifacts",
+            "allowed_next_probe_blocked_multi_zone_evidence",
         )
 
     def test_missing_measured_evidence_returns_blocked_report(self) -> None:
@@ -313,6 +316,46 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("case_id: 10_zone", text)
         self.assertIn("planning_decision: next_probe", text)
         self.assertIn("scheduler_practicality_bottleneck: scheduler_practicality_requires_authorization", text)
+
+    def test_measured_two_zone_frontier_changes_planning_label_without_authorizing_scale_up(self) -> None:
+        canonical = self._canonical_bundle_report()
+        canonical["multi_zone_balfrin_evidence"] = {
+            "status": "measured",
+            "evidence_type": "measured",
+            "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/two_zone",
+            "release_zone_count": 2,
+            "metrics_json_promoted": True,
+            "preservation_checked": True,
+            "preservation_gate_promoted": True,
+            "post_run_collector_promoted": True,
+        }
+        with mock.patch.object(estimator.SINGLE_JOB, "build_summary", return_value=self._single_job_summary()), mock.patch.object(
+            estimator.FEASIBILITY,
+            "build_report",
+            return_value=self._feasibility_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_canonical_bundle_report",
+            return_value=canonical,
+        ), mock.patch.object(
+            estimator,
+            "load_target_area_probe_report",
+            return_value=self._target_area_probe_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_generated_scenario_table_evidence",
+            return_value=self._generated_scenario_table_report(),
+        ):
+            report = estimator.build_report(
+                estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6),
+                coefficients=self._coefficients(),
+            )
+
+        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "measured_two_zone_boundary")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "review_next_larger_balfrin_package")
+        self.assertEqual(report["planning_labels"]["allowed_next_probe"], "allowed_next_probe_measured_two_zone_review_only")
+        self.assertFalse(report["multi_zone_scaling_frontier"]["larger_run_authorized"])
+        self.assertFalse(report["multi_zone_scaling_frontier"]["scale_up_authorized"])
 
     def _single_job_summary(self) -> dict[str, object]:
         return {

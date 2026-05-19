@@ -203,6 +203,46 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
         self.assertIn("metrics_remediation:", bundle.render_text_report(report))
 
+    def test_current_multi_zone_evidence_records_tb267_blocker(self) -> None:
+        report = bundle.build_current_report()
+        multi_zone = report["multi_zone_balfrin_evidence"]
+
+        self.assertEqual(multi_zone["status"], "blocked_incomplete")
+        self.assertEqual(multi_zone["evidence_type"], "blocked")
+        self.assertEqual(multi_zone["preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_size_bytes")
+        self.assertIsNone(multi_zone["slurm_job_id"])
+        self.assertFalse(multi_zone["metrics_json_promoted"])
+        self.assertFalse(multi_zone["preservation_gate_promoted"])
+        self.assertFalse(multi_zone["post_run_collector_promoted"])
+        self.assertIn("multi_zone_balfrin_evidence:", bundle.render_text_report(report))
+
+    def test_multi_zone_evidence_classifier_distinguishes_root_classes(self) -> None:
+        scratch = bundle.build_multi_zone_balfrin_evidence(
+            {"probe_status": "measured_scratch_root", "run_root": "/tmp/rust_rockfall/probe"}
+        )
+        fixture = bundle.build_multi_zone_balfrin_evidence(
+            {"run_root": "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"}
+        )
+        measured = bundle.build_multi_zone_balfrin_evidence(
+            {
+                "status": "measured",
+                "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/two_zone",
+                "release_zone_count": 2,
+                "metrics_json_promoted": True,
+                "preservation_checked": True,
+                "preservation_gate_promoted": True,
+                "post_run_collector_promoted": True,
+            }
+        )
+
+        self.assertEqual(scratch["root_class"], "scratch_reducer_probe")
+        self.assertEqual(scratch["evidence_type"], "fixture_backed")
+        self.assertEqual(fixture["root_class"], "fixture_backed_multi_zone_root")
+        self.assertEqual(fixture["evidence_type"], "fixture_backed")
+        self.assertEqual(measured["root_class"], "measured_multi_zone_balfrin_root")
+        self.assertEqual(measured["evidence_type"], "measured")
+
     def test_fixture_backed_override_stays_fixture_backed(self) -> None:
         fixture_path = "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"
         report = bundle.build_report(

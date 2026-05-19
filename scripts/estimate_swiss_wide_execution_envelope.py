@@ -718,12 +718,58 @@ def summarize_planning_cases(case_specs: tuple[PlanningCaseSpec, ...]) -> dict[s
     }
 
 
+def build_multi_zone_scaling_frontier(canonical_bundle_report: dict[str, Any]) -> dict[str, Any]:
+    evidence = EVIDENCE_BUNDLE.build_multi_zone_balfrin_evidence(
+        canonical_bundle_report.get("multi_zone_balfrin_evidence")
+    )
+    status = str(evidence.get("status") or "blocked_incomplete")
+    first_bottleneck = str(evidence.get("first_bottleneck_label") or "manifest_size_bytes")
+    release_zone_count = evidence.get("release_zone_count")
+    measured_two_zone = status == "measured" and release_zone_count == 2
+    if measured_two_zone:
+        frontier_status = "measured_two_zone_boundary"
+        next_branch = "review_next_larger_balfrin_package"
+        next_blocker = "explicit_authorization_required"
+        summary = (
+            "Measured two-zone Balfrin evidence is present, so the scaling frontier can move to a reviewed "
+            "next-larger package; this report still does not authorize a larger run."
+        )
+    elif status.startswith("blocked"):
+        frontier_status = "blocked_incomplete"
+        next_branch = "no_go"
+        next_blocker = f"blocked_reducer_budget:{first_bottleneck}"
+        summary = (
+            "No measured multi-zone Balfrin run is present. TB-267 stopped before submission at reducer budget "
+            f"first bottleneck {first_bottleneck}, with the authorization record missing."
+        )
+    else:
+        frontier_status = "not_measured"
+        next_branch = "no_go"
+        next_blocker = str(evidence.get("next_blocker") or "multi_zone_evidence_not_measured")
+        summary = "Only scratch or fixture-backed multi-zone evidence is present, so larger Balfrin or Swiss AOI expansion is no-go."
+    return {
+        "status": frontier_status,
+        "evidence_status": status,
+        "evidence_type": evidence.get("evidence_type"),
+        "root_class": evidence.get("root_class"),
+        "release_zone_count": release_zone_count,
+        "first_bottleneck_label": first_bottleneck,
+        "next_scaling_branch": next_branch,
+        "next_blocker": next_blocker,
+        "larger_run_authorized": False,
+        "scale_up_authorized": False,
+        "distributed_execution_authorized": False,
+        "summary": summary,
+    }
+
+
 def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients) -> dict[str, Any]:
     validate_inputs(inputs)
 
     single_job_summary = SINGLE_JOB.build_summary()
     feasibility_report = FEASIBILITY.build_report()
     canonical_bundle_report = load_canonical_bundle_report()
+    multi_zone_scaling_frontier = build_multi_zone_scaling_frontier(canonical_bundle_report)
     target_area_probe_report = load_target_area_probe_report()
     generated_scenario_table_report = load_generated_scenario_table_evidence()
     total_units = inputs.aoi_count * inputs.release_zone_count * inputs.trajectory_count
@@ -813,6 +859,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "bounded_probe_recommendation_status": coefficients.bounded_probe_recommendation_status,
             "canonical_bundle_status": canonical_bundle_report.get("bundle_status"),
             "canonical_bundle_summary": canonical_bundle_report.get("bundle_summary", {}),
+            "multi_zone_scaling_frontier": multi_zone_scaling_frontier,
             "single_job_summary": {
                 "decision": single_job_summary.get("decision"),
                 "final_classification": single_job_summary.get("final_classification"),
@@ -841,6 +888,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
         "planning_labels": build_planning_labels(
             measurement_status="measured_existing_artifacts",
             no_go_labels=no_go_labels,
+            multi_zone_scaling_frontier=multi_zone_scaling_frontier,
         ),
         "planning_cases": [
             build_case_projection(
@@ -854,6 +902,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             for spec in CANONICAL_PLANNING_CASES
         ],
         "planning_case_summary": summarize_planning_cases(CANONICAL_PLANNING_CASES),
+        "multi_zone_scaling_frontier": multi_zone_scaling_frontier,
         "per_unit_coefficients": {
             "runtime_seconds": {
                 "low": coefficients.runtime_seconds_per_unit_low,
@@ -960,6 +1009,12 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             "bounded_probe_recommendation_status": None,
             "canonical_bundle_status": "blocked_missing_inputs",
             "canonical_bundle_summary": {},
+            "multi_zone_scaling_frontier": {
+                "status": "blocked_missing_inputs",
+                "next_scaling_branch": "no_go",
+                "next_blocker": "missing_inputs",
+                "larger_run_authorized": False,
+            },
             "target_area_probe_metrics": {
                 "report_status": "blocked_missing_inputs",
                 "wall_time_seconds": None,
@@ -979,6 +1034,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
         "planning_labels": build_planning_labels(
             measurement_status="blocked_missing_inputs",
             no_go_labels=[],
+            multi_zone_scaling_frontier={"status": "blocked_missing_inputs"},
         ),
         "planning_cases": [],
         "planning_case_summary": {
@@ -987,6 +1043,14 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             "defer": [],
             "no_go": [],
             "case_count": 0,
+        },
+        "multi_zone_scaling_frontier": {
+            "status": "blocked_missing_inputs",
+            "next_scaling_branch": "no_go",
+            "next_blocker": blocked_reason,
+            "larger_run_authorized": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
         },
         "per_unit_coefficients": {
             "runtime_seconds": {"low": None, "nominal": None, "high": None},
@@ -1032,13 +1096,23 @@ def build_blocked_reason(no_go_labels: list[str]) -> str:
     return "extrapolation beyond measured evidence: " + ", ".join(no_go_labels)
 
 
-def build_planning_labels(*, measurement_status: str, no_go_labels: list[str]) -> dict[str, str]:
+def build_planning_labels(
+    *,
+    measurement_status: str,
+    no_go_labels: list[str],
+    multi_zone_scaling_frontier: dict[str, Any] | None = None,
+) -> dict[str, str]:
     no_go_label = "no_go_extrapolated_beyond_measured_evidence" if no_go_labels else "no_go_not_triggered"
     defer_label = "defer_scale_up_authorized_false"
+    frontier_status = str((multi_zone_scaling_frontier or {}).get("status") or "")
     allowed_next_probe_label = (
-        "allowed_next_probe_measured_existing_artifacts"
-        if measurement_status == "measured_existing_artifacts"
-        else "allowed_next_probe_blocked_missing_inputs"
+        "allowed_next_probe_blocked_missing_inputs"
+        if measurement_status != "measured_existing_artifacts"
+        else "allowed_next_probe_measured_two_zone_review_only"
+        if frontier_status == "measured_two_zone_boundary"
+        else "allowed_next_probe_blocked_multi_zone_evidence"
+        if frontier_status.startswith("blocked")
+        else "allowed_next_probe_measured_existing_artifacts"
     )
     return {
         "no_go": no_go_label,
@@ -1126,6 +1200,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     memory = report["memory_peak_mb"]
     rebuildability_cost = report.get("rebuildability_cost", {})
     bottleneck_labels = report.get("bottleneck_labels", {})
+    multi_zone_frontier = report.get("multi_zone_scaling_frontier", {})
     lines = [
         "Swiss-wide execution envelope",
         f"measurement_status: {report['measurement_status']}",
@@ -1136,6 +1211,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  defer: {report['planning_labels']['defer']}",
         f"  allowed_next_probe: {report['planning_labels']['allowed_next_probe']}",
         f"  bounded_probe_recommendation_status: {report['measurement_basis'].get('bounded_probe_recommendation_status')}",
+        "multi_zone_scaling_frontier:",
+        f"  status: {multi_zone_frontier.get('status', 'unknown')}",
+        f"  evidence_status: {multi_zone_frontier.get('evidence_status', 'unknown')}",
+        f"  next_scaling_branch: {multi_zone_frontier.get('next_scaling_branch', 'unknown')}",
+        f"  next_blocker: {multi_zone_frontier.get('next_blocker', 'unknown')}",
+        f"  first_bottleneck_label: {multi_zone_frontier.get('first_bottleneck_label', 'unknown')}",
+        f"  larger_run_authorized: {multi_zone_frontier.get('larger_run_authorized', False)}",
         f"aoi_count: {report['input']['aoi_count']}",
         f"release_zone_count: {report['input']['release_zone_count']}",
         f"trajectory_count: {report['input']['trajectory_count']}",

@@ -175,3 +175,20 @@ smallest package at `blocked_reducer_budget` rather than making it reviewable.
 The Balfrin access report status is still recorded separately, and the preflight
 continues to state that it does not grant authorization or permit live
 submission.
+
+## TB-268 Evidence Integration Status
+
+TB-267 did not produce measured multi-zone Balfrin evidence. The Balfrin access
+preflight passed read-only, but the smallest two-release-zone authorization
+preflight failed closed before submission with `blocked_reducer_budget`; the
+first reducer/output bottleneck was `manifest_size_bytes`, and the required
+authorization record was missing. No SLURM job id, metrics JSON, preservation
+gate, or post-run collector output was promoted.
+
+The current reducer-pressure, evidence-bundle, closure, next-action, and
+Swiss-wide envelope helpers therefore classify the multi-zone state as
+`blocked_incomplete`, not measured. The scaling frontier is a no-go until the
+manifest-size reducer-budget blocker and the missing authorization record are
+resolved. If a future preservation-checked two-zone Balfrin root is supplied,
+the helpers can move the frontier to a reviewed next-larger package, but they
+still keep `scale_up_authorized=false` and do not authorize a larger run.

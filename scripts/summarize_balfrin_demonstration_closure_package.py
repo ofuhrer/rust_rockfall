@@ -26,6 +26,7 @@ if __package__ in {None, ""}:
 
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as multi_zone_handoff
 from scripts import summarize_balfrin_management_demo_package as management
+from scripts import summarize_balfrin_evidence_bundle as evidence_bundle
 from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate
 from scripts import summarize_balfrin_next_live_run_decision_gate as next_live_decision
 from scripts import summarize_balfrin_target_area_metrics_completion_rerun_package as metrics_rerun
@@ -197,6 +198,7 @@ def build_current_report(*, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> dict[s
         "metrics_completion_rerun_section": build_metrics_completion_rerun_section(metrics_rerun_report),
         "metrics_closure_section": metrics_closure_section,
         "target_area_spatial_artifact_section": build_target_area_spatial_artifact_section(),
+        "multi_zone_balfrin_evidence_section": evidence_bundle.build_multi_zone_balfrin_evidence(),
         "next_measured_action_section": build_next_measured_action_section(metrics_closure_section),
         "new_measured_evidence_section": build_new_measured_evidence_section(metrics_closure_section),
         "claim_boundaries": dict(management_report.get("claim_boundaries") or {}),
@@ -908,6 +910,10 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report.get('target_area_spatial_artifact_section', {}).get('status', 'unknown')}",
             f"  recovery_status: {report.get('target_area_spatial_artifact_section', {}).get('recovery_status', 'unknown')}",
             f"  spatial_artifact_classification: {report.get('target_area_spatial_artifact_section', {}).get('spatial_artifact_classification', 'unknown')}",
+            "multi_zone_balfrin_evidence_section:",
+            f"  status: {report.get('multi_zone_balfrin_evidence_section', {}).get('status', 'unknown')}",
+            f"  evidence_type: {report.get('multi_zone_balfrin_evidence_section', {}).get('evidence_type', 'unknown')}",
+            f"  first_bottleneck_label: {report.get('multi_zone_balfrin_evidence_section', {}).get('first_bottleneck_label', 'unknown')}",
             "next_measured_action_section:",
             f"  status: {report.get('next_measured_action_section', {}).get('status', 'unknown')}",
             f"  selected_action_id: {report.get('next_measured_action_section', {}).get('selected_action_id', 'unknown')}",

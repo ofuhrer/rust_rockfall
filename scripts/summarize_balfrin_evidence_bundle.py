@@ -34,6 +34,25 @@ CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
 FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
+TB267_MULTI_ZONE_BLOCKED_EVIDENCE = {
+    "status": "blocked_incomplete",
+    "evidence_type": "blocked",
+    "root_class": "blocked_pre_authorization",
+    "preflight_status": "blocked_reducer_budget",
+    "authorization_record_status": "missing",
+    "first_bottleneck_label": "manifest_size_bytes",
+    "slurm_job_id": None,
+    "metrics_json_promoted": False,
+    "preservation_gate_promoted": False,
+    "post_run_collector_promoted": False,
+    "release_zone_count": 2,
+    "source_paths": ["docs/agent_work_log.md"],
+    "summary": (
+        "TB-267 stopped before live submission: Balfrin read-only access passed, but the smallest "
+        "multi-zone authorization preflight failed closed at reducer budget first bottleneck "
+        "manifest_size_bytes and the authorization record was missing."
+    ),
+}
 ALLOWED_METRICS_COMPLETION_SOURCES = {
     "recovered_existing_run_root",
     "new_metrics_completion_rerun",
@@ -232,6 +251,9 @@ def build_bundle_report(
         "gis_cog_readiness_report": gis_report,
         "gis_cog_parity_report": gis_cog_parity_report,
         "gis_cog_scope_report": gis_cog_scope_report,
+        "multi_zone_balfrin_evidence": build_multi_zone_balfrin_evidence(
+            source_paths.get("multi_zone_balfrin_evidence")
+        ),
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": claim_boundaries,
         "source_paths": source_paths,
@@ -239,6 +261,83 @@ def build_bundle_report(
         "missing_inputs": bundle_blockers if bundle_status == "blocked_missing_inputs" else [],
     }
     return report
+
+
+def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
+    if evidence is None:
+        return dict(TB267_MULTI_ZONE_BLOCKED_EVIDENCE)
+    if isinstance(evidence, str):
+        return classify_multi_zone_balfrin_root({"run_root": evidence, "source_paths": [evidence]})
+    if not isinstance(evidence, dict):
+        return dict(TB267_MULTI_ZONE_BLOCKED_EVIDENCE)
+    if evidence.get("preflight_status") == "blocked_reducer_budget" or evidence.get("status") in {
+        "blocked_incomplete",
+        "blocked_reducer_budget",
+    }:
+        payload = dict(TB267_MULTI_ZONE_BLOCKED_EVIDENCE)
+        payload.update(evidence)
+        payload["status"] = "blocked_incomplete"
+        payload["evidence_type"] = "blocked"
+        payload["root_class"] = "blocked_pre_authorization"
+        payload["first_bottleneck_label"] = str(payload.get("first_bottleneck_label") or "manifest_size_bytes")
+        payload["next_blocker"] = f"blocked_reducer_budget:{payload['first_bottleneck_label']}"
+        return payload
+    return classify_multi_zone_balfrin_root(evidence)
+
+
+def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]:
+    run_root = str(evidence.get("run_root") or "")
+    source_paths = [str(path) for path in evidence.get("source_paths", []) if str(path)] if isinstance(evidence.get("source_paths"), list) else []
+    all_paths = [run_root, *source_paths]
+    if any("tests/fixtures" in path for path in all_paths):
+        status = "fixture_backed"
+        evidence_type = "fixture_backed"
+        root_class = "fixture_backed_multi_zone_root"
+    elif evidence.get("probe_status") == "measured_scratch_root" or run_root.startswith("/tmp/"):
+        status = "scratch_root"
+        evidence_type = "fixture_backed"
+        root_class = "scratch_reducer_probe"
+    else:
+        measured_flags = (
+            evidence.get("status") == "measured"
+            and evidence.get("preservation_checked") is True
+            and evidence.get("post_run_collector_promoted") is True
+            and evidence.get("metrics_json_promoted") is True
+        )
+        status = "measured" if measured_flags else "blocked_incomplete"
+        evidence_type = "measured" if measured_flags else "blocked"
+        root_class = "measured_multi_zone_balfrin_root" if measured_flags else "incomplete_multi_zone_root"
+    first_bottleneck = str(evidence.get("first_bottleneck_label") or evidence.get("first_bottleneck") or "none")
+    release_zone_count = evidence.get("release_zone_count")
+    return {
+        "status": status,
+        "evidence_type": evidence_type,
+        "root_class": root_class,
+        "run_root": run_root or None,
+        "release_zone_count": release_zone_count,
+        "first_bottleneck_label": first_bottleneck,
+        "slurm_job_id": evidence.get("slurm_job_id"),
+        "metrics_json_promoted": bool(evidence.get("metrics_json_promoted")),
+        "preservation_checked": bool(evidence.get("preservation_checked")),
+        "preservation_gate_promoted": bool(evidence.get("preservation_gate_promoted")),
+        "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
+        "authorization_status": evidence.get("authorization_status"),
+        "source_paths": source_paths,
+        "next_blocker": (
+            "none"
+            if status == "measured"
+            else "fixture_backed_not_measured"
+            if status == "fixture_backed"
+            else "scratch_root_not_live_balfrin"
+            if status == "scratch_root"
+            else f"incomplete_multi_zone_evidence:{first_bottleneck}"
+        ),
+        "summary": (
+            f"Measured multi-zone Balfrin evidence is present for {release_zone_count} release zones."
+            if status == "measured"
+            else "Multi-zone evidence is not measured Balfrin evidence and cannot move the scaling frontier by itself."
+        ),
+    }
 
 
 def blocked_report(
@@ -322,6 +421,9 @@ def blocked_report(
         "gis_cog_scope_report": build_gis_cog_scope_report(
             gis_cog_parity_report=gis_cog_parity_report,
             gis_report={"gis_cog_readiness_status": "blocked_missing_inputs", "blockers": {}},
+        ),
+        "multi_zone_balfrin_evidence": build_multi_zone_balfrin_evidence(
+            {"status": "blocked_incomplete", "first_bottleneck_label": "missing_inputs"}
         ),
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": post_run_gate.claim_boundaries(),
@@ -459,6 +561,18 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  scope_status: {scope_report.get('scope_status', 'unknown')}",
                 f"  scope_delta_status: {scope_report.get('scope_delta_status', 'unknown')}",
                 f"  parity_status: {scope_report.get('parity_status', 'unknown')}",
+            ]
+        )
+    multi_zone = report.get("multi_zone_balfrin_evidence")
+    if isinstance(multi_zone, dict):
+        lines.extend(
+            [
+                "multi_zone_balfrin_evidence:",
+                f"  status: {multi_zone.get('status', 'unknown')}",
+                f"  evidence_type: {multi_zone.get('evidence_type', 'unknown')}",
+                f"  root_class: {multi_zone.get('root_class', 'unknown')}",
+                f"  first_bottleneck_label: {multi_zone.get('first_bottleneck_label', 'unknown')}",
+                f"  next_blocker: {multi_zone.get('next_blocker', 'unknown')}",
             ]
         )
     section_provenance_profile = report.get("section_provenance_profile") or []
