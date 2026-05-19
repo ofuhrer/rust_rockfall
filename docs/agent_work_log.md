@@ -2971,3 +2971,33 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: review package only; no live Balfrin submission, no scale-up authorization, no distributed execution, no Swiss-wide claim, no annual/physical/risk semantics, and no operational claim.
 - Next task: `TB-312`
+
+### TB-312: Four-Zone Balfrin Postproc Probe
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: execute the exact four-zone compact `postproc` probe on Balfrin only after live access, remote hygiene, readiness, output-budget, occupancy, and preservation gates were re-evaluated.
+- Files changed: `scripts/audit_balfrin_run_root_output_budget.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_run_root_output_budget_audit.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_four_zone_probe_tb312.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fast-forwarded `/users/olifu/work/rust_rockfall` from `34ead5c8e39842e66c1051a7e474180296a1bbd6` to `644250e62fa78f9d92c137d374446e8660b6c4a7`, then reran the Balfrin access preflight to `ready_for_read_only_collection` with `ready_for_pre_submit=true`, remote hygiene `pass`, and dirty path count `0`.
+  - Confirmed the latest local scale dashboard listed `four_zone_review_package` as `ready_for_review` with output-budget status `accepted`, expected runtime `0.997` seconds, expected file count `21`, and expected manifest pressure `7104` bytes; the one-node `postproc` request did not approach the 6-hour full-partition occupancy boundary.
+  - Submitted job `4340075` to `postproc` for the exact four-zone compact post-processing/reducer package, preserving the run root at `/scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z`.
+  - The job completed with state `COMPLETED`, exit `0:0`, elapsed `00:00:11`, and batch peak RSS `5460K`; collected metrics report `measured_run_root` and metrics contract `complete`, with wall time `1.63` seconds, memory peak `5.33203125` MiB, trajectory decisions `executed: 4`, and reducer decisions `executed: 2`.
+  - Extended the run-root output-budget audit to decode compact pressure-manifest path prefixes and the preserved pressure-probe manifest hash, then verified the four-zone profile as `compliant` / `accepted`: `25` output files, `10238` bytes, `12220` manifest bytes, `10` sidecars, `2` reducer chunks, and no missing replay-critical families or required hashes.
+  - Added the TB-312 evidence note and removed TB-312 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-312 --format json`
+  - `rg -n "^### TB-312:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb312_balfrin_access_after_ff.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD && git status --short --branch'`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb312_scale_matrix.json`
+  - `sbatch --parsable /scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z/probe.sbatch` (remote; returned job `4340075`)
+  - `sacct -j 4340075 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir -P`
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /tmp/tb312_remote_run_root --output-json /tmp/tb312_probe_metrics_collected.json`
+  - `PYENV_VERSION=system uv run python scripts/audit_balfrin_run_root_output_budget.py --run-root /tmp/tb312_remote_run_root --budget-profile-id next_larger_four_zone_review_only_probe --format json --json-output /tmp/tb312_output_budget_audit_four_zone.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /tmp/tb312_remote_run_root --format json --json-output /tmp/tb312_preservation_gate.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_run_root_output_budget_audit -v`
+- Result/status: implemented_measured
+- Boundaries: exact four-zone `postproc` probe only; no non-`postproc` partition, no MPI, no GPU, no multi-node work, no distributed execution, no Swiss-wide scale-up claim, no annual-frequency or physical-probability claim, no risk/exposure/vulnerability claim, and no operational claim.
+- Next task: `TB-313`

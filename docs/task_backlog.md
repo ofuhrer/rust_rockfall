@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-312: Four-Zone Balfrin Postproc Probe
-
-Goal: Execute the four-zone `postproc` probe only if TB-311 and the latest scale dashboard show the package is ready and the run will not keep `postproc` fully busy for more than 6 hours.
-
-Capability gap reduced: The project needs the next measured multi-zone point after two-zone before larger Balfrin or Swiss-scale planning can be credible.
-
-Why this outranks alternatives: Four zones is the first local-ladder scale tier above the two-zone live probe and below the first local blocked 8-zone rung.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- A GPT-5.5-routed four-zone `postproc` submission only if access, remote hygiene, budget, readiness, audit, and preservation gates pass.
-- Preserved job id, run root, runtime, memory, reducer timing, output budget audit, manifest bytes, sidecar counts, hashes, and replay metadata.
-- A fail-closed report if any gate blocks the run.
-
-Definition of done:
-
-- The four-zone branch is either measured on Balfrin and preserved or has one exact current blocker.
-
-Boundaries: Exact four-zone `postproc` probe only; stop and rediscuss if estimated full-partition occupancy exceeds 6 hours; no non-postproc partition, no distributed execution, no Swiss-wide scale-up claim, no annual/physical/risk semantics, and no operational claim.
-
 ### TB-313: Hazard Accumulation Optimization From Measured Bottleneck
 
 Goal: Implement one targeted hazard-accumulation optimization only if the benchmark harness shows it improves the `accumulation_seconds` bottleneck without changing hazard outputs.

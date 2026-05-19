@@ -143,6 +143,44 @@ def _resolve_manifest_path(output_manifest: Path, value: Any) -> Path | None:
     return direct
 
 
+def _resolve_encoded_output_path(
+    output_manifest: Path,
+    manifest: dict[str, Any],
+    entry: dict[str, Any],
+) -> Path | None:
+    family = entry.get("kind")
+    if not isinstance(family, str) or not family:
+        return None
+    encoding = manifest.get("manifest_encoding") if isinstance(manifest, dict) else None
+    if not isinstance(encoding, dict):
+        return None
+    prefixes = encoding.get("path_prefixes")
+    metadata = encoding.get("shared_output_family_metadata")
+    if not isinstance(prefixes, dict) or not isinstance(metadata, dict):
+        return None
+    prefix = prefixes.get(family)
+    if not isinstance(prefix, str) or not prefix:
+        return None
+    base = Path(prefix)
+    if not base.is_absolute():
+        parts = base.parts
+        if parts and parts[0] == output_manifest.parent.name:
+            base = output_manifest.parent / Path(*parts[1:])
+        else:
+            base = output_manifest.parent / base
+    family_metadata = metadata.get(family)
+    if not isinstance(family_metadata, dict) or "zone_index" not in entry:
+        return base.resolve()
+    suffix = family_metadata.get("suffix")
+    if not isinstance(suffix, str) or not suffix:
+        return base.resolve()
+    try:
+        zone_index = int(entry["zone_index"])
+    except (TypeError, ValueError):
+        return None
+    return (base / f"source_zone_{zone_index:02d}{suffix}").resolve()
+
+
 def _declared_outputs(output_manifest: Path | None, manifest: dict[str, Any] | None) -> list[dict[str, Any]]:
     outputs = manifest.get("outputs") if isinstance(manifest, dict) else None
     if not isinstance(outputs, list) or output_manifest is None:
@@ -153,6 +191,8 @@ def _declared_outputs(output_manifest: Path | None, manifest: dict[str, Any] | N
             continue
         family = entry.get("kind")
         path = _resolve_manifest_path(output_manifest, entry.get("path"))
+        if path is None and isinstance(manifest, dict):
+            path = _resolve_encoded_output_path(output_manifest, manifest, entry)
         if not isinstance(family, str) or path is None:
             continue
         file_info = _file_entry(path)
@@ -241,15 +281,19 @@ def _reducer_chunk_stats(output_root: Path) -> dict[str, Any]:
 
 def _probe_manifest_path(command_plan: dict[str, Any], *, run_root: Path) -> Path | None:
     value = command_plan.get("input")
-    if not isinstance(value, str) or not value:
-        return None
-    path = Path(value).expanduser()
-    if path.is_absolute():
-        return path
-    direct = (run_root / path).resolve()
-    if direct.exists():
-        return direct
-    return (Path.cwd() / path).resolve()
+    if isinstance(value, str) and value:
+        path = Path(value).expanduser()
+        if path.is_absolute():
+            return path
+        direct = (run_root / path).resolve()
+        if direct.exists():
+            return direct
+        return (Path.cwd() / path).resolve()
+
+    pressure_probe_manifest = run_root / "input" / "multi_zone_reducer_pressure_probe_manifest.json"
+    if pressure_probe_manifest.exists():
+        return pressure_probe_manifest.resolve()
+    return None
 
 
 def _hashes(

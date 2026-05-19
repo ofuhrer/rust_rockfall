@@ -66,6 +66,26 @@ TB307_TARGET_AREA_METRICS_COMPLETION = {
     "preservation_status": "ready_for_demonstration_evidence",
     "metrics_completion_source": "new_metrics_completion_rerun",
 }
+TB312_FOUR_ZONE_POSTPROC_PROBE = {
+    "job_id": "4340075",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:11",
+    "alloc_cpus": 16,
+    "batch_max_rss_kb": 5460,
+    "memory_peak_mb": 5.33203125,
+    "wall_seconds": 1.63,
+    "output_file_count": 25,
+    "output_bytes": 10238,
+    "manifest_bytes": 12220,
+    "sidecar_file_count": 10,
+    "reducer_chunk_count": 2,
+    "trajectory_decision_counts": {"executed": 4},
+    "reducer_decision_counts": {"executed": 2},
+    "preservation_status": "ready_for_demonstration_evidence",
+    "output_budget_status": "accepted",
+}
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -394,39 +414,51 @@ def _four_zone_review_package_row() -> dict[str, Any]:
         report = handoff.build_report(artifact_dir=artifact_dir)
 
     review = dict(report.get("review_only_four_zone_package") or {})
-    projection = dict(review.get("projection") or {})
     constraint = dict(review.get("constraint_pressure") or {})
     return {
         "tier_id": "four_zone_review_package",
-        "tier_label": "four-zone review package",
-        "evidence_label": "projection_only",
-        "measurement_status": "projection_only",
-        "classification": review.get("readiness_classification") or "blocked_output_budget",
-        "output_budget_status": review.get("output_budget_acceptance_status") or "blocked_output_budget",
-        "execution_efficiency_status": review.get("readiness_classification") or "blocked_efficiency",
-        "file_count": review.get("expected_file_count"),
-        "bytes": review.get("expected_storage_bytes"),
-        "manifest_bytes": review.get("expected_manifest_pressure_bytes"),
-        "reducer_sidecars": projection.get("sidecar_file_count"),
-        "runtime_seconds": review.get("expected_runtime_seconds"),
-        "memory_peak_mb": None,
-        "run_root_preservation_status": "review_only",
+        "tier_label": "four-zone postproc probe",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_postproc_probe",
+        "classification": "measured_postproc_probe",
+        "output_budget_status": TB312_FOUR_ZONE_POSTPROC_PROBE["output_budget_status"],
+        "execution_efficiency_status": "four_zone_postproc_measured",
+        "hazard_execution_status": "no_hazard_execution",
+        "file_count": TB312_FOUR_ZONE_POSTPROC_PROBE["output_file_count"],
+        "bytes": TB312_FOUR_ZONE_POSTPROC_PROBE["output_bytes"],
+        "manifest_bytes": TB312_FOUR_ZONE_POSTPROC_PROBE["manifest_bytes"],
+        "reducer_sidecars": TB312_FOUR_ZONE_POSTPROC_PROBE["sidecar_file_count"],
+        "runtime_seconds": TB312_FOUR_ZONE_POSTPROC_PROBE["wall_seconds"],
+        "memory_peak_mb": TB312_FOUR_ZONE_POSTPROC_PROBE["memory_peak_mb"],
+        "run_root_preservation_status": TB312_FOUR_ZONE_POSTPROC_PROBE["preservation_status"],
         "replayability_status": "replay_critical_retained",
-        "authorization_status": "blocked_pending_later_task",
-        "next_evidence_field": "current_gate_evidence_and_later_task",
-        "blocker": review.get("promotion_status"),
+        "authorization_status": "standing_postproc_clearance_used",
+        "next_evidence_field": None,
+        "blocker": None,
         "summary": (
-            "The four-zone review-only package keeps compact manifests and reduced-output defaults explicit; "
-            "promotion to live submission remains blocked until a later task and current gate evidence are present."
+            "TB-312 measured the exact four-zone compact post-processing/reducer package on Balfrin postproc; "
+            "this is not a hazard execution or scale-up claim."
         ),
+        "job_id": TB312_FOUR_ZONE_POSTPROC_PROBE["job_id"],
+        "run_root": TB312_FOUR_ZONE_POSTPROC_PROBE["run_root"],
+        "slurm": {
+            "job_id": TB312_FOUR_ZONE_POSTPROC_PROBE["job_id"],
+            "state": TB312_FOUR_ZONE_POSTPROC_PROBE["slurm_state"],
+            "exit_code": TB312_FOUR_ZONE_POSTPROC_PROBE["exit_code"],
+            "elapsed": TB312_FOUR_ZONE_POSTPROC_PROBE["elapsed"],
+            "alloc_cpus": TB312_FOUR_ZONE_POSTPROC_PROBE["alloc_cpus"],
+            "batch_max_rss_kb": TB312_FOUR_ZONE_POSTPROC_PROBE["batch_max_rss_kb"],
+        },
+        "trajectory_decision_counts": TB312_FOUR_ZONE_POSTPROC_PROBE["trajectory_decision_counts"],
+        "reducer_decision_counts": TB312_FOUR_ZONE_POSTPROC_PROBE["reducer_decision_counts"],
         "review_readiness_status": review.get("readiness_classification"),
         "review_readiness_reason": review.get("readiness_reason"),
         "output_profile_policy": review.get("output_profile_policy", {}),
         "output_budget_acceptance_threshold_profile_id": review.get("output_budget_acceptance_threshold_profile_id"),
         "output_budget_acceptance_validation": review.get("output_budget_acceptance_validation", {}),
         "manifest_pruning_status": review.get("manifest_pruning_status"),
-        "promotion_status": review.get("promotion_status"),
-        "promotion_reason": review.get("promotion_reason"),
+        "promotion_status": "measured_by_tb312",
+        "promotion_reason": "TB-312 explicitly authorized and measured this exact postproc package under standing postproc clearance.",
         "constraint_status": constraint.get("status"),
     }
 
@@ -611,10 +643,9 @@ def build_report() -> dict[str, Any]:
         "matrix_status": overall_status,
         "dashboard_status": overall_status,
         "summary": (
-            "Single-zone evidence and TB-307 target-area metrics-completion evidence are measured, the smallest multi-zone tier is blocked at manifest_size_bytes, "
-            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, TB-305 contributes synthetic postproc efficiency evidence only, "
-            "fixture and scratch-local tiers remain non-promotable, "
-            "and the larger AOI projection remains a no-go."
+            "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
+            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
+            "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
         "evidence_label_definitions": {
