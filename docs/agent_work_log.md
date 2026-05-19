@@ -3181,3 +3181,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no `sbatch` command was run, no job id was produced, and no measured two-zone Balfrin hazard evidence was created; no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency or physical-probability claim, or risk/exposure/vulnerability claim was introduced.
 - Next task: `TB-322`
+
+### TB-322: Repair Two-Zone Package Run Root And Shape Gate
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: repair the multi-zone handoff so the next live two-zone `postproc` probe package is actually a two-zone live package and writes under the Balfrin account scratch root.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_balfrin_probe_driver.py`, `docs/balfrin_two_zone_probe_tb309.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Changed the handoff live default to the smallest two-zone shape and updated the generated review/submit commands to use `/scratch/mch/olifu/rust_rockfall/probes/...` instead of the unwritable `/scratch/rust_rockfall/...` root.
+  - Updated the smallest authorization preflight to consume the smallest-run reducer and output-budget metadata before the four-zone review-only package, so the live gate reports `smallest_live_two_zone_probe` with `release_zone_count=2`.
+  - Added TB-322 authorization-audit acceptance to the submit driver and verified local preflight reaches `ready_for_authorization_review` with reducer budget, output profile, output-budget acceptance, and submit contract all ready.
+  - Ran remote Balfrin generate-only proof from `/users/olifu/work/rust_rockfall`; it wrote `command_plan.json` and `probe.sbatch` under `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z` without calling `sbatch`, then restored the clean remote checkout.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-322 --format json`
+  - `rg -n "^### TB-322:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py tests/test_balfrin_probe_driver.py -q`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb322_local_package --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb322_local_package/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb322_local_package/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb322_access.json --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall; PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb322_remote_package --format json; PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z --run-id tb322_generate_only_20260520T000000Z --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only'`
+- Result/status: implemented_measured
+- Boundaries: pre-submit repair and generate-only proof only; no `sbatch` command was run, no job id was produced, no measured two-zone Balfrin hazard execution evidence was created, and no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency or physical-probability claim, or risk/exposure/vulnerability claim was introduced.
+- Next task: `TB-323`

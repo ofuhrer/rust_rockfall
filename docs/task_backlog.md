@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-322: Repair Two-Zone Package Run Root And Shape Gate
-
-Goal: Repair the multi-zone handoff so the next live two-zone `postproc` probe package is actually a two-zone live package and writes under the Balfrin account scratch root.
-
-Capability gap reduced: TB-321 replaced the stale TB-309 submit-contract blocker with two current pre-submit blockers: the reviewed package preflight classifies the package as the four-zone review-only shape, and the documented run root `/scratch/rust_rockfall/...` is not writable on Balfrin.
-
-Why this outranks alternatives: No evidence-integration or larger-scale task should run until the smallest two-zone package passes the authorization, output-budget, preservation, and generate-only gates from the Balfrin checkout.
-
-Inspect first:
-
-- `docs/balfrin_two_zone_probe_tb309.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/submit_balfrin_probe.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-
-Deliverables:
-
-- Repaired handoff defaults and tests so the smallest live submit/review commands use `/scratch/mch/olifu/rust_rockfall/probes/...` on Balfrin.
-- Repaired preflight/package metadata so the smallest live gate selects `smallest_live_two_zone_probe` with `release_zone_count=2`, not `next_larger_four_zone_review_only_probe`.
-- A remote Balfrin generate-only proof from `/users/olifu/work/rust_rockfall` that writes `command_plan.json` and `probe.sbatch` under the account scratch root without calling `sbatch`.
-
-Definition of done:
-
-- The repaired package reaches the pre-submit state needed for a later GPT-5.5 worker to submit exactly one bounded two-zone `postproc` probe, or records a newer precise gate blocker.
-
-Boundaries: Repair and pre-submit proof only; do not submit a live job, do not use non-`postproc` partitions, and do not make distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claims.
-
 ### TB-323: Real AOI Public-Geodata Acquisition Pack
 
 Goal: Prepare an operator-ready acquisition pack for one small real AOI using the explicit swisstopo acquisition driver without committing large products.

@@ -58,7 +58,7 @@ FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT = 4
 FOUR_ZONE_REVIEW_SCENARIO_COUNT = 4
 FOUR_ZONE_REVIEW_TRAJECTORY_COUNT_TARGET = 2000
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
-    "/scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
+    "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
 BUDGET_ACCEPTANCE_CONTRACT_VERSION = "balfrin_multi_zone_output_budget_acceptance_v1"
@@ -515,7 +515,7 @@ def build_report(
     candidate_output_root: Path | None = None,
     target_area_output_root: Path | None = None,
     pressure_probe_root: Path = DEFAULT_PRESSURE_PROBE_ROOT,
-    requested_release_zone_batch_size: int = FOUR_ZONE_REVIEW_RELEASE_ZONE_COUNT,
+    requested_release_zone_batch_size: int = SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT,
     requested_reducer_chunk_count: int = 2,
     requested_reducer_worker_count: int = 2,
 ) -> dict[str, Any]:

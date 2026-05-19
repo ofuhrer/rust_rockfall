@@ -290,7 +290,7 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         payload = {
             "schema_version": "balfrin_multi_zone_live_authorization_v1",
             "authorization_status": "authorized_for_one_bounded_probe",
-            "authorized_task": "TB-226",
+            "authorized_task": "TB-322",
             "no_rerun_without_renewed_authorization": True,
             "reviewed_handoff_package_path": str(package_path.resolve()),
             "reviewed_handoff_package_sha256": package_sha256,

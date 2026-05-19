@@ -297,7 +297,7 @@ TB-320 repairs the package generator so the reviewed two-zone command uses the
 executable pilot-run manifest:
 
 ```bash
-PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml
 ```
 
 The pre-submit authorization helper now validates that submit command's probe
@@ -306,3 +306,21 @@ live-run gates are access/checkout hygiene, reviewed package and authorization
 record agreement, output-budget readiness, preservation/output-budget evidence
 capture, and the actual `postproc` `sbatch` execution. This is still only
 two-zone contract readiness, not measured multi-zone Balfrin evidence.
+
+## TB-322 Two-Zone Shape And Scratch-Root Repair
+
+TB-322 repairs the package default so the top-level live handoff validates the
+`smallest_live_two_zone_probe` profile with `release_zone_count=2`, while the
+four-zone package remains explicitly review-only under
+`review_only_four_zone_package`. The generated review and later-submit commands
+now target the Balfrin account scratch root:
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only
+```
+
+Remote generate-only proof from `/users/olifu/work/rust_rockfall` wrote
+`command_plan.json` and `probe.sbatch` under
+`/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z`
+without calling `sbatch`. This is pre-submit readiness only, not measured
+multi-zone Balfrin hazard evidence.

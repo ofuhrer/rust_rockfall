@@ -32,6 +32,7 @@ DEFAULT_SBATCH_TIME = "00:30:00"
 DEFAULT_NODES = 1
 DEFAULT_NTASKS = 1
 DEFAULT_CPUS_PER_TASK = 16
+DEFAULT_BALFRIN_SCRATCH_ROOT = Path("/scratch/mch/olifu")
 PACKAGE_SCHEMA_VERSION = "balfrin_submission_package_v1"
 PACKAGE_BASENAME = "balfrin_submission_package"
 PACKAGE_EXECUTION_STATUS = "deferred_pending_authorization"
@@ -329,7 +330,7 @@ def _timestamp_run_id() -> str:
 
 
 def _default_run_root(probe_id: str, run_id: str) -> Path:
-    scratch_root = Path(os.environ.get("SCRATCH", "/scratch")).resolve()
+    scratch_root = Path(os.environ.get("SCRATCH", str(DEFAULT_BALFRIN_SCRATCH_ROOT))).resolve()
     return scratch_root / "rust_rockfall" / "probes" / _safe_fragment(probe_id) / _safe_fragment(run_id)
 
 
@@ -576,9 +577,18 @@ def _build_submission_package_report(
             "cpus_per_task": cpus_per_task,
         },
         "scratch_paths": {
-            "scratch_root": str(Path(os.environ.get("SCRATCH", "/scratch")).resolve()),
-            "uv_cache_dir": str(Path(os.environ.get("UV_CACHE_DIR", "/scratch/.cache/uv")).resolve()),
-            "cargo_target_dir": str(Path(os.environ.get("CARGO_TARGET_DIR", "/scratch/rust_rockfall/target")).resolve()),
+            "scratch_root": str(Path(os.environ.get("SCRATCH", str(DEFAULT_BALFRIN_SCRATCH_ROOT))).resolve()),
+            "uv_cache_dir": str(
+                Path(os.environ.get("UV_CACHE_DIR", str(DEFAULT_BALFRIN_SCRATCH_ROOT / ".cache" / "uv"))).resolve()
+            ),
+            "cargo_target_dir": str(
+                Path(
+                    os.environ.get(
+                        "CARGO_TARGET_DIR",
+                        str(DEFAULT_BALFRIN_SCRATCH_ROOT / "rust_rockfall" / "target"),
+                    )
+                ).resolve()
+            ),
         },
         "input_checks": {
             "status": readiness_report.get("status"),
@@ -986,8 +996,10 @@ def _validate_authorized_submission(
         "TB-211: Authorization-Gated Multi-Zone Balfrin Execution",
         "TB-226",
         "TB-226: Smallest Multi-Zone Probe Authorization Preflight",
+        "TB-322",
+        "TB-322: Repair Two-Zone Package Run Root And Shape Gate",
     }:
-        missing_inputs.append("authorization record does not target TB-211 or TB-226")
+        missing_inputs.append("authorization record does not target TB-211, TB-226, or TB-322")
     if authorization_value != "authorized_for_one_bounded_probe":
         missing_inputs.append(
             f"authorization_status must be authorized_for_one_bounded_probe, got {authorization_value or 'missing'}"
@@ -1143,7 +1155,7 @@ def _build_sbatch_script(
         'RUN_CONTEXT_PATH="${RUN_ROOT}/balfrin_probe_context.txt"',
         "",
         "mkdir -p \"${RUN_ROOT}/logs\"",
-        'export SCRATCH="${SCRATCH:-/scratch}"',
+        f'export SCRATCH="${{SCRATCH:-{DEFAULT_BALFRIN_SCRATCH_ROOT}}}"',
         'export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRATCH/.cache/uv}"',
         'export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRATCH/rust_rockfall/target}"',
         'export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"',

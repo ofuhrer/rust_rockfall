@@ -121,14 +121,14 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         or {}
     )
     reducer_pressure = dict(
-        review_only.get("constraint_pressure")
-        or minimum.get("reducer_pressure")
+        minimum.get("reducer_pressure")
         or package.get("constraint_pressure")
+        or review_only.get("constraint_pressure")
         or {}
     )
     output_profile_policy = dict(
-        review_only.get("output_profile_policy")
-        or minimum.get("output_profile_policy")
+        minimum.get("output_profile_policy")
+        or review_only.get("output_profile_policy")
         or {}
     )
     return {
@@ -182,23 +182,33 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
 
 def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -> dict[str, Any]:
     review_only = dict(package.get("review_only_four_zone_package") or {})
-    constraint = dict(package.get("constraint_pressure") or package.get("package_constraint_summary") or {})
+    minimum = dict(
+        dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
+        or package.get("smallest_measured_multi_zone_run")
+        or {}
+    )
+    constraint = dict(
+        minimum.get("reducer_pressure")
+        or package.get("constraint_pressure")
+        or package.get("package_constraint_summary")
+        or {}
+    )
     status = str(constraint.get("status") or package.get("package_constraint_status") or "")
     handoff_projection = dict(
-        review_only.get("projection")
-        or review_only.get("constraint_pressure", {}).get("handoff_output_budget_projection")
-        or constraint.get("handoff_output_budget_projection")
+        constraint.get("handoff_output_budget_projection")
         or package.get("handoff_output_budget_projection")
+        or review_only.get("constraint_pressure", {}).get("handoff_output_budget_projection")
+        or review_only.get("projection")
         or {}
     )
     budget_recheck = dict(handoff_projection.get("budget_recheck") or {})
     output_budget_acceptance_validation = dict(
-        review_only.get("output_budget_acceptance_validation")
-        or handoff_projection.get("budget_acceptance_validation")
+        handoff_projection.get("budget_acceptance_validation")
         or package.get("output_budget_acceptance_validation")
+        or review_only.get("output_budget_acceptance_validation")
         or {}
     )
-    manifest_pruning = dict(review_only.get("manifest_pruning") or package.get("manifest_pruning") or {})
+    manifest_pruning = dict(package.get("manifest_pruning") or review_only.get("manifest_pruning") or {})
     blocked_reasons: list[str] = []
 
     def add_blocked_reason(reason: Any) -> None:

@@ -139,3 +139,47 @@ Boundary: this is a blocked pre-submit report, not measured multi-zone Balfrin
 hazard evidence. It does not authorize a larger run, non-`postproc` partition,
 distributed execution, scale-up claim, annual-frequency or physical-probability
 claim, risk/exposure/vulnerability product, or operational use.
+
+## TB-322 Two-Zone Package Gate Repair
+
+Date: 2026-05-20
+
+Status: repaired pre-submit package and remote generate-only proof.
+
+TB-322 repaired the two blockers identified by TB-321. The handoff generator now
+defaults the live package to the smallest two-zone shape, so the top-level
+output-budget validation selects `smallest_live_two_zone_probe` with
+`release_zone_count=2`; the four-zone package remains present only as the
+`review_only_four_zone_package`. The preflight now consumes the smallest-run
+reducer/output-budget metadata before consulting the four-zone review package,
+so a repaired package reports the live shape instead of the review-only shape.
+
+The reviewed generate-only and later-submit commands now use the Balfrin account
+scratch root:
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --generate-only
+```
+
+Local preflight over a regenerated temporary package reported
+`preflight_status=ready_for_authorization_review`,
+`ready_for_authorized_submission=true`, `reducer_budget_status=ready`,
+`output_profile_status=ready`, `submit_contract_status=ready`, and
+`output_budget_acceptance_status=accepted` for `2` release zones and `2`
+scenarios.
+
+Remote Balfrin generate-only proof was run from
+`/users/olifu/work/rust_rockfall` after applying and then reversing the local
+patch on the clean remote checkout. It wrote:
+
+- `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z/command_plan.json`
+- `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z/probe.sbatch`
+
+No `sbatch` command was run, no job id was produced, and no measured two-zone
+Balfrin hazard execution evidence was created.
+
+Boundary: this is a pre-submit repair and generate-only proof, not measured
+multi-zone Balfrin hazard evidence. It does not authorize a larger run,
+non-`postproc` partition, distributed execution, scale-up claim, annual-frequency
+or physical-probability claim, risk/exposure/vulnerability product, or
+operational use.

@@ -214,6 +214,7 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             "#SBATCH --error=/scratch/rust_rockfall/probes/scale-test/001/logs/slurm-%j.err",
             script,
         )
+        self.assertIn('export SCRATCH="${SCRATCH:-/scratch/mch/olifu}"', script)
         self.assertIn('export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRATCH/.cache/uv}"', script)
         self.assertIn('export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRATCH/rust_rockfall/target}"', script)
         self.assertIn('export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"', script)
