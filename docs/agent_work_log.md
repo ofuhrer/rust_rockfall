@@ -2222,3 +2222,20 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: review editing and validation only; no physical source validation claim, no calibration, no annual-frequency semantics, no operational claim, and no heavy outputs committed.
 - Next task: `TB-279`
+
+### TB-279: AOI Scenario Preview And Cost Estimate
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: add a pre-execution AOI scenario preview that reports source-zone / block-family / scenario-family rows, projected runtime and storage pressure, and the local-vs-Balfrin execution target.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `tests/test_aoi_scenario_preview.py`, `tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml`, `tests/fixtures/aoi_scenario_preview/multi_zone_review_package_a.yaml`, `tests/fixtures/aoi_scenario_preview/multi_zone_review_package_b.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated AOI preview helper that consumes reviewed candidate packages, freezes them through the existing candidate-source-zone workflow, classifies the output profile, and projects per-row and aggregate runtime/storage pressure with measured-envelope helpers.
+  - Fail-closed paths now explicitly label missing reviewed candidates, unknown trajectory budget, unsupported output profile, and projected output-budget overflow.
+  - Added tiny and multi-zone preview fixtures plus regression coverage for local-smoke readiness, multi-zone aggregation, and the blocked edge cases.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_scenario_preview`
+  - `PYENV_VERSION=system uv run python scripts/preview_aoi_scenario_cost_estimate.py --review-package tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml --format text`
+- Result/status: completed
+- Boundaries: preview and estimation only; no live Balfrin submission, no simulation, no distributed execution, no scale-up authorization, and no physical-probability semantics.
+- Next task: `TB-280`

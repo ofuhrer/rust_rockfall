@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-279: AOI Scenario Preview And Cost Estimate
-
-Goal: Add a pre-execution preview that reports scenario cardinality, trajectory count, expected output profile, estimated runtime/storage, and local-vs-Balfrin suitability.
-
-Capability gap reduced: Users can freeze scenarios, but they do not yet get a clear cost and output-pressure estimate before running or submitting work.
-
-Why this outranks alternatives: Scenario growth and output pressure are known scaling risks, and users need this feedback before expensive execution.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/check_hazard_output_profile.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A scenario-preview report with rows by source zone, block family, scenario family, trajectory count, output-profile choice, projected files/bytes, and recommended execution target.
-- Fail-closed labels for unsupported profile, missing reviewed candidates, unknown trajectory budget, and output-budget exceeded.
-- Tests for tiny fixture, multi-zone fixture, and budget-exceeded paths.
-
-Definition of done:
-
-- Before executing, a user can see whether an AOI plan is safe for local smoke, Balfrin postproc, or blocked by output/runtime pressure.
-
-Boundaries: Preview/estimation only; no live Balfrin submission, no simulation, no distributed execution, no scale-up authorization, and no physical-probability semantics.
-
 ### TB-280: Prepared-Pilot Local Execution Wrapper
 
 Goal: Turn a ready prepared-pilot command plan into one local bounded execution command that writes validation outputs, hazard layers, map package, and QA review under a caller-provided output root.

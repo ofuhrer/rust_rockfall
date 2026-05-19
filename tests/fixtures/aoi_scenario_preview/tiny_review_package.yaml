@@ -1,0 +1,24 @@
+review_package_status: review_applied
+source_zone_id: tiny_review_zone_001
+candidate_site_id: tiny_preview_site
+candidate_site_name: Tiny Preview Site
+candidate_selection_rationale: Tiny reviewed candidate package for preview testing.
+trajectory_count_target: 1
+review_application:
+  validation_status: validated
+  accepted_candidate_ids:
+    - tiny_candidate_001
+candidate_review_rows:
+  - candidate_release_zone_id: tiny_candidate_001
+    accepted: true
+    rejected: false
+    review_decision: accepted
+    candidate_sensitivity_label: reviewed
+    provenance_label: workflow_generated
+    release_cell_ids: tiny_review_zone_001_release_cell_001
+    release_cell_count: 1
+    component_bbox_lv95_m:
+      xmin: 2793000.0
+      ymin: 1180200.0
+      xmax: 2793001.0
+      ymax: 1180201.0

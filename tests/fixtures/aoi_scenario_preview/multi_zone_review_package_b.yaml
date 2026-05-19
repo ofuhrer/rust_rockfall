@@ -1,0 +1,24 @@
+review_package_status: review_applied
+source_zone_id: multi_review_zone_b
+candidate_site_id: multi_preview_site
+candidate_site_name: Multi Preview Site
+candidate_selection_rationale: Multi-zone reviewed candidate package B.
+trajectory_count_target: 6
+review_application:
+  validation_status: validated
+  accepted_candidate_ids:
+    - multi_candidate_b_001
+candidate_review_rows:
+  - candidate_release_zone_id: multi_candidate_b_001
+    accepted: true
+    rejected: false
+    review_decision: accepted
+    candidate_sensitivity_label: reviewed
+    provenance_label: workflow_generated
+    release_cell_ids: multi_review_zone_b_release_cell_001
+    release_cell_count: 1
+    component_bbox_lv95_m:
+      xmin: 2793200.0
+      ymin: 1180400.0
+      xmax: 2793204.0
+      ymax: 1180404.0
