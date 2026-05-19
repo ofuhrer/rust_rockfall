@@ -43,6 +43,9 @@ class WorkflowValidationHelperTests(unittest.TestCase):
 
         self.assertEqual(helpers.resolve_repo_path(root, "nested/file.yaml"), root / "nested/file.yaml")
         self.assertEqual(helpers.resolve_repo_path(root, Path("/abs/file.yaml")), Path("/abs/file.yaml"))
+        self.assertEqual(helpers.resolve_optional_repo_path(root, "nested/file.yaml"), root / "nested/file.yaml")
+        self.assertIsNone(helpers.resolve_optional_repo_path(root, None))
+        self.assertIsNone(helpers.resolve_optional_repo_path(root, ""))
         self.assertEqual(helpers.normalize_text("  folder\\sub\x00file  "), "folder/subfile")
 
     def test_sha256_helpers(self) -> None:

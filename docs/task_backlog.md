@@ -37,36 +37,6 @@ ready preflight, generated package, or backlog task is not authorization.
 
 ## Active Tasks
 
-### TB-291: Workflow Surface Consolidation Review
-
-Goal: Identify and consolidate duplicated AOI/Balfrin status rendering, path handling, blocker vocabulary, and claim-boundary helpers that now affect user-facing workflow consistency.
-
-Capability gap reduced: The helper surface is becoming broad again, and duplicated status mechanics can make equivalent blockers look different to users and workers.
-
-Why this outranks alternatives: Consolidation should happen after the AOI front-door and map-package path exists, but before another large wrapper layer is added.
-
-Inspect first:
-
-- `scripts/lib/workflow_validation.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/check_chant_sura_real_context_readiness_gate.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `docs/script_inventory.md`
-
-Deliverables:
-
-- A bounded review identifying duplicated helper mechanics and one small extraction or consolidation with tests.
-- No public CLI schema changes unless the task documents compatibility and updates all affected tests.
-- A follow-up recommendation for any larger refactor that should not be attempted opportunistically.
-
-Definition of done:
-
-- At least one concrete duplicated status/path/claim-boundary mechanic is consolidated or a precise no-change rationale is recorded with the next safe refactor boundary.
-
-Boundaries: Bounded consolidation only; no broad framework rewrite, no behavior-changing refactor without tests, no live Balfrin submission, no claim upgrade, and no operational claim.
-
 ### TB-292: Balfrin Scale Readiness Baseline Matrix
 
 Goal: Establish one authoritative baseline matrix for Balfrin scale readiness across single-zone, target-area, smallest multi-zone, and projected larger AOI runs.

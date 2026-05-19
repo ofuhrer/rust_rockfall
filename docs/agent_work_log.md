@@ -2492,3 +2492,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: documentation and command smoke only; no new scientific claims, no live Balfrin submission, no network download, no heavy generated outputs committed, no annual-frequency semantics, no physical-probability claim, and no operational claim.
 - Next task: `TB-291`
+
+### TB-291: Workflow Surface Consolidation Review
+
+- Date: 2026-05-19
+- Commit: local
+- Objective: consolidate duplicated AOI/Balfrin path handling and blocked-report assembly without changing public CLI schemas.
+- Files changed: `scripts/lib/workflow_validation.py`, `scripts/package_aoi_hazard_map.py`, `scripts/check_chant_sura_real_context_readiness_gate.py`, `tests/test_workflow_validation_helpers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `resolve_optional_repo_path` to the shared workflow-validation helpers and used it in the AOI packager and Chant Sura readiness gate instead of keeping separate optional-path resolvers.
+  - Routed the AOI packager's blocked-hazard-output report through the shared `build_blocked_report` helper so its blocked shape stays aligned with the rest of the workflow surface.
+  - Added focused helper coverage for the new optional-path resolver and verified the touched scripts still compile and pass their unit slice.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_workflow_validation_helpers tests.test_aoi_hazard_map_packager tests.test_chant_sura_real_context_readiness_gate`
+  - `PYENV_VERSION=system uv run python -m compileall scripts/lib/workflow_validation.py scripts/package_aoi_hazard_map.py scripts/check_chant_sura_real_context_readiness_gate.py tests/test_workflow_validation_helpers.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: path and blocked-report consolidation only; no CLI schema change, no broader workflow rewrite, no live Balfrin submission, no claim upgrade, no operational claim, and no annual-frequency or physical-probability claim.
+- Next task: `TB-292`

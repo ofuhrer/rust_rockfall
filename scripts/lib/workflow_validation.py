@@ -120,6 +120,12 @@ def resolve_repo_path(root: Path, value: str | Path) -> Path:
     return path if path.is_absolute() else root / path
 
 
+def resolve_optional_repo_path(root: Path, value: str | Path | None) -> Path | None:
+    if value in (None, ""):
+        return None
+    return resolve_repo_path(root, value)
+
+
 def require_paths_exist(
     paths: Mapping[str, str | Path],
     error_cls: type[Exception],

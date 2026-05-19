@@ -22,7 +22,11 @@ from unittest.mock import patch
 from scripts.hazard_output_manifests import output_manifest_entry
 from scripts.hazard_output_writers import sha256_file, write_text
 from scripts import generate_aoi_map_qa_review as qa_review
-from scripts.lib.workflow_validation import build_release_zone_provenance_intake
+from scripts.lib.workflow_validation import (
+    build_blocked_report,
+    build_release_zone_provenance_intake,
+    resolve_optional_repo_path,
+)
 from scripts.prototype_cog_conversion import convert_to_cog
 from scripts import summarize_observed_runout_deposition_intake_contract as observed_intake_helper
 
@@ -102,12 +106,12 @@ def package_aoi_hazard_map(
 
     map_manifest = load_json(map_manifest_path)
     pilot_manifest = load_json(pilot_manifest_path)
-    source_zone_metadata_path = resolve_repo_path(map_manifest.get("source_zone_metadata_path"))
-    scenario_table_path = resolve_repo_path(map_manifest.get("scenario_table_path"))
+    source_zone_metadata_path = resolve_optional_repo_path(ROOT, map_manifest.get("source_zone_metadata_path"))
+    scenario_table_path = resolve_optional_repo_path(ROOT, map_manifest.get("scenario_table_path"))
     hazard_manifest_paths = [
-        resolve_repo_path(path)
+        resolved_path
         for path in list(map_manifest.get("hazard_manifest_paths") or [])
-        if path is not None
+        if (resolved_path := resolve_optional_repo_path(ROOT, path)) is not None
     ]
     if source_zone_metadata_path is None or scenario_table_path is None or not hazard_manifest_paths:
         missing_refs = []
@@ -125,7 +129,11 @@ def package_aoi_hazard_map(
         )
     raster_outputs = [output for output in map_manifest.get("raster_outputs", []) if output.get("format") == "geotiff"]
     required_paths = [source_zone_metadata_path, scenario_table_path, *hazard_manifest_paths]
-    required_paths.extend(resolve_repo_path(output.get("path")) for output in raster_outputs if output.get("path"))
+    required_paths.extend(
+        resolved_path
+        for output in raster_outputs
+        if (resolved_path := resolve_optional_repo_path(ROOT, output.get("path"))) is not None
+    )
     missing_required_paths = [str(path) for path in required_paths if path is not None and not path.exists()]
     if missing_required_paths:
         return blocked_missing_hazard_outputs(
@@ -239,7 +247,7 @@ def package_rasters(output_root: Path, raster_outputs: list[dict[str, Any]]) -> 
     missing_hazard_outputs: list[str] = []
     for raster in raster_outputs:
         layer_name = str(raster.get("layer_name") or "")
-        source_path = resolve_repo_path(raster.get("path"))
+        source_path = resolve_optional_repo_path(ROOT, raster.get("path"))
         if not layer_name or source_path is None or not source_path.exists():
             if source_path is not None:
                 missing_hazard_outputs.append(str(source_path))
@@ -779,14 +787,19 @@ def blocked_missing_hazard_outputs(
     missing_paths: list[str],
     error: str,
 ) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "status": "blocked_missing_hazard_outputs",
-        "input_root": str(input_root),
-        "output_root": str(output_root),
-        "missing_hazard_outputs": missing_paths,
-        "error": error,
-    }
+    return build_blocked_report(
+        schema_version=SCHEMA_VERSION,
+        status_key="status",
+        missing_inputs=missing_paths,
+        blocked_reason=error,
+        blocked_status="blocked_missing_hazard_outputs",
+        extra_fields={
+            "input_root": str(input_root),
+            "output_root": str(output_root),
+            "missing_hazard_outputs": missing_paths,
+            "error": error,
+        },
+    )
 
 
 def polygon_coordinates(geometry: dict[str, Any]) -> list[list[float]]:
@@ -833,13 +846,6 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
-def resolve_repo_path(raw_path: Any) -> Path | None:
-    if raw_path in (None, ""):
-        return None
-    path = Path(str(raw_path))
-    return path if path.is_absolute() else ROOT / path
 
 
 def count_files_and_bytes(root: Path) -> tuple[int, int]:

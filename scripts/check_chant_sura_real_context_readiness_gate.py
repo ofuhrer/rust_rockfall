@@ -31,6 +31,7 @@ try:
 except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
+from scripts.lib.workflow_validation import resolve_optional_repo_path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "chant_sura_real_context_readiness_gate_v1"
@@ -564,7 +565,7 @@ def build_prepared_pilot_real_input_row(
             "notes": "required real-input row is missing from the acquisition package",
         }
 
-    resolved_path = resolve_repo_path_for_repo_root(expected_path, repo_root)
+    resolved_path = resolve_optional_repo_path(repo_root, expected_path) or (repo_root / expected_path)
     file_present = resolved_path.exists()
     package_is_fixture_backed = package_classification == "fixture_backed"
 
@@ -649,11 +650,6 @@ def build_real_input_validation_row(*, category: str, expected_path: Path, requi
         required_fields=required_fields,
     )
     return validation_row
-
-
-def resolve_repo_path_for_repo_root(path_text: str, repo_root: Path) -> Path:
-    path = Path(path_text)
-    return path if path.is_absolute() else repo_root / path
 
 
 def real_input_payload_has_fixture_markers(path: Path) -> bool:
