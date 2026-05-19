@@ -2708,3 +2708,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: validation output budgeting only; no physics change, no metric suppression without replacement summary evidence, no live Balfrin submission, no claim upgrade, no operational claim, no annual-frequency claim, no physical-probability claim, and no risk/exposure/vulnerability claim.
 - Next task: `TB-301`
+
+### TB-301: Multi-Zone Local Scaling Ladder
+
+- Date: 2026-05-19
+- Commit: `fb5ee9a`
+- Objective: add a deterministic reduced-output local scaling ladder across 1, 2, 4, 8, and 12-zone fixture workloads and record the first blocked breakpoint before any live Balfrin scale step.
+- Files changed: `scripts/summarize_multi_zone_scaling_ladder.py`, `tests/test_multi_zone_scaling_ladder.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a local scaling-ladder helper that materializes deterministic pressure and hazard fixture roots for 1, 2, 4, 8, and 12-zone workloads, then measures manifest bytes, sidecars, output files, and reduced-output hazard-builder timing per rung.
+  - Classified each rung against the existing reducer-pressure bottleneck labels and budget acceptance checks, with the first blocked rung landing at 8 zones and the first bottleneck label resolving to `accumulation_seconds`.
+  - Added focused tests for deterministic fixture generation and blocked budget classifications, then documented the measured breakpoint in the reducer-pressure probe note and registered the new script in the inventory.
+  - Removed TB-301 from the active backlog after the ladder helper and evidence summary were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_scaling_ladder -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root /tmp/rust_rockfall/tb301_multi_zone_ladder --format text`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_scaling_ladder.py tests/test_multi_zone_scaling_ladder.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: local/fixture scaling only; no live Balfrin submission, no distributed execution, no physical credibility claim, no Swiss-wide claim, no operational claim, no annual-frequency claim, no physical-probability claim, and no risk/exposure/vulnerability claim.
+- Next task: `TB-302`
