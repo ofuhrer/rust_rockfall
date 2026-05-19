@@ -2142,3 +2142,22 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: guided preparation only; no network download, no simulation, no live Balfrin submission, no physical-probability semantics, no annual-frequency semantics, no operational claim, and no generated heavy outputs committed.
 - Next task: `TB-275`
+
+### TB-275: Public Geodata Local Staging Wizard
+
+- Date: 2026-05-19
+- Commit: `cd10985`
+- Objective: add a local staging wizard that matches caller-supplied swisstopo files or directories to the AOI cache manifest, writes a dry-run proposal first, and only applies manifest updates after the proposal is clean.
+- Files changed: `scripts/stage_public_geodata_cache.py`, `tests/test_public_geodata_cache_stager.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a wizard mode to the public-geodata staging helper with explicit local-path and scan-root inputs, proposal output writing, and an optional apply step that only mutates the manifest after the proposal is ready.
+  - Added deterministic candidate matching for file and directory inputs, including sibling metadata discovery, fail-closed ambiguous-match handling, missing-metadata detection, and optional-deferred classification.
+  - Extended the stager tests with fixture-backed dry-run/apply coverage, missing-metadata failure coverage, and ambiguous directory-match coverage while keeping the verifier regressions intact.
+  - Removed TB-275 from the active backlog after the implementation commit landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_stager tests.test_public_geodata_cache_verifier -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/stage_public_geodata_cache.py scripts/verify_public_geodata_cache.py tests/test_public_geodata_cache_stager.py tests/test_public_geodata_cache_verifier.py`
+  - `git diff --check`
+- Result/status: completed
+- Boundaries: local file staging only; no network download, no simulation, no source-frequency semantics, no physical validation claim, no operational claim, and no heavy public geodata committed.
+- Next task: `TB-276`
