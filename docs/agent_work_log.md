@@ -3204,3 +3204,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: pre-submit repair and generate-only proof only; no `sbatch` command was run, no job id was produced, no measured two-zone Balfrin hazard execution evidence was created, and no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency or physical-probability claim, or risk/exposure/vulnerability claim was introduced.
 - Next task: `TB-323`
+
+### TB-323: Real AOI Public-Geodata Acquisition Pack
+
+- Date: 2026-05-20
+- Commit: `1b2e79c`
+- Objective: make the Chant Sura / Flüelapass AOI acquisition pack operator-ready with explicit source records, cache paths, transcript commands, and verification summaries while keeping the workflow read-only by default.
+- Files changed: `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `scripts/check_second_site_public_geodata_preflight.py`, `scripts/stage_public_geodata_cache.py`, `scripts/verify_public_geodata_cache.py`, `tests/test_chant_sura_real_context_readiness_gate.py`, `tests/test_public_geodata_cache_stager.py`, `tests/test_public_geodata_cache_verifier.py`, `tests/test_swisstopo_aoi_acquisition_planner.py`
+- Implementation summary:
+  - Expanded the frozen acquisition package with explicit cache paths, source records, operator choices, and a verification summary so operators can see the current ready, missing, and deferred rows in one place.
+  - Fixed the preflight, staging, and verifier JSON/text surfaces so date-bearing YAML inputs serialize cleanly and wizard-mode dry-run/local-copy transcripts render instead of crashing.
+  - Added focused regressions for the acquisition-package fields, the CLI JSON outputs, and the wizard-mode text transcript, then removed TB-323 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_real_context_readiness_gate tests.test_swisstopo_aoi_acquisition_planner tests.test_public_geodata_cache_verifier tests.test_public_geodata_cache_stager -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: public geodata acquisition/staging only; no private data, no simulation, no live Balfrin submission, no large swisstopo products committed, and no operational claim.
+- Next task: `TB-324`
