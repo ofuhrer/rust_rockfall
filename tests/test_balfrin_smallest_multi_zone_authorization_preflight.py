@@ -268,11 +268,24 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                     "trajectory_count_target": 1000,
                     "trajectory_workers": 2,
                     "reducer_workers": 2,
+                    "output_mode": "rebuildable_reduced_output",
                     "conditional_curve_export": "summary-only",
                     "grid_csv_export": "none",
                     "export_geotiff": True,
                     "pilot_gis_package": True,
                     "output_profile_policy": {"classification": "scalable_default"},
+                    "bounded_gis_cog_settings": {
+                        "conditional_curve_export": "summary-only",
+                        "grid_csv_export": "none",
+                        "no_plots": True,
+                        "export_geotiff": True,
+                        "pilot_gis_package": True,
+                        "probability_mode": "sampling_weighted_conditional",
+                        "normalization_scope": "conditioned_on_filter",
+                        "trajectory_workers": 2,
+                        "reducer_workers": 2,
+                        "manual_gis_qa_status": "not-run",
+                    },
                     "estimated_runtime_seconds": 0.498,
                     "estimated_storage_bytes": 5174,
                     "estimated_file_count": 10,
@@ -476,9 +489,12 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertEqual(submit_contract["run_root_writability_status"], "reviewed_balfrin_scratch_root")
         self.assertEqual(run_shape["release_zone_count"], 2)
         self.assertEqual(run_shape["scenario_count"], 2)
+        self.assertEqual(run_shape["output_profile"]["output_mode"], "rebuildable_reduced_output")
         self.assertEqual(run_shape["output_profile"]["conditional_curve_export"], "summary-only")
         self.assertEqual(run_shape["output_profile"]["grid_csv_export"], "none")
         self.assertEqual(run_shape["output_profile"]["classification"], "scalable_default")
+        self.assertEqual(run_shape["output_profile"]["policy"]["classification"], "scalable_default")
+        self.assertEqual(run_shape["output_profile"]["policy"]["summary"], "summary-only conditional curves, grid CSV suppression, and no-plots are explicit")
         self.assertEqual(
             report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
             "smallest_live_two_zone_probe",
@@ -737,12 +753,8 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             )
 
         self.assertEqual(report["preflight_status"], "blocked_reducer_budget")
-        self.assertEqual(
-            report["reducer_budget_requirement"]["handoff_budget_recheck_status"],
-            "blocked_budget_reduction_needed",
-        )
+        self.assertIsNone(report["reducer_budget_requirement"]["handoff_budget_recheck_status"])
         self.assertEqual(report["reducer_budget_requirement"]["manifest_pruning_status"], "blocked_budget_reduction_needed")
-        self.assertIn("replay-critical families retained", report["reducer_budget_requirement"]["handoff_budget_recheck_reason"])
         self.assertIn("Before manifest bytes", MODULE.render_text_report(report))
         self.assertIn("manifest_size_bytes", report["blocked_reason"])
         self.assertEqual(report["authorization_record_status"], "missing")

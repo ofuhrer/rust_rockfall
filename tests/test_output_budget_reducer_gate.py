@@ -69,6 +69,24 @@ class OutputBudgetReducerGateTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.OutputBudgetReducerGateError, "reducer_scaling"):
                 validator.validate_output_budget_reducer_gate(path)
 
+    def test_rejects_full_conditional_curve_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["output_profile"]["current_target_gate_profile"]["conditional_curve_export_mode"] = "full"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.OutputBudgetReducerGateError, "must be summary-only"):
+                validator.validate_output_budget_reducer_gate(path)
+
+    def test_rejects_full_grid_csv_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.base_record()
+            record["output_profile"]["current_target_gate_profile"]["grid_csv_export_mode"] = "full"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.OutputBudgetReducerGateError, "must not be full"):
+                validator.validate_output_budget_reducer_gate(path)
+
     def test_rejects_passed_while_blockers_remain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             record = self.base_record()

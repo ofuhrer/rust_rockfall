@@ -637,12 +637,20 @@ def build_report(
         requested_release_zone_batch_size=requested_release_zone_batch_size,
     )
     current_target_profile = dict(output_profile_report.get("current_target_gate_profile") or {})
+    bounded_profile = dict(output_profile_report.get("bounded_profile") or {})
+    bounded_profile_controls = dict((bounded_profile.get("command_recipe") or {}).get("profile_controls") or {})
     current_plots_enabled = current_target_profile.get("plots_enabled")
-    current_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+    legacy_current_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
         conditional_curve_export=current_target_profile.get("conditional_curve_export_mode"),
         grid_csv_export=current_target_profile.get("grid_csv_export_mode"),
         no_plots=False if current_plots_enabled is None else not bool(current_plots_enabled),
-        label="current_target_gate_profile",
+        label="legacy_current_target_gate_profile",
+    )
+    canonical_reduced_output_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export=bounded_profile_controls.get("conditional_curve_export", "summary-only"),
+        grid_csv_export=bounded_profile_controls.get("grid_csv_export", "none"),
+        no_plots=bool(bounded_profile_controls.get("no_plots", True)),
+        label="canonical_rebuildable_reduced_output",
     )
     minimum_output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
         conditional_curve_export="summary-only",
@@ -651,9 +659,13 @@ def build_report(
         label="minimum_measured_multi_zone_run",
     )
     command_plan["output_profile_policy"] = OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
-        [current_output_profile_policy, minimum_output_profile_policy],
+        [canonical_reduced_output_policy, minimum_output_profile_policy],
         label="balfrin_multi_release_zone_demo_command_plan",
     )
+    command_plan["output_profile_policy_provenance"] = {
+        "legacy_current_target_gate_profile": legacy_current_output_profile_policy,
+        "canonical_rebuildable_reduced_output": canonical_reduced_output_policy,
+    }
     manifest_pruning_report = build_manifest_pruning_report(
         command_plan=command_plan,
         pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
@@ -830,6 +842,7 @@ def build_report(
         "authorization_review_command": follow_up_recommendation["authorization_review_command"],
         "authorization_submit_command": follow_up_recommendation["authorization_submit_command"],
         "output_profile_policy": command_plan.get("output_profile_policy", {}),
+        "output_profile_policy_provenance": dict(command_plan.get("output_profile_policy_provenance") or {}),
         "command_plan": command_plan,
         "claim_boundaries": claim_boundaries(target_area_contract),
         "ignored_output_roots": [
@@ -2133,7 +2146,7 @@ def build_output_budget_acceptance_thresholds() -> dict[str, Any]:
                 },
             },
             NEXT_REVIEW_BUDGET_PROFILE_ID: {
-                "scope": "next larger review-only probe planning input",
+                "scope": "next larger reduced-output probe planning input",
                 "authorization_scope": "review only; does not authorize scale-up, submission, or distributed execution",
                 "release_zone_count": 4,
                 "scenario_count": 4,
@@ -2800,8 +2813,8 @@ def build_authorized_submit_command(
     *,
     reviewed_handoff_package_path: Path,
     authorization_record_path: Path,
-    run_root: Path = FOUR_ZONE_HAZARD_REVIEW_RUN_ROOT,
-    run_id: str = FOUR_ZONE_HAZARD_REVIEW_RUN_ID,
+    run_root: Path = SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT,
+    run_id: str = SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
 ) -> str:
     return command_string(
         [
@@ -2962,6 +2975,9 @@ def build_follow_up_recommendation(
     source_release_sampling = dict(source_zone_metadata.get("release_sampling_policy") or {})
     source_zone_policy = dict(source_scenario_policy.get("source_zone_policy") or {})
     block_scenarios = list((source_scenario_policy.get("block_scenario_policy") or {}).get("scenarios") or [])
+    validation_inventory = dict(output_profile_report.get("validation_output_inventory") or {})
+    bounded_profile = dict(output_profile_report.get("bounded_profile") or {})
+    bounded_profile_controls = dict((bounded_profile.get("command_recipe") or {}).get("profile_controls") or {})
     return {
         "status": "deferred_pending_authorization",
         "live_execution_requires_new_human_authorization": True,
@@ -2989,19 +3005,36 @@ def build_follow_up_recommendation(
                     "physical_release_probability_supported"
                 ),
             },
-            "output_mode": output_profile_report.get("validation_output_mode"),
-            "conditional_curve_export": "summary-only",
-            "grid_csv_export": "none",
+            "output_mode": validation_inventory.get("validation_output_mode") or "rebuildable_reduced_output",
+            "conditional_curve_export": bounded_profile_controls.get("conditional_curve_export", "summary-only"),
+            "grid_csv_export": bounded_profile_controls.get("grid_csv_export", "none"),
             "output_profile_policy": OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
-                conditional_curve_export="summary-only",
-                grid_csv_export="none",
-                no_plots=True,
+                conditional_curve_export=bounded_profile_controls.get("conditional_curve_export", "summary-only"),
+                grid_csv_export=bounded_profile_controls.get("grid_csv_export", "none"),
+                no_plots=bool(bounded_profile_controls.get("no_plots", True)),
                 label="minimum_measured_multi_zone_run",
             ),
-            "export_geotiff": True,
-            "pilot_gis_package": True,
-            "trajectory_workers": 2,
-            "reducer_workers": 2,
+            "output_budget_acceptance_threshold_profile_id": SMALLEST_LIVE_BUDGET_PROFILE_ID,
+            "bounded_gis_cog_settings": {
+                "conditional_curve_export": bounded_profile_controls.get("conditional_curve_export", "summary-only"),
+                "grid_csv_export": bounded_profile_controls.get("grid_csv_export", "none"),
+                "no_plots": bool(bounded_profile_controls.get("no_plots", True)),
+                "export_geotiff": bool(bounded_profile_controls.get("export_geotiff", True)),
+                "pilot_gis_package": bool(bounded_profile_controls.get("pilot_gis_package", True)),
+                "probability_mode": bounded_profile_controls.get("probability_mode"),
+                "normalization_scope": bounded_profile_controls.get("normalization_scope"),
+                "trajectory_workers": bounded_profile_controls.get("trajectory_workers"),
+                "reducer_workers": bounded_profile_controls.get("reducer_workers"),
+                "manual_gis_qa_status": bounded_profile.get("manual_gis_qa_status"),
+            },
+            "export_geotiff": bool(bounded_profile_controls.get("export_geotiff", True)),
+            "pilot_gis_package": bool(bounded_profile_controls.get("pilot_gis_package", True)),
+            "trajectory_workers": positive_int(
+                bounded_profile_controls.get("trajectory_workers", 2), "bounded_gis_cog_settings.trajectory_workers"
+            ),
+            "reducer_workers": positive_int(
+                bounded_profile_controls.get("reducer_workers", 2), "bounded_gis_cog_settings.reducer_workers"
+            ),
             "block_scenario_count": len(block_scenarios),
             "block_scenario_ids": [
                 str(block_scenario.get("block_scenario_id"))
@@ -3192,7 +3225,7 @@ def build_four_zone_review_package(
         },
         "promotion_status": "blocked_pending_later_task",
         "promotion_reason": (
-            "The four-zone package is review-only and cannot be promoted to live submission without a later task and fresh gate evidence."
+            "The four-zone package remains later-task gated and cannot be promoted to live submission without fresh gate evidence."
         ),
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -3927,6 +3960,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Authorization record: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('authorization_record_path')}`",
         f"- Recommended validation output mode: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run']['output_mode']}`",
         f"- Recommended output profile policy: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('output_profile_policy', {}).get('classification')}`",
+        f"- Recommended bounded GIS/COG settings: `{report['follow_up_recommendation']['minimum_measured_multi_zone_run'].get('bounded_gis_cog_settings', {})}`",
         f"- Reason: {report['follow_up_recommendation']['reason']}",
         "",
         "## Smallest Run Estimates",

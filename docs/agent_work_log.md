@@ -4691,3 +4691,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no live Balfrin submission, no large ensemble, no operational claim, no scale-up authorization, and no generated artifacts committed.
 - Next task: TB-392
+
+### TB-392: Repair Multi-Zone Reduced Output Profile Gate
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: make the smallest multi-zone Balfrin handoff use the canonical rebuildable reduced-output mode and bounded GIS/COG settings so the pre-submit output-profile gate passes without weakening output-budget guardrails.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_output_budget_reducer_gate.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the multi-zone handoff report and follow-up recommendation to surface the canonical `rebuildable_reduced_output` contract, bounded GIS/COG settings, and smallest-run command defaults instead of the stale review-only profile phrasing.
+  - Tightened the smallest-multi-zone authorization preflight so the reducer-budget threshold id is reported from the smallest measured run contract, not the four-zone review-only fallback.
+  - Added fail-closed regression coverage for full grid CSV and full conditional-curve exports while preserving the existing manifest-mismatch and sidecar-budget guards.
+  - Removed TB-392 from the active backlog after the focused contract slice passed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_output_budget_reducer_gate -v`
+- Result/status: implemented_measured
+- Boundaries: no live submission, no scale-up claim, no operational claim, no annual-frequency claim, and no generated artifacts committed.
+- Next task: TB-393

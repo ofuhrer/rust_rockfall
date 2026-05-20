@@ -74,7 +74,11 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(first["authorization_classification"], "blocked_pending_authorization")
         self.assertTrue(first["live_execution_requires_new_human_authorization"])
-        self.assertEqual(first["output_profile_policy"]["classification"], "blocked_unscalable_default")
+        self.assertEqual(first["output_profile_policy"]["classification"], "scalable_default")
+        self.assertEqual(
+            first["output_profile_policy_provenance"]["legacy_current_target_gate_profile"]["classification"],
+            "blocked_unscalable_default",
+        )
         self.assertEqual(first["candidate_release_candidates"]["status"], "ready")
         self.assertEqual(first["candidate_release_candidates"]["multi_zone_stress_test_readiness"]["status"], "ready")
         self.assertEqual(first["deterministic_scenarios"]["status"], "template_only")
@@ -225,14 +229,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(
             manifest_pruning["replay_critical_contract"]["output_profile_semantics"]["classification"],
-            "blocked_unscalable_default",
+            "scalable_default",
         )
         self.assertIn(
             "minimum_measured_multi_zone_run",
             manifest_pruning["replay_critical_contract"]["output_profile_semantics"]["scalable_policy_labels"],
         )
         self.assertEqual(manifest_pruning["retained_output_families"], list(output_budget_projection["output_family_mix"]))
-        self.assertEqual(first["command_plan"]["output_profile_policy"]["classification"], "blocked_unscalable_default")
+        self.assertEqual(first["command_plan"]["output_profile_policy"]["classification"], "scalable_default")
         review_package = first["review_only_four_zone_package"]
         self.assertEqual(review_package["readiness_classification"], "ready_for_review")
         self.assertEqual(review_package["output_budget_acceptance_status"], "accepted")
@@ -259,7 +263,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(hazard_package["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(
             hazard_package["command_plan"]["output_profile_policy"]["classification"],
-            "blocked_unscalable_default",
+            "scalable_default",
         )
         self.assertGreater(hazard_package["command_plan"]["command_count"], 0)
         self.assertIn("multi_zone_reducer_pressure_summary", hazard_package["command_plan"]["command_ids"])
@@ -309,6 +313,22 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]
         self.assertEqual(smallest_run["output_profile_policy"]["classification"], "scalable_default")
+        self.assertEqual(smallest_run["output_mode"], "rebuildable_reduced_output")
+        self.assertEqual(
+            smallest_run["bounded_gis_cog_settings"],
+            {
+                "conditional_curve_export": "summary-only",
+                "grid_csv_export": "none",
+                "no_plots": True,
+                "export_geotiff": True,
+                "pilot_gis_package": True,
+                "probability_mode": "sampling_weighted_conditional",
+                "normalization_scope": "conditioned_on_filter",
+                "trajectory_workers": 2,
+                "reducer_workers": 2,
+                "manual_gis_qa_status": "not-run",
+            },
+        )
         self.assertEqual(smallest_run["release_zone_count"], 2)
         self.assertEqual(smallest_run["scenario_count"], 2)
         self.assertEqual(smallest_run["trajectory_count_target"], 1000)

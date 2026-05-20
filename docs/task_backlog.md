@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-392: Repair Multi-Zone Reduced Output Profile Gate
-
-Goal: Remove the current `blocked_output_profile` obstacle for the smallest multi-zone hazard branch by making the handoff use the canonical rebuildable reduced-output mode and bounded GIS settings.
-
-Capability gap reduced: Previous two-zone and four-zone hazard branches failed closed before `sbatch` because the submit package and output-profile expectations diverged from executable reduced-output contracts.
-
-Why this outranks alternatives: Submitting another Balfrin job before the output-profile gate is executable would repeat the same fail-closed branch.
-
-Inspect first:
-
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-
-Deliverables:
-
-- A smallest multi-zone handoff package whose output-profile gate passes with rebuildable reduced outputs and bounded GIS/COG settings.
-- Regression coverage showing full grid CSV, full conditional curves, excessive sidecars, and manifest mismatch still fail closed.
-- Updated command-plan or handoff text only where needed to remove stale review-only profile references.
-
-Definition of done:
-
-- The relevant pre-submit output-profile check returns ready/accepted for the smallest executable multi-zone branch without weakening output-budget guardrails.
-
-Boundaries: No live submission in this task, no summary-only rebuildability claim, no scale-up or operational claim.
-
 ### TB-393: Execute Smallest Real-AOI Multi-Zone Balfrin Probe
 
 Goal: Submit and monitor the smallest real-AOI multi-zone Balfrin `postproc` hazard probe only after the prepared-pilot and reduced-output gates are ready.

@@ -121,17 +121,12 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
     )
     review_only = dict(package.get("review_only_four_zone_package") or hazard_package or {})
     follow_up = dict(package.get("follow_up_recommendation") or {})
-    hazard_ready_for_submit = hazard_package.get("ready_for_submit") is True
     minimum = dict(
-        hazard_package
-        if hazard_ready_for_submit
-        else (
-            follow_up.get("minimum_measured_multi_zone_run")
-            or package.get("smallest_measured_multi_zone_run")
-            or hazard_package
-            or review_only
-            or {}
-        )
+        follow_up.get("minimum_measured_multi_zone_run")
+        or package.get("smallest_measured_multi_zone_run")
+        or hazard_package
+        or review_only
+        or {}
     )
     reducer_pressure = dict(
         minimum.get("reducer_pressure")
@@ -153,9 +148,7 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         "trajectory_count_target": minimum.get("trajectory_count_target"),
         "release_cell_count": minimum.get("release_cell_count"),
         "seed_policy": minimum.get("seed_policy", {}),
-        "trajectory_workers": (minimum.get("trajectory_workers") or 2)
-        if hazard_ready_for_submit
-        else minimum.get("trajectory_workers"),
+        "trajectory_workers": minimum.get("trajectory_workers") or 2,
         "reducer_workers": minimum.get("reducer_workers")
         or reducer_pressure.get("requested_reducer_worker_count"),
         "reducer_chunk_count": minimum.get("reducer_chunk_count")
@@ -212,15 +205,11 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         or package.get("review_only_four_zone_package")
         or {}
     )
-    hazard_ready_for_submit = review_only.get("ready_for_submit") is True
     minimum = dict(
-        review_only
-        if hazard_ready_for_submit
-        else (
-            dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
-            or package.get("smallest_measured_multi_zone_run")
-            or {}
-        )
+        dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
+        or package.get("smallest_measured_multi_zone_run")
+        or review_only
+        or {}
     )
     constraint = dict(
         minimum.get("reducer_pressure")
@@ -297,7 +286,10 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         ),
         "output_budget_acceptance_validation": output_budget_acceptance_validation,
         "output_budget_acceptance_status": output_budget_acceptance_validation.get("status"),
-        "output_budget_acceptance_threshold_profile_id": output_budget_acceptance_validation.get("threshold_profile_id"),
+        "output_budget_acceptance_threshold_profile_id": minimum.get(
+            "output_budget_acceptance_threshold_profile_id"
+        )
+        or output_budget_acceptance_validation.get("threshold_profile_id"),
         "output_budget_acceptance_failures": list(output_budget_acceptance_validation.get("failures") or []),
         "manifest_pruning_status": manifest_pruning.get("status"),
         "manifest_pruning_mode": manifest_pruning.get("mode"),
