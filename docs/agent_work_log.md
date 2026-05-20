@@ -3952,3 +3952,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no `sbatch`, no live submission, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-361`
+
+### TB-361: Verify Two-Zone Balfrin Pre-Submit Gate On Remote Checkout
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: run the repaired two-zone package through Balfrin access, remote checkout, authorization, reducer/output-budget, submit-contract, and preservation-oriented pre-submit gates without submitting a job.
+- Files changed: `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran `scripts/check_balfrin_remote_access_preflight.py` against Balfrin and recorded `ready_for_read_only_collection`: SSH, remote clone, checkout hygiene, run-root visibility, and scheduler query all passed; checkout dirty path count was `0`.
+  - Fed that access JSON into `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py` and recorded `ready_for_authorization_review`: authorization record `reviewed` / `authorized`, reducer budget `ready`, output profile `ready`, submit contract `ready`, and output-budget acceptance `accepted`.
+  - Performed a separate read-only upstream comparison and classified the final remote pre-submit result as `blocked_stale_remote_checkout` because `/users/olifu/work/rust_rockfall` is on `main` at `955be7bff75f6ad07b9200367d7d504d4881c633` while `origin/main` and the local checked-out `main` are `b82cfd5427b13a9df176450ddee53ae475d073fc`.
+  - Removed TB-361 from the active backlog after recording that no live two-zone job may be attempted next until the Balfrin checkout is fast-forwarded and the same read-only pre-submit gates are rerun.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb361_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb361_balfrin_access_preflight.json --format json > /tmp/tb361_smallest_multi_zone_preflight.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && printf "remote_branch=" && git rev-parse --abbrev-ref HEAD && printf "remote_head=" && git rev-parse HEAD && printf "origin_main=" && git ls-remote origin refs/heads/main | cut -f1'`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: Balfrin read-only/pre-submit only; no `sbatch`, no live submission, no generated artifact commit, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-362` remains blocked until the remote checkout is fast-forwarded and TB-361 gates are rerun to `ready_for_submit`.

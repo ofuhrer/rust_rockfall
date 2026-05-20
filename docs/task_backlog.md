@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-361: Verify Two-Zone Balfrin Pre-Submit Gate On Remote Checkout
-
-Goal: Run the repaired two-zone package through Balfrin access, checkout hygiene, authorization, output-budget, and preservation preflights without submitting a job.
-
-Capability gap reduced: Separates local package correctness from remote Balfrin execution readiness.
-
-Why this outranks alternatives: The recent failures happened before `sbatch`; a remote read-only/pre-submit gate must pass before another live attempt is useful.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- Recorded pre-submit result for the repaired two-zone package.
-- Clear classification of `ready_for_submit`, `blocked_dirty_remote_checkout`, `blocked_reducer_budget`, `blocked_authorization`, or other concrete blocker.
-
-Definition of done:
-
-- A GPT-5.5 worker records the remote pre-submit classification and leaves no ambiguity about whether a live two-zone postproc job may be attempted next.
-
-Boundaries: Balfrin read-only/pre-submit only; no `sbatch`; no generated artifact commit; no claim upgrade.
-
 ### TB-362: Execute Smallest Two-Zone Balfrin Hazard Run
 
 Goal: Submit and monitor the smallest repaired two-zone hazard package on Balfrin `postproc` if and only if TB-361 reports ready for submit.

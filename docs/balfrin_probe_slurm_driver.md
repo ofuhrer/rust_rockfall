@@ -345,6 +345,19 @@ The recorded two-zone package state before that cleanup was:
 authorization record `reviewed` / `authorized`, reducer budget `ready`, output
 profile `ready`, output-budget acceptance `accepted`, access preflight
 `blocked_dirty_remote_checkout`, and authorization preflight `blocked_access`.
+
+TB-361 reran the read-only remote gate after the two-zone submit-contract
+repair. The access preflight reported `ready_for_read_only_collection` with
+clean checkout hygiene, and the smallest multi-zone package preflight reported
+`ready_for_authorization_review`: authorization record `reviewed` /
+`authorized`, reducer budget `ready`, output profile `ready`, submit contract
+`ready`, and output-budget acceptance `accepted`. A separate read-only upstream
+comparison found the Balfrin checkout on `main` at
+`955be7bff75f6ad07b9200367d7d504d4881c633` while `origin/main` was
+`b82cfd5427b13a9df176450ddee53ae475d073fc`, so the final TB-361 pre-submit
+classification is `blocked_stale_remote_checkout`. No live two-zone job may be
+attempted next until `/users/olifu/work/rust_rockfall` is fast-forwarded and the
+same read-only pre-submit gates are rerun.
 No measured multi-zone result has been promoted.
 
 ## SBATCH defaults and constraints
