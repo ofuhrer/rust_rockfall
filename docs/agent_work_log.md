@@ -4044,3 +4044,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: synthesis only; no `sbatch`, no live job id, no measured two-zone promotion, no generated artifact commit, no scale-up or distributed-execution authorization, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-364`
+
+### TB-364: Measure Two-Zone Hazard Throughput Bottlenecks
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: profile the two-zone hazard-output path only if a measured two-zone run root exists; otherwise record the explicit deferred status and the first unblock action.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the current TB-362/TB-363 context still has no measured two-zone hazard run root, so there is nothing authoritative to profile without fabricating evidence from a failed-closed or scratch-only path.
+  - Removed TB-364 from the active backlog because the task is now explicitly deferred on the missing measured root, with the unblock action named as obtaining a real measured two-zone hazard root before any bottleneck ranking.
+  - Preserved the performance-ordering rule in the work log instead of promoting scratch, fixture, or failed-closed evidence to a measured bottleneck.
+- Checks run:
+  - `rg -n "^### TB-364:" docs/task_backlog.md`
+  - `git diff --check`
+- Result/status: implemented_blocked_report
+- Boundaries: deferred/no-op report only; no new hazard run, no scratch or failed-closed promotion to measured status, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim.
+- Next task: obtain a measured two-zone hazard run root, then resume performance profiling with TB-365 or a successor bottleneck task.

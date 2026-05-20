@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-364: Measure Two-Zone Hazard Throughput Bottlenecks
-
-Goal: If TB-362 produces a measured run, profile the two-zone hazard-output path to identify the first actionable throughput, manifest, reducer, or file-count bottleneck.
-
-Capability gap reduced: Performance work currently lacks a measured multi-zone hazard target.
-
-Why this outranks alternatives: Optimization should follow measured bottlenecks, not preemptively target scratch or postproc-only evidence.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/output_budget_reducer_scaling_gate.md`
-
-Deliverables:
-
-- Measured bottleneck profile for the preserved two-zone hazard root, or explicit no-op/deferred status if no measured root exists.
-- Ranked optimization target with evidence labels.
-
-Definition of done:
-
-- The next performance task can point at one measured first bottleneck and one concrete optimization hypothesis.
-
-Boundaries: No code optimization unless the task finds an unambiguous trivial fix; no new run; no scale-up claim.
-
 ### TB-365: Reduce First Measured Two-Zone Output Bottleneck
 
 Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-364.
