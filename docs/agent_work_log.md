@@ -4672,3 +4672,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no source-frequency semantics, no annual probability, no calibration, no tuning, no hazard execution, and no operational or scale-up claim.
 - Next task: TB-391
+
+### TB-391: Compile Real-AOI Prepared Pilot From Generated Inputs
+
+- Date: 2026-05-21
+- Commit: `a0e4ca6`
+- Objective: compile the real-AOI terrain, candidate zones, scenario table, output-profile settings, and command sequence into one runnable prepared-pilot package or fail closed on one concrete executable blocker.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rehearsed the current prepared-pilot compiler into ignored scratch roots under `/tmp/tb391_prepared_pilot` and `/tmp/tb391_handoff`, which materialized the prepared-pilot manifest, command manifest, expected-output inventory, and run-manifest bundle without touching the repository tree.
+  - Confirmed the compiler and Balfrin handoff fail closed on the concrete `blocked_source_zone_footprint_overlap` deferral, and preserved the explicit next command sequence for the future postproc submit path.
+  - Removed TB-391 from the active backlog after verifying the current code paths and their scratch outputs.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --output-root /tmp/tb391_prepared_pilot --format json`
+  - `PYENV_VERSION=system uv run python scripts/build_management_aoi_balfrin_handoff.py --artifact-dir /tmp/tb391_handoff --prepared-pilot-output-root /tmp/tb391_prepared_pilot --run-root /tmp/tb391_runroot --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_management_aoi_balfrin_handoff tests.test_run_aoi_hazard_workflow -v`
+- Result/status: implemented_blocked_report
+- Boundaries: no live Balfrin submission, no large ensemble, no operational claim, no scale-up authorization, and no generated artifacts committed.
+- Next task: TB-392
