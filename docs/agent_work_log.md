@@ -3623,7 +3623,7 @@ scan thousands of lines of completed history.
 - Date: 2026-05-20
 - Commit: local
 - Objective: run deterministic release-zone candidate generation over the committed real-terrain Tschamut AOI package and keep deterministic candidates separate from any later accepted release zones.
-- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Files changed: `tests/test_plan_terrain_release_zone_candidates.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
   - Added an explicit candidate-vs-accepted separation summary to the terrain candidate report and review-apply flow so deterministic candidate polygons stay distinct from accepted release zones until review is explicitly applied.
   - Added real sweep measurements to the candidate report, including output file count, total bytes, and runtime, and kept the emitted GIS-ready candidate mask/polygon/review bundle under the scratch output root.
