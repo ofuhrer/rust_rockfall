@@ -72,7 +72,7 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
             "source_inputs": {"candidate_metrics_manifest_path": "candidate_manifest.json"},
         }
 
-    def test_zero_candidate_prepared_pilot_blocks_the_balfrin_handoff(self) -> None:
+    def test_current_footprint_overlap_blocks_the_balfrin_handoff(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             artifact_dir = Path(tmp) / "handoff"
             report = MODULE.build_report(
@@ -94,7 +94,7 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
             auth = yaml.safe_load((artifact_dir / "management_aoi_balfrin_authorization_audit_v1.yaml").read_text())
 
         self.assertEqual(report["schema_version"], "management_aoi_balfrin_handoff_v1")
-        self.assertEqual(report["handoff_classification"], "blocked_missing_prepared_pilot_inputs")
+        self.assertEqual(report["handoff_classification"], "blocked_source_zone_footprint_overlap")
         self.assertFalse(report["ready_for_live_management_aoi_postproc_run"])
         self.assertEqual(report["partition"], "postproc")
         self.assertIn("/scratch/mch/olifu/rust_rockfall/probes/management-aoi", report["exact_run_root"])
@@ -106,15 +106,15 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
         self.assertEqual(report["budget_checks"][2]["status"], "not_evaluated")
         self.assertEqual(report["authorization_audit"]["access_preflight_status"], "ready_for_read_only_collection")
         self.assertFalse(report["authorization_audit"]["live_submission_authorized_by_this_record"])
-        self.assertEqual(auth["status"], "blocked_missing_prepared_pilot_inputs")
+        self.assertEqual(auth["status"], "blocked_source_zone_footprint_overlap")
         submit_command = next(command for command in report["command_list"] if command["command_id"] == "future_authorized_submit")
         self.assertFalse(submit_command["runnable_now"])
         self.assertIn("--partition postproc", submit_command["command"])
-        self.assertIn("Do not run in TB-380", submit_command["boundary_note"])
+        self.assertIn("Do not run while the handoff is blocked", submit_command["boundary_note"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
         text = MODULE.render_text_report(report)
-        self.assertIn("handoff_classification: `blocked_missing_prepared_pilot_inputs`", text)
+        self.assertIn("handoff_classification: `blocked_source_zone_footprint_overlap`", text)
         self.assertIn("scenario_row_count: `0`", text)
 
     def test_cli_writes_blocked_package_and_returns_nonzero_for_nonready(self) -> None:
@@ -142,7 +142,7 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
             report = json.loads(buffer.getvalue())
 
             self.assertEqual(exit_code, 2)
-            self.assertEqual(report["handoff_classification"], "blocked_missing_prepared_pilot_inputs")
+            self.assertEqual(report["handoff_classification"], "blocked_source_zone_footprint_overlap")
             self.assertTrue((artifact_dir / "management_aoi_balfrin_handoff_v1.json").exists())
             self.assertTrue((artifact_dir / "management_aoi_balfrin_authorization_audit_v1.yaml").exists())
 

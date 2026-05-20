@@ -25,7 +25,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
         self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
         self.assertIn("TB-368 now provides preservation-ready measured two-zone evidence", report["summary"])
-        self.assertIn("TB-381 failed closed before sbatch", report["summary"])
+        self.assertIn("management-AOI Balfrin decision failed closed before sbatch", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
             ["single_zone", "target_area", "four_zone_review_package", "two_zone_preserved_hazard_run"],
@@ -208,7 +208,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
-            "non_empty_management_aoi_candidate_set",
+            "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",
         )
 
         self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")

@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-386: Rebuild Management AOI Balfrin Handoff Decision
-
-Goal: Rebuild the management-AOI Balfrin handoff and no-submit/run decision after the scenario/prepared-pilot chain is current.
-
-Capability gap reduced: The Balfrin execution decision must reflect the latest prepared-pilot state instead of stale TB-380/TB-381 blocked artifacts.
-
-Why this outranks alternatives: Live Balfrin work should resume only when the handoff package has current candidate, scenario, budget, and authorization evidence.
-
-Inspect first:
-
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Updated handoff classification and execution decision: ready for a GPT-5.5 `postproc` run, blocked by current inputs/budgets/access, or explicitly deferred.
-- If ready, exact next submit package and preservation requirements; if blocked, first persistent blocker and no-submit evidence.
-
-Definition of done:
-
-- The Balfrin decision surface is current and does not rely on stale zero-candidate artifacts.
-
-Boundaries: GPT-5.5 worker for Balfrin-facing inspection; no live submission unless all gates pass under the standing `postproc` authorization rule; no scale-up or operational claim.
-
 ### TB-387: Refresh Management Feasibility Projection From Current Branch
 
 Goal: Refresh the management-facing Swiss-scale feasibility projection after the candidate, prepared-pilot, and Balfrin-decision branch has been rebuilt.

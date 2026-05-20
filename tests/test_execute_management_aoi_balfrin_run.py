@@ -29,8 +29,8 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
     def _blocked_handoff_report(self, artifact_dir: Path) -> dict[str, object]:
         return {
             "schema_version": "management_aoi_balfrin_handoff_v1",
-            "handoff_classification": "blocked_missing_prepared_pilot_inputs",
-            "handoff_status": "blocked_missing_prepared_pilot_inputs",
+            "handoff_classification": "blocked_source_zone_footprint_overlap",
+            "handoff_status": "blocked_source_zone_footprint_overlap",
             "ready_for_live_management_aoi_postproc_run": False,
             "blocked_reason": (
                 "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint"
@@ -53,13 +53,13 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
                 {"gate": "output_budget", "status": "not_evaluated"},
             ],
             "authorization_audit": {
-                "status": "blocked_missing_prepared_pilot_inputs",
+                "status": "blocked_source_zone_footprint_overlap",
                 "live_submission_authorized_by_this_record": False,
             },
             "command_list": [
                 {
                     "command_id": "future_authorized_submit",
-                    "status": "blocked_missing_prepared_pilot_inputs",
+                    "status": "blocked_source_zone_footprint_overlap",
                     "runnable_now": False,
                 }
             ],
@@ -82,7 +82,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "management_aoi_balfrin_execution_state_v1")
         self.assertEqual(report["execution_status"], "failed_closed")
         self.assertEqual(report["measurement_status"], "not_measured")
-        self.assertEqual(report["handoff_classification"], "blocked_missing_prepared_pilot_inputs")
+        self.assertEqual(report["handoff_classification"], "blocked_source_zone_footprint_overlap")
         self.assertIsNone(report["job_id"])
         self.assertIsNone(report["runtime_seconds"])
         self.assertIsNone(report["memory_peak_mb"])

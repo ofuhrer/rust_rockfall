@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build the TB-381 management-AOI Balfrin execution state.
+"""Build the management-AOI Balfrin execution state.
 
-This helper is intentionally fail-closed for the current management-AOI state:
-it consumes the TB-380 handoff package classification and records that no
-Balfrin job was submitted when prepared-pilot inputs are missing.
+This helper is intentionally fail-closed for blocked management-AOI handoffs:
+it consumes the current handoff package classification and records that no
+Balfrin job was submitted when prepared-pilot gates are not ready.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from scripts import build_management_aoi_balfrin_handoff as handoff  # noqa: E40
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "management_aoi_balfrin_execution_state_v1"
-DEFAULT_ARTIFACT_DIR = Path("/tmp/rust_rockfall/tb381_management_aoi_balfrin_execution_state")
+DEFAULT_ARTIFACT_DIR = Path("/tmp/rust_rockfall/tb386_management_aoi_balfrin_execution_state")
 DEFAULT_REPORT_JSON = DEFAULT_ARTIFACT_DIR / "management_aoi_balfrin_execution_state_v1.json"
 DEFAULT_REPORT_TXT = DEFAULT_ARTIFACT_DIR / "management_aoi_balfrin_execution_state_v1.txt"
 
@@ -105,7 +105,7 @@ def build_report(
         "execution_status": execution_status,
         "execution_classification": execution_status,
         "measurement_status": "not_measured",
-        "task_id": "TB-381",
+        "task_id": "TB-386",
         "handoff_schema_version": handoff_report.get("schema_version"),
         "handoff_classification": handoff_status,
         "ready_for_live_management_aoi_postproc_run": handoff_report.get(
@@ -163,8 +163,8 @@ def build_report(
             "live_submission_authorized": False,
         },
         "decision_note": (
-            "TB-381 did not submit a Balfrin job because TB-380 classified the management-AOI handoff as "
-            "`blocked_missing_prepared_pilot_inputs`; the first persistent blocker is the preserved empty candidate set."
+            "No Balfrin job was submitted because the current management-AOI handoff is not ready; the first "
+            "persistent blocker is recorded from the current prepared-pilot/scenario-pressure chain."
             if handoff_status != "ready"
             else "The handoff reports ready, but this helper does not submit jobs; use the reviewed live-submit path."
         ),
@@ -219,7 +219,7 @@ def build_no_submit_semantics(
             command.get("command_id") == "future_authorized_submit" and command.get("runnable_now") is True
             for command in handoff_report.get("command_list", [])
         ),
-        "boundary_note": "No sbatch command was run; TB-381 preserves fail-closed evidence only.",
+        "boundary_note": "No sbatch command was run; this helper preserves fail-closed evidence only.",
     }
 
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Build the management-AOI Balfrin multi-zone handoff classification.
 
-The management AOI currently has a preserved zero-candidate release-zone
-result. This helper turns that prepared-pilot state into a bounded Balfrin
-handoff package without submitting a job or pretending that a runnable
-multi-zone scenario table exists.
+This helper turns the current management-AOI prepared-pilot state into a
+bounded Balfrin handoff package without submitting a job or pretending that a
+runnable multi-zone scenario table exists.
 """
 
 from __future__ import annotations
@@ -25,8 +24,8 @@ if str(ROOT) not in sys.path:
 
 
 SCHEMA_VERSION = "management_aoi_balfrin_handoff_v1"
-DEFAULT_ARTIFACT_DIR = Path("/tmp/rust_rockfall/tb380_management_aoi_balfrin_handoff")
-DEFAULT_PREPARED_PILOT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb380_management_aoi_prepared_pilot")
+DEFAULT_ARTIFACT_DIR = Path("/tmp/rust_rockfall/tb386_management_aoi_balfrin_handoff")
+DEFAULT_PREPARED_PILOT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb386_management_aoi_prepared_pilot")
 DEFAULT_PACKAGE_JSON = DEFAULT_ARTIFACT_DIR / "management_aoi_balfrin_handoff_v1.json"
 DEFAULT_PACKAGE_TXT = DEFAULT_ARTIFACT_DIR / "management_aoi_balfrin_handoff_v1.txt"
 DEFAULT_AUTHORIZATION_RECORD = DEFAULT_ARTIFACT_DIR / "management_aoi_balfrin_authorization_audit_v1.yaml"
@@ -218,9 +217,9 @@ def build_report(
             "postproc_only_for_future_live_work": True,
         },
         "decision_note": (
-            "A live management-AOI postproc run cannot be attempted until a non-empty candidate set and scenario "
-            "table exist; the current handoff is a blocked evidence package."
-            if classification == "blocked_missing_prepared_pilot_inputs"
+            "A live management-AOI postproc run cannot be attempted until the current prepared-pilot blocker is "
+            "resolved; the current handoff is a blocked evidence package."
+            if classification != "ready"
             else "Review all gates before any future live submission."
         ),
     }
@@ -228,14 +227,23 @@ def build_report(
 
 
 def classify_handoff(prepared_pilot_report: dict[str, Any], scenario_pressure_report: dict[str, Any]) -> str:
+    ordered_statuses = [
+        str(scenario_pressure_report.get("scenario_pressure_status") or ""),
+        str(dict(prepared_pilot_report.get("prepared_pilot_compiler") or {}).get("classification") or ""),
+        str(prepared_pilot_report.get("workflow_status") or ""),
+        str(prepared_pilot_report.get("prepared_pilot_input_classification") or ""),
+    ]
+    for status in ordered_statuses:
+        if status == "blocked_missing_inputs":
+            return "blocked_missing_prepared_pilot_inputs"
+        if status.startswith("blocked_"):
+            return status
     statuses = {
         str(prepared_pilot_report.get("workflow_status") or ""),
         str(dict(prepared_pilot_report.get("prepared_pilot_compiler") or {}).get("classification") or ""),
         str(scenario_pressure_report.get("scenario_pressure_status") or ""),
     }
-    if any(status.startswith("blocked_") for status in statuses if status) or "blocked_missing_inputs" in statuses:
-        return "blocked_missing_prepared_pilot_inputs"
-    if str(prepared_pilot_report.get("prepared_pilot_input_classification") or "").startswith("blocked"):
+    if "blocked_missing_inputs" in statuses:
         return "blocked_missing_prepared_pilot_inputs"
     return "ready"
 
@@ -274,8 +282,8 @@ def build_budget_checks(classification: str, scenario_pressure_report: dict[str,
             {
                 "gate": "output_budget",
                 "status": "not_evaluated",
-                "classification": "blocked_missing_prepared_pilot_inputs",
-                "reason": "budget acceptance requires concrete multi-zone validation and hazard output paths",
+                "classification": classification,
+                "reason": "budget acceptance requires a resolved prepared-pilot contract, concrete multi-zone validation paths, and hazard output paths",
             },
         ]
     return [
@@ -328,10 +336,10 @@ def build_command_list(
         },
         {
             "command_id": "future_authorized_submit",
-            "status": "blocked_missing_prepared_pilot_inputs" if classification != "ready" else "deferred_pending_authorization_audit",
+            "status": classification if classification != "ready" else "deferred_pending_authorization_audit",
             "command": future_submit_command,
             "runnable_now": classification == "ready",
-            "boundary_note": "Do not run in TB-380; future live work must stay on postproc and pass all gates first.",
+            "boundary_note": "Do not run while the handoff is blocked; future live work must stay on postproc and pass all gates first.",
         },
     ]
 
@@ -360,7 +368,7 @@ def build_authorization_audit(
         "access_preflight_source": access_preflight_source or ACCESS_PREFLIGHT_COMMAND,
         "blocked_reason": blocked_reason,
         "standing_clearance_note": (
-            "Standing postproc clearance remains a future-run audit input only; TB-380 permits no live submission."
+            "Standing postproc clearance remains a future-run audit input only; this blocked handoff permits no live submission."
         ),
     }
 

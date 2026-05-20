@@ -4565,3 +4565,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no invented candidates, no source-frequency semantics, no annual probability, no hazard execution, no Balfrin submission, and no operational or scale-up claim.
 - Next task: `TB-386`
+
+### TB-386: Rebuild Management AOI Balfrin Handoff Decision
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: rebuild the management-AOI Balfrin handoff and no-submit/run decision from the current scenario/prepared-pilot chain rather than stale TB-380/TB-381 blocked artifacts.
+- Files changed: `scripts/build_management_aoi_balfrin_handoff.py`, `scripts/execute_management_aoi_balfrin_run.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_management_aoi_balfrin_handoff.py`, `tests/test_execute_management_aoi_balfrin_run.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the Balfrin handoff classifier to preserve the current `blocked_source_zone_footprint_overlap` prepared-pilot/scenario-pressure blocker instead of collapsing all blocked handoffs to `blocked_missing_prepared_pilot_inputs`.
+  - Refreshed the execution-state helper and scale-readiness row so the no-submit decision records the current first persistent blocker, keeps the future `postproc` submit command non-runnable, and removes stale TB-380/TB-381 wording.
+  - Ran the read-only Balfrin access preflight successfully, then materialized ignored TB-386 handoff and execution-state reports under `/tmp`; both exited `2` as expected, with `sbatch_attempted=False`, handoff `blocked_source_zone_footprint_overlap`, and execution `failed_closed`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb386_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_management_aoi_balfrin_handoff.py scripts/execute_management_aoi_balfrin_run.py scripts/summarize_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_balfrin_handoff tests.test_execute_management_aoi_balfrin_run tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/build_management_aoi_balfrin_handoff.py --artifact-dir /tmp/rust_rockfall/tb386_management_aoi_balfrin_handoff --prepared-pilot-output-root /tmp/rust_rockfall/tb386_management_aoi_prepared_pilot --balfrin-access-preflight-json /tmp/tb386_balfrin_access_preflight.json --format json --json-output /tmp/tb386_management_aoi_balfrin_handoff.json` exited `2` as expected for `blocked_source_zone_footprint_overlap`.
+  - `PYENV_VERSION=system uv run python scripts/execute_management_aoi_balfrin_run.py --artifact-dir /tmp/rust_rockfall/tb386_management_aoi_balfrin_execution_state --handoff-artifact-dir /tmp/rust_rockfall/tb386_management_aoi_balfrin_handoff --prepared-pilot-output-root /tmp/rust_rockfall/tb386_management_aoi_prepared_pilot --balfrin-access-preflight-json /tmp/tb386_balfrin_access_preflight.json --format json --json-output /tmp/tb386_management_aoi_balfrin_execution_state.json` exited `2` as expected for `failed_closed`.
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no Balfrin submission, no new run root on Balfrin, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim.
+- Next task: `TB-387`

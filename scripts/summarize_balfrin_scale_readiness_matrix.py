@@ -672,14 +672,13 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
         "runtime_seconds": None,
         "memory_peak_mb": None,
         "run_root_preservation_status": "fail_closed_no_run_root_created",
-        "replayability_status": "blocked_missing_prepared_pilot_inputs",
+        "replayability_status": report.get("handoff_classification") or "blocked_missing_prepared_pilot_inputs",
         "authorization_status": "not_submitted_handoff_not_ready",
-        "next_evidence_field": "non_empty_management_aoi_candidate_set",
+        "next_evidence_field": "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",
         "blocker": blocker.get("status"),
         "summary": (
-            "TB-381 failed closed before sbatch because TB-380 classified the management-AOI handoff as "
-            "blocked_missing_prepared_pilot_inputs; the preserved first blocker is the empty candidate set and "
-            "zero scenario rows."
+            "The management-AOI Balfrin decision failed closed before sbatch because the current prepared-pilot "
+            "chain is blocked by source-zone footprint overlap; no live postproc job was submitted."
         ),
         "handoff_classification": report.get("handoff_classification"),
         "first_persistent_blocker": blocker,
@@ -907,7 +906,7 @@ def build_report() -> dict[str, Any]:
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-368 now provides preservation-ready measured two-zone evidence for the canonical two-zone hazard path, "
             "and TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
-            "TB-381 failed closed before sbatch on missing management-AOI prepared-pilot inputs, "
+            "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
