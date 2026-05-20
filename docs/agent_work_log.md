@@ -4384,3 +4384,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no operational release-zone claim, no parameter tuning to force candidate acceptance, no hazard execution, and the zero-candidate result is a deterministic terrain/source-zone outcome rather than an approval signal.
 - Next task: `TB-377`
+
+### TB-377: Measure Real-AOI Release-Zone Stability
+
+- Date: 2026-05-20
+- Commit: `5c016a9`
+- Objective: measure how the real-staged Chant Sura / Fluelapass candidate set behaves under bounded slope, smoothing, resolution, and AOI-boundary perturbations, and preserve the measured zero-candidate result honestly.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reused the staged Chant Sura / Fluelapass real-AOI terrain cache and the TB-376 candidate sweep evidence to produce a stability report without redownloading data or changing the screening thresholds.
+  - Preserved the measured zero-candidate outcome across the baseline and all bounded perturbations: `candidate_cell_count: 0`, `candidate_area_m2: 0.0`, and empty stable, unstable, and heuristic-sensitive regions.
+  - Recorded the recommendation that the management AOI is not ready for scenario generation from the current candidate set, then removed TB-377 from the active backlog and tightened the maturity snapshot to match the measured result.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_real_chant_sura_fluelapass_inputs_emit_gis_ready_candidate_bundle tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_committed_tschamut_inputs_produce_deterministic_candidate_metrics -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: no operational release-zone claim, no calibration, no threshold tuning to force acceptance, no hazard execution, and the zero-candidate result stays preserved instead of being rewritten as a positive scenario-generation signal.
+- Next task: `TB-378`
