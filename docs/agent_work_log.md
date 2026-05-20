@@ -3454,3 +3454,18 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: profiling and documentation only; no physics changes, no new Balfrin job, no operational claim, and no scale-up claim.
 - Next task: `TB-335`
+
+### TB-335: Implement Measured Hazard Throughput Improvement
+
+- Date: 2026-05-20
+- Commit: `366e513`
+- Objective: test one narrowly scoped hazard-throughput optimization against the measured accumulation bottleneck and retain it only if it clears the predeclared 8-zone acceptance floor without changing hazard semantics.
+- Files changed: `docs/agent_work_log.md`
+- Implementation summary:
+  - Recorded the completed TB-335 outcome after the implementation/docs commit, keeping the repository's chronological execution history aligned with the active backlog removal.
+  - Captured the rejected/no-op result in the work log so the unchanged accumulator behavior stays distinct from future measured optimization attempts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_explicit_grid_mode_records_reference_grid_in_manifest tests.test_hazard_layers.HazardLayerTests.test_explicit_grid_can_match_auto_grid_when_extent_is_identical tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests tests.test_multi_zone_scaling_ladder.MultiZoneScalingLadderTests.test_budget_validation_classifies_accepted_and_blocked_rungs`
+- Result/status: implemented_blocked_report
+- Boundaries: no physics changes, no output semantics changes, no tuning, no live Balfrin submission, and no operational or scale-up claim.
+- Next task: `TB-336`
