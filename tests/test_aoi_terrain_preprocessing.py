@@ -45,23 +45,37 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
                 site_config=config_path,
                 fixture_root=PREPARED_FIXTURE_ROOT,
             )
+            output_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/normalized_dem_package"
 
-            report = helper.build_report(repo_root=repo_root, site_config=config_path)
-            second = helper.build_report(repo_root=repo_root, site_config=config_path)
+            report = helper.build_report(repo_root=repo_root, site_config=config_path, output_root=output_root)
+            second = helper.build_report(repo_root=repo_root, site_config=config_path, output_root=output_root)
 
-        self.assertEqual(report, second)
-        self.assertEqual(report["terrain_preprocessing_status"], "ready")
-        self.assertEqual(report["preprocessing_gate_classification"], "fixture_backed")
-        self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["xmin"], 2793000.0)
-        self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["ymax"], 1180208.0)
-        self.assertEqual(report["terrain_preprocessing_package"]["resolution_m"], 2.0)
-        self.assertEqual(report["terrain_preprocessing_package"]["crs_epsg"], 2056)
-        self.assertEqual(report["terrain_preprocessing_package"]["nodata"], -9999.0)
-        self.assertEqual(report["terrain_preprocessing_package"]["source_tile_ids"], ["2793-1180"])
-        self.assertEqual(report["terrain_preprocessing_package"]["source_tiles"][0]["tile_id"], "2793-1180")
-        self.assertEqual(report["terrain_preprocessing_package"]["terrain_provenance"]["classification"], "fixture_backed")
-        self.assertTrue(report["output_roots"]["processed_input_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"))
-        self.assertEqual(report["blocked_reason"], "")
+            self.assertEqual(report, second)
+            self.assertEqual(report["terrain_preprocessing_status"], "ready")
+            self.assertEqual(report["preprocessing_gate_classification"], "fixture_backed")
+            self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["xmin"], 2793000.0)
+            self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["ymax"], 1180208.0)
+            self.assertEqual(report["terrain_preprocessing_package"]["resolution_m"], 2.0)
+            self.assertEqual(report["terrain_preprocessing_package"]["crs_epsg"], 2056)
+            self.assertEqual(report["terrain_preprocessing_package"]["nodata"], -9999.0)
+            self.assertEqual(report["terrain_preprocessing_package"]["source_tile_ids"], ["2793-1180"])
+            self.assertEqual(report["terrain_preprocessing_package"]["source_tiles"][0]["tile_id"], "2793-1180")
+            self.assertEqual(report["terrain_preprocessing_package"]["terrain_provenance"]["classification"], "fixture_backed")
+            self.assertEqual(report["terrain_preprocessing_package"]["ignored_output_roots"][-2:], [
+                str(repo_root / "validation/private/chant_sura_fluelapass_portability_example_v1"),
+                str(repo_root / "hazard/results/chant_sura_fluelapass_portability_example_v1"),
+            ])
+            self.assertEqual(report["terrain_derivative_inventory"]["roughness"]["kernel"], "local_stddev_3x3")
+            self.assertGreater(report["terrain_derivative_inventory"]["roughness"]["stats"]["count"], 0)
+            self.assertEqual(report["terrain_nodata_summary"]["nodata_cell_count"], 0)
+            self.assertTrue((output_root / "terrain.asc").exists())
+            self.assertTrue((output_root / "terrain_metadata.yaml").exists())
+            self.assertTrue((output_root / "aoi_tile_catalog.yaml").exists())
+            self.assertTrue((output_root / "terrain_derivative_inventory.json").exists())
+            self.assertTrue((output_root / "terrain_nodata_summary.json").exists())
+            self.assertTrue((output_root / "terrain_preprocessing_manifest.json").exists())
+            self.assertTrue(report["output_roots"]["processed_input_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"))
+            self.assertEqual(report["blocked_reason"], "")
 
     def test_missing_tile_blocks_preprocessing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,6 +98,33 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
         self.assertEqual(report["missing_tile_ids"], ["2793-1180"])
         self.assertIn("missing AOI tile catalog coverage", report["blocked_reason"])
         self.assertEqual(report["terrain_preprocessing_package"]["source_tile_count"], 0)
+        self.assertIn("validation/private/chant_sura_fluelapass_portability_example_v1", report["ignored_output_roots"][2])
+
+    def test_missing_staged_terrain_inputs_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=PREPARED_FIXTURE_ROOT,
+            )
+            terrain_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
+            terrain_metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+            terrain_path.unlink()
+            terrain_metadata_path.unlink()
+            output_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/blocked_terrain_package"
+
+            report = helper.build_report(repo_root=repo_root, site_config=config_path, output_root=output_root)
+            self.assertEqual(report["terrain_preprocessing_status"], "blocked_missing_inputs")
+            self.assertEqual(report["preprocessing_gate_classification"], "blocked_missing_terrain")
+            self.assertIn("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc", report["blocked_missing_inputs"])
+            self.assertIn("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml", report["blocked_missing_inputs"])
+            self.assertIn("terrain.asc", report["blocked_reason"])
+            self.assertIn("terrain_metadata.yaml", report["blocked_reason"])
+            self.assertTrue((output_root / "terrain_preprocessing_manifest.json").exists())
+            self.assertFalse((output_root / "terrain.asc").exists())
+            self.assertFalse((output_root / "terrain_metadata.yaml").exists())
 
     def test_metadata_mismatch_blocks_preprocessing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -155,6 +196,9 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertEqual(report["terrain_qa_summary"]["summary_status"], "ready")
             self.assertGreater(report["terrain_qa_summary"]["slope_stats_deg"]["count"], 0)
             self.assertLessEqual(report["terrain_qa_summary"]["hillshade_stats"]["max"], 255.0)
+            self.assertEqual(report["terrain_qa_summary"]["terrain_audit"]["resolution_match"], True)
+            self.assertEqual(report["terrain_qa_summary"]["terrain_derivative_inventory"]["roughness"]["kernel"], "local_stddev_3x3")
+            self.assertGreater(report["terrain_qa_summary"]["terrain_derivative_inventory"]["roughness"]["stats"]["count"], 0)
 
     def test_prepared_input_builder_reports_partial_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

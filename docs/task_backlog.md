@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-342: Real AOI Terrain Preprocessing From Staged Tiles
-
-Goal: Build a reproducible terrain preprocessing path from staged real swissALTI3D/swisstopo tiles to a normalized DEM package for one AOI.
-
-Capability gap reduced: AOI execution remains fixture-bound until real staged terrain can be merged, clipped, normalized, and audited deterministically.
-
-Why this outranks alternatives: Release-zone candidate generation and scenario generation depend on robust terrain preprocessing; without this, scale projections remain disconnected from real terrain.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/swiss_terrain_ingestion_pilot.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A real-AOI preprocessing command path with DEM manifest, extent/resolution audit, nodata summary, slope/roughness derivative inventory, and ignored output roots.
-- Tests that retain fixture coverage while keeping real-data mode fail-closed when staged tiles are missing.
-
-Definition of done:
-
-- Given audited staged terrain tiles, the repo can produce a deterministic AOI terrain package and report exactly why preprocessing is blocked when inputs are absent.
-
-Boundaries: No release-zone acceptance claim, no simulation, no raw geodata commit, no operational semantics.
-
 ### TB-343: AOI Context Preprocessing And Exclusion Masks
 
 Goal: Prepare deterministic context layers and exclusion masks from staged public AOI inputs for later release-zone and hazard-map packaging.

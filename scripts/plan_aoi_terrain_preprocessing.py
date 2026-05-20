@@ -129,7 +129,7 @@ def build_report(
         if paths["aoi_tile_catalog"] is not None and not paths["aoi_tile_catalog"].exists():
             missing_inputs.append(display_path(paths["aoi_tile_catalog"], repo_root))
         if missing_inputs:
-            return blocked_report(
+            report = blocked_report(
                 repo_root=repo_root,
                 candidate_site_id=candidate_site_id,
                 candidate_site_name=candidate_site_name,
@@ -137,6 +137,13 @@ def build_report(
                 paths=paths,
                 missing_inputs=missing_inputs,
             )
+            if output_root is not None:
+                output_root = resolve_path(output_root, base=repo_root)
+                output_root.mkdir(parents=True, exist_ok=True)
+                manifest_path = output_root / "terrain_preprocessing_manifest.json"
+                report["terrain_preprocessing_manifest_path"] = display_path(manifest_path, repo_root)
+                manifest_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            return report
 
         terrain = read_esri_ascii_grid(paths["terrain_crop"])
         terrain_metadata = PREFLIGHT.load_site_config(paths["terrain_metadata"])
@@ -152,6 +159,9 @@ def build_report(
         terrain_extent_for_tiles["crs"] = "EPSG:2056"
         source_tile_plan = build_source_tile_plan(terrain_extent_for_tiles, aoi_tile_catalog, repo_root)
         metadata_mismatches = compare_metadata(terrain_summary, terrain_metadata, source_tile_plan["source_tile_ids"])
+        terrain_audit = build_terrain_audit_summary(terrain_summary, terrain_metadata, source_tile_plan)
+        terrain_derivative_inventory = build_terrain_derivative_inventory(terrain)
+        terrain_nodata_summary = build_terrain_nodata_summary(terrain)
         terrain_provenance = build_terrain_provenance_summary(
             terrain_metadata=terrain_metadata,
             terrain_summary=terrain_summary,
@@ -172,6 +182,9 @@ def build_report(
             paths=paths,
             terrain=terrain,
             terrain_summary=terrain_summary,
+            terrain_audit=terrain_audit,
+            terrain_nodata_summary=terrain_nodata_summary,
+            terrain_derivative_inventory=terrain_derivative_inventory,
             terrain_metadata=terrain_metadata,
             source_tile_plan=source_tile_plan,
             terrain_provenance=terrain_provenance,
@@ -216,6 +229,9 @@ def build_report(
             "missing_tile_ids": source_tile_plan["missing_tile_ids"],
             "metadata_mismatches": metadata_mismatches,
             "terrain_provenance": terrain_provenance,
+            "terrain_audit": terrain_audit,
+            "terrain_nodata_summary": terrain_nodata_summary,
+            "terrain_derivative_inventory": terrain_derivative_inventory,
             "qa_blockers": list(terrain_provenance.get("qa_blockers") or missing_inputs),
             "output_roots": package["output_roots"],
             "blocked_reason": blocked_reason,
@@ -230,11 +246,29 @@ def build_report(
                     "no public-data download or operational release-zone claim is authorized",
                 ],
             },
+            "ignored_output_roots": package["ignored_output_roots"],
             "scale_up_authorized": False,
             "operational_claims_allowed": False,
         }
 
-        if output_root is not None:
+        if output_root is not None and preprocessing_status == "ready":
+            output_root = resolve_path(output_root, base=repo_root)
+            materialize_terrain_output_root(
+                output_root=output_root,
+                terrain=terrain,
+                terrain_metadata=terrain_metadata,
+                aoi_tile_catalog=aoi_tile_catalog,
+                terrain_audit=terrain_audit,
+                terrain_nodata_summary=terrain_nodata_summary,
+                terrain_derivative_inventory=terrain_derivative_inventory,
+                report=report,
+                repo_root=repo_root,
+                preprocessing_status=preprocessing_status,
+            )
+            manifest_path = output_root / "terrain_preprocessing_manifest.json"
+            report["terrain_preprocessing_manifest_path"] = display_path(manifest_path, repo_root)
+            manifest_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        elif output_root is not None:
             output_root = resolve_path(output_root, base=repo_root)
             output_root.mkdir(parents=True, exist_ok=True)
             manifest_path = output_root / "terrain_preprocessing_manifest.json"
@@ -306,7 +340,18 @@ def build_prepared_input_report(
         else:
             prepared_status = "ready" if context_summary["missing_context_count"] == 0 else "partial_context"
 
-        terrain_qa_summary = build_terrain_qa_summary(paths.get("terrain_crop"), base_report, prepared_status)
+        terrain_qa_summary = build_terrain_qa_summary(
+            paths.get("terrain_crop"),
+            base_report,
+            prepared_status,
+            terrain_derivative_inventory=base_report.get("terrain_derivative_inventory")
+            if isinstance(base_report.get("terrain_derivative_inventory"), dict)
+            else None,
+            terrain_nodata_summary=base_report.get("terrain_nodata_summary")
+            if isinstance(base_report.get("terrain_nodata_summary"), dict)
+            else None,
+            terrain_audit=base_report.get("terrain_audit") if isinstance(base_report.get("terrain_audit"), dict) else None,
+        )
         preprocessing_gate_classification = classify_prepared_input_gate(
             terrain_status=terrain_status,
             terrain_provenance=terrain_provenance,
@@ -534,6 +579,10 @@ def build_terrain_qa_summary(
     terrain_path: Path | None,
     base_report: dict[str, Any],
     prepared_status: str,
+    *,
+    terrain_derivative_inventory: dict[str, Any] | None = None,
+    terrain_nodata_summary: dict[str, Any] | None = None,
+    terrain_audit: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     terrain_summary = base_report.get("terrain_summary") if isinstance(base_report.get("terrain_summary"), dict) else {}
     terrain_provenance = base_report.get("terrain_provenance") if isinstance(base_report.get("terrain_provenance"), dict) else {}
@@ -552,9 +601,18 @@ def build_terrain_qa_summary(
             "slope_kernel": "horn_3x3",
             "aspect_convention": "clockwise_from_north",
             "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
+            "terrain_audit": terrain_audit or {},
+            "terrain_nodata_summary": terrain_nodata_summary or {
+                "cell_count": 0,
+                "valid_cell_count": 0,
+                "nodata_cell_count": 0,
+                "nodata_fraction": 0.0,
+            },
+            "terrain_derivative_inventory": terrain_derivative_inventory or build_empty_terrain_derivative_inventory(),
             "slope_stats_deg": {},
             "aspect_stats_deg": {},
             "hillshade_stats": {},
+            "roughness_stats_m": {},
         }
 
     if terrain_path is None or not terrain_path.exists():
@@ -571,15 +629,30 @@ def build_terrain_qa_summary(
             "slope_kernel": "horn_3x3",
             "aspect_convention": "clockwise_from_north",
             "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
+            "terrain_audit": terrain_audit or {},
+            "terrain_nodata_summary": terrain_nodata_summary or {
+                "cell_count": int(terrain_summary.get("cell_count", 0)),
+                "valid_cell_count": 0,
+                "nodata_cell_count": int(terrain_summary.get("cell_count", 0)),
+                "nodata_fraction": 1.0 if int(terrain_summary.get("cell_count", 0)) else 0.0,
+            },
+            "terrain_derivative_inventory": terrain_derivative_inventory or build_empty_terrain_derivative_inventory(int(terrain_summary.get("cell_count", 0))),
             "slope_stats_deg": {},
             "aspect_stats_deg": {},
             "hillshade_stats": {},
+            "roughness_stats_m": {},
         }
 
     terrain = read_esri_ascii_grid(terrain_path)
-    slope_deg, aspect_deg, hillshade = compute_terrain_derivative_grids(terrain)
+    terrain_derivative_inventory = terrain_derivative_inventory or build_terrain_derivative_inventory(terrain)
+    terrain_nodata_summary = terrain_nodata_summary or build_terrain_nodata_summary(terrain)
+    terrain_audit = terrain_audit or {}
     valid_mask = np.isfinite(terrain["values"]) & (terrain["values"] != terrain["nodata"])
     valid_values = terrain["values"][valid_mask]
+    slope_stats_deg = terrain_derivative_inventory.get("slope", {}).get("stats", {}) if isinstance(terrain_derivative_inventory.get("slope"), dict) else {}
+    aspect_stats_deg = terrain_derivative_inventory.get("aspect", {}).get("stats", {}) if isinstance(terrain_derivative_inventory.get("aspect"), dict) else {}
+    hillshade_stats = terrain_derivative_inventory.get("hillshade", {}).get("stats", {}) if isinstance(terrain_derivative_inventory.get("hillshade"), dict) else {}
+    roughness_stats_m = terrain_derivative_inventory.get("roughness", {}).get("stats", {}) if isinstance(terrain_derivative_inventory.get("roughness"), dict) else {}
     return {
         "schema_version": PREPARED_INPUT_SCHEMA_VERSION,
         "qa_status": prepared_status,
@@ -595,9 +668,13 @@ def build_terrain_qa_summary(
         "slope_kernel": "horn_3x3",
         "aspect_convention": "clockwise_from_north",
         "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
-        "slope_stats_deg": summarize_numeric_grid(slope_deg),
-        "aspect_stats_deg": summarize_aspect_grid(aspect_deg),
-        "hillshade_stats": summarize_numeric_grid(hillshade),
+        "terrain_audit": terrain_audit,
+        "terrain_nodata_summary": terrain_nodata_summary,
+        "terrain_derivative_inventory": terrain_derivative_inventory,
+        "slope_stats_deg": slope_stats_deg,
+        "aspect_stats_deg": aspect_stats_deg,
+        "hillshade_stats": hillshade_stats,
+        "roughness_stats_m": roughness_stats_m,
     }
 
 
@@ -638,6 +715,163 @@ def compute_terrain_derivative_grids(terrain: dict[str, Any]) -> tuple[np.ndarra
             hillshade[row, col] = max(0.0, min(255.0, 255.0 * hillshade_raw))
 
     return slope, aspect, hillshade
+
+
+def compute_terrain_roughness_grid(terrain: dict[str, Any]) -> np.ndarray:
+    values = terrain["values"].astype(float)
+    nodata = float(terrain["nodata"])
+    nrows, ncols = values.shape
+    roughness = np.full((nrows, ncols), np.nan, dtype=float)
+
+    for row in range(1, nrows - 1):
+        for col in range(1, ncols - 1):
+            window = values[row - 1 : row + 2, col - 1 : col + 2]
+            if not np.all(np.isfinite(window)) or np.any(window == nodata):
+                continue
+            roughness[row, col] = float(np.std(window, ddof=0))
+
+    return roughness
+
+
+def build_terrain_derivative_inventory(terrain: dict[str, Any]) -> dict[str, Any]:
+    slope_deg, aspect_deg, hillshade = compute_terrain_derivative_grids(terrain)
+    roughness_m = compute_terrain_roughness_grid(terrain)
+    valid_mask = np.isfinite(terrain["values"]) & (terrain["values"] != terrain["nodata"])
+    total_cell_count = int(terrain["values"].size)
+    valid_cell_count = int(valid_mask.sum())
+    return {
+        "terrain_cell_count": total_cell_count,
+        "valid_cell_count": valid_cell_count,
+        "nodata_cell_count": int(total_cell_count - valid_cell_count),
+        "slope": {
+            "kernel": "horn_3x3",
+            "units": "degrees",
+            "stats": summarize_numeric_grid(slope_deg),
+        },
+        "aspect": {
+            "kernel": "horn_3x3",
+            "units": "degrees_clockwise_from_north",
+            "stats": summarize_aspect_grid(aspect_deg),
+        },
+        "hillshade": {
+            "kernel": "horn_3x3",
+            "units": "0_to_255",
+            "stats": summarize_numeric_grid(hillshade),
+        },
+        "roughness": {
+            "kernel": "local_stddev_3x3",
+            "units": "metres",
+            "stats": summarize_numeric_grid(roughness_m),
+        },
+    }
+
+
+def build_terrain_nodata_summary(terrain: dict[str, Any]) -> dict[str, Any]:
+    values = terrain["values"]
+    valid_mask = np.isfinite(values) & (values != terrain["nodata"])
+    valid_cell_count = int(valid_mask.sum())
+    total_cell_count = int(values.size)
+    nodata_cell_count = int(total_cell_count - valid_cell_count)
+    return {
+        "cell_count": total_cell_count,
+        "valid_cell_count": valid_cell_count,
+        "nodata_cell_count": nodata_cell_count,
+        "nodata_fraction": float(nodata_cell_count / total_cell_count) if total_cell_count else 0.0,
+    }
+
+
+def build_terrain_audit_summary(
+    terrain_summary: dict[str, Any],
+    terrain_metadata: dict[str, Any],
+    source_tile_plan: dict[str, Any],
+) -> dict[str, Any]:
+    raster = terrain_metadata.get("raster") if isinstance(terrain_metadata.get("raster"), dict) else {}
+    preprocessing = terrain_metadata.get("preprocessing") if isinstance(terrain_metadata.get("preprocessing"), dict) else {}
+    return {
+        "observed_extent_lv95_m": terrain_summary.get("extent_lv95_m", {}),
+        "observed_resolution_m": terrain_summary.get("resolution_m"),
+        "metadata_extent_lv95_m": terrain_metadata.get("extent_lv95_m") if isinstance(terrain_metadata.get("extent_lv95_m"), dict) else {},
+        "metadata_resolution_m": raster.get("resolution_m"),
+        "metadata_nodata": raster.get("nodata"),
+        "extent_match": terrain_summary.get("extent_lv95_m", {}) == (terrain_metadata.get("extent_lv95_m") if isinstance(terrain_metadata.get("extent_lv95_m"), dict) else {}),
+        "resolution_match": PREFLIGHT.normalize_resolution_m(raster.get("resolution_m")) == PREFLIGHT.normalize_resolution_m(terrain_summary.get("resolution_m")),
+        "nodata_match": PREFLIGHT.normalize_resolution_m(raster.get("nodata")) == PREFLIGHT.normalize_resolution_m(terrain_summary.get("nodata")),
+        "source_tile_ids": list(source_tile_plan.get("source_tile_ids") or []),
+        "source_tile_count": len(source_tile_plan.get("source_tiles") or []),
+        "missing_tile_ids": list(source_tile_plan.get("missing_tile_ids") or []),
+        "crop_extent_lv95_m": preprocessing.get("crop_extent_lv95_m") if isinstance(preprocessing.get("crop_extent_lv95_m"), dict) else {},
+    }
+
+
+def build_empty_terrain_derivative_inventory(cell_count: int = 0) -> dict[str, Any]:
+    return {
+        "terrain_cell_count": cell_count,
+        "valid_cell_count": 0,
+        "nodata_cell_count": cell_count,
+        "slope": {"kernel": "horn_3x3", "units": "degrees", "stats": {}},
+        "aspect": {"kernel": "horn_3x3", "units": "degrees_clockwise_from_north", "stats": {}},
+        "hillshade": {"kernel": "horn_3x3", "units": "0_to_255", "stats": {}},
+        "roughness": {"kernel": "local_stddev_3x3", "units": "metres", "stats": {}},
+    }
+
+
+def materialize_terrain_output_root(
+    *,
+    output_root: Path,
+    terrain: dict[str, Any],
+    terrain_metadata: dict[str, Any],
+    aoi_tile_catalog: dict[str, Any],
+    terrain_audit: dict[str, Any],
+    terrain_nodata_summary: dict[str, Any],
+    terrain_derivative_inventory: dict[str, Any],
+    report: dict[str, Any],
+    repo_root: Path,
+    preprocessing_status: str,
+) -> None:
+    output_root.mkdir(parents=True, exist_ok=True)
+    terrain_output_path = output_root / "terrain.asc"
+    terrain_metadata_path = output_root / "terrain_metadata.yaml"
+    aoi_tile_catalog_path = output_root / "aoi_tile_catalog.yaml"
+
+    if report["terrain_inputs"]["terrain_crop_path"] is not None:
+        source_terrain_path = resolve_path(Path(report["terrain_inputs"]["terrain_crop_path"]), base=repo_root)
+        if source_terrain_path.resolve() != terrain_output_path.resolve():
+            shutil.copy2(source_terrain_path, terrain_output_path)
+    if report["terrain_inputs"]["terrain_metadata_path"] is not None:
+        source_metadata_path = resolve_path(Path(report["terrain_inputs"]["terrain_metadata_path"]), base=repo_root)
+        if source_metadata_path.resolve() != terrain_metadata_path.resolve():
+            if source_metadata_path.suffix.lower() in {".yaml", ".yml"}:
+                shutil.copy2(source_metadata_path, terrain_metadata_path)
+            else:
+                terrain_metadata_path.write_text(json.dumps(terrain_metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    else:
+        terrain_metadata_path.write_text(json.dumps(terrain_metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    if aoi_tile_catalog:
+        aoi_tile_catalog_path.write_text(yaml.safe_dump(aoi_tile_catalog, sort_keys=False), encoding="utf-8")
+
+    (output_root / "terrain_qa_summary.json").write_text(
+        json.dumps(
+            {
+                "terrain_audit": terrain_audit,
+                "terrain_nodata_summary": terrain_nodata_summary,
+                "terrain_derivative_inventory": terrain_derivative_inventory,
+                "preprocessing_status": preprocessing_status,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (output_root / "terrain_derivative_inventory.json").write_text(
+        json.dumps(terrain_derivative_inventory, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_root / "terrain_nodata_summary.json").write_text(
+        json.dumps(terrain_nodata_summary, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def summarize_numeric_grid(grid: np.ndarray) -> dict[str, float | int | None]:
@@ -844,6 +1078,12 @@ def blocked_report(
         "processed_input_root": str(paths["processed_input_root"]),
         "output_root": str(paths["output_root"]),
     }
+    ignored_output_roots = [
+        str(repo_root / "data/raw/swisstopo" / candidate_site_id),
+        str(repo_root / "data/processed/swisstopo" / candidate_site_id),
+        str(repo_root / "validation/private" / candidate_site_id),
+        str(repo_root / "hazard/results" / candidate_site_id),
+    ]
     return {
         "schema_version": SCHEMA_VERSION,
         "terrain_preprocessing_status": "blocked_missing_inputs",
@@ -851,15 +1091,16 @@ def blocked_report(
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
         "site_extent": site_extent if site_extent else "placeholder_extent_missing",
+        "blocked_reason": "missing staged terrain inputs: " + ", ".join(missing_inputs),
         "terrain_inputs": {
-        "terrain_crop_path": display_path(paths["terrain_crop"], repo_root) if paths["terrain_crop"] is not None else None,
-        "terrain_metadata_path": display_path(paths["terrain_metadata"], repo_root)
+            "terrain_crop_path": display_path(paths["terrain_crop"], repo_root) if paths["terrain_crop"] is not None else None,
+            "terrain_metadata_path": display_path(paths["terrain_metadata"], repo_root)
             if paths["terrain_metadata"] is not None
             else None,
-        "aoi_tile_catalog_path": display_path(paths["aoi_tile_catalog"], repo_root)
+            "aoi_tile_catalog_path": display_path(paths["aoi_tile_catalog"], repo_root)
             if paths["aoi_tile_catalog"] is not None
             else None,
-        "terrain_preprocessing_package": {
+            "terrain_preprocessing_package": {
                 "preprocessing_status": "blocked_missing_inputs",
                 "source_tile_ids": [],
                 "source_tiles": [],
@@ -887,6 +1128,7 @@ def blocked_report(
                 "qa_blockers": missing_inputs,
             },
             "qa_blockers": missing_inputs,
+            "ignored_output_roots": ignored_output_roots,
             "manifest_path": str(paths["output_root"] / "terrain_preprocessing_manifest.json"),
         },
         "terrain_summary": {},
@@ -894,12 +1136,34 @@ def blocked_report(
         "blocked_missing_inputs": missing_inputs,
         "missing_tile_ids": [],
         "metadata_mismatches": [],
+        "terrain_audit": {
+            "observed_extent_lv95_m": {},
+            "observed_resolution_m": None,
+            "metadata_extent_lv95_m": {},
+            "metadata_resolution_m": None,
+            "metadata_nodata": None,
+            "extent_match": False,
+            "resolution_match": False,
+            "nodata_match": False,
+            "source_tile_ids": [],
+            "source_tile_count": 0,
+            "missing_tile_ids": [],
+            "crop_extent_lv95_m": {},
+        },
+        "terrain_nodata_summary": {
+            "cell_count": 0,
+            "valid_cell_count": 0,
+            "nodata_cell_count": 0,
+            "nodata_fraction": 0.0,
+        },
+        "terrain_derivative_inventory": build_empty_terrain_derivative_inventory(),
         "terrain_provenance": {
             "classification": "missing",
             "qa_blockers": missing_inputs,
         },
         "qa_blockers": missing_inputs,
         "output_roots": output_roots,
+        "ignored_output_roots": ignored_output_roots,
         "claim_boundaries": {
             **PREFLIGHT.claim_boundaries(),
             "downloads_authorized": False,
@@ -1132,6 +1396,9 @@ def build_package(
     paths: dict[str, Path | None],
     terrain: dict[str, Any],
     terrain_summary: dict[str, Any],
+    terrain_audit: dict[str, Any],
+    terrain_nodata_summary: dict[str, Any],
+    terrain_derivative_inventory: dict[str, Any],
     terrain_metadata: dict[str, Any],
     source_tile_plan: dict[str, Any],
     terrain_provenance: dict[str, Any],
@@ -1144,6 +1411,12 @@ def build_package(
         "processed_input_root": str(paths["processed_input_root"]),
         "output_root": str(output_root),
     }
+    ignored_output_roots = [
+        str(repo_root / "data/raw/swisstopo" / candidate_site_id),
+        str(repo_root / "data/processed/swisstopo" / candidate_site_id),
+        str(repo_root / "validation/private" / candidate_site_id),
+        str(repo_root / "hazard/results" / candidate_site_id),
+    ]
     output_paths = {
         "terrain_crop_path": display_path(paths["terrain_crop"], repo_root) if paths["terrain_crop"] is not None else None,
         "terrain_metadata_path": display_path(paths["terrain_metadata"], repo_root)
@@ -1153,6 +1426,8 @@ def build_package(
         if paths["aoi_tile_catalog"] is not None
         else None,
         "terrain_preprocessing_manifest_path": str(output_root / "terrain_preprocessing_manifest.json"),
+        "terrain_derivative_inventory_path": str(output_root / "terrain_derivative_inventory.json"),
+        "terrain_nodata_summary_path": str(output_root / "terrain_nodata_summary.json"),
     }
     crs = terrain_metadata.get("coordinate_reference_system") if isinstance(terrain_metadata.get("coordinate_reference_system"), dict) else {}
     return {
@@ -1168,15 +1443,21 @@ def build_package(
         "source_tile_count": len(source_tile_plan["source_tiles"]),
         "source_tiles": source_tile_plan["source_tiles"],
         "output_roots": output_roots,
+        "ignored_output_roots": ignored_output_roots,
         "output_paths": output_paths,
         "metadata_mismatches": metadata_mismatches,
         "terrain_provenance": terrain_provenance,
+        "terrain_audit": terrain_audit,
+        "terrain_nodata_summary": terrain_nodata_summary,
+        "terrain_derivative_inventory": terrain_derivative_inventory,
         "qa_blockers": list(metadata_mismatches),
         "processing_steps": [
             "inspect staged terrain crop header",
             "read terrain metadata sidecar",
             "match AOI crop extent to AOI tile catalog",
+            "compute slope and roughness derivative inventory",
             "record deterministic output roots and paths",
+            "materialize normalized DEM package in the ignored output root",
         ],
         "terrain_crop_sha256": PREFLIGHT.sha256_file(paths["terrain_crop"]) if paths["terrain_crop"] is not None else None,
         "terrain_metadata_sha256": PREFLIGHT.sha256_file(paths["terrain_metadata"]) if paths["terrain_metadata"] is not None else None,

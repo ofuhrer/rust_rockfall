@@ -2571,9 +2571,11 @@ def build_terrain_step(*, repo_root: Path, site_config: Path, paths: dict[str, P
     terrain_crop = paths.get("terrain_crop", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain.asc")
     terrain_metadata = paths.get("terrain_metadata", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "terrain_metadata.yaml")
     aoi_tile_catalog = paths.get("aoi_tile_catalog", repo_root / "data/processed/swisstopo" / "unspecified_second_site" / "input" / "aoi_tile_catalog.yaml")
+    output_root = paths.get("processed_input_root", terrain_crop.parent)
     command = (
         f"PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --repo-root {repo_root} "
-        f"--site-config {site_config} --format json"
+        f"--site-config {site_config} --terrain-crop {terrain_crop} --terrain-metadata {terrain_metadata} "
+        f"--aoi-tile-catalog {aoi_tile_catalog} --output-root {output_root} --format json"
     )
     report = TERRAIN_PREP.build_report(
         repo_root=repo_root,

@@ -3586,3 +3586,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads, no simulation, no operational or physical-credibility claim, and no scale-up or distributed-execution claim.
 - Next task: `TB-342`
+
+### TB-342: Real AOI Terrain Preprocessing From Staged Tiles
+- Date: 2026-05-20
+- Commit: local
+- Objective: build a reproducible terrain preprocessing path from staged real swissALTI3D/swisstopo tiles to a normalized DEM package for one AOI.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic AOI terrain package surface that records extent and resolution audits, nodata summaries, a slope/aspect/hillshade/roughness derivative inventory, ignored output roots, and a manifest path for both ready and blocked states.
+  - Materialized the normalized DEM package when staged terrain is ready, while keeping missing-input runs fail-closed and writing a blocked manifest instead of inventing terrain outputs.
+  - Extended the focused terrain-preprocessing tests to cover ready-package materialization, roughness inventory reporting, and missing-input blocked behavior while preserving fixture-backed coverage.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing`
+  - `PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py status --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --format json >/tmp/tb342_aoi_status.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no release-zone acceptance claim, no simulation, no raw geodata commit, and no operational semantics.
+- Next task: `TB-343`
