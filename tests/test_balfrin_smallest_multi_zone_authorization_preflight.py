@@ -71,6 +71,11 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         reducer_status: str = "acceptable",
         compact_handoff_budget_status: str | None = None,
         budget_acceptance_status: str = "accepted",
+        review_readiness_classification: str = "ready_for_review",
+        review_readiness_reason: str = (
+            "four-zone review package is ready for review with compact manifests, reduced-output defaults, "
+            "objective budget validation, and replay-critical families retained"
+        ),
     ) -> str:
         budget_acceptance_validation = {
             "schema_version": "balfrin_multi_zone_output_budget_acceptance_v1",
@@ -282,11 +287,9 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             },
         }
         payload["four_zone_hazard_execution_package"] = {
-            "status": "ready_for_review" if budget_acceptance_status == "accepted" and reducer_status != "blocked" else "blocked_output_budget",
-            "readiness_classification": "ready_for_review"
-            if budget_acceptance_status == "accepted" and reducer_status != "blocked"
-            else "blocked_output_budget",
-            "readiness_reason": "four-zone review package is ready for review with compact manifests, reduced-output defaults, objective budget validation, and replay-critical families retained",
+            "status": review_readiness_classification,
+            "readiness_classification": review_readiness_classification,
+            "readiness_reason": review_readiness_reason,
             "command_plan": {
                 "schema_version": "balfrin_multi_release_zone_demo_command_plan_v1",
                 "command_plan_status": "mixed_provenance",
@@ -483,6 +486,35 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertNotEqual(
             report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
             "next_larger_four_zone_review_only_probe",
+        )
+
+    def test_four_zone_review_package_efficiency_does_not_block_smallest_two_zone_output_profile(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            package_sha = self._write_package(
+                package,
+                review_readiness_classification="blocked_efficiency",
+                review_readiness_reason="single-job sufficiency or reducer scaling is not yet ready for the four-zone review package",
+            )
+            self._write_authorization(auth, package, package_sha)
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "ready_for_authorization_review")
+        self.assertEqual(report["output_profile_status"], "ready")
+        self.assertEqual(report["reducer_budget_status"], "ready")
+        self.assertEqual(report["submit_contract_status"], "ready")
+        self.assertEqual(report["output_budget_acceptance_status"], "accepted")
+        self.assertEqual(
+            report["smallest_multi_zone_run_shape"]["output_profile"]["classification"],
+            "scalable_default",
         )
 
     def test_missing_authorization_record_blocks_closed(self) -> None:

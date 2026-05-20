@@ -218,6 +218,7 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         or review_only.get("projection")
         or {}
     )
+    review_readiness = str(review_only.get("readiness_classification") or package.get("review_readiness_classification") or "")
     budget_recheck = dict(handoff_projection.get("budget_recheck") or {})
     output_budget_acceptance_validation = dict(
         handoff_projection.get("budget_acceptance_validation")
@@ -235,13 +236,6 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
 
     if status in {"blocked", "blocked_missing_inputs"}:
         add_blocked_reason(constraint.get("blocked_reason") or constraint.get("summary") or status)
-    review_readiness = str(review_only.get("readiness_classification") or package.get("review_readiness_classification") or "")
-    if review_readiness == "blocked_by_two_zone_evidence":
-        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
-    if review_readiness == "blocked_output_budget":
-        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
-    if review_readiness == "blocked_efficiency":
-        add_blocked_reason(review_only.get("readiness_reason") or package.get("review_readiness_reason") or review_readiness)
     for check in constraint.get("constraint_checks") or []:
         if isinstance(check, dict) and check.get("status") == "blocked":
             add_blocked_reason(check.get("reason") or check.get("label") or "blocked reducer check")
@@ -291,7 +285,6 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
 
 
 def _output_profile_status(run_shape: dict[str, Any]) -> dict[str, Any]:
-    review_only = dict(run_shape.get("review_package") or {})
     output_profile = dict(run_shape.get("output_profile") or {})
     classification = str(output_profile.get("classification") or "").strip()
     blocked_reasons: list[str] = []
@@ -301,10 +294,6 @@ def _output_profile_status(run_shape: dict[str, Any]) -> dict[str, Any]:
         blocked_reasons.append("smallest run must keep summary-only conditional curves")
     if output_profile.get("grid_csv_export") != "none":
         blocked_reasons.append("smallest run must keep grid CSV export disabled")
-    if review_only.get("readiness_classification") == "blocked_output_budget":
-        blocked_reasons.append(review_only.get("readiness_reason") or "four-zone review package remains blocked by output budget")
-    if review_only.get("readiness_classification") == "blocked_efficiency":
-        blocked_reasons.append(review_only.get("readiness_reason") or "four-zone review package remains blocked by efficiency")
     return {
         "status": "ready" if not blocked_reasons else "blocked_output_profile",
         "classification": classification or None,

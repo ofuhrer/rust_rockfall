@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-365: Resolve Two-Zone Output-Profile Preflight Blocker
-
-Goal: Fix the explicit two-zone handoff/preflight path so it no longer falls through the four-zone review-package output-profile branch.
-
-Capability gap reduced: The current live two-zone run is blocked before `sbatch` by a package classification mismatch, not by measured runtime or simulator failure.
-
-Why this outranks alternatives: No throughput optimization, four-zone run, or Swiss-scale projection update is actionable until the two-zone package can pass the exact pre-submit output-profile gate.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
-- `docs/balfrin_two_zone_hazard_run_tb362.md`
-
-Deliverables:
-
-- Generator/preflight fix or narrowly scoped contract repair for explicit `--requested-release-zone-batch-size 2 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2` packages.
-- Regression proving that exact package reports `output_profile_status=ready`, `reducer_budget_status=ready`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
-
-Definition of done:
-
-- The exact explicit two-zone package preflight reports `preflight_status=ready_for_authorization_review` and `ready_for_authorized_submission=true`, or a new concrete non-output-profile blocker is recorded.
-
-Boundaries: No live submission, no `sbatch`, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim.
 
 ### TB-366: Execute Smallest Two-Zone Balfrin Hazard Run After Profile Repair
 
