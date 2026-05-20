@@ -190,6 +190,32 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
+    def test_prepare_fixture_backed_cache_blocks_terrain_preprocessing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._write_real_context_cache_manifest(repo_root, provenance_classification="fixture_backed")
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+            )
+
+        self.assertEqual(report["status"], "blocked_fixture_backed_inputs")
+        self.assertEqual(report["first_blocker"]["step_id"], "public_geodata_cache_verification")
+        self.assertIn("fixture-backed", report["first_blocker"]["blocked_reason"])
+        self.assertEqual(report["workflow_steps"][0]["status"], "ready")
+        self.assertEqual(report["workflow_steps"][1]["status"], "ready")
+        self.assertEqual(report["workflow_steps"][2]["status"], "blocked_fixture_backed_inputs")
+        self.assertEqual(report["workflow_steps"][3]["status"], "ready")
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
     def test_prepare_ready_path_reports_release_candidate_planning_next(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
@@ -1191,6 +1217,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         *,
         candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1",
         candidate_site_name: str = "Chant Sura / Flüelapass portability example",
+        provenance_classification: str = "real_staged",
     ) -> None:
         manifest_path = repo_root / f"data/processed/swisstopo/{candidate_site_id}/input/public_geodata_cache_manifest.yaml"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1239,6 +1266,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                     "resolution_m": 1.0,
                     "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
                     "license_or_terms_reference": "example terms",
+                    "provenance_classification": provenance_classification,
                     "staged_path": str(staged_path),
                     "metadata_path": str(metadata_path),
                 }

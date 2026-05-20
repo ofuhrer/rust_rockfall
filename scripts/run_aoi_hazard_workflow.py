@@ -2546,12 +2546,20 @@ def build_cache_step(*, repo_root: Path, candidate_site_id: str, paths: dict[str
             "command": command,
         }
     report = PREFLIGHT.verify_public_geodata_cache(cache_manifest_path)
-    status = str(report.get("verification_status") or "blocked_missing_inputs")
+    audit_status = str(report.get("cache_audit_status") or report.get("cache_audit_classification") or "missing")
+    status = PREFLIGHT.PUBLIC_GEODATA_CACHE_STEP_STATUS_BY_AUDIT.get(audit_status, "blocked_missing_inputs")
+    blocked_reason = {
+        "ready": "",
+        "partial": "public geodata cache includes a mix of real and non-real inputs",
+        "fixture_backed": "public geodata cache is fixture-backed and cannot be treated as real public context",
+        "missing": "public geodata cache is missing required real public-geodata inputs",
+        "metadata_mismatch": "public geodata cache metadata does not match the staged files",
+    }.get(audit_status, "public geodata cache verification did not pass")
     return {
         "step_id": "public_geodata_cache_verification",
         "label": "Public geodata cache verification",
-        "status": "ready" if status == "verified" else status,
-        "blocked_reason": "" if status == "verified" else "public geodata cache verification did not pass",
+        "status": status,
+        "blocked_reason": blocked_reason,
         "expected_input_path": str(cache_manifest_path),
         "expected_input_paths": [str(cache_manifest_path)],
         "command": command,

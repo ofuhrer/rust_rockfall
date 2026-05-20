@@ -34,6 +34,14 @@ DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
 DEFAULT_AOI_TILE_CATALOG = (
     ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml"
 )
+PUBLIC_GEODATA_CACHE_AUDIT_STATUSES = ("ready", "partial", "fixture_backed", "missing", "metadata_mismatch")
+PUBLIC_GEODATA_CACHE_STEP_STATUS_BY_AUDIT = {
+    "ready": "ready",
+    "partial": "blocked_partial_real_inputs",
+    "fixture_backed": "blocked_fixture_backed_inputs",
+    "missing": "blocked_missing_inputs",
+    "metadata_mismatch": "blocked_metadata_mismatch_inputs",
+}
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
     "swisstlm3d_context",
@@ -1419,6 +1427,7 @@ def build_public_geodata_cache_contract(
             "checksum_mismatch",
             "metadata_mismatch",
         ],
+        "cache_audit_statuses": list(PUBLIC_GEODATA_CACHE_AUDIT_STATUSES),
         "claim_boundaries": claim_boundaries(),
     }
 
@@ -1473,7 +1482,11 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
     manifest = load_site_config(manifest_path)
     if not isinstance(manifest, dict):
         manifest = {}
-    products = [verify_public_geodata_cache_product(record, manifest_path.parent) for record in manifest.get("products") or [] if isinstance(record, dict)]
+    products = [
+        verify_public_geodata_cache_product(record, manifest_path.parent)
+        for record in manifest.get("products") or []
+        if isinstance(record, dict)
+    ]
     overall_status = "verified"
     for product in products:
         status = text_value(product.get("verification_status")) or "missing"
@@ -1489,9 +1502,13 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
             overall_status = status
         if status == "metadata_mismatch" and overall_status not in {"missing", "checksum_mismatch"}:
             overall_status = status
+    audit_summary = summarize_public_geodata_cache_audit(products)
     return {
         "schema_version": PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION,
         "verification_status": overall_status,
+        "cache_audit_status": audit_summary["audit_status"],
+        "cache_audit_classification": audit_summary["audit_status"],
+        "cache_audit_summary": audit_summary,
         "cache_manifest_path": str(manifest_path),
         "product_count": len(products),
         "verification_fields": build_public_geodata_cache_contract(
@@ -1512,10 +1529,18 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
 def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: Path) -> dict[str, Any]:
     staged_status = text_value(record.get("verification_status")) or text_value(record.get("staging_status"))
     if staged_status == "unsupported_product":
+        provenance_classification, provenance_reason = classify_public_geodata_cache_product_provenance(
+            record,
+            manifest_base=manifest_base,
+            staged_status=staged_status,
+            actual=None,
+        )
         return {
             "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
             "required": bool(record.get("required", True)),
             "verification_status": "unsupported_product",
+            "provenance_classification": provenance_classification,
+            "provenance_reason": provenance_reason,
             "missing_paths": [],
             "checksum_match": False,
             "metadata_mismatches": [],
@@ -1549,10 +1574,18 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
     missing_paths = [name for name, path in (("staged_path", staged_path), ("metadata_path", metadata_path)) if not path.exists()]
     if missing_paths:
         required = bool(record.get("required", True))
+        provenance_classification, provenance_reason = classify_public_geodata_cache_product_provenance(
+            record,
+            manifest_base=manifest_base,
+            staged_status="optional_missing" if not required else "missing",
+            actual=actual,
+        )
         return {
             "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
             "required": required,
             "verification_status": "missing" if required else "optional_missing",
+            "provenance_classification": provenance_classification,
+            "provenance_reason": provenance_reason,
             "missing_paths": missing_paths,
             "checksum_match": False,
             "metadata_mismatches": [],
@@ -1592,10 +1625,18 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
         verification_status = "metadata_mismatch"
     else:
         verification_status = "verified"
+    provenance_classification, provenance_reason = classify_public_geodata_cache_product_provenance(
+        record,
+        manifest_base=manifest_base,
+        staged_status=verification_status,
+        actual=actual,
+    )
     return {
         "product_id": text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
         "required": bool(record.get("required", True)),
         "verification_status": verification_status,
+        "provenance_classification": provenance_classification,
+        "provenance_reason": provenance_reason,
         "missing_paths": [],
         "checksum_match": checksum_match,
         "metadata_mismatches": metadata_mismatches,
@@ -1616,6 +1657,129 @@ def cache_expected_record(record: dict[str, Any]) -> dict[str, Any]:
         "resolution_m": normalize_resolution_m(record.get("resolution_m")),
         "crop_extent_lv95_m": record.get("crop_extent_lv95_m") if isinstance(record.get("crop_extent_lv95_m"), dict) else {},
         "license_or_terms_reference": text_value(record.get("license_or_terms_reference")) or text_value(record.get("license_note")),
+    }
+
+
+def classify_public_geodata_cache_product_provenance(
+    record: dict[str, Any],
+    *,
+    manifest_base: Path,
+    staged_status: str,
+    actual: dict[str, Any] | None,
+) -> tuple[str, str]:
+    if staged_status in {"missing", "optional_missing", "unsupported_product"}:
+        return "missing", "required staged file or metadata sidecar is missing"
+    if staged_status == "metadata_mismatch":
+        return "metadata_mismatch", "staged inputs or metadata sidecar disagree with the cache contract"
+
+    explicit_candidates = (
+        text_value(record.get("provenance_classification")),
+        text_value(record.get("provenance_status")),
+        text_value(record.get("cache_provenance_classification")),
+    )
+    for candidate in explicit_candidates:
+        if candidate in {"real_staged", "fixture_backed"}:
+            return candidate, "explicit provenance classification from the cache contract"
+
+    metadata = actual.get("metadata") if isinstance(actual, dict) and isinstance(actual.get("metadata"), dict) else {}
+    actual_candidates = (
+        text_value(metadata.get("provenance_classification")),
+        text_value(metadata.get("provenance_status")),
+        text_value(metadata.get("cache_provenance_classification")),
+    )
+    for candidate in actual_candidates:
+        if candidate in {"real_staged", "fixture_backed"}:
+            return candidate, "explicit provenance classification from the staged metadata sidecar"
+
+    path_texts = [
+        text_value(record.get("staged_path")),
+        text_value(record.get("expected_staged_path")),
+        text_value(record.get("metadata_path")),
+        text_value(record.get("expected_metadata_path")),
+    ]
+    resolved_paths = [resolve_repo_path(text, base=manifest_base) for text in path_texts if text]
+    if any("tests/fixtures" in str(path) or "fixture" in path.name for path in resolved_paths):
+        return "fixture_backed", "staged path or metadata path points at fixture-backed inputs"
+
+    source_markers = (
+        text_value(record.get("source_product_id")),
+        text_value(record.get("source_product_name")),
+        text_value(record.get("source_url_or_download_record")),
+    )
+    if any("fixture" in marker.lower() for marker in source_markers if marker):
+        return "fixture_backed", "fixture marker present in the source-product contract"
+
+    if staged_status == "verified":
+        return "real_staged", "staged files and metadata satisfy the cache contract"
+    return "partial", "staged inputs are present but not yet proven real staged"
+
+
+def summarize_public_geodata_cache_audit(products: list[dict[str, Any]]) -> dict[str, Any]:
+    required_products = [product for product in products if bool(product.get("required", True))]
+    optional_products = [product for product in products if not bool(product.get("required", True))]
+    provenance_counts = {status: 0 for status in PUBLIC_GEODATA_CACHE_AUDIT_STATUSES}
+    verification_counts = {
+        "verified": 0,
+        "optional_missing": 0,
+        "missing": 0,
+        "checksum_mismatch": 0,
+        "metadata_mismatch": 0,
+        "unsupported_product": 0,
+    }
+    for product in required_products:
+        provenance_key = text_value(product.get("provenance_classification")) or "missing"
+        provenance_counts[provenance_key] = provenance_counts.get(provenance_key, 0) + 1
+        verification_counts[text_value(product.get("verification_status")) or "missing"] = verification_counts.get(
+            text_value(product.get("verification_status")) or "missing",
+            0,
+        ) + 1
+
+    for product in optional_products:
+        provenance_key = text_value(product.get("provenance_classification")) or "missing"
+        provenance_counts[provenance_key] = provenance_counts.get(provenance_key, 0) + 1
+        verification_counts[text_value(product.get("verification_status")) or "missing"] = verification_counts.get(
+            text_value(product.get("verification_status")) or "missing",
+            0,
+        ) + 1
+
+    if not required_products:
+        audit_status = "missing"
+    elif any(product.get("provenance_classification") == "metadata_mismatch" for product in required_products):
+        audit_status = "metadata_mismatch"
+    elif all(product.get("provenance_classification") == "missing" for product in required_products):
+        audit_status = "missing"
+    elif all(product.get("provenance_classification") == "fixture_backed" for product in required_products):
+        audit_status = "fixture_backed"
+    elif all(product.get("provenance_classification") == "real_staged" for product in required_products):
+        audit_status = "ready"
+    else:
+        audit_status = "partial"
+
+    ready_required_count = sum(1 for product in required_products if product.get("provenance_classification") == "real_staged")
+    fixture_required_count = sum(1 for product in required_products if product.get("provenance_classification") == "fixture_backed")
+    missing_required_count = sum(1 for product in required_products if product.get("provenance_classification") == "missing")
+    metadata_mismatch_required_count = sum(
+        1 for product in required_products if product.get("provenance_classification") == "metadata_mismatch"
+    )
+
+    return {
+        "audit_status": audit_status,
+        "classification": audit_status,
+        "required_product_count": len(required_products),
+        "optional_product_count": len(optional_products),
+        "ready_required_product_count": ready_required_count,
+        "fixture_backed_required_product_count": fixture_required_count,
+        "missing_required_product_count": missing_required_count,
+        "metadata_mismatch_required_product_count": metadata_mismatch_required_count,
+        "product_counts": {
+            "ready": ready_required_count,
+            "partial": 1 if audit_status == "partial" else 0,
+            "fixture_backed": fixture_required_count,
+            "missing": missing_required_count,
+            "metadata_mismatch": metadata_mismatch_required_count,
+        },
+        "verification_counts": verification_counts,
+        "provenance_counts": provenance_counts,
     }
 
 

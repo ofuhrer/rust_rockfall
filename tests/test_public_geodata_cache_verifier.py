@@ -29,10 +29,38 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
 
         self.assertEqual(report["verification_status"], "verified")
+        self.assertEqual(report["cache_audit_status"], "ready")
         self.assertEqual(report["product_count"], 1)
         self.assertEqual(report["products"][0]["verification_status"], "verified")
+        self.assertEqual(report["products"][0]["provenance_classification"], "real_staged")
         self.assertEqual(report["products"][0]["checksum_match"], True)
         self.assertEqual(report["products"][0]["metadata_mismatches"], [])
+
+    def test_fixture_backed_state_stays_blocked_from_real_aoi_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_cache_manifest(
+                root,
+                checksum_source=b"fixture-backed-cache",
+                product_overrides={
+                    "source_product_id": "swissalti3d_fixture_terrain_crop",
+                    "provenance_classification": "fixture_backed",
+                },
+                metadata_overrides={
+                    "source_product_id": "swissalti3d_fixture_terrain_crop",
+                    "provenance_classification": "fixture_backed",
+                },
+            )
+            report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
+
+        self.assertEqual(report["verification_status"], "verified")
+        self.assertEqual(report["cache_audit_status"], "fixture_backed")
+        self.assertEqual(report["cache_audit_summary"]["fixture_backed_required_product_count"], 1)
+        self.assertEqual(report["products"][0]["provenance_classification"], "fixture_backed")
+        self.assertEqual(
+            report["products"][0]["provenance_reason"],
+            "explicit provenance classification from the cache contract",
+        )
 
     def test_missing_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -41,7 +69,9 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
 
         self.assertEqual(report["verification_status"], "missing")
+        self.assertEqual(report["cache_audit_status"], "missing")
         self.assertEqual(report["products"][0]["verification_status"], "missing")
+        self.assertEqual(report["products"][0]["provenance_classification"], "missing")
         self.assertIn("staged_path", report["products"][0]["missing_paths"])
         self.assertIn("metadata_path", report["products"][0]["missing_paths"])
 
@@ -56,6 +86,7 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
 
         self.assertEqual(report["verification_status"], "checksum_mismatch")
+        self.assertEqual(report["cache_audit_status"], "partial")
         self.assertEqual(report["products"][0]["verification_status"], "checksum_mismatch")
         self.assertFalse(report["products"][0]["checksum_match"])
         self.assertEqual(report["products"][0]["metadata_mismatches"], [])
@@ -70,6 +101,7 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
 
         self.assertEqual(report["verification_status"], "metadata_mismatch")
+        self.assertEqual(report["cache_audit_status"], "metadata_mismatch")
         self.assertEqual(report["products"][0]["verification_status"], "metadata_mismatch")
         self.assertTrue(report["products"][0]["checksum_match"])
         self.assertIn("resolution_m", report["products"][0]["metadata_mismatches"])
@@ -89,6 +121,8 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
         report = json.loads(stdout.getvalue())
         self.assertEqual(exit_code, 0)
         self.assertEqual(report["verification_status"], "verified")
+        self.assertEqual(report["cache_audit_status"], "fixture_backed")
+        self.assertEqual(report["products"][0]["provenance_classification"], "fixture_backed")
         self.assertEqual(report["products"][0]["actual"]["metadata"]["product_version_or_date"], "2019-01-01")
 
     def _write_cache_manifest(
@@ -98,6 +132,7 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
         checksum_source: bytes = b"cache-bytes",
         staged_bytes: bytes | None = None,
         metadata_overrides: dict[str, object] | None = None,
+        product_overrides: dict[str, object] | None = None,
         create_files: bool = True,
     ) -> Path:
         staged_path = root / "cache" / "terrain.asc"
@@ -144,6 +179,8 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
                 }
             ],
         }
+        if product_overrides:
+            manifest["products"][0].update(product_overrides)
         manifest_path = root / "cache_manifest.yaml"
         manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
         return manifest_path

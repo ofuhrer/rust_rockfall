@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-341: Public-Geodata Cache Integrity And Provenance Gate
-
-Goal: Verify staged real public-geodata tiles for an arbitrary AOI with checksums, CRS, vertical datum, resolution, product ids, and source provenance before preprocessing.
-
-Capability gap reduced: Terrain/context preprocessing cannot be trusted at scale until staged public inputs are machine-audited rather than assumed present.
-
-Why this outranks alternatives: Cache integrity prevents downstream terrain, release-zone, and Balfrin failures caused by partial downloads, wrong CRS, stale products, or fixture leakage.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A reusable AOI cache audit report with ready, partial, fixture-backed, missing, and metadata-mismatch classifications.
-- Focused tests using tiny fixtures that prove fixture-backed inputs cannot be promoted as real public-context evidence.
-
-Definition of done:
-
-- The AOI workflow refuses terrain preprocessing unless required real public-geodata products pass the cache integrity/provenance gate.
-
-Boundaries: No downloads unless explicitly requested by the command mode, no simulation, no operational or physical-credibility claim.
-
 ### TB-342: Real AOI Terrain Preprocessing From Staged Tiles
 
 Goal: Build a reproducible terrain preprocessing path from staged real swissALTI3D/swisstopo tiles to a normalized DEM package for one AOI.

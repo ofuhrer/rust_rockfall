@@ -3571,3 +3571,18 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: acquisition planning and metadata-only package materialization only; no simulation, no operational claim, no annual/physical/risk semantics, and no large raw geodata commit.
 - Next task: `TB-341`
+
+### TB-341: Public-Geodata Cache Integrity And Provenance Gate
+- Date: 2026-05-20
+- Commit: local
+- Objective: add a fail-closed AOI cache integrity and provenance gate that distinguishes ready, partial, fixture-backed, missing, and metadata-mismatch public-geodata inputs before terrain preprocessing.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/run_aoi_hazard_workflow.py`, `scripts/verify_public_geodata_cache.py`, `tests/test_public_geodata_cache_verifier.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/swisstopo_data_strategy.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an AOI cache audit summary that classifies required inputs as `ready`, `partial`, `fixture_backed`, `missing`, or `metadata_mismatch`, while preserving the existing checksum and metadata verification fields.
+  - Extended the workflow prepare gate to block terrain preprocessing on fixture-backed or otherwise non-ready cache states instead of treating the presence of staged files as sufficient.
+  - Added focused tests proving fixture-backed cache inputs remain blocked as real public-context evidence and updated the public-geodata guidance to describe the new audit vocabulary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier tests.test_run_aoi_hazard_workflow tests.test_public_geodata_cache_stager -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads, no simulation, no operational or physical-credibility claim, and no scale-up or distributed-execution claim.
+- Next task: `TB-342`

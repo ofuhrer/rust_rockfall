@@ -49,11 +49,22 @@ def render_text_report(report: dict[str, object]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"verification_status: {report['verification_status']}",
+        f"cache_audit_status: {report.get('cache_audit_status', '')}",
         f"cache_manifest_path: {report['cache_manifest_path']}",
         f"product_count: {report['product_count']}",
         "verification_fields:",
     ]
     lines.extend(f"- {field}" for field in report["verification_fields"])
+    summary = report.get("cache_audit_summary") or {}
+    if isinstance(summary, dict):
+        lines.append("cache_audit_summary:")
+        lines.append(f"- classification: {summary.get('classification', '')}")
+        lines.append(f"- required_product_count: {summary.get('required_product_count', 0)}")
+        lines.append(f"- optional_product_count: {summary.get('optional_product_count', 0)}")
+        lines.append(f"- ready_required_product_count: {summary.get('ready_required_product_count', 0)}")
+        lines.append(f"- fixture_backed_required_product_count: {summary.get('fixture_backed_required_product_count', 0)}")
+        lines.append(f"- missing_required_product_count: {summary.get('missing_required_product_count', 0)}")
+        lines.append(f"- metadata_mismatch_required_product_count: {summary.get('metadata_mismatch_required_product_count', 0)}")
     lines.append("products:")
     products = report.get("products") or []
     if products:
@@ -62,6 +73,7 @@ def render_text_report(report: dict[str, object]) -> str:
                 continue
             lines.append(
                 f"- {product.get('product_id', '')}: status={product.get('verification_status', '')}, "
+                f"provenance={product.get('provenance_classification', '')}, "
                 f"checksum_match={product.get('checksum_match', False)}, "
                 f"missing_paths={', '.join(product.get('missing_paths') or []) or 'none'}, "
                 f"metadata_mismatches={', '.join(product.get('metadata_mismatches') or []) or 'none'}"

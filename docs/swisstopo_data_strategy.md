@@ -132,6 +132,10 @@ closed on missing, checksum-mismatch, or metadata-mismatch states. The
 operator-facing execution plan and fallback report for the Chant Sura
 candidate live in
 `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`.
+The verifier now also publishes an AOI cache audit classification of
+`ready`, `partial`, `fixture_backed`, `missing`, or `metadata_mismatch`, so
+fixture-backed inputs stay visibly blocked instead of masquerading as real
+public-context evidence.
 The companion `scripts/stage_public_geodata_cache.py` helper consumes that
 cache manifest in place, records verified staged inputs, and fails closed on
 missing files, checksum mismatch, metadata mismatch, or unsupported products.
