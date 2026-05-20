@@ -1375,12 +1375,15 @@ def build_terrain_provenance_summary(
     return {
         "classification": classify_terrain_provenance(terrain_metadata=terrain_metadata, metadata_mismatches=metadata_mismatches),
         "source_dataset": PREFLIGHT.text_value(terrain_metadata.get("source_dataset")),
-        "source_product": PREFLIGHT.text_value(terrain_metadata.get("source_product")),
-        "source_url": PREFLIGHT.text_value(terrain_metadata.get("source_url")),
+        "source_product": PREFLIGHT.text_value(terrain_metadata.get("source_product"))
+        or PREFLIGHT.text_value(terrain_metadata.get("source_product_name")),
+        "source_url": PREFLIGHT.text_value(terrain_metadata.get("source_url"))
+        or PREFLIGHT.text_value(terrain_metadata.get("source_url_or_download_record")),
         "source_filename": PREFLIGHT.text_value(terrain_metadata.get("source_filename")),
         "download_status": PREFLIGHT.text_value(terrain_metadata.get("download_status")),
         "source_file_present": bool(terrain_metadata.get("source_file_present")),
-        "license": PREFLIGHT.text_value(terrain_metadata.get("license")),
+        "license": PREFLIGHT.text_value(terrain_metadata.get("license"))
+        or PREFLIGHT.text_value(terrain_metadata.get("license_or_terms_reference")),
         "preprocessing_status": PREFLIGHT.text_value(preprocessing.get("status")),
         "resampling_method": PREFLIGHT.text_value(preprocessing.get("resampling_method")),
         "source_tile_ids": list(source_tile_plan.get("source_tile_ids") or []),
@@ -1399,17 +1402,45 @@ def build_terrain_provenance_summary(
 def classify_terrain_provenance(*, terrain_metadata: dict[str, Any], metadata_mismatches: list[str]) -> str:
     if metadata_mismatches:
         return "metadata_mismatch"
+    explicit_provenance = PREFLIGHT.text_value(terrain_metadata.get("provenance_classification")).lower()
+    if explicit_provenance in {"real_staged", "fixture_backed"}:
+        return explicit_provenance
     source_dataset = PREFLIGHT.text_value(terrain_metadata.get("source_dataset")).lower()
     source_product = PREFLIGHT.text_value(terrain_metadata.get("source_product")).lower()
+    source_product_id = PREFLIGHT.text_value(terrain_metadata.get("source_product_id")).lower()
+    source_product_name = PREFLIGHT.text_value(terrain_metadata.get("source_product_name")).lower()
+    source_url_or_download_record = PREFLIGHT.text_value(terrain_metadata.get("source_url_or_download_record")).lower()
     download_status = PREFLIGHT.text_value(terrain_metadata.get("download_status")).lower()
     preprocessing_status = PREFLIGHT.text_value(
         (terrain_metadata.get("preprocessing") or {}).get("status") if isinstance(terrain_metadata.get("preprocessing"), dict) else ""
     ).lower()
     license_text = PREFLIGHT.text_value(terrain_metadata.get("license")).lower()
-    synthetic_markers = ("synthetic" in source_dataset) or ("synthetic" in source_product) or ("fixture" in download_status) or ("synthetic" in preprocessing_status) or ("synthetic" in license_text)
+    synthetic_markers = (
+        ("synthetic" in source_dataset)
+        or ("fixture" in source_dataset)
+        or ("synthetic" in source_product)
+        or ("fixture" in source_product)
+        or ("fixture" in source_product_id)
+        or ("fixture" in source_product_name)
+        or ("fixture" in download_status)
+        or ("synthetic" in preprocessing_status)
+        or ("fixture" in preprocessing_status)
+        or ("synthetic" in license_text)
+    )
     if synthetic_markers:
         return "fixture_backed"
-    if source_dataset == "swisstopo_swissalti3d" or source_product == "swissalti3d" or download_status in {"staged_real_input", "downloaded", "staged"} or preprocessing_status in {"staged_real_input", "downloaded", "staged"}:
+    real_swisstopo_markers = (
+        source_dataset == "swisstopo_swissalti3d"
+        or source_product == "swissalti3d"
+        or source_product_name == "swissalti3d"
+        or source_product_id in {"swissalti3d_2m", "swissalti3d"}
+        or "data.geo.admin.ch/ch.swisstopo.swissalti3d" in source_url_or_download_record
+    )
+    if (
+        real_swisstopo_markers
+        or download_status in {"staged_real_input", "downloaded", "staged"}
+        or preprocessing_status in {"staged_real_input", "downloaded", "staged"}
+    ):
         return "real_staged"
     return "fixture_backed"
 

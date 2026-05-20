@@ -220,6 +220,22 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertEqual(report["terrain_qa_summary"]["terrain_derivative_inventory"]["roughness"]["kernel"], "local_stddev_3x3")
             self.assertGreater(report["terrain_qa_summary"]["terrain_derivative_inventory"]["roughness"]["stats"]["count"], 0)
 
+    def test_repo_root_real_staged_terrain_metadata_is_not_fixture_backed(self) -> None:
+        report = helper.build_report(
+            repo_root=ROOT,
+            site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
+            terrain_crop_path=ROOT
+            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+            terrain_metadata_path=ROOT
+            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+            aoi_tile_catalog_path=ROOT
+            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml",
+        )
+
+        self.assertEqual(report["terrain_preprocessing_status"], "ready")
+        self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
+        self.assertEqual(report["terrain_provenance"]["source_product"], "swissALTI3D")
+
     def test_prepared_input_builder_reports_partial_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
