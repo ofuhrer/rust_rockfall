@@ -222,6 +222,14 @@ class AoiScenarioPreviewTests(unittest.TestCase):
         self.assertEqual(report["projection_classification_summary"]["plausible"], [2, 4])
         self.assertEqual(report["projection_classification_summary"]["blocked"], [8, 12, 50])
         self.assertEqual(report["projection_classification_summary"]["out_of_reach"], [100])
+        self.assertEqual(report["planning_case_pressure_thresholds"]["planning_zone_counts"], [10, 50, 100])
+        self.assertEqual(
+            [row["planning_zone_count"] for row in report["planning_case_pressure_thresholds"]["planning_case_thresholds"]],
+            [10, 50, 100],
+        )
+        self.assertEqual(report["planning_case_pressure_thresholds"]["planning_case_thresholds"][0]["scenario_cardinality"]["row_count"], 30)
+        self.assertEqual(report["planning_case_pressure_thresholds"]["planning_case_thresholds"][-1]["scenario_cardinality"]["row_count"], 300)
+        self.assertEqual(report["planning_case_pressure_thresholds"]["largest_planning_case"]["planning_zone_count"], 100)
         self.assertEqual(
             [row["projection_zone_count"] for row in report["projection_zone_count_reports"]],
             [2, 4, 8, 12, 50, 100],

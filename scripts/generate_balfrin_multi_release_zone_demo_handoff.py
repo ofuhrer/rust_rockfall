@@ -51,6 +51,7 @@ DEFAULT_PACKAGE_MD = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
 DEFAULT_COMMAND_PLAN_JSON = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_command_plan_v1.json"
 DEFAULT_SBATCH_PATH = DEFAULT_ARTIFACT_DIR / "balfrin_multi_release_zone_handoff.sbatch"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+SCENARIO_PRESSURE_PLANNING_ZONE_COUNTS = (10, 50, 100)
 SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT = 2
 SMALLEST_MULTI_ZONE_SCENARIO_COUNT = 2
 SMALLEST_MULTI_ZONE_TRAJECTORY_COUNT_TARGET = 1000
@@ -585,7 +586,7 @@ def build_report(
             candidate_output_root=candidate_output_root,
             target_area_output_root=target_area_output_root,
             pressure_probe_root=pressure_probe_root,
-        )
+    )
 
     source_zone_metadata = load_yaml(source_zone_metadata_path)
     source_scenario_policy = load_yaml(source_scenario_policy_path)
@@ -601,6 +602,11 @@ def build_report(
             pressure_probe_root=pressure_probe_root,
             pressure_artifact_dir=artifact_dir / DEFAULT_PRESSURE_ARTIFACT_DIR.name,
         ),
+    )
+    scenario_pressure_projection = build_scenario_pressure_projection(
+        pressure_report=pressure_report,
+        source_scenario_policy=source_scenario_policy,
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
     )
     current_target_profile = dict(output_profile_report.get("current_target_gate_profile") or {})
     current_plots_enabled = current_target_profile.get("plots_enabled")
@@ -661,6 +667,7 @@ def build_report(
         requested_release_zone_batch_size=requested_release_zone_batch_size,
         requested_reducer_chunk_count=requested_reducer_chunk_count,
         requested_reducer_worker_count=requested_reducer_worker_count,
+        scenario_pressure_projection=scenario_pressure_projection,
         handoff_output_budget_projection=handoff_output_budget_projection,
     )
 
@@ -729,6 +736,8 @@ def build_report(
             "requested_constraint_status": constraint_pressure_report.get("requested_constraint_status"),
             "constraint_source": constraint_pressure_report.get("constraint_source", {}),
             "measured_constraints": constraint_pressure_report.get("measured_constraints", {}),
+            "scenario_pressure_projection": constraint_pressure_report.get("scenario_pressure_projection", {}),
+            "scenario_pressure_status": constraint_pressure_report.get("scenario_pressure_status"),
         },
         "package_summary": {
             "status": package_status,
@@ -771,6 +780,7 @@ def build_report(
             single_job_report=single_job_report,
         ),
         "multi_zone_pressure": pressure_report,
+        "scenario_pressure_projection": scenario_pressure_projection,
         "output_budget_acceptance_thresholds": build_output_budget_acceptance_thresholds(),
         "output_budget_acceptance_validation": handoff_output_budget_projection.get(
             "budget_acceptance_validation", {}
@@ -1507,6 +1517,203 @@ def build_multi_zone_pressure_report(
         "largest_output_families_by_bytes": list(report.get("largest_output_families_by_bytes") or []),
         "manifest_size_by_path": dict(report.get("manifest_size_by_path") or {}),
     }
+
+
+def build_scenario_pressure_projection(
+    *,
+    pressure_report: dict[str, Any],
+    source_scenario_policy: dict[str, Any],
+    requested_release_zone_batch_size: int,
+) -> dict[str, Any]:
+    block_scenarios = list((source_scenario_policy.get("block_scenario_policy") or {}).get("scenarios") or [])
+    scenario_family_count = max(1, len(block_scenarios))
+    measured_constraints = dict(pressure_report.get("measured_reducer_constraints") or {})
+    threshold_profiles = build_scenario_pressure_threshold_profiles(
+        pressure_report=pressure_report,
+        scenario_family_count=scenario_family_count,
+    )
+    selected_profile = select_scenario_pressure_threshold_profile(
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
+        threshold_profiles=threshold_profiles,
+    )
+    if selected_profile is None:
+        blocked_reason = (
+            f"requested release-zone batch size {requested_release_zone_batch_size} exceeds the current planning ceiling "
+            f"of {SCENARIO_PRESSURE_PLANNING_ZONE_COUNTS[-1]} zones"
+        )
+        return {
+            "schema_version": "balfrin_multi_zone_scenario_pressure_gate_v1",
+            "status": "blocked",
+            "summary": blocked_reason,
+            "requested_release_zone_batch_size": requested_release_zone_batch_size,
+            "scenario_family_count": scenario_family_count,
+            "scenario_count": requested_release_zone_batch_size * scenario_family_count,
+            "threshold_profiles": threshold_profiles,
+            "selected_threshold_profile": None,
+            "projection": {},
+            "budget_checks": [],
+            "first_bottleneck_labels": {
+                "first_blocked": "release_zone_count",
+                "first_warning": None,
+                "first_relevant": "release_zone_count",
+                "blocked": ["release_zone_count"],
+                "warning": [],
+            },
+            "blocked_reason": blocked_reason,
+        }
+
+    projection = build_multi_zone_run_estimates(
+        pressure_report,
+        target_release_zone_count=requested_release_zone_batch_size,
+    )
+    projected_scenario_count = requested_release_zone_batch_size * scenario_family_count
+    checks = [
+        budget_check(
+            label="release_zone_count",
+            requested=requested_release_zone_batch_size,
+            limit=positive_int(
+                measured_constraints.get("simultaneous_release_zone_batch_max"),
+                "measured simultaneous release-zone batch max",
+            ),
+        ),
+        budget_check(
+            label="manifest_size_bytes",
+            requested=int(projection["estimated_manifest_pressure_bytes"]),
+            limit=positive_int(measured_constraints.get("manifest_size_bytes_max"), "measured manifest size bytes max"),
+        ),
+        budget_check(
+            label="output_file_count",
+            requested=int(projection["estimated_file_count"]),
+            limit=positive_int(measured_constraints.get("output_file_count_max"), "measured output file count max"),
+        ),
+        budget_check(
+            label="root_file_count",
+            requested=int(projection["estimated_file_count"]),
+            limit=positive_int(measured_constraints.get("root_file_count_max"), "measured root file count max"),
+        ),
+    ]
+    status = overall_budget_status(checks)
+    first_bottleneck_labels = first_budget_bottleneck_labels(checks)
+    blocked_reason = scenario_pressure_summary(status, checks, selected_profile=selected_profile)
+    return {
+        "schema_version": "balfrin_multi_zone_scenario_pressure_gate_v1",
+        "status": status,
+        "summary": blocked_reason,
+        "requested_release_zone_batch_size": requested_release_zone_batch_size,
+        "scenario_family_count": scenario_family_count,
+        "scenario_count": projected_scenario_count,
+        "threshold_profiles": threshold_profiles,
+        "selected_threshold_profile": selected_profile,
+        "projection": {
+            "requested_release_zone_batch_size": requested_release_zone_batch_size,
+            "scenario_count": projected_scenario_count,
+            "estimated_runtime_seconds": projection["estimated_runtime_seconds"],
+            "estimated_storage_bytes": projection["estimated_storage_bytes"],
+            "estimated_file_count": projection["estimated_file_count"],
+            "estimated_manifest_pressure_bytes": projection["estimated_manifest_pressure_bytes"],
+        },
+        "budget_checks": checks,
+        "first_bottleneck_labels": first_bottleneck_labels,
+        "blocked_reason": blocked_reason if status == "blocked" else None,
+        "warning_reason": blocked_reason if status == "warning" else None,
+    }
+
+
+def build_scenario_pressure_threshold_profiles(
+    *,
+    pressure_report: dict[str, Any],
+    scenario_family_count: int,
+) -> list[dict[str, Any]]:
+    threshold_profiles: list[dict[str, Any]] = []
+    for zone_count in SCENARIO_PRESSURE_PLANNING_ZONE_COUNTS:
+        estimate = build_multi_zone_run_estimates(
+            pressure_report,
+            target_release_zone_count=zone_count,
+        )
+        threshold_profiles.append(
+            {
+                "profile_id": f"planning_case_{zone_count}_zone",
+                "release_zone_count": zone_count,
+                "scenario_family_count": scenario_family_count,
+                "scenario_count": zone_count * scenario_family_count,
+                "max_manifest_size_bytes": estimate["estimated_manifest_pressure_bytes"],
+                "max_output_file_count": estimate["estimated_file_count"],
+                "max_output_byte_count": estimate["estimated_storage_bytes"],
+                "max_runtime_seconds": estimate["estimated_runtime_seconds"],
+            }
+        )
+    return threshold_profiles
+
+
+def select_scenario_pressure_threshold_profile(
+    *,
+    requested_release_zone_batch_size: int,
+    threshold_profiles: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    for profile in threshold_profiles:
+        if requested_release_zone_batch_size <= int(profile.get("release_zone_count") or 0):
+            return profile
+    return None
+
+
+def budget_check(*, label: str, requested: int, limit: int) -> dict[str, Any]:
+    if requested < 1:
+        raise BalfrinMultiReleaseZoneDemoHandoffError(f"{label} must be greater than 0")
+    if requested > limit:
+        status = "blocked"
+        reason = f"requested {label}={requested} exceeds measured max {limit}"
+    elif requested == limit:
+        status = "warning"
+        reason = f"requested {label}={requested} reaches measured max {limit}"
+    else:
+        status = "acceptable"
+        reason = f"requested {label}={requested} stays within measured max {limit}"
+    return {
+        "label": label,
+        "status": status,
+        "requested": requested,
+        "limit": limit,
+        "reason": reason,
+    }
+
+
+def overall_budget_status(checks: list[dict[str, Any]]) -> str:
+    if any(check["status"] == "blocked" for check in checks):
+        return "blocked"
+    if any(check["status"] == "warning" for check in checks):
+        return "warning"
+    return "acceptable"
+
+
+def first_budget_bottleneck_labels(checks: list[dict[str, Any]]) -> dict[str, Any]:
+    blocked = [check["label"] for check in checks if check["status"] == "blocked"]
+    warning = [check["label"] for check in checks if check["status"] == "warning"]
+    first_blocked = blocked[0] if blocked else None
+    first_warning = warning[0] if warning else None
+    return {
+        "first_blocked": first_blocked,
+        "first_warning": first_warning,
+        "first_relevant": first_blocked or first_warning or "ready",
+        "blocked": blocked,
+        "warning": warning,
+    }
+
+
+def scenario_pressure_summary(
+    status: str,
+    checks: list[dict[str, Any]],
+    *,
+    selected_profile: dict[str, Any] | None = None,
+) -> str:
+    reasons = [check["reason"] for check in checks if check["status"] != "acceptable"]
+    profile_id = selected_profile.get("profile_id") if selected_profile else None
+    if profile_id:
+        reasons.append(f"selected planning profile: {profile_id}")
+    if status == "blocked":
+        return "blocked: " + "; ".join(reasons)
+    if status == "warning":
+        return "warning: " + "; ".join(reasons)
+    return "acceptable: scenario and manifest pressure stay within the measured planning envelope"
 
 
 def build_handoff_output_budget_projection(
@@ -2304,6 +2511,24 @@ def build_replay_critical_field_inventory() -> dict[str, dict[str, Any]]:
                 "measured_constraints.root_file_count_max",
             ],
         },
+        "scenario_pressure": {
+            "prefix": "scenario_pressure_projection.",
+            "fields": [
+                "status",
+                "summary",
+                "requested_release_zone_batch_size",
+                "scenario_family_count",
+                "scenario_count",
+                "selected_threshold_profile.profile_id",
+                "selected_threshold_profile.release_zone_count",
+                "selected_threshold_profile.scenario_count",
+                "selected_threshold_profile.max_manifest_size_bytes",
+                "selected_threshold_profile.max_output_file_count",
+                "selected_threshold_profile.max_output_byte_count",
+                "first_bottleneck_labels.first_relevant",
+                "budget_checks",
+            ],
+        },
         "smallest_run": {
             "prefix": "follow_up_recommendation.minimum_measured_multi_zone_run.",
             "fields": [
@@ -2353,12 +2578,15 @@ def build_constraint_pressure_report(
     requested_release_zone_batch_size: int,
     requested_reducer_chunk_count: int,
     requested_reducer_worker_count: int,
+    scenario_pressure_projection: dict[str, Any] | None = None,
     handoff_output_budget_projection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     measured_constraints = dict(pressure_report.get("measured_reducer_constraints") or {})
     constraint_source = dict(measured_constraints.get("constraint_source") or {})
+    scenario_pressure_projection = scenario_pressure_projection or {}
     handoff_output_budget_projection = handoff_output_budget_projection or {}
     projected_status = normalize_handoff_projection_status(handoff_output_budget_projection)
+    scenario_status = normalize_scenario_pressure_status(scenario_pressure_projection)
     if pressure_report.get("status") == "blocked_missing_inputs" or not measured_constraints:
         return {
             "status": "blocked_missing_inputs",
@@ -2369,6 +2597,7 @@ def build_constraint_pressure_report(
             "requested_reducer_worker_count": requested_reducer_worker_count,
             "measured_constraints": measured_constraints,
             "constraint_checks": [],
+            "scenario_pressure_projection": scenario_pressure_projection,
             "handoff_output_budget_projection": handoff_output_budget_projection,
             "blocked_reason": pressure_report.get("blocked_reason", "missing measured reducer constraints"),
         }
@@ -2391,8 +2620,13 @@ def build_constraint_pressure_report(
         ),
     ]
     requested_status = overall_constraint_status(checks)
-    status = combine_constraint_status(requested_status, projected_status)
-    summary = constraint_pressure_summary(status, checks, handoff_output_budget_projection=handoff_output_budget_projection)
+    status = combine_constraint_status(requested_status, combine_constraint_status(scenario_status, projected_status))
+    summary = constraint_pressure_summary(
+        status,
+        checks,
+        scenario_pressure_projection=scenario_pressure_projection,
+        handoff_output_budget_projection=handoff_output_budget_projection,
+    )
     return {
         "status": status,
         "summary": summary,
@@ -2403,6 +2637,8 @@ def build_constraint_pressure_report(
         "measured_constraints": measured_constraints,
         "constraint_checks": checks,
         "requested_constraint_status": requested_status,
+        "scenario_pressure_projection": scenario_pressure_projection,
+        "scenario_pressure_status": scenario_status,
         "handoff_output_budget_projection": handoff_output_budget_projection,
         "blocked_reason": summary if status == "blocked" else None,
         "warning_reason": summary if status == "warning" else None,
@@ -2438,6 +2674,15 @@ def overall_constraint_status(checks: list[dict[str, Any]]) -> str:
     return "acceptable"
 
 
+def normalize_scenario_pressure_status(scenario_pressure_projection: dict[str, Any]) -> str:
+    if not scenario_pressure_projection:
+        return "acceptable"
+    status = scenario_pressure_projection.get("status")
+    if status in {"blocked", "warning", "acceptable"}:
+        return str(status)
+    return "blocked"
+
+
 def normalize_handoff_projection_status(handoff_output_budget_projection: dict[str, Any]) -> str:
     if not handoff_output_budget_projection:
         return "acceptable"
@@ -2458,9 +2703,15 @@ def constraint_pressure_summary(
     status: str,
     checks: list[dict[str, Any]],
     *,
+    scenario_pressure_projection: dict[str, Any] | None = None,
     handoff_output_budget_projection: dict[str, Any] | None = None,
 ) -> str:
     reasons = [check["reason"] for check in checks if check["status"] != "acceptable"]
+    scenario_projection = scenario_pressure_projection or {}
+    scenario_status = normalize_scenario_pressure_status(scenario_projection) if scenario_projection else "acceptable"
+    if scenario_status != "acceptable":
+        bottleneck = dict(scenario_projection.get("first_bottleneck_labels") or {}).get("first_relevant")
+        reasons.append(f"scenario pressure {scenario_status}: first bottleneck {bottleneck}")
     projection = handoff_output_budget_projection or {}
     projection_status = normalize_handoff_projection_status(projection) if projection else "acceptable"
     if projection_status != "acceptable":
@@ -3302,6 +3553,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Scenario generation command: `{report['deterministic_scenarios']['scenario_generation_command']}`",
         f"- Scenario table row count: `{report['deterministic_scenarios']['scenario_table_row_count']}`",
         f"- Scenario probability semantics: `{report['deterministic_scenarios']['scenario_probability_semantics']}`",
+        "",
+        "## Scenario Pressure Gate",
+        "",
+        f"- Scenario pressure status: `{report.get('scenario_pressure_projection', {}).get('status')}`",
+        f"- Requested release-zone batch size: `{report.get('scenario_pressure_projection', {}).get('requested_release_zone_batch_size')}`",
+        f"- Scenario family count: `{report.get('scenario_pressure_projection', {}).get('scenario_family_count')}`",
+        f"- Scenario count: `{report.get('scenario_pressure_projection', {}).get('scenario_count')}`",
+        f"- Selected planning profile: `{report.get('scenario_pressure_projection', {}).get('selected_threshold_profile', {}).get('profile_id')}`",
+        f"- First scenario-pressure bottleneck: `{dict(report.get('scenario_pressure_projection') or {}).get('first_bottleneck_labels', {}).get('first_relevant')}`",
+        f"- Scenario-pressure summary: {dict(report.get('scenario_pressure_projection') or {}).get('summary')}",
         "",
         "## Pressure Checkpoints",
         "",

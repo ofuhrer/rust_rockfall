@@ -3687,3 +3687,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: conditional sampling weights only; no annual frequency, physical probability, source-frequency, or risk semantics; no operational, scale-up, or distributed-execution claim.
 - Next task: `TB-348`
+
+### TB-348: Scenario Cardinality And Manifest Pressure Gate
+- Date: 2026-05-20
+- Commit: local
+- Objective: convert candidate-driven scenario-table stress evidence into a fail-closed gate that blocks over-budget multi-zone packages before live submission.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_aoi_scenario_preview.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a 10/50/100 planning-case threshold surface to the AOI scenario cost preview and exposed it in the machine-readable projection report.
+  - Added a scenario-pressure projection and gate to the multi-release-zone handoff, with the first blocker reported from release-zone, manifest, and output pressure checks before downstream authorization logic.
+  - Updated the focused regression coverage and supporting probe documentation to track the new gate shape and current measured-pressure values.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_scenario_preview tests.test_balfrin_multi_release_zone_demo_handoff`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live Balfrin run, no distributed execution, no scale-up authorization, and no operational or risk/probability claims.
+- Next task: `TB-349`

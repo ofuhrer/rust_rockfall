@@ -250,6 +250,15 @@ also provides `--validation-mode budget-thresholds` for budget-only review; that
 mode does not convert missing authorization or dirty Balfrin access state into a
 budget failure.
 
+## TB-348 Scenario Pressure Gate
+
+TB-348 adds a scenario-pressure planning surface to the handoff so the current
+pre-submit path can distinguish the 10-zone, 50-zone, and 100-zone planning
+cases before live submission. The gate now fails closed on the first scenario
+or manifest overage using the measured reducer envelope, with explicit
+threshold profiles for release-zone batch size, manifest pressure, output file
+count, and root file count.
+
 ## TB-301 Local Scaling Ladder
 
 TB-314 refreshed the local ladder after TB-312 measured four-zone Balfrin

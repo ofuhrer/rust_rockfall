@@ -51,6 +51,7 @@ DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/aoi_scenario_preview")
 DEFAULT_SELECTED_ZONE_OUTPUT_ROOT = DEFAULT_OUTPUT_ROOT / "selected_zone_counts"
 DEFAULT_SELECTED_ZONE_COUNTS = (2, 4, 8, 12)
 DEFAULT_PROJECTION_ZONE_COUNTS = (2, 4, 8, 12, 50, 100)
+DEFAULT_PLANNING_ZONE_COUNTS = (10, 50, 100)
 DEFAULT_OUTPUT_PROFILE_CONTROLS = {
     "conditional_curve_export": "summary-only",
     "grid_csv_export": "none",
@@ -437,6 +438,13 @@ def build_aoi_cost_projection_report(
         "blocking_labels": [],
         "classification_surface": classification_surface,
         "projection_classification_summary": classification_summary,
+        "planning_case_pressure_thresholds": build_planning_case_pressure_thresholds(
+            projection_rows=build_aoi_cost_projection_rows(
+                projection_zone_counts=DEFAULT_PLANNING_ZONE_COUNTS,
+                trajectory_count=preview_count,
+                reference_report=reference_report,
+            )
+        ),
         "measurement_basis": reference_report["measurement_basis"],
         "reference_block_family_count": reference_report["block_family_count"],
         "reference_block_family_ids": reference_report["block_family_ids"],
@@ -466,6 +474,31 @@ def build_aoi_cost_projection_report(
                 "No additional field or Balfrin postproc measurement is claimed for the 50-zone or 100-zone rows.",
             ],
         },
+    }
+
+
+def build_planning_case_pressure_thresholds(*, projection_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    planning_thresholds = []
+    for row in projection_rows:
+        planning_thresholds.append(
+            {
+                "planning_zone_count": row["projection_zone_count"],
+                "scenario_cardinality": row["scenario_cardinality"],
+                "projected_files": row["projected_files"],
+                "projected_bytes": row["projected_bytes"],
+                "estimated_runtime_seconds": row["estimated_runtime_seconds"],
+                "reducer_pressure": row["reducer_pressure"],
+                "blocking_labels": list(row["no_go_labels"]),
+                "blocked_reason": row["blocked_reason"],
+                "projection_status": row["projection_status"],
+                "suitability_classification": row["suitability_classification"],
+            }
+        )
+    return {
+        "schema_version": "aoi_planning_case_pressure_thresholds_v1",
+        "planning_zone_counts": list(DEFAULT_PLANNING_ZONE_COUNTS),
+        "planning_case_thresholds": planning_thresholds,
+        "largest_planning_case": planning_thresholds[-1] if planning_thresholds else {},
     }
 
 

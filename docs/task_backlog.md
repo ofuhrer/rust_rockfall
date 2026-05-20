@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-348: Scenario Cardinality And Manifest Pressure Gate
-
-Goal: Convert candidate-driven scenario-table stress evidence into a gate that protects Balfrin packages from excessive manifest, sidecar, or scenario cardinality pressure.
-
-Capability gap reduced: Current scale failures repeatedly hit manifest and contract pressure; scenario generation needs a pre-submit budget gate.
-
-Why this outranks alternatives: A measured gate prevents another failed-closed live package caused by scenario/manifest growth that could have been caught locally.
-
-Inspect first:
-
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- Scenario/manifest pressure thresholds for 10, 50, and 100-zone planning cases.
-- Integration into the handoff or preflight path so over-budget scenario packages are blocked before live submission.
-
-Definition of done:
-
-- Multi-zone handoff generation consumes scenario pressure evidence and fails closed with a specific first blocker when scenario or manifest budgets are exceeded.
-
-Boundaries: No live Balfrin run, no distributed execution, no scale-up authorization.
-
 ### TB-349: Real AOI-To-Prepared-Pilot Compiler
 
 Goal: Compile an audited real AOI package into terrain manifests, context manifests, reviewed candidate-zone subset, scenario table, command plan, and ignored output-root layout.
