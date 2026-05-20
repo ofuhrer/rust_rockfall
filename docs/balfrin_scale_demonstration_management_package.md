@@ -10,13 +10,16 @@ toward a larger Balfrin demonstration?
 
 - 10-zone work remains feasible as a planning class under the current
   single-node/postproc boundary, but it is still projection-supported rather
-  than measured hazard execution.
+  than measured hazard execution. The current candidate-screening branch is
+  still blocked by `source_zone_footprint_overlap`, so no 10-zone probe is
+  ready to run yet.
 - 100-zone work is conditionally feasible as a deferred planning case until
   reducer, manifest, scheduler, and authorization pressure are reduced.
 - Regional and Swiss-wide workflows are out of reach under current
   single-node/postproc constraints.
 - The recent two-zone and four-zone submit branches are failed-closed guardrail
-  evidence, not measured hazard execution evidence.
+  evidence, not measured hazard execution evidence, and the rebuilt
+  management-AOI branch is still blocked by `source_zone_footprint_overlap`.
 - TB-312's four-zone postproc/reducer package is measured, but it is
   postproc-only and does not upgrade hazard execution capability.
 - TB-340 through TB-359 improved real-AOI acquisition/preprocessing automation,
@@ -35,10 +38,10 @@ toward a larger Balfrin demonstration?
 - Projection-only: Swiss-scale feasibility estimates for 10-zone, 100-zone,
   regional, and Swiss-wide workflows.
 - Failed-closed: reviewed live-submit branches that stopped before `sbatch`.
-  The current two-zone branch is TB-362: authorization, reducer-budget,
-  submit-contract, and output-budget gates were ready/accepted, but
-  `output_profile_status=blocked_output_profile` kept the remote pre-submit
-  gate at `blocked_reducer_budget`, so no job id or measured run root exists.
+  TB-362 failed closed on the explicit two-zone hazard path, and TB-386 keeps
+  the current management-AOI decision blocked at `source_zone_footprint_overlap`
+  before live execution, so no job id or measured run root exists for either
+  branch.
 - Fixture-backed: replay/preservation smoke evidence where no live run root is
   mounted.
 - Deferred: management review and any future Balfrin submission decision.
@@ -62,4 +65,5 @@ keeps all claim boundaries false.
 This package does not authorize scale-up, distributed execution, operational
 use, annual frequency, physical probability, risk, exposure, or vulnerability
 claims. It also does not treat failed-closed or postproc-only evidence as
-measured hazard execution.
+measured hazard execution, and it keeps the current `source_zone_footprint_overlap`
+candidate-screening blocker separate from measured Balfrin evidence.

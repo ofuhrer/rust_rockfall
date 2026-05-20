@@ -7,11 +7,16 @@ risk, exposure, or vulnerability semantics.
 ## Recommendation
 
 - 10-zone: feasible as a projection-supported planning class on the current
-  single-node/postproc boundary, but not measured hazard execution.
-- 100-zone: conditionally feasible and deferred. It remains a planning case
-  until reducer, manifest, and scheduler pressure are reduced.
-- Regional and Swiss-wide: out of reach under current single-node/postproc
-  constraints and the current authorization boundary.
+  single-node/postproc boundary. The next feasibility step is a measured
+  10-zone probe only after the current `source_zone_footprint_overlap`
+  upstream blocker is cleared.
+- 100-zone: conditionally feasible and deferred. The next step is further
+  reducer, manifest, and scheduler pressure reduction, not a live run.
+- Regional: out of reach under current single-node/postproc constraints. The
+  next step is to keep it as a no-go planning branch until multi-AOI evidence
+  exists.
+- Swiss-wide: out of reach under the current authorization boundary. The next
+  step is no-go until multi-AOI evidence and authorization gaps close.
 
 ## Evidence Basis
 
@@ -24,7 +29,8 @@ branches into measured capability:
     units per job.
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
-    four-zone postproc/reducer package, and the current claim boundaries.
+    four-zone postproc/reducer package, TB-368 preserved two-zone evidence, and
+    the current claim boundaries.
   - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
     restartability, GIS scope, uncertainty, and claim boundaries in the measured
     section while separating projection-only and failed-closed sections.
@@ -36,6 +42,11 @@ branches into measured capability:
   - Memory remains within the measured single-job band because there is no
     larger measured memory series.
 - Failed-closed branches:
+  - TB-386 rebuilt the current management-AOI Balfrin decision from the
+    candidate-screening branch and still failed closed at
+    `source_zone_footprint_overlap`: the committed 4x4 crop has four valid
+    interior cells, all four remain covered by the frozen source-zone footprint,
+    and slope screening is not reached.
   - TB-362 failed closed before `sbatch` on the explicit two-zone hazard path:
     `authorization_status=authorized`, `reducer_budget_status=ready`,
     `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`,
@@ -57,6 +68,9 @@ branches into measured capability:
   - `scale_up_authorized=false` and `distributed_execution_authorized=false`
     remain hard boundaries.
 - Unknowns:
+  - The current management-AOI branch remains blocked by
+    `source_zone_footprint_overlap`, so the next candidate-screening or
+    prepared-pilot decision is still upstream of any new Swiss-scale step.
   - There is no measured multi-AOI Balfrin hazard execution in this repository
     checkout.
   - The target-area validation and hazard-output ratios remain unavailable in
@@ -72,10 +86,10 @@ treated as projection bounds, not new measurements.
 
 | Case | Evidence class | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Bottleneck summary | GIS/COG status | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest size remains the first bottleneck; no measured hazard execution yet | blocked_missing_inputs | feasible |
-| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest size still first bottleneck | blocked_missing_inputs | conditionally feasible, deferred |
-| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest size still first bottleneck | blocked_missing_inputs | out of reach |
-| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest size still first bottleneck | blocked_missing_inputs | out of reach |
+| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest size remains the first bottleneck; no measured hazard execution yet | blocked_missing_inputs | next probe candidate after the current upstream blocker clears |
+| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest size still first bottleneck | blocked_missing_inputs | deferred planning case; not the next live step |
+| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest size still first bottleneck | blocked_missing_inputs | no-go planning branch until multi-AOI evidence exists |
+| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest size still first bottleneck | blocked_missing_inputs | no-go until multi-AOI evidence and authorization gaps close |
 
 ## Measured Versus Extrapolated
 
@@ -86,9 +100,10 @@ Measured:
 - The readiness matrix records TB-312 four-zone postproc/reducer evidence, but
   that evidence is still postproc-only and does not upgrade hazard execution
   capability.
-- The readiness matrix records TB-362 as the current two-zone failed-closed
-  branch with no measured runtime, memory, validation bytes, hazard bytes,
-  reducer output, GIS status, or run-root preservation evidence.
+- The readiness matrix records TB-368 preserved two-zone evidence and TB-386 as
+  the current management-AOI failed-closed branch blocked by
+  `source_zone_footprint_overlap`; neither upgrades hazard execution
+  capability.
 - The largest current real output in this checkout (`target_gate_v1`) packages
   to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
   and matches layer inventory parity; that is demonstration evidence only and
@@ -107,4 +122,6 @@ The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no-go for regional and Swiss-wide
 execution under the current single-node/postproc boundary. The key separator is
 still measured hazard execution: the repository has measured single-job and
-four-zone postproc evidence, but not measured multi-zone hazard execution.
+four-zone postproc evidence, but not measured multi-zone hazard execution, and
+the current management-AOI branch remains blocked by
+`source_zone_footprint_overlap` upstream of any new candidate-screening step.

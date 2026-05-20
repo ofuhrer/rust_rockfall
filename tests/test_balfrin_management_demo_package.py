@@ -62,6 +62,10 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         )
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["status"], "projection_only")
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "feasible")
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection_section"]["upstream_data_blockers"],
+            ["source_zone_footprint_overlap"],
+        )
         self.assertEqual(report["failed_closed_section"]["status"], "failed_closed")
         self.assertEqual(report["next_decision_section"]["evidence_type"], "deferred")
         self.assertTrue(report["scaling_section"]["single_job_sufficient_for_next_step"])
@@ -73,6 +77,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
         self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
         self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
+        self.assertIn("source_zone_footprint_overlap", report["failed_closed_section"]["summary"])
+        self.assertIn("TB-386", report["failed_closed_section"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
         self.assertEqual(len(report["regeneration_commands"]), 5)
         self.assertIn("summarize_balfrin_management_demo_package.py", report["regeneration_commands"][-1])
@@ -196,6 +202,11 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_management_demo_package_v1"
+            evidence_path = Path(tmpdir) / "fixture_backed_evidence.json"
+            evidence_path.write_text(
+                json.dumps({"package_report": self.fixture_backed_package_report()}),
+                encoding="utf-8",
+            )
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 exit_code = package.main(
@@ -204,6 +215,12 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
                         str(run_root),
                         "--artifact-dir",
                         str(artifact_dir),
+                        "--evidence-json",
+                        str(evidence_path),
+                        "--json-output",
+                        str(artifact_dir / "balfrin_management_demo_package_v1.json"),
+                        "--text-output",
+                        str(artifact_dir / "balfrin_management_demo_package_v1.txt"),
                         "--format",
                         "json",
                     ]

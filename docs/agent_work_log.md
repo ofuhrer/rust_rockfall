@@ -4590,3 +4590,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no Balfrin submission, no new run root on Balfrin, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim.
 - Next task: `TB-387`
+
+### TB-387: Refresh Management Feasibility Projection From Current Branch
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: refresh the management-facing Swiss-scale feasibility projection after the current candidate-screening, prepared-pilot, and Balfrin-decision branch was rebuilt and reclassified around `source_zone_footprint_overlap`.
+- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Refreshed the Swiss-scale feasibility synthesis so the projection table now separates measured evidence, extrapolated assumptions, current upstream blockers, failed-closed branches, and no-go thresholds without collapsing the rebuilt management-AOI branch into stale zero-candidate wording.
+  - Updated the management package helper and the human-readable management package to carry the current `source_zone_footprint_overlap` blocker from TB-386 alongside the existing projection-only and failed-closed evidence.
+  - Added a focused management-package regression so the current projection section, failed-closed summary, and CLI artifact path stay aligned with the fixture-backed package surface.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics, and no scale-up or distributed-execution claim.
+- Next task: backlog refill needed

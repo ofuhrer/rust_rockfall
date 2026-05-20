@@ -997,17 +997,20 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
     return {
         "status": "projection_only",
         "evidence_type": "projection_only",
-            "summary": (
-                "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
-                "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-                "TB-362's fail-closed two-zone hazard branch does not add measured support."
-            ),
+        "summary": (
+            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
+            "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
+            "The rebuilt TB-386 management-AOI branch is still blocked by `source_zone_footprint_overlap`, so it does not add measured support."
+        ),
         "projection_classification": {
             "10_zone": "feasible",
             "100_zone": "conditionally_feasible_deferred",
             "regional": "out_of_reach",
             "swiss_wide": "out_of_reach",
         },
+        "upstream_data_blockers": [
+            "source_zone_footprint_overlap",
+        ],
         "top_blockers": [
             "manifest_size_first_bottleneck",
             "multi_job_pressure_without_measured_distributed_support",
@@ -1035,8 +1038,8 @@ def build_failed_closed_section() -> dict[str, Any]:
         "status": "failed_closed",
         "evidence_type": "failed_closed",
         "summary": (
-            "The recent submit branches, including the canonical TB-362 two-zone hazard path, failed closed before live execution, "
-            "so they remain guardrail evidence rather than measured scale capability."
+            "The recent submit branches, including the canonical TB-362 two-zone hazard path and the rebuilt TB-386 management-AOI path blocked by `source_zone_footprint_overlap`, "
+            "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability."
         ),
         "failed_closed_branches": [
             {

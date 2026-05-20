@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-387: Refresh Management Feasibility Projection From Current Branch
-
-Goal: Refresh the management-facing Swiss-scale feasibility projection after the candidate, prepared-pilot, and Balfrin-decision branch has been rebuilt.
-
-Capability gap reduced: Management needs a current feasibility answer that separates measured progress, upstream data blockers, failed-closed branches, and extrapolation assumptions.
-
-Why this outranks alternatives: A feasibility synthesis is useful only after the current execution branch has stopped at the right layer.
-
-Inspect first:
-
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Updated projection table separating measured evidence, extrapolated assumptions, failed-closed branches, no-go thresholds, and unknowns.
-- Recommendation for the next 10-zone, 100-zone, regional, and Swiss-wide feasibility steps.
-
-Definition of done:
-
-- Management can read one current feasibility package that reflects the latest candidate-screening and Balfrin-decision evidence.
-
-Boundaries: Synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
