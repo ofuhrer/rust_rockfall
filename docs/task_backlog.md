@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-352: Execute Smallest Multi-Zone Balfrin Hazard Run
-
-Goal: Submit and monitor the regenerated smallest live multi-zone Balfrin hazard package under the existing `postproc` clearance.
-
-Capability gap reduced: The repo lacks measured multi-zone Balfrin hazard execution evidence; current multi-zone evidence is dry-run, scratch-local, postproc-only, projection-only, or failed-closed.
-
-Why this outranks alternatives: This is the key evidence needed to tell management whether scale is plausible beyond single-zone comfort.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-
-Deliverables:
-
-- Live job id, run root, exit status, wall time, memory, validation/hazard output counts and bytes, preservation evidence, and post-run collector output.
-- A fail-closed report if access, authorization, output-budget, or preservation gates block submission.
-
-Definition of done:
-
-- The run either completes with measured multi-zone hazard evidence or fails before submission with a precise blocker and no ambiguous partial state.
-
-Boundaries: GPT-5.5 worker required; `postproc` only; stop and rediscuss if fully occupying `postproc` for more than 6 hours; no operational or scale-up claim.
-
 ### TB-353: Integrate Measured Multi-Zone Hazard Evidence
 
 Goal: Thread the TB-352 measured or fail-closed result through the scale readiness matrix, evidence bundle, management package, and Swiss-scale projection surfaces.

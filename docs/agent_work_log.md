@@ -3764,3 +3764,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no `sbatch`, no live Balfrin hazard job, no measured multi-zone evidence, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-352`
+
+### TB-352: Execute Smallest Multi-Zone Balfrin Hazard Run
+- Date: 2026-05-20
+- Commit: local
+- Objective: submit and monitor the regenerated smallest live multi-zone Balfrin hazard package only if the Balfrin access and task-specific authorization preflights passed for the regenerated package.
+- Files changed: `docs/balfrin_smallest_multi_zone_hazard_run_tb352.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the Balfrin access preflight; SSH, remote clone hygiene, preserved run-root visibility, and scheduler query passed with `ready_for_read_only_collection`.
+  - Fast-forwarded the Balfrin checkout on `main`, regenerated the handoff package under `/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1`, and reran the smallest multi-zone authorization preflight against the Balfrin-local package and authorization record.
+  - Stopped before `sbatch` because the regenerated package preflight returned `blocked_reducer_budget`: single-job sufficiency or reducer scaling is not yet ready for the four-zone review package.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-352 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json --json-output /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --text-output /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.txt'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb352_balfrin_access_preflight.json --format json'`
+- Result/status: implemented_blocked_report
+- Boundaries: no scheduler submission, no job id, no live hazard execution, no measured multi-zone Balfrin evidence, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-353`

@@ -90,6 +90,8 @@ starting context for implementation unless a task explicitly asks for them.
   postproc probe evidence from Balfrin `postproc`.
 - `balfrin_four_zone_hazard_probe_tb332.md`: TB-332 fail-closed four-zone
   hazard probe gate report before `sbatch`.
+- `balfrin_smallest_multi_zone_hazard_run_tb352.md`: TB-352 fail-closed
+  smallest multi-zone hazard run gate report before `sbatch`.
 - `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic
   postproc overhead evidence from Balfrin `postproc`.
 - `balfrin_remote_checkout_hygiene_tb304.md`: TB-304 before/after remote
