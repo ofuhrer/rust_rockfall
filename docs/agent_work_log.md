@@ -3409,3 +3409,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: fail-closed before live submission; no `sbatch`, no four-zone hazard run root, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual/physical/risk semantics.
 - Next task: `TB-333`
+
+### TB-333: Integrate Four-Zone Hazard Evidence
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: integrate the blocked four-zone hazard branch into the scale dashboard, maturity snapshot, reducer-pressure summary, and next-run ranking without promoting it to measured hazard execution.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/current_maturity_snapshot.md`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `four_zone_hazard_probe` dashboard row with output-pressure status, next recommended action, and a defer reason that keeps the blocked hazard branch separate from the measured four-zone postproc evidence.
+  - Re-ranked the dashboard next-action surface so the four-zone hazard branch defers larger work until a measured hazard branch exists, while keeping the older two-zone submit-contract repair as a lower-ranked live blocker.
+  - Updated the maturity snapshot and reducer-pressure narrative to preserve the postproc-versus-hazard distinction and to state plainly that the four-zone hazard outcome does not justify an eight-zone probe or an optimization claim.
+  - Removed TB-333 from the active backlog and added focused regressions for evidence taxonomy, hazard-branch output pressure, and next-action ranking.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: evidence integration only; no new Balfrin job, no claim upgrade, no annual/physical/risk semantics, and no conversion of blocked hazard execution into measured evidence.
+- Next task: `TB-334`

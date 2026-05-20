@@ -10,7 +10,7 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-319 have now completed the latest
+primarily swisstopo. TB-222 through TB-333 have now completed the latest
 post-review queue: Balfrin next-action and metrics-completion preflights were
 sharpened; read-only target-area metric and spatial-artifact recovery paths
 were added; multi-zone handoff budgets and authorization gates were refreshed;
@@ -19,9 +19,12 @@ without promoting them as measured evidence; the TB-307 target-area
 metrics-completion rerun measured peak memory and split validation/hazard
 outputs; TB-312 measured an exact four-zone post-processing/reducer package on
 Balfrin `postproc`; TB-313 rejected the accumulator micro-optimization; TB-314
-refreshed the local 1/2/4/8/12-zone ladder; TB-315 through TB-318 built and
-polished the user-AOI guided review path; and TB-319 refreshed the
-authoritative status surfaces after those evidence changes. The Chant Sura
+refreshed the local 1/2/4/8/12-zone ladder; TB-332 failed closed before
+`sbatch` on the four-zone hazard branch; TB-333 integrated that blocked
+hazard outcome into the scale dashboard and next-run ranking; TB-315 through
+TB-318 built and polished the user-AOI guided review path; and TB-319
+refreshed the authoritative status surfaces after those evidence changes. The
+Chant Sura
 real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
 core inputs are ready; and physical-evidence intake separates observed
@@ -33,11 +36,10 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. After TB-319 removes the
-last active task, `scripts/print_agent_task_context.py` should report
-`backlog_refill_needed=true`; the next action should be a scoped refill that
-selects execution, acquisition, optimization from measured bottlenecks, or
-explicit deferral rather than another synthesis-only pass. The
+matrix gives workers one compact evidence dashboard. TB-333 is active now, so
+`scripts/print_agent_task_context.py` should continue to report an active
+queue, not `backlog_refill_needed=true`, until the active backlog is
+exhausted. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -538,10 +540,10 @@ objective are:
     promotion, a fixture-backed AOI-to-map review path with optional
     real-evidence overlays, measured target-area metrics completion, measured
     four-zone postproc/reducer evidence, rejected accumulator optimization
-    evidence, refreshed local scaling-ladder status, and this
-    post-demonstration synthesis. No active implementation tasks remain after
-    TB-319; the backlog now needs a new prioritized refill before further
-    worker execution.
+    evidence, refreshed local scaling-ladder status, integrated the blocked
+    four-zone hazard branch into the dashboard and next-run surface, and this
+    post-demonstration synthesis. TB-333 remains active, so the backlog stays
+    executable rather than needing a refill-only pass.
 
 ## Backlog Quality Assessment
 
@@ -571,14 +573,13 @@ Over-procedural areas to avoid:
 
 Current high-value work after TB-319:
 
-- run a scoped backlog-refill pass before launching another implementation
-  worker, using the capability filter to reject tasks that mainly add wrappers
-  around known blocked states;
-- repair or regenerate the failed-closed two-zone submit contract before any
-  new live multi-zone scale step; the current blocker is the TB-309
-  `public_real_site_conditional_pilot_run_v1` manifest-contract mismatch, not
-  missing standing `postproc` authorization and not target-area metrics
-  completion;
+- keep the active queue focused on the measured and blocked evidence that
+  already exists, using the capability filter to reject tasks that mainly add
+  wrappers around known blocked states;
+- defer larger hazard work until the four-zone hazard branch is measured; the
+  TB-332 branch failed closed before `sbatch`, so it does not support an
+  eight-zone probe, while the older TB-309 two-zone submit-contract repair
+  remains a lower-ranked live blocker;
 - use the standing Balfrin `postproc` clearance only when GPT-5.5 worker
   routing, active monitoring, access, remote-cleanliness, output-budget,
   authorization-record/audit, preservation, and post-run evidence gates pass;

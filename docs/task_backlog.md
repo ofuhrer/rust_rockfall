@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-333: Integrate Four-Zone Hazard Evidence
-
-Goal: Integrate the four-zone hazard probe outcome into the scale dashboard, maturity snapshot, reducer-pressure docs, and next-run decision surface.
-
-Capability gap reduced: New measured scale evidence must update projections and next-run choices before larger work is proposed.
-
-Why this outranks alternatives: The decision to attempt eight zones or optimize depends on the measured four-zone hazard outcome.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Scale dashboard row for the four-zone hazard branch with evidence label, metrics, output pressure, and next recommended action.
-- Updated local-vs-Balfrin comparison preserving postproc-only and hazard-execution distinctions.
-- Tests for evidence taxonomy and next-action ranking.
-
-Definition of done:
-
-- The repo can state whether four-zone hazard execution supports an eight-zone probe, requires optimization, or should be deferred.
-
-Boundaries: Evidence integration only; no new Balfrin job, no claim upgrade, no annual/physical/risk semantics.
-
 ### TB-334: Hazard Accumulation Profiling At Multi-Zone Scale
 
 Goal: Profile hazard accumulation, raster writing, reducer merge, and manifest generation using the largest available measured/local multi-zone artifacts.

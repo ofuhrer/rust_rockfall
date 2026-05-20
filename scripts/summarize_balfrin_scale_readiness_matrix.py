@@ -112,6 +112,7 @@ TB332_FOUR_ZONE_HAZARD_PROBE_GATE = {
     "authorization_record_path": "/private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml",
     "source_report": "docs/balfrin_four_zone_hazard_probe_tb332.md",
 }
+TB333_FOUR_ZONE_HAZARD_NEXT_ACTION = "defer_eight_zone_probe_until_measured_hazard_execution"
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -499,6 +500,7 @@ def _four_zone_hazard_probe_blocked_row() -> dict[str, Any]:
         "measurement_status": "blocked_pre_submit",
         "classification": "blocked_pre_submit_authorization_record_checksum",
         "output_budget_status": gate["output_budget_status"],
+        "output_pressure_status": gate["output_budget_status"],
         "execution_efficiency_status": "blocked_pre_submit_not_measured",
         "hazard_execution_status": "blocked_pre_submit_no_hazard_execution",
         "file_count": gate["expected_file_count"],
@@ -511,11 +513,16 @@ def _four_zone_hazard_probe_blocked_row() -> dict[str, Any]:
         "replayability_status": "not_measured",
         "authorization_status": gate["authorization_status"],
         "next_evidence_field": "authorization_record.reviewed_handoff_package_sha256",
+        "next_recommended_action": TB333_FOUR_ZONE_HAZARD_NEXT_ACTION,
+        "next_recommended_action_reason": (
+            "TB-332 failed closed before hazard execution, so the four-zone branch stays deferred in blocked_pre_submit "
+            "and does not justify an eight-zone probe or a hazard-builder optimization yet."
+        ),
         "blocker": gate["blocked_reason"],
         "summary": (
             "TB-332 failed closed before sbatch: the four-zone hazard package, access, submit-contract, reducer-budget, "
             "and output-profile gates were otherwise ready, but the live authorization record referenced a stale reviewed "
-            "handoff checksum."
+            "handoff checksum. The branch therefore stays deferred for any eight-zone follow-on."
         ),
         "preflight_status": gate["preflight_status"],
         "balfrin_access_status": gate["balfrin_access_status"],
@@ -710,45 +717,55 @@ def build_report() -> dict[str, Any]:
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
     overall_status = "failed_closed" if failed_closed else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
-    next_recommended_scaling_task = (
-        "repair_two_zone_submit_contract_or_regenerate_package"
-        if failed_closed
-        else recommended.get("action_id") or recommended.get("option_id")
+    four_zone_hazard_row = next((row for row in rows if row["tier_id"] == "four_zone_hazard_probe"), {})
+    next_recommended_scaling_task = str(
+        four_zone_hazard_row.get("next_recommended_action")
+        or "defer_eight_zone_probe_until_measured_hazard_execution"
     )
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_backlog_recommendations = [
         {
             "rank": 1,
-            "action_id": "repair_two_zone_submit_contract_or_regenerate_package",
-            "category": "execution_unblock",
+            "action_id": TB333_FOUR_ZONE_HAZARD_NEXT_ACTION,
+            "category": "evidence_deferral",
             "status": "recommended_next",
             "reason": (
-                "TB-309 failed closed before sbatch because the reviewed two-zone submit path used the wrong manifest contract; "
-                "repair the package/submit contract before any new live scale step."
+                "TB-332 failed closed before hazard execution, so larger work should be deferred until a measured hazard branch "
+                "or a new bottleneck measurement exists."
             ),
         },
         {
             "rank": 2,
-            "action_id": "stage_real_public_context_for_user_aoi",
-            "category": "acquisition",
-            "status": "ready_for_operator_choice",
-            "reason": (
-                "The AOI review surface is fixture-backed and usable, but real AOI progress now depends on staged public geodata "
-                "through the dry-run/local-copy/download-gated acquisition driver."
-            ),
-        },
-        {
-            "rank": 3,
             "action_id": "optimize_only_from_new_measured_bottleneck",
             "category": "optimization",
             "status": "defer_until_hypothesis_measured",
             "reason": (
-                "TB-313 rejected the accumulator micro-optimization, so further performance work should start from a new measured "
-                "bottleneck and acceptance floor rather than broad churn."
+                "Optimization should follow a new measured bottleneck; the four-zone postproc evidence and blocked hazard branch "
+                "do not establish an eight-zone hazard execution bottleneck."
+            ),
+        },
+        {
+            "rank": 3,
+            "action_id": "repair_two_zone_submit_contract_or_regenerate_package",
+            "category": "execution_unblock",
+            "status": "ready_for_operator_choice",
+            "reason": (
+                "The older two-zone submit-contract repair remains a live blocker, but it is now ranked behind the four-zone "
+                "hazard branch because the new evidence says the larger hazard follow-on should be deferred first."
             ),
         },
         {
             "rank": 4,
+            "action_id": "stage_real_public_context_for_user_aoi",
+            "category": "acquisition",
+            "status": "ready_for_operator_choice",
+            "reason": (
+                "The AOI review surface is fixture-backed and usable, but real AOI progress still depends on staged public geodata "
+                "through the dry-run/local-copy/download-gated acquisition driver."
+            ),
+        },
+        {
+            "rank": 5,
             "action_id": "defer_physical_frequency_and_operational_claims",
             "category": "explicit_deferral",
             "status": "deferred_boundary",
@@ -765,7 +782,7 @@ def build_report() -> dict[str, Any]:
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
-            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
+            "so the four-zone hazard branch stays deferred for any eight-zone follow-on, TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
@@ -826,11 +843,11 @@ def build_report() -> dict[str, Any]:
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, so the next safe action is to repair or regenerate the package before any new live scale step."
+            "TB-332 failed closed before hazard execution, so the next safe action is to defer an eight-zone probe until a measured hazard branch exists."
         ),
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_backlog_recommendations": next_backlog_recommendations,
-        "blocked_reason": "two_zone_failed_closed.submit_manifest_schema",
+        "blocked_reason": "four_zone_hazard_probe.blocked_pre_submit_authorization_record_checksum",
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "physical_probability_claims_allowed": False,
@@ -880,6 +897,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  evidence_label: {row.get('evidence_label')}",
                 f"  measurement_status: {row.get('measurement_status')}",
                 f"  output_budget_status: {row.get('output_budget_status')}",
+                f"  output_pressure_status: {row.get('output_pressure_status')}",
                 f"  execution_efficiency_status: {row.get('execution_efficiency_status')}",
                 f"  hazard_execution_status: {row.get('hazard_execution_status')}",
                 f"  file_count: {row.get('file_count')}",
@@ -892,10 +910,13 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  replayability_status: {row.get('replayability_status')}",
                 f"  authorization_status: {row.get('authorization_status')}",
                 f"  next_evidence_field: {row.get('next_evidence_field')}",
+                f"  next_recommended_action: {row.get('next_recommended_action')}",
                 f"  blocker: {row.get('blocker')}",
                 f"  summary: {row.get('summary')}",
             ]
         )
+        if row.get("next_recommended_action_reason"):
+            lines.append(f"  next_recommended_action_reason: {row.get('next_recommended_action_reason')}")
         if row.get("tier_id") == "smallest_multi_zone":
             lines.append(f"  compact_manifest_bytes: {row.get('compact_manifest_bytes')}")
             lines.append(f"  compact_reducer_sidecars: {row.get('compact_reducer_sidecars')}")

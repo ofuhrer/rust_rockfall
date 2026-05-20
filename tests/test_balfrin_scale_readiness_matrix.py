@@ -23,8 +23,9 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
-        self.assertEqual(report["next_evidence_field"], "repair_two_zone_submit_contract_or_regenerate_package")
+        self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
         self.assertIn("TB-332 failed closed before sbatch", report["summary"])
+        self.assertIn("four-zone hazard branch stays deferred", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
@@ -38,22 +39,23 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertTrue(report["live_run_authorization_status"]["standing_postproc_clearance_active"])
         self.assertEqual(
             report["live_run_authorization_status"]["recommended_next_action"],
-            "repair_two_zone_submit_contract_or_regenerate_package",
+            "defer_eight_zone_probe_until_measured_hazard_execution",
         )
         self.assertEqual(
             report["next_recommended_scaling_task"],
-            "repair_two_zone_submit_contract_or_regenerate_package",
+            "defer_eight_zone_probe_until_measured_hazard_execution",
         )
         self.assertEqual(
             [item["action_id"] for item in report["next_backlog_recommendations"]],
             [
+                "defer_eight_zone_probe_until_measured_hazard_execution",
+                "optimize_only_from_new_measured_bottleneck",
                 "repair_two_zone_submit_contract_or_regenerate_package",
                 "stage_real_public_context_for_user_aoi",
-                "optimize_only_from_new_measured_bottleneck",
                 "defer_physical_frequency_and_operational_claims",
             ],
         )
-        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "execution_unblock")
+        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "evidence_deferral")
         self.assertEqual(
             report["evidence_label_order"],
             [
@@ -149,9 +151,15 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["four_zone_hazard_probe"]["authorization_status"], "blocked_missing_inputs")
         self.assertEqual(tiers["four_zone_hazard_probe"]["balfrin_access_status"], "ready_for_read_only_collection")
         self.assertEqual(tiers["four_zone_hazard_probe"]["output_budget_status"], "accepted")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["output_pressure_status"], "accepted")
         self.assertEqual(tiers["four_zone_hazard_probe"]["submit_contract_status"], "ready")
         self.assertEqual(tiers["four_zone_hazard_probe"]["reducer_budget_status"], "ready")
         self.assertEqual(tiers["four_zone_hazard_probe"]["output_profile_status"], "ready")
+        self.assertEqual(
+            tiers["four_zone_hazard_probe"]["next_recommended_action"],
+            "defer_eight_zone_probe_until_measured_hazard_execution",
+        )
+        self.assertIn("deferred", tiers["four_zone_hazard_probe"]["next_recommended_action_reason"])
         self.assertIn("checksum does not match", tiers["four_zone_hazard_probe"]["blocker"])
         self.assertEqual(
             tiers["four_zone_hazard_probe"]["next_evidence_field"],
@@ -209,6 +217,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("smallest_multi_zone", text)
         self.assertIn("postproc_microbenchmark", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
+        self.assertIn("next_recommended_action: defer_eight_zone_probe_until_measured_hazard_execution", text)
         self.assertIn("manifest_size_bytes", text)
         self.assertIn("projected_larger_aoi", text)
 

@@ -324,3 +324,18 @@ Remote generate-only proof from `/users/olifu/work/rust_rockfall` wrote
 `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb322_generate_only_20260520T000000Z`
 without calling `sbatch`. This is pre-submit readiness only, not measured
 multi-zone Balfrin hazard evidence.
+
+## TB-333 Four-Zone Hazard Outcome Integration
+
+TB-333 keeps the four-zone postproc evidence and the four-zone hazard branch
+separate. TB-312 remains the measured Balfrin `postproc` record, while TB-332
+failed closed before `sbatch` because the authorization checksum no longer
+matched the reviewed handoff package. That means the four-zone hazard branch
+still has accepted output pressure but no measured hazard execution, so it
+does not support an eight-zone probe or a hazard-builder optimization claim.
+
+The updated decision surface therefore defers larger hazard work until a
+measured hazard branch exists. The local scratch ladder still first blocks at
+8 zones on `accumulation_seconds`, but that local breakpoint is separate from
+the blocked Balfrin hazard branch and should not be read as live hazard
+execution evidence.
