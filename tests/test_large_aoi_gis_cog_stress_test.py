@@ -4,12 +4,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from scripts import summarize_large_aoi_gis_cog_stress_test as stress
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 class LargeAoiGisCogStressTestTests(unittest.TestCase):
@@ -17,9 +13,13 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             artifact_root = work / "target_gate_v1"
+            packaged_root = work / "target_gate_v1_package_stress"
             converted_root = work / "target_gate_v1_cog_stress_test"
             self._write_package(artifact_root, artifact_id="validation_large_aoi_target_gate_v1", cloud_optimized=False)
-            clock_values = iter([10.0, 10.5])
+            clock_values = iter([10.0, 10.5, 11.0, 11.5])
+
+            def fake_package(input_root: Path, output_root: Path):
+                return self._fake_package(input_root, output_root, cloud_optimized=False)
 
             def fake_conversion(input_root: Path, output_root: Path):
                 self._write_converted_package(input_root, output_root)
@@ -36,19 +36,27 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
 
             report = stress.build_report(
                 artifact_root=artifact_root,
+                packaged_package_root=packaged_root,
                 converted_package_root=converted_root,
                 raster_metadata_provider=self._fake_cog_metadata,
+                package_runner=fake_package,
                 conversion_runner=fake_conversion,
                 clock=lambda: next(clock_values),
             )
 
         self.assertEqual(report["stress_test_status"], "ready")
+        self.assertEqual(report["package_generation_status"], "cog_blocked")
+        self.assertEqual(report["package_size_classification"]["status"], "cog_blocked")
         self.assertEqual(report["standard_package_readiness_status"], "gis_package_ready_cog_blocked")
         self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready_with_scope_delta")
         self.assertEqual(report["raster_count"], 3)
         self.assertEqual(report["converted_raster_count"], 2)
+        self.assertEqual(report["vector_count"], 2)
         self.assertEqual(report["package_runtime_seconds"], 12.5)
+        self.assertEqual(report["package_generation_seconds"], 0.5)
         self.assertEqual(report["cog_conversion_seconds"], 0.5)
+        self.assertGreater(report["package_file_count"], 0)
+        self.assertGreater(report["qa_review_html_size_bytes"], 0)
         self.assertGreater(report["manifest_size_bytes"], 0)
         self.assertGreater(report["converted_manifest_size_bytes"], 0)
         self.assertEqual(report["layer_parity"]["status"], "scope_reduced")
@@ -60,8 +68,11 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         self.assertEqual(report["converted_package"]["readiness_status"], "cog_package_ready_with_scope_delta")
         self.assertTrue(report["conversion"]["all_declared_geotiffs_cog_ready"])
         self.assertEqual(report["conversion"]["status"], "cog_package_ready")
+        self.assertEqual(report["claim_boundaries"], stress.claim_boundaries())
         json.dumps(report, sort_keys=True)
         text = stress.render_text_report(report)
+        self.assertIn("package_generation_status: cog_blocked", text)
+        self.assertIn("package_size_classification:", text)
         self.assertIn("standard_package_readiness_status: gis_package_ready_cog_blocked", text)
         self.assertIn("converted_package_readiness_status: cog_package_ready_with_scope_delta", text)
         self.assertIn("missing_layer_summary", text)
@@ -70,29 +81,52 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
             artifact_root = work / "missing_target_gate_v1"
+            packaged_root = work / "missing_target_gate_v1_package_stress"
             converted_root = work / "target_gate_v1_cog_stress_test"
-            called = {"value": False}
+            called = {"package": False, "conversion": False}
+
+            def fake_package(input_root: Path, output_root: Path):
+                called["package"] = True
+                return {
+                    "status": "blocked_missing_inputs",
+                    "input_root": str(input_root),
+                    "output_root": str(output_root),
+                    "package_file_count": 0,
+                    "package_byte_count": 0,
+                    "vector_overlays": [],
+                    "review_surface_paths": {},
+                    "review_surface_status": "blocked_missing_map_package",
+                    "review_surface_first_blocker": {"code": "missing_map_package"},
+                    "review_surface_next_recommended_command": {"command": "noop"},
+                    "claim_boundary": stress.claim_boundaries(),
+                }
 
             def fake_conversion(input_root: Path, output_root: Path):
-                called["value"] = True
+                called["conversion"] = True
                 raise AssertionError("conversion should not run when the standard root is missing")
 
             report = stress.build_report(
                 artifact_root=artifact_root,
+                packaged_package_root=packaged_root,
                 converted_package_root=converted_root,
                 raster_metadata_provider=self._fake_cog_metadata,
+                package_runner=fake_package,
                 conversion_runner=fake_conversion,
                 clock=lambda: 1.0,
             )
 
-        self.assertFalse(called["value"])
+        self.assertTrue(called["package"])
+        self.assertFalse(called["conversion"])
         self.assertEqual(report["stress_test_status"], "blocked_missing_inputs")
         self.assertEqual(report["converted_package_readiness_status"], "not_run")
+        self.assertEqual(report["package_generation_status"], "blocked_missing_inputs")
+        self.assertEqual(report["package_size_classification"]["status"], "no_go")
         self.assertEqual(report["first_gis_packaging_bottleneck"]["name"], "blocked_missing_inputs")
         self.assertEqual(report["first_gis_packaging_bottleneck"]["missing_inputs"], [str(artifact_root)])
         self.assertEqual(report["conversion"]["status"], "not_run")
         self.assertEqual(report["layer_parity"]["status"], "blocked_missing_inputs")
         self.assertEqual(report["missing_layer_summary"]["status"], "blocked_missing_inputs")
+        self.assertIsNone(report["qa_review_html_size_bytes"])
         text = stress.render_text_report(report)
         self.assertIn("blocked_missing_inputs", text)
         self.assertIn(str(artifact_root), text)
@@ -273,6 +307,93 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         pilot_manifest["conversion_provenance"] = dict(map_manifest["conversion_provenance"])
         map_manifest_path.write_text(json.dumps(map_manifest, indent=2, sort_keys=True), encoding="utf-8")
         pilot_manifest_path.write_text(json.dumps(pilot_manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+    def _fake_package(self, input_root: Path, output_root: Path, *, cloud_optimized: bool) -> dict[str, object]:
+        if output_root.exists():
+            for path in sorted(output_root.rglob("*"), reverse=True):
+                if path.is_file():
+                    path.unlink()
+                elif path.is_dir():
+                    path.rmdir()
+        output_root.mkdir(parents=True, exist_ok=True)
+        if not input_root.exists():
+            return {
+                "status": "blocked_missing_inputs",
+                "input_root": str(input_root),
+                "output_root": str(output_root),
+                "package_file_count": 0,
+                "package_byte_count": 0,
+                "vector_overlays": [],
+                "review_surface_paths": {},
+                "review_surface_status": "blocked_missing_map_package",
+                "review_surface_first_blocker": {"code": "missing_map_package"},
+                "review_surface_next_recommended_command": {"command": "noop"},
+                "claim_boundary": stress.claim_boundaries(),
+            }
+        for path in input_root.iterdir():
+            if path.is_file():
+                (output_root / path.name).write_bytes(path.read_bytes())
+
+        map_manifest_path = next(output_root.glob("*_map_package_manifest.json"))
+        pilot_manifest_path = next(output_root.glob("*_pilot_gis_package_manifest.json"))
+        map_manifest = json.loads(map_manifest_path.read_text(encoding="utf-8"))
+        pilot_manifest = json.loads(pilot_manifest_path.read_text(encoding="utf-8"))
+        for entry in map_manifest["raster_outputs"]:
+            entry["path"] = str(output_root / Path(entry["path"]).name)
+            entry["cloud_optimized"] = cloud_optimized
+        for entry in pilot_manifest["raster_outputs"]:
+            entry["path"] = str(output_root / Path(entry["path"]).name)
+            entry["cloud_optimized"] = cloud_optimized
+        map_manifest["hazard_manifest_paths"] = [str(output_root / Path(path).name) for path in map_manifest["hazard_manifest_paths"]]
+        pilot_manifest["hazard_manifest_paths"] = list(map_manifest["hazard_manifest_paths"])
+        map_manifest["source_zone_metadata_path"] = str(output_root / Path(map_manifest["source_zone_metadata_path"]).name)
+        map_manifest["scenario_table_path"] = str(output_root / Path(map_manifest["scenario_table_path"]).name)
+        pilot_manifest["terrain"]["path"] = str(output_root / Path(pilot_manifest["terrain"]["path"]).name)
+        pilot_manifest["terrain"]["metadata_path"] = str(output_root / Path(pilot_manifest["terrain"]["metadata_path"]).name)
+        pilot_manifest["terrain_metadata"]["path"] = str(output_root / Path(pilot_manifest["terrain_metadata"]["path"]).name)
+        map_manifest_path.write_text(json.dumps(map_manifest, indent=2, sort_keys=True), encoding="utf-8")
+        pilot_manifest_path.write_text(json.dumps(pilot_manifest, indent=2, sort_keys=True), encoding="utf-8")
+
+        html_path = output_root / "index.html"
+        manifest_path = output_root / "aoi_map_qa_review_manifest.json"
+        html_path.write_text("<!doctype html><title>QA</title><p>diagnostic review only</p>\n", encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "aoi_map_qa_review_v1",
+                    "status": "review_ready_with_warnings",
+                    "first_blocker": {"code": "missing_context_layers"},
+                    "next_recommended_command": {
+                        "command": "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json"
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        file_count = len([path for path in output_root.rglob("*") if path.is_file()])
+        byte_count = sum(path.stat().st_size for path in output_root.rglob("*") if path.is_file())
+        vector_overlays = [
+            {"kind": "vector_overlay", "overlay_role": "source_zone_release_geometry"},
+            {"kind": "vector_overlay", "overlay_role": "scenario_table"},
+        ]
+        return {
+            "status": "cog_blocked" if not cloud_optimized else "map_package_ready",
+            "input_root": str(input_root),
+            "output_root": str(output_root),
+            "package_file_count": file_count,
+            "package_byte_count": byte_count,
+            "vector_overlays": vector_overlays,
+            "review_surface_status": "review_ready_with_warnings",
+            "review_surface_paths": {"manifest": str(manifest_path), "html": str(html_path), "entrypoint": str(html_path)},
+            "review_surface_first_blocker": {"code": "missing_context_layers"},
+            "review_surface_next_recommended_command": {
+                "command": "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json"
+            },
+            "claim_boundary": stress.claim_boundaries(),
+        }
 
     def _fake_cog_metadata(self, path: Path) -> dict[str, object]:
         return {

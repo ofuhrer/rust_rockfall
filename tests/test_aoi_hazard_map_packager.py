@@ -40,6 +40,15 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
             self.assertEqual(manifest["review_surface_first_blocker"]["code"], "missing_context_layers")
             self.assertIn("inspect_tschamut_public_context_layers.py", manifest["review_surface_next_recommended_command"]["command"])
             self.assertEqual(manifest["review_surface_paths"]["entrypoint"], str(output_root / "index.html"))
+            self.assertEqual(
+                manifest["claim_boundary"]["current_allowed_product_labels"],
+                [
+                    "unweighted_diagnostic",
+                    "sampling_weighted_conditional",
+                    "conditional_intensity_exceedance",
+                ],
+            )
+            self.assertIn("risk_map", manifest["claim_boundary"]["deferred_or_unsupported_labels"])
             self.assertEqual(len(manifest["raster_outputs"]), len(report["raster_outputs"]))
             self.assertEqual(len(manifest["layer_inventory"]), len(report["inventory"]))
             self.assertTrue(all(entry["cloud_optimized"] for entry in manifest["raster_outputs"]))

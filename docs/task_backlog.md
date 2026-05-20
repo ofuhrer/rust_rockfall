@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-337: Large-AOI GIS And COG Packaging Stress Test
-
-Goal: Stress-test GIS package generation, QA-review HTML, manifest size, and COG conversion behavior on a realistically large AOI package shape.
-
-Capability gap reduced: A Balfrin feasibility demonstration must show that hazard outputs can become usable diagnostic map packages at larger AOI sizes.
-
-Why this outranks alternatives: GIS packaging is secondary to execution, but it can still become the first user-facing bottleneck once multi-zone runs succeed.
-
-Inspect first:
-
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/pilot_gis_package.md`
-- `tests/test_large_aoi_gis_cog_stress_test.py`
-- `tests/test_aoi_hazard_map_packager.py`
-
-Deliverables:
-
-- Large-AOI package stress report with raster/vector counts, COG timing, manifest bytes, QA HTML size, file count, and first blocker.
-- Explicit classification of ready, COG-blocked, or no-go package sizes.
-- Tests for deterministic stress outputs and claim-boundary labels.
-
-Definition of done:
-
-- The repo can project GIS/COG package practicality for the next multi-zone Balfrin demonstration size.
-
-Boundaries: Packaging stress only; no hazard-value changes, no live Balfrin submission, no operational claim, no annual/physical/risk semantics.
-
 ### TB-338: Swiss-Scale Feasibility Projection From Measured Evidence
 
 Goal: Produce a measured-evidence-based projection for 10, 100, regional, and Swiss-scale AOI workflows using current release-zone, scenario, runtime, reducer, and GIS evidence.

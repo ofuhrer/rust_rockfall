@@ -3492,3 +3492,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: output/reducer policy only; no trajectory physics changes, no live Balfrin job, no operational or scale-up claim, and no distributed execution claim.
 - Next task: `TB-337`
+
+### TB-337: Large-AOI GIS And COG Packaging Stress Test
+
+- Date: 2026-05-20
+- Commit: `pending`
+- Objective: add deterministic large-AOI packaging stress reporting with scratch AOI package generation, QA HTML sizing, manifest/file counts, and ready/COG-blocked/no-go classification.
+- Files changed: `scripts/summarize_large_aoi_gis_cog_stress_test.py`, `tests/test_large_aoi_gis_cog_stress_test.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the stress helper so it stages a scratch AOI package first, measures the QA-review HTML and manifest sizes, counts package files and vectors, and then projects COG conversion behavior from that packaged root.
+  - Added deterministic test doubles for package generation and conversion so the stress report and claim-boundary labels stay stable without needing live GDAL or generated artifact commits.
+  - Tightened the AOI packager test to assert the non-operational claim-boundary labels that must stay visible in the package manifest.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_aoi_gis_cog_stress_test tests.test_aoi_hazard_map_packager`
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --packaged-package-root /tmp/rust-rockfall-large-aoi-gis-cog-stress-test/package --converted-package-root /tmp/rust-rockfall-large-aoi-gis-cog-stress-test/converted --format json --json-output /tmp/tb337_report.json --text-output /tmp/tb337_report.txt`
+- Result/status: implemented_blocked_report
+- Boundaries: packaging stress only; no hazard-value changes, no live Balfrin submission, no operational claim, and no annual/physical/risk semantics.
+- Next task: `TB-338`
