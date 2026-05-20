@@ -3346,3 +3346,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: handoff generation and local tests only; no live Balfrin submission, no second-site ensemble execution, no physical-frequency semantics, and no operational claim.
 - Next task: `TB-330`
+
+### TB-330: User AOI Local Multi-Zone Smoke Demonstration
+
+- Date: 2026-05-20
+- Commit: `149d9fb`
+- Objective: demonstrate a bounded local multi-zone AOI smoke path that preserves reduced-output packaging and QA review on ignored scratch roots.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added measured runtime, package file-count/byte-count, and QA-review entrypoint fields to the prepared-pilot local execution report so the local smoke path surfaces the requested bounded metrics directly.
+  - Added a focused regression that freezes a two-candidate reviewed package into local scratch outputs, runs the prepared-pilot local execution path against the bounded smoke case, and verifies the package and QA review outputs on `/tmp`.
+  - Kept the multi-zone proof explicit through the freezer-generated two-candidate evidence while leaving the hazard and review outputs bounded, local, and non-operational.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_uses_two_candidate_freezer_inputs_and_reports_metrics`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_writes_validation_hazard_package_and_review`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: local bounded smoke only; no live Balfrin submission, no Swiss-wide claim, no operational claim, and no annual/physical/risk semantics.
+- Next task: `TB-331`
