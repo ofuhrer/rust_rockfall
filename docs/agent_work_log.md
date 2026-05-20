@@ -4826,3 +4826,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: bounded workflow-test cleanup only; no broad test rewrite, no generated artifacts, no CI-only workaround, and no Balfrin operational or scale-up claim.
 - Next task: `TB-398`
+
+### TB-398: Make AOI Workflow Front Door Self-Explaining
+
+- Date: 2026-05-21
+- Commit: `96f0dbd`
+- Objective: surface the current AOI workflow status, first blocker, next command, required inputs, generated outputs, and claim boundaries in one compact front-door summary.
+- Files changed: `README.md`, `docs/agent_work_log.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`
+- Implementation summary:
+  - Collapsed the AOI status and workflow text renderers into compact single-line summaries so the front door now shows `workflow_status`, `first_blocker`, `next_command`, required inputs, generated outputs, and claim boundaries without nested helper dumps.
+  - Added a stable parser help epilog with the simplest bounds-to-review workflow example and aligned the public geodata preparation walkthrough with the same text-mode path.
+  - Updated focused unit coverage to assert the copy-pasteable text summary stays short, includes the next command, and exposes the help example.
+  - Removed TB-398 from the active backlog before recording this closure note.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_renders_concise_text_and_json_for_ready_report`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_main_renders_compact_text_summary_for_copy_paste`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_help_includes_the_simple_bounds_to_review_example`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_command_bootstraps_bounds_and_reports_the_first_blocker`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new front-door script, no hidden blocked states, no Balfrin execution, and no operational claim upgrade.
+- Next task: `TB-399`
