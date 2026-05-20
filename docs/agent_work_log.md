@@ -3783,3 +3783,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no scheduler submission, no job id, no live hazard execution, no measured multi-zone Balfrin evidence, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-353`
+
+### TB-353: Integrate Measured Multi-Zone Hazard Evidence
+
+- Date: 2026-05-20
+- Commit: `656e1ef`
+- Objective: thread the canonical smallest multi-zone TB-352 outcome through the scale readiness matrix, evidence bundle, management package, and Swiss-scale projection surfaces without authorizing a new Balfrin run.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted TB-352 as the canonical smallest multi-zone evidence branch in the evidence bundle, with a separate partial classifier so measured, failed-closed, and partial states stay distinct.
+  - Updated the scale-readiness matrix next-action ranking and label taxonomy so the latest fail-closed multi-zone branch defers larger work without being conflated with measured evidence.
+  - Threaded the canonical multi-zone status through the management package readiness matrix and failed-closed/projection sections, and updated the Swiss-scale projection note to treat TB-352 as fail-closed rather than measured support.
+  - Added focused regressions for the TB-352 default branch, the legacy explicit failed-closed branch, and the new partial classifier.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_management_demo_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no new Balfrin job, no scheduler submission, no operational or scale-up claim, and no physical-probability, annual-frequency, risk, exposure, vulnerability, or distributed-execution claim.
+- Next task: `TB-354`
