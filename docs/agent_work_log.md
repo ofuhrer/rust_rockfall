@@ -3513,13 +3513,13 @@ scan thousands of lines of completed history.
 ### TB-338: Swiss-Scale Feasibility Projection From Measured Evidence
 
 - Date: 2026-05-20
-- Commit: `pending`
+- Commit: `b96800f`
 - Objective: synthesize the current measured runtime, reducer, manifest, and GIS evidence into a bounded Swiss-scale feasibility projection for 10, 100, regional, and Swiss-wide AOI workflows.
-- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/agent_work_log.md`
 - Implementation summary:
   - Added a management-facing projection report that separates measured evidence, extrapolated assumptions, no-go thresholds, and unknowns while keeping the current single-node/postproc boundary explicit.
   - Collated the current Swiss-wide envelope, 10-zone output calibration cross-check, and GIS/COG stress evidence into one bounded recommendation: 10-zone feasible, 100-zone conditional/deferred, regional and Swiss-wide out of reach.
-  - Removed TB-338 from the active backlog and added a docs index entry so the projection surface is discoverable alongside the existing scale-review helpers.
+  - Finalized the work-log record and clarified the docs index entry so the projection surface stays discoverable alongside the existing scale-review helpers.
 - Checks run:
   - `PYENV_VERSION=system uv run python scripts/estimate_large_scale_execution.py --format json --release-zone-count 10 --trajectory-count 6 --grid-rows 304 --grid-cols 300 --trajectory-workers 2 --reducer-workers 2 --profile scalable_conditional --export-geotiff`
   - `PYENV_VERSION=system uv run python - <<'PY' ... scripts.estimate_swiss_wide_execution_envelope.build_report_from_available_evidence(...) ... PY`
