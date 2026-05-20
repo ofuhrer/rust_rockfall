@@ -4522,3 +4522,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_diagnostic
 - Boundaries: no threshold tuning, no accepted release-zone claim, no scenario generation, no hazard execution, no Balfrin submission, and no operational or scale-up claim.
 - Next task: `TB-384`
+
+### TB-384: Unblock Management AOI Release-Candidate Screening
+
+- Date: 2026-05-20
+- Commit: `c6fe5e3`
+- Objective: replace the generic zero-screenable-cell blocker with a deterministic deferral record that names the real upstream AOI/crop/source-zone replacement required before candidate screening can resume.
+- Files changed: `scripts/diagnose_release_candidate_zero_result.py`, `tests/test_release_candidate_zero_result_diagnostic.py`, `docs/decision_log.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the zero-result diagnostic with a structured deferral record that separates missing-input, crop-size/AOI-extent, footprint-overlap, and slope-band cases instead of leaving the result at a generic `no_screenable_cells` label.
+  - Ran the diagnostic on the committed real management-AOI inputs and recorded the current blocker as `source_zone_footprint_overlap`: the 4x4 crop has four valid interior cells, all four fall inside the frozen source-zone footprint, and slope screening is not reached.
+  - Added a durable deferral decision and removed TB-384 from the active backlog so downstream tasks can rely on one named upstream replacement rather than the stale zero-candidate blocker.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_candidate_zero_result_diagnostic -v`
+  - `PYENV_VERSION=system uv run python scripts/diagnose_release_candidate_zero_result.py --format json --json-output /tmp/tb384_diagnostic.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no threshold tuning, no candidate or scenario generation, no hazard run, no Balfrin submission, no operational claim, and no scale-up claim.
+- Next task: `TB-385`
