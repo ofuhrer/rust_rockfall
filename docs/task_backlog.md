@@ -40,32 +40,34 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 ## Active Tasks
 
 
-### TB-367: Integrate Repaired Two-Zone Balfrin Hazard Evidence
+### TB-367: Repair Two-Zone Submit Contract And Rerun Balfrin Hazard Path
 
-Goal: Collect, classify, and thread the post-TB-365/TB-366 two-zone outcome through the scale matrix, management package, projection, and maturity snapshot.
+Goal: Repair the live two-zone submit path so it executes the smallest multi-zone command contract, preserves the expected run-root output layout, and reruns the bounded `postproc` job only after gates pass.
 
-Capability gap reduced: Prevents the next two-zone outcome from remaining an isolated scratch or fail-closed artifact.
+Capability gap reduced: TB-366 proved the pre-submit package can pass but the actual submission still ran the legacy gate manifest/output path, leaving no preserved measured two-zone hazard evidence.
 
-Why this outranks alternatives: Measured evidence only changes feasibility once it is collected, budgeted, classified, and surfaced consistently.
+Why this outranks alternatives: Integration, throughput profiling, bottleneck reduction, and four-zone execution all depend on a preserved measured two-zone run root, not a completed legacy-gate job.
 
 Inspect first:
 
+- `docs/balfrin_two_zone_hazard_run_tb366.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
 - `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
+- `scripts/summarize_balfrin_probe_preservation_gate.py`
+- `tests/test_balfrin_probe_preservation_gate.py`
 
 Deliverables:
 
-- Updated measured/failed-closed classification for the repaired two-zone branch.
-- Runtime, memory, validation/hazard bytes, file counts, reducer pressure, GIS status, and claim boundaries reflected in canonical docs/helpers when a run exists.
+- Submit-path repair so the live run uses the compact/reduced two-zone command controls, including `--conditional-curve-export summary-only`, `--grid-csv-export none`, and the expected run-root output/preservation layout.
+- Regression or dry-run proof that the generated `probe.sbatch` and `command_plan.json` preserve those controls and output-root expectations before submission.
+- One gated live rerun on Balfrin `postproc` if the repaired pre-submit checks pass, or a fail-closed report naming the remaining submit/preservation blocker.
 
 Definition of done:
 
-- The repaired two-zone branch is deterministically classified as measured, failed-closed, or blocked, and no stale projection surface contradicts that classification.
+- Either the rerun produces a completed preserved two-zone run root that passes the preservation gate, or the repository records a specific persistent blocker that is not the legacy gate-manifest/output contract from TB-366.
 
-Boundaries: Collection/synthesis only; no new run, no operational claim, no scale-up authorization.
+Boundaries: GPT-5.5 worker only for live Balfrin work; `postproc` only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
 
 ### TB-368: Measure Repaired Two-Zone Hazard Throughput Bottlenecks
 
