@@ -53,6 +53,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(second.release_zone_count, 12)
             self.assertEqual(first_report, second_report)
             self.assertEqual(first_report["probe_status"], "measured_scratch_root")
+            self.assertEqual(first_report["manifest_mode"], "full")
             self.assertEqual(first_report["release_zone_count"], 12)
             self.assertEqual(first_report["trajectory_chunk_count"], 12)
             self.assertEqual(first_report["reducer_chunk_count"], 2)
@@ -80,6 +81,23 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             )
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
+
+    def test_manifest_pressure_ladder_recommends_compact_mode(self) -> None:
+        report = MODULE.build_manifest_pressure_ladder_report(release_zone_counts=(2, 4, 8, 12))
+
+        self.assertEqual(report["schema_version"], "multi_zone_reducer_manifest_pressure_ladder_v1")
+        self.assertEqual(report["ladder_status"], "measured_scratch_root")
+        self.assertEqual(report["release_zone_counts"], [2, 4, 8, 12])
+        self.assertEqual(report["recommended_default_manifest_mode"], "compact")
+        self.assertEqual(len(report["rungs"]), 4)
+        first_rung = report["rungs"][0]
+        self.assertLess(first_rung["manifest_mode_delta"]["manifest_size_bytes_delta"], 0)
+        self.assertLess(first_rung["output_family_delta"]["output_family_file_count_delta"]["reducer_chunk_manifest"], 0)
+        self.assertEqual(first_rung["profiles"]["full_full"]["manifest_mode"], "full")
+        self.assertEqual(first_rung["profiles"]["compact_full"]["manifest_mode"], "compact")
+        self.assertEqual(first_rung["profiles"]["compact_reduced"]["manifest_mode"], "compact")
+        self.assertIn("--measure-manifest-pressure-ladder", report["measurement_command"])
+        self.assertIn("compact", report["summary"])
 
     def test_cli_materialize_root_uses_requested_release_zone_count(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

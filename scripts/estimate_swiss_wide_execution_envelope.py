@@ -47,6 +47,10 @@ MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
     "balfrin_single_job_sufficiency": "PYENV_VERSION=system uv run python scripts/summarize_balfrin_single_job_execution.py",
     "bounded_next_ensemble_feasibility_probe": "PYENV_VERSION=system uv run python scripts/summarize_bounded_next_ensemble_feasibility_probe.py --format json",
+    "multi_zone_manifest_pressure_ladder": (
+        "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
+        "--measure-manifest-pressure-ladder --format json"
+    ),
     "balfrin_probe_metrics_report": (
         "PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py "
         "--run-root /scratch/mch/olifu/rust_rockfall/probes/"
@@ -74,6 +78,10 @@ def _load_module(module_name: str, filename: str):
 RUNTIME_SCALING = _load_module("swiss_wide_envelope_runtime_scaling", "summarize_bounded_reducer_runtime_scaling.py")
 SINGLE_JOB = _load_module("swiss_wide_envelope_single_job", "summarize_balfrin_single_job_execution.py")
 FEASIBILITY = _load_module("swiss_wide_envelope_feasibility", "summarize_bounded_next_ensemble_feasibility_probe.py")
+MANIFEST_PRESSURE = _load_module(
+    "swiss_wide_envelope_manifest_pressure",
+    "summarize_multi_zone_reducer_pressure.py",
+)
 TARGET_AREA_PROBE = _load_module("swiss_wide_envelope_target_area_probe", "summarize_balfrin_probe_metrics_report.py")
 EVIDENCE_BUNDLE = _load_module("swiss_wide_envelope_evidence_bundle", "summarize_balfrin_evidence_bundle.py")
 SCENARIO_GENERATOR = _load_module(
@@ -113,6 +121,7 @@ class MeasuredCoefficients:
     memory_peak_mb_high: float
     measurement_notes: tuple[str, ...]
     bounded_probe_recommendation_status: str | None
+    multi_zone_manifest_pressure_ladder: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -209,6 +218,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
     runtime_report = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
     single_job_summary = SINGLE_JOB.build_summary()
     feasibility_report = FEASIBILITY.build_report()
+    manifest_pressure_ladder = MANIFEST_PRESSURE.build_manifest_pressure_ladder_report()
     wall_time_evidence = dict(single_job_summary.get("wall_time_evidence") or {})
     memory_evidence = dict(single_job_summary.get("memory_evidence") or {})
     output_size_evidence = dict(single_job_summary.get("output_size_evidence") or {})
@@ -239,6 +249,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         "storage coefficients are anchored to the measured reduced-output, summary-only, and current-gap output summaries",
         "memory frontier is anchored to the measured Balfrin current-gap peak and reproduction validation / hazard memory sidecars",
         "job-count capacity is anchored to the measured 10-release-zone by 6-trajectory pilot footprint",
+        "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
     )
 
     return MeasuredCoefficients(
@@ -304,6 +315,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         ),
         measurement_notes=measurement_notes,
         bounded_probe_recommendation_status=feasibility_report.get("bounded_probe_recommendation_status"),
+        multi_zone_manifest_pressure_ladder=manifest_pressure_ladder,
     )
 
 
@@ -866,6 +878,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "source_commands": MEASURED_SOURCE_COMMANDS,
             "measurement_notes": list(coefficients.measurement_notes),
             "bounded_probe_recommendation_status": coefficients.bounded_probe_recommendation_status,
+            "multi_zone_manifest_pressure_ladder": coefficients.multi_zone_manifest_pressure_ladder,
             "canonical_bundle_status": canonical_bundle_report.get("bundle_status"),
             "canonical_bundle_summary": canonical_bundle_report.get("bundle_summary", {}),
             "multi_zone_scaling_frontier": multi_zone_scaling_frontier,
@@ -1016,6 +1029,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
                 "measured Balfrin evidence was unavailable, so the frontier cannot be projected",
             ],
             "bounded_probe_recommendation_status": None,
+            "multi_zone_manifest_pressure_ladder": None,
             "canonical_bundle_status": "blocked_missing_inputs",
             "canonical_bundle_summary": {},
             "multi_zone_scaling_frontier": {

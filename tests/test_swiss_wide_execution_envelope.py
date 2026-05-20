@@ -47,6 +47,38 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             bounded_probe_recommendation_status="deferred_pending_authorization",
         )
 
+    def _coefficients_with_manifest_pressure_ladder(self) -> estimator.MeasuredCoefficients:
+        return estimator.MeasuredCoefficients(
+            measured_aoi_count=1,
+            measured_release_zone_count=10,
+            measured_trajectory_count=6,
+            measured_units_per_job=60,
+            runtime_seconds_per_unit_low=1.0,
+            runtime_seconds_per_unit_nominal=2.0,
+            runtime_seconds_per_unit_high=4.0,
+            storage_bytes_per_unit_low=10.0,
+            storage_bytes_per_unit_nominal=20.0,
+            storage_bytes_per_unit_high=40.0,
+            file_count_per_unit_low=0.5,
+            file_count_per_unit_nominal=1.0,
+            file_count_per_unit_high=2.0,
+            memory_peak_mb_low=3.5,
+            memory_peak_mb_nominal=4.0,
+            memory_peak_mb_high=4.5,
+            measurement_notes=(
+                "runtime coefficients are anchored to the measured same-scale reduced-output and Balfrin single-job summaries",
+                "storage coefficients are anchored to the measured reduced-output, summary-only, and current-gap output summaries",
+                "memory frontier is anchored to the measured Balfrin current-gap peak and reproduction validation / hazard memory sidecars",
+                "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
+            ),
+            bounded_probe_recommendation_status="deferred_pending_authorization",
+            multi_zone_manifest_pressure_ladder={
+                "ladder_status": "measured_scratch_root",
+                "recommended_default_manifest_mode": "compact",
+                "release_zone_counts": [2, 4, 8, 12],
+            },
+        )
+
     def _runtime_scaling_report(self) -> dict[str, object]:
         return {
             "artifacts_measured": [
@@ -227,9 +259,22 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             report["measurement_basis"]["balfrin_demo_run_root"],
             "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v3",
         )
+        self.assertEqual(report["measurement_basis"]["multi_zone_manifest_pressure_ladder"], None)
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["planning_labels"]["no_go"], "no_go_not_triggered")
         self.assertEqual(report["planning_labels"]["allowed_next_probe"], "allowed_next_probe_blocked_failed_closed")
+
+    def test_manifest_pressure_ladder_is_exposed_in_measurement_basis(self) -> None:
+        report = estimator.build_report(
+            estimator.ProjectionInputs(aoi_count=1, release_zone_count=10, trajectory_count=6),
+            coefficients=self._coefficients_with_manifest_pressure_ladder(),
+        )
+
+        self.assertEqual(report["measurement_basis"]["multi_zone_manifest_pressure_ladder"]["ladder_status"], "measured_scratch_root")
+        self.assertEqual(
+            report["measurement_basis"]["multi_zone_manifest_pressure_ladder"]["recommended_default_manifest_mode"],
+            "compact",
+        )
 
     def test_missing_measured_evidence_returns_blocked_report(self) -> None:
         estimator.load_measured_coefficients.cache_clear()

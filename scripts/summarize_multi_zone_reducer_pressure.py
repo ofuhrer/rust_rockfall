@@ -22,6 +22,7 @@ from typing import Any
 
 SCHEMA_VERSION = "multi_zone_reducer_pressure_probe_v1"
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
+DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_manifest_pressure_ladder_v1")
 DEFAULT_RELEASE_ZONE_COUNT = 12
 DEFAULT_REDUCER_WORKERS = 2
 DEFAULT_REDUCER_CHUNK_COUNT = 2
@@ -62,6 +63,9 @@ REPLAY_CRITICAL_OUTPUT_FAMILIES = (
 DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES = (
     "trajectory_chunk_manifest",
     "reducer_chunk_manifest",
+)
+REDUCED_OUTPUT_FAMILY_MIX = tuple(
+    family for family in DEFAULT_OUTPUT_FAMILY_MIX if family not in DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES
 )
 PRIMARY_OUTPUT_FAMILIES = (
     "trajectory_csv",
@@ -104,6 +108,14 @@ class ProbeMaterialization:
     output_manifest_path: Path
 
 
+@dataclass(frozen=True)
+class ManifestPressureProfile:
+    release_zone_count: int
+    manifest_mode: str
+    output_family_mix: tuple[str, ...]
+    report: dict[str, Any]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe-root", type=Path, default=None, help="Existing scratch probe root to summarize.")
@@ -130,24 +142,40 @@ def main(argv: list[str] | None = None) -> int:
         default="full",
         help="Write the output manifest in full or compact replay-preserving form.",
     )
+    parser.add_argument(
+        "--measure-manifest-pressure-ladder",
+        action="store_true",
+        help="Materialize the deterministic 2/4/8/12-zone full-vs-compact manifest-pressure ladder.",
+    )
+    parser.add_argument(
+        "--pressure-ladder-release-zone-counts",
+        default="2,4,8,12",
+        help="Comma-separated release-zone counts to use for the manifest-pressure ladder.",
+    )
     args = parser.parse_args(argv)
 
     probe_root = args.probe_root
     try:
         output_family_mix = normalize_output_family_mix(args.output_family_mix)
-        if args.materialize_root is not None:
-            materialize_probe_root(
-                args.materialize_root,
-                release_zone_count=args.release_zone_count,
-                reducer_worker_count=args.reducer_workers,
-                reducer_chunk_count=args.reducer_chunk_count,
+        if args.measure_manifest_pressure_ladder:
+            report = build_manifest_pressure_ladder_report(
+                release_zone_counts=parse_release_zone_counts(args.pressure_ladder_release_zone_counts),
                 output_family_mix=output_family_mix,
-                manifest_mode=args.manifest_mode,
             )
-            probe_root = args.materialize_root
-        if probe_root is None:
-            probe_root = DEFAULT_PROBE_ROOT
-        report = build_report(probe_root)
+        else:
+            if args.materialize_root is not None:
+                materialize_probe_root(
+                    args.materialize_root,
+                    release_zone_count=args.release_zone_count,
+                    reducer_worker_count=args.reducer_workers,
+                    reducer_chunk_count=args.reducer_chunk_count,
+                    output_family_mix=output_family_mix,
+                    manifest_mode=args.manifest_mode,
+                )
+                probe_root = args.materialize_root
+            if probe_root is None:
+                probe_root = DEFAULT_PROBE_ROOT
+            report = build_report(probe_root)
     except MultiZoneReducerPressureError as exc:
         print(f"multi-zone reducer pressure probe error: {exc}", file=sys.stderr)
         return 2
@@ -163,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(render_text(report))
+    if report.get("ladder_status") == "measured_scratch_root":
+        return 0
     return 0 if report["probe_status"] == "measured_scratch_root" else 2
 
 
@@ -284,6 +314,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     probe_manifest = load_json(probe_manifest_path)
     command_plan = load_json(command_plan_path)
     output_manifest = canonicalize_output_manifest(load_json(output_manifest_path), probe_root)
+    manifest_mode = "compact" if dict(output_manifest.get("manifest_encoding") or {}).get("mode") == "compact_v1" else "full"
 
     release_zones = ensure_list_of_strings(probe_manifest.get("release_zones"), "probe_manifest.release_zones")
     output_family_mix = normalize_output_family_mix(probe_manifest.get("output_family_mix"))
@@ -331,6 +362,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "command_plan_path": str(command_plan_path),
         "probe_manifest_path": str(probe_manifest_path),
         "output_manifest_path": str(output_manifest_path),
+        "manifest_mode": manifest_mode,
         "release_zone_count": len(release_zones),
         "output_family_mix": list(output_family_mix),
         "scenario_count": len(scenario_rows),
@@ -398,6 +430,176 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         ),
     }
     return report
+
+
+def build_manifest_pressure_ladder_report(
+    *,
+    release_zone_counts: tuple[int, ...] = (2, 4, 8, 12),
+    reducer_worker_count: int = DEFAULT_REDUCER_WORKERS,
+    reducer_chunk_count: int = DEFAULT_REDUCER_CHUNK_COUNT,
+    output_family_mix: tuple[str, ...] | str | None = None,
+) -> dict[str, Any]:
+    output_family_mix = normalize_output_family_mix(output_family_mix)
+    reduced_output_family_mix = REDUCED_OUTPUT_FAMILY_MIX
+    ladder_root = DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT.resolve()
+    if ladder_root.exists():
+        shutil.rmtree(ladder_root)
+    ladder_root.mkdir(parents=True, exist_ok=True)
+
+    rung_reports: list[dict[str, Any]] = []
+    for release_zone_count in release_zone_counts:
+        rung_root = ladder_root / f"zones_{release_zone_count:02d}"
+        profiles = {
+            "full_full": materialize_and_measure_profile(
+                rung_root / "full_full",
+                release_zone_count=release_zone_count,
+                reducer_worker_count=reducer_worker_count,
+                reducer_chunk_count=reducer_chunk_count,
+                output_family_mix=output_family_mix,
+                manifest_mode="full",
+            ),
+            "compact_full": materialize_and_measure_profile(
+                rung_root / "compact_full",
+                release_zone_count=release_zone_count,
+                reducer_worker_count=reducer_worker_count,
+                reducer_chunk_count=reducer_chunk_count,
+                output_family_mix=output_family_mix,
+                manifest_mode="compact",
+            ),
+            "full_reduced": materialize_and_measure_profile(
+                rung_root / "full_reduced",
+                release_zone_count=release_zone_count,
+                reducer_worker_count=reducer_worker_count,
+                reducer_chunk_count=reducer_chunk_count,
+                output_family_mix=reduced_output_family_mix,
+                manifest_mode="full",
+            ),
+            "compact_reduced": materialize_and_measure_profile(
+                rung_root / "compact_reduced",
+                release_zone_count=release_zone_count,
+                reducer_worker_count=reducer_worker_count,
+                reducer_chunk_count=reducer_chunk_count,
+                output_family_mix=reduced_output_family_mix,
+                manifest_mode="compact",
+            ),
+        }
+        rung_reports.append(
+            {
+                "release_zone_count": release_zone_count,
+                "profiles": {
+                    name: profile.report for name, profile in profiles.items()
+                },
+                "manifest_mode_delta": compare_pressure_profiles(
+                    candidate=profiles["compact_full"].report,
+                    baseline=profiles["full_full"].report,
+                ),
+                "output_family_delta": compare_pressure_profiles(
+                    candidate=profiles["full_reduced"].report,
+                    baseline=profiles["full_full"].report,
+                ),
+                "combined_delta": compare_pressure_profiles(
+                    candidate=profiles["compact_reduced"].report,
+                    baseline=profiles["full_full"].report,
+                ),
+            }
+        )
+
+    measurement_command = (
+        "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
+        "--measure-manifest-pressure-ladder --format json"
+    )
+    recommended_default_manifest_mode = choose_recommended_manifest_mode(rung_reports)
+    return {
+        "schema_version": "multi_zone_reducer_manifest_pressure_ladder_v1",
+        "ladder_status": "measured_scratch_root",
+        "ladder_root": str(ladder_root),
+        "release_zone_counts": list(release_zone_counts),
+        "output_family_mix": list(output_family_mix),
+        "reduced_output_family_mix": list(reduced_output_family_mix),
+        "recommended_default_manifest_mode": recommended_default_manifest_mode,
+        "rungs": rung_reports,
+        "measurement_command": measurement_command,
+        "summary": summarize_manifest_pressure_ladder(rung_reports, recommended_default_manifest_mode),
+    }
+
+
+def materialize_and_measure_profile(
+    probe_root: Path,
+    *,
+    release_zone_count: int,
+    reducer_worker_count: int,
+    reducer_chunk_count: int,
+    output_family_mix: tuple[str, ...],
+    manifest_mode: str,
+) -> ManifestPressureProfile:
+    materialize_probe_root(
+        probe_root,
+        release_zone_count=release_zone_count,
+        reducer_worker_count=reducer_worker_count,
+        reducer_chunk_count=reducer_chunk_count,
+        output_family_mix=output_family_mix,
+        manifest_mode=manifest_mode,
+    )
+    report = build_report(probe_root)
+    return ManifestPressureProfile(
+        release_zone_count=release_zone_count,
+        manifest_mode=manifest_mode,
+        output_family_mix=output_family_mix,
+        report=report,
+    )
+
+
+def compare_pressure_profiles(*, candidate: dict[str, Any], baseline: dict[str, Any]) -> dict[str, Any]:
+    candidate_family_bytes = dict(candidate.get("output_family_bytes") or {})
+    baseline_family_bytes = dict(baseline.get("output_family_bytes") or {})
+    candidate_family_file_counts = dict(candidate.get("output_family_file_counts") or {})
+    baseline_family_file_counts = dict(baseline.get("output_family_file_counts") or {})
+    families = sorted(set(candidate_family_bytes) | set(baseline_family_bytes) | set(candidate_family_file_counts) | set(baseline_family_file_counts))
+    return {
+        "manifest_size_bytes_delta": number_or_zero(candidate.get("manifest_size_bytes")) - number_or_zero(baseline.get("manifest_size_bytes")),
+        "output_file_count_delta": number_or_zero(candidate.get("output_file_count")) - number_or_zero(baseline.get("output_file_count")),
+        "output_byte_count_delta": number_or_zero(candidate.get("output_byte_count")) - number_or_zero(baseline.get("output_byte_count")),
+        "reducer_manifest_bytes_delta": number_or_zero(candidate.get("reducer_manifest_bytes")) - number_or_zero(baseline.get("reducer_manifest_bytes")),
+        "reducer_manifest_file_count_delta": number_or_zero(candidate.get("reducer_manifest_file_count")) - number_or_zero(baseline.get("reducer_manifest_file_count")),
+        "sidecar_file_count_delta": number_or_zero(candidate.get("sidecar_file_count")) - number_or_zero(baseline.get("sidecar_file_count")),
+        "sidecar_byte_count_delta": number_or_zero(candidate.get("sidecar_byte_count")) - number_or_zero(baseline.get("sidecar_byte_count")),
+        "primary_output_file_count_delta": number_or_zero(candidate.get("primary_output_file_count")) - number_or_zero(baseline.get("primary_output_file_count")),
+        "primary_output_byte_count_delta": number_or_zero(candidate.get("primary_output_byte_count")) - number_or_zero(baseline.get("primary_output_byte_count")),
+        "output_family_file_count_delta": {
+            family: candidate_family_file_counts.get(family, 0) - baseline_family_file_counts.get(family, 0)
+            for family in families
+        },
+        "output_family_byte_delta": {
+            family: candidate_family_bytes.get(family, 0) - baseline_family_bytes.get(family, 0)
+            for family in families
+        },
+    }
+
+
+def choose_recommended_manifest_mode(rung_reports: list[dict[str, Any]]) -> str:
+    compact_improves = False
+    for rung in rung_reports:
+        delta = rung.get("manifest_mode_delta") or {}
+        if number_or_zero(delta.get("manifest_size_bytes_delta")) < 0:
+            compact_improves = True
+            break
+    return "compact" if compact_improves else "full"
+
+
+def summarize_manifest_pressure_ladder(rung_reports: list[dict[str, Any]], recommended_default_manifest_mode: str) -> str:
+    if not rung_reports:
+        return "No manifest-pressure ladder rungs were measured."
+    first = rung_reports[0]
+    last = rung_reports[-1]
+    return (
+        "Measured full-vs-compact manifest pressure across "
+        f"{len(rung_reports)} release-zone rungs; recommended default manifest mode is "
+        f"{recommended_default_manifest_mode}. "
+        f"At {first.get('release_zone_count')} zones, the compact manifest delta is "
+        f"{first.get('manifest_mode_delta', {}).get('manifest_size_bytes_delta')} bytes; "
+        f"at {last.get('release_zone_count')} zones, it is "
+        f"{last.get('manifest_mode_delta', {}).get('manifest_size_bytes_delta')} bytes."
+    )
 
 
 def build_validation_output_inventory(
@@ -1558,6 +1760,22 @@ def normalize_output_family_mix(output_family_mix: Any) -> tuple[str, ...]:
     return tuple(families)
 
 
+def parse_release_zone_counts(raw_value: str) -> tuple[int, ...]:
+    try:
+        counts = tuple(int(value.strip()) for value in raw_value.split(",") if value.strip())
+    except ValueError as exc:
+        raise MultiZoneReducerPressureError("pressure ladder release-zone counts must be integers") from exc
+    if not counts:
+        raise MultiZoneReducerPressureError("pressure ladder release-zone counts must include at least one value")
+    if any(count <= 1 for count in counts):
+        raise MultiZoneReducerPressureError("pressure ladder release-zone counts must be greater than 1")
+    if tuple(sorted(counts)) != counts:
+        raise MultiZoneReducerPressureError("pressure ladder release-zone counts must be in ascending order")
+    if len(set(counts)) != len(counts):
+        raise MultiZoneReducerPressureError("pressure ladder release-zone counts must not contain duplicates")
+    return counts
+
+
 def largest_families(
     output_family_bytes: dict[str, int],
     output_family_file_counts: dict[str, int],
@@ -1646,9 +1864,12 @@ def number_or_zero(value: Any) -> int | float:
 
 
 def render_text(report: dict[str, Any]) -> str:
+    if report.get("ladder_status") == "measured_scratch_root":
+        return render_manifest_pressure_ladder_text(report)
     lines = [
         f"probe_status: {report['probe_status']}",
         f"release_zone_count: {report['release_zone_count']}",
+        f"manifest_mode: {report['manifest_mode']}",
         f"output_family_mix: {report['output_family_mix']}",
         f"scenario_count: {report['scenario_count']}",
         f"trajectory_chunk_count: {report['trajectory_chunk_count']}",
@@ -1692,6 +1913,8 @@ def render_text(report: dict[str, Any]) -> str:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+    if report.get("ladder_status") == "measured_scratch_root":
+        return render_manifest_pressure_ladder_markdown(report)
     inventory = report.get("validation_output_inventory", {})
     return "\n".join(
         [
@@ -1699,6 +1922,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             f"- probe_status: `{report['probe_status']}`",
             f"- release_zone_count: `{report['release_zone_count']}`",
+            f"- manifest_mode: `{report['manifest_mode']}`",
             f"- output_family_mix: `{report['output_family_mix']}`",
             f"- scenario_count: `{report['scenario_count']}`",
             f"- trajectory_chunk_count: `{report['trajectory_chunk_count']}`",
@@ -1742,6 +1966,67 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
         ]
     )
+
+
+def render_manifest_pressure_ladder_text(report: dict[str, Any]) -> str:
+    lines = [
+        "manifest_pressure_ladder_status: measured_scratch_root",
+        f"ladder_root: {report['ladder_root']}",
+        f"release_zone_counts: {report['release_zone_counts']}",
+        f"recommended_default_manifest_mode: {report['recommended_default_manifest_mode']}",
+        f"output_family_mix: {report['output_family_mix']}",
+        f"reduced_output_family_mix: {report['reduced_output_family_mix']}",
+        f"summary: {report['summary']}",
+        "rungs:",
+    ]
+    for rung in report.get("rungs", []):
+        lines.append(f"- release_zone_count: {rung.get('release_zone_count')}")
+        lines.append("  profiles:")
+        for profile_name, profile in rung.get("profiles", {}).items():
+            lines.append(
+                "  - "
+                f"{profile_name}: manifest_mode={profile.get('manifest_mode')} "
+                f"manifest_size_bytes={profile.get('manifest_size_bytes')} "
+                f"output_file_count={profile.get('output_file_count')} "
+                f"sidecar_file_count={profile.get('sidecar_file_count')}"
+            )
+        manifest_delta = rung.get("manifest_mode_delta", {})
+        output_delta = rung.get("output_family_delta", {})
+        combined_delta = rung.get("combined_delta", {})
+        lines.append(f"  manifest_mode_delta: {manifest_delta}")
+        lines.append(f"  output_family_delta: {output_delta}")
+        lines.append(f"  combined_delta: {combined_delta}")
+    return "\n".join(lines)
+
+
+def render_manifest_pressure_ladder_markdown(report: dict[str, Any]) -> str:
+    lines = [
+        "# Multi-Zone Reducer Manifest Pressure Ladder",
+        "",
+        f"- ladder_root: `{report['ladder_root']}`",
+        f"- release_zone_counts: `{report['release_zone_counts']}`",
+        f"- recommended_default_manifest_mode: `{report['recommended_default_manifest_mode']}`",
+        f"- output_family_mix: `{report['output_family_mix']}`",
+        f"- reduced_output_family_mix: `{report['reduced_output_family_mix']}`",
+        f"- summary: {report['summary']}",
+        "",
+        "## Rungs",
+    ]
+    for rung in report.get("rungs", []):
+        lines.append(f"- release_zone_count: `{rung.get('release_zone_count')}`")
+        lines.append("  - profiles:")
+        for profile_name, profile in rung.get("profiles", {}).items():
+            lines.append(
+                "    - "
+                f"`{profile_name}`: manifest_mode=`{profile.get('manifest_mode')}`, "
+                f"manifest_size_bytes=`{profile.get('manifest_size_bytes')}`, "
+                f"output_file_count=`{profile.get('output_file_count')}`, "
+                f"sidecar_file_count=`{profile.get('sidecar_file_count')}`"
+            )
+        lines.append(f"  - manifest_mode_delta: `{rung.get('manifest_mode_delta')}`")
+        lines.append(f"  - output_family_delta: `{rung.get('output_family_delta')}`")
+        lines.append(f"  - combined_delta: `{rung.get('combined_delta')}`")
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

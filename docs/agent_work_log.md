@@ -4734,3 +4734,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no `sbatch`, no Balfrin run root created, no non-`postproc` partition, no MPI/GPU/distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability semantics.
 - Next task: TB-394
+
+### TB-394: Measure Compact Multi-Zone Reducer And Manifest Pressure
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: measure how compact replay-preserving manifests and reduced output families change multi-zone reducer pressure relative to the full scratch probe, then expose that measured reduction to the Swiss-wide envelope projection.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic manifest-pressure ladder helper that materializes 2, 4, 8, and 12-zone scratch probes in full and compact manifest modes, compares the full vs compact profiles, and reports manifest-size, sidecar, output-file, and per-family byte/file deltas.
+  - The ladder report now recommends `compact` as the default multi-zone manifest mode and can be emitted from the CLI with `--measure-manifest-pressure-ladder`; the normal single-probe summary still works unchanged.
+  - Threaded the ladder evidence into `scripts/estimate_swiss_wide_execution_envelope.py` so the measurement basis now carries the compact-vs-full manifest-pressure report and the projection can cite measured reduction instead of only threshold-based reasoning.
+  - Extended regression coverage for the ladder recommendation, the new CLI mode, and the Swiss-wide projection basis.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --measure-manifest-pressure-ladder --format json > /tmp/tb394_manifest_pressure_ladder.json`
+  - `PYENV_VERSION=system uv run python -c "import json; from pathlib import Path; report=json.loads(Path('/tmp/tb394_manifest_pressure_ladder.json').read_text()); print(report['recommended_default_manifest_mode']); print(report['release_zone_counts']); print(report['rungs'][0]['release_zone_count'], report['rungs'][0]['manifest_mode_delta']['manifest_size_bytes_delta'], report['rungs'][0]['combined_delta']['manifest_size_bytes_delta'])"`
+  - `PYENV_VERSION=system uv run python -c "import json; from pathlib import Path; report=json.loads(Path('/tmp/tb394_manifest_pressure_ladder.json').read_text()); print(report['rungs'][-1]['release_zone_count'], report['rungs'][-1]['manifest_mode_delta']['manifest_size_bytes_delta'], report['rungs'][-1]['output_family_delta']['output_family_file_count_delta']['reducer_chunk_manifest'])"`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: scratch/local probe only, no live Balfrin submission, no deletion of replay-critical metadata, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution semantics.
+- Next task: TB-395

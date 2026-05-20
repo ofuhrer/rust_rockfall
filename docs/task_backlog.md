@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-394: Measure Compact Multi-Zone Reducer And Manifest Pressure
-
-Goal: Measure how compact replay-preserving manifests and reduced output families change multi-zone reducer pressure relative to the current full scratch probe.
-
-Capability gap reduced: Manifest size and reducer sidecars are repeatedly the first bottleneck in scale projections and failed pre-submit gates.
-
-Why this outranks alternatives: Reducing manifest/output pressure improves every later Balfrin and Swiss-wide path without adding another orchestration layer.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/hazard_output_manifests.py`
-
-Deliverables:
-
-- Measured full-vs-compact reducer pressure for at least 2, 4, 8, and 12 release-zone scratch probes.
-- Byte/file-count deltas by output family and manifest mode.
-- A concrete recommendation for the default multi-zone manifest mode.
-
-Definition of done:
-
-- The reducer-pressure helper produces deterministic compact-mode measurements and the Swiss-scale projection can cite measured pressure reduction rather than only thresholds.
-
-Boundaries: Scratch/local probe only unless explicitly authorized; no live Balfrin submission, no deletion of replay-critical metadata, no operational claim.
-
 ### TB-395: Consolidate AOI Prepared-Pilot State Assembly
 
 Goal: Extract duplicated AOI prepared-pilot status, blocker, expected-output, and command-manifest assembly from the large AOI workflow scripts into a small shared helper.
