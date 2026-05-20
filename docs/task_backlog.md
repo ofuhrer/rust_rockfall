@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-388: Restage Management AOI Terrain And Source Footprint
-
-Goal: Replace the current 4x4 management-AOI crop or frozen source-zone footprint so release-candidate screening has real screenable terrain cells.
-
-Capability gap reduced: The current end-to-end management-AOI path is blocked before slope screening by `source_zone_footprint_overlap`.
-
-Why this outranks alternatives: Scenario generation, prepared-pilot compilation, and Balfrin submission work are all procedural churn until the upstream AOI/crop/source-zone overlap is fixed.
-
-Inspect first:
-
-- `scripts/diagnose_release_candidate_zero_result.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/stage_public_geodata_cache.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A revised ignored management-AOI terrain/source-footprint staging path, or a deterministic replacement staging command, that yields nonzero `screenable_cell_count` without changing candidate thresholds.
-- Updated diagnostic output showing whether the first blocker moved past `source_zone_footprint_overlap`.
-- Focused regression or fixture coverage that prevents a tiny crop fully covered by source footprint from being treated as a runnable AOI.
-
-Definition of done:
-
-- `scripts/diagnose_release_candidate_zero_result.py` reports a screenable terrain set for the restaged management AOI, or fails closed with a new concrete non-overlap blocker and exact restaging action.
-
-Boundaries: No threshold tuning, no invented terrain, no accepted release-zone claim, no simulation, no Balfrin submission, and no operational or scale-up claim.
-
 ### TB-389: Run Real-AOI Release-Candidate Sweep After Restaging
 
 Goal: Run deterministic release-zone candidate generation on the restaged management AOI and measure candidate count, area, runtime, output size, and GIS artifact shape.

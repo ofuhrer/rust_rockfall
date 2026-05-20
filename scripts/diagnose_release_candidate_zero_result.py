@@ -27,6 +27,10 @@ DEFAULT_TERRAIN_CROP = DEFAULT_SITE_ROOT / "terrain.asc"
 DEFAULT_TERRAIN_METADATA = DEFAULT_SITE_ROOT / "terrain_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = DEFAULT_SITE_ROOT / "source_zone_metadata.yaml"
 SCHEMA_VERSION = "release_candidate_zero_result_diagnostic_v1"
+MANAGEMENT_AOI_RESTAGE_COMMAND = (
+    "PYENV_VERSION=system uv run python scripts/stage_management_aoi_restaged_terrain.py "
+    "--output-root /tmp/rust_rockfall/tb388_management_aoi_restaged"
+)
 
 
 class ReleaseCandidateZeroResultDiagnosticError(ValueError):
@@ -369,6 +373,8 @@ def build_unblock_guidance(
         action = "inspect whether the current upper slope cap excludes the whole AOI before considering a separate heuristic-review task"
     elif blocker_id == "no_screenable_cells":
         action = deferral_record.get("required_upstream_replacement") or "inspect AOI extent, nodata, and frozen-footprint overlap before scenario-generation work"
+    elif blocker_id == "source_zone_footprint_overlap":
+        action = deferral_record.get("required_upstream_replacement") or MANAGEMENT_AOI_RESTAGE_COMMAND
     elif max_variant_count == 0:
         action = "do not continue scenario generation or Balfrin execution until a non-empty candidate package exists"
     else:
@@ -503,8 +509,9 @@ def resolve_required_upstream_replacement(
         )
     if blocker_type == "source_zone_footprint_overlap":
         return (
-            "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so "
-            "at least one valid interior cell remains outside the frozen footprint"
+            "restage the management AOI from the local raw swissALTI3D tile as a larger real-staged AOI crop with "
+            f"`{MANAGEMENT_AOI_RESTAGE_COMMAND}` and re-stage the source-zone footprint sidecar so at least one valid interior cell "
+            "remains outside the frozen footprint"
         )
     if blocker_type == "slope_band":
         return (

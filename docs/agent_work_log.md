@@ -4611,3 +4611,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics, and no scale-up or distributed-execution claim.
 - Next task: backlog refill needed
+
+### TB-388: Restage Management AOI Terrain And Source Footprint
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: restage the management-AOI terrain from the local raw swissALTI3D tile so release-candidate screening reaches real screenable terrain cells instead of stopping at `source_zone_footprint_overlap`.
+- Files changed: `scripts/stage_management_aoi_restaged_terrain.py`, `scripts/diagnose_release_candidate_zero_result.py`, `tests/test_release_candidate_zero_result_diagnostic.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic restage helper that crops the local raw swissALTI3D tile into an ignored `/tmp` management-AOI root, copies the source-zone sidecar and AOI tile catalog, rewrites terrain metadata, and runs the zero-result diagnostic on the restaged inputs.
+  - Updated the zero-result diagnostic to name the exact restaging command for the `source_zone_footprint_overlap` case while preserving the existing failure wording for the committed 4x4 crop.
+  - Added a focused regression that verifies the committed tiny crop still fails closed on `source_zone_footprint_overlap` and that the restaged real-data crop produces nonzero `screenable_cell_count` with the first blocker moving past the footprint overlap.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_candidate_zero_result_diagnostic -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py` (failed once for the new script inventory entry, then was rerun after updating `docs/script_inventory.md`)
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no threshold tuning, no invented terrain, no accepted release-zone claim, no simulation, no Balfrin submission, and no operational or scale-up claim.
+- Next task: TB-389

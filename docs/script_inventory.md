@@ -66,6 +66,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/package_aoi_hazard_map.py`
 - `scripts/submit_balfrin_probe.py`
 - `scripts/stage_public_geodata_cache.py`
+- `scripts/stage_management_aoi_restaged_terrain.py`
 - `scripts/verify_public_geodata_cache.py`
 
 ## Repository Checks And Context Helpers

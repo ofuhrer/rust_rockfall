@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import shutil
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -13,6 +14,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "diagnose_release_candidate_zero_result.py"
+RESTAGE_SCRIPT_PATH = ROOT / "scripts" / "stage_management_aoi_restaged_terrain.py"
 
 
 def load_module():
@@ -25,6 +27,19 @@ def load_module():
 
 
 diagnostic = load_module()
+restager = None
+
+
+def load_restager():
+    spec = importlib.util.spec_from_file_location("stage_management_aoi_restaged_terrain", RESTAGE_SCRIPT_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load {RESTAGE_SCRIPT_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+restager = load_restager()
 
 
 class ReleaseCandidateZeroResultDiagnosticTests(unittest.TestCase):
@@ -69,9 +84,57 @@ class ReleaseCandidateZeroResultDiagnosticTests(unittest.TestCase):
         self.assertEqual(report["deferral_record"]["slope_band_status"], "not_reached")
         self.assertIn("larger real-staged AOI crop", report["deferral_record"]["required_upstream_replacement"])
         self.assertIn("source-zone footprint", report["deferral_record"]["required_upstream_replacement"])
+        self.assertIn("stage_management_aoi_restaged_terrain.py", report["deferral_record"]["required_upstream_replacement"])
         self.assertEqual(report["deferral_record"]["downstream_boundary"]["scenario_generation_should_remain_blocked"], True)
         self.assertEqual(report["terrain_screening_decomposition"]["screenable_cell_count"], 0)
         self.assertEqual(report["terrain_screening_decomposition"]["valid_interior_cell_count"], 4)
+
+    def test_restaged_management_aoi_inputs_clear_footprint_overlap_blocker(self) -> None:
+        if shutil.which("gdal_translate") is None or shutil.which("gdalinfo") is None:
+            self.skipTest("gdal_translate and gdalinfo are required for the real-data restage test")
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            root = Path(tmp)
+            report = restager.stage_management_aoi_restaged_inputs(
+                repo_root=ROOT,
+                output_root=root / "restaged_management_aoi",
+                raw_terrain_path=ROOT
+                / "data"
+                / "raw"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "swissalti3d_2019_2793-1180_2_2056_5728.tif",
+                source_zone_metadata_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "source_zone_metadata.yaml",
+                aoi_tile_catalog_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "aoi_tile_catalog.yaml",
+                terrain_metadata_template_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "terrain_metadata.yaml",
+            )
+
+        diagnostic_report = report["diagnostic"]
+        self.assertEqual(report["restage_status"], "ready")
+        self.assertEqual(diagnostic_report["diagnostic_status"], "candidates_present")
+        self.assertGreater(diagnostic_report["terrain_screening_decomposition"]["screenable_cell_count"], 0)
+        self.assertGreater(diagnostic_report["candidate_cell_count"], 0)
+        self.assertEqual(diagnostic_report["first_blocker"]["blocker_id"], "none")
+        self.assertNotEqual(diagnostic_report["deferral_record"]["blocker_type"], "source_zone_footprint_overlap")
+        self.assertIn("stage_management_aoi_restaged_terrain.py", report["restaging_command"])
 
     def test_flat_screenable_terrain_names_below_band_blocker(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
