@@ -45,10 +45,12 @@ FIRST_BLOCKER_SCHEMA_VERSION = "aoi_to_prepared_pilot_first_blocker_v1"
 PREPARED_PILOT_INPUT_READINESS_SCHEMA_VERSION = "aoi_to_prepared_pilot_input_readiness_v1"
 REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION = "aoi_to_prepared_pilot_real_input_acquisition_handoff_v1"
 COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1"
+MANAGEMENT_AOI_SCENARIO_PRESSURE_SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
 SYNTHETIC_ROOT = Path("/tmp/tb125_aoi_to_prepared_pilot")
+MANAGEMENT_AOI_SCENARIO_PRESSURE_OUTPUT_ROOT = Path("/tmp/tb379_management_aoi_scenario_pressure")
 
 
 def _load_module(module_name: str, filename: str):
@@ -70,6 +72,10 @@ COMMAND_PLAN = _load_module("aoi_to_prepared_pilot_command_plan", "generate_pilo
 REAL_CONTEXT_READINESS = _load_module(
     "aoi_to_prepared_pilot_real_context_readiness",
     "check_chant_sura_real_context_readiness_gate.py",
+)
+MANAGEMENT_AOI_SCENARIO_PRESSURE = _load_module(
+    "aoi_to_prepared_pilot_management_aoi_scenario_pressure",
+    "summarize_management_aoi_scenario_pressure.py",
 )
 
 
@@ -304,6 +310,7 @@ def build_prep_summary(
     release_plan_report: dict[str, Any],
     generic_release_plan_report: dict[str, Any],
     candidate_generation_report: dict[str, Any],
+    management_aoi_scenario_pressure_report: dict[str, Any],
     command_plan_report: dict[str, Any],
 ) -> dict[str, Any]:
     terrain_manifests = [
@@ -388,7 +395,13 @@ def build_prep_summary(
             "blocked_execution_status", release_plan_report.get("scenario_plan_status", "unknown")
         ),
         "conditional_only_weighting": generic_release_plan_contract.get("generic_scenario_generation", {}).get("conditional_only_weighting", True),
+        "management_aoi_scenario_pressure_status": management_aoi_scenario_pressure_report.get("scenario_pressure_status", ""),
+        "management_aoi_scenario_pressure_blocked_reason": management_aoi_scenario_pressure_report.get("blocked_reason", ""),
+        "management_aoi_scenario_pressure_source_inputs": management_aoi_scenario_pressure_report.get("source_inputs", {}),
+        "management_aoi_scenario_pressure_command_plan_implications": management_aoi_scenario_pressure_report.get("command_plan_implications", []),
     }
+    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set":
+        scenario_generation_inputs["blocked_execution_status"] = "blocked_empty_candidate_set"
     prepared_pilot_real_input_readiness = real_context_readiness_report.get("prepared_pilot_real_input_readiness", {})
     real_input_acquisition_handoff = real_context_readiness_report.get("real_input_acquisition_handoff", {})
     command_plan_hooks = [
@@ -448,6 +461,7 @@ def build_prep_summary(
         "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
         "candidate_source_zones": candidate_source_zones,
         "scenario_generation_inputs": scenario_generation_inputs,
+        "management_aoi_scenario_pressure": management_aoi_scenario_pressure_report,
         "prepared_pilot_real_input_readiness": prepared_pilot_real_input_readiness,
         "real_input_acquisition_handoff": real_input_acquisition_handoff,
         "terrain_manifests": terrain_manifests,
@@ -543,6 +557,10 @@ def build_report(
         candidate_generation_report = CANDIDATE_GENERATION.build_report(repo_root=repo_root)
         release_plan_report = SCENARIO_PLAN.build_report()
         generic_release_plan_report = GENERIC_RELEASE_PLAN.build_report(config_path, repo_root=repo_root)
+        management_aoi_scenario_pressure_report = build_management_aoi_scenario_pressure_report(
+            repo_root=repo_root,
+            candidate_site_id=acquisition_report["candidate_site_id"],
+        )
 
     command_plan_report = COMMAND_PLAN.build_report(DEFAULT_COMMAND_PLAN_SITE, config_path)
 
@@ -551,6 +569,7 @@ def build_report(
         cache_verification_report=cache_verification_report,
         release_plan_report=release_plan_report,
         candidate_generation_report=candidate_generation_report,
+        management_aoi_scenario_pressure_report=management_aoi_scenario_pressure_report,
         command_plan_report=command_plan_report,
     )
     generated_output_roots = sorted({root for step in steps for root in step["generated_output_roots"]})
@@ -570,6 +589,7 @@ def build_report(
         release_plan_report=release_plan_report,
         generic_release_plan_report=generic_release_plan_report,
         candidate_generation_report=candidate_generation_report,
+        management_aoi_scenario_pressure_report=management_aoi_scenario_pressure_report,
         command_plan_report=command_plan_report,
     )
     if isinstance(prep_summary.get("gis_scope_summary"), dict):
@@ -645,6 +665,7 @@ def build_report(
         "release_scenario_placeholders": prep_summary["release_scenario_placeholders"],
         "candidate_source_zones": prep_summary["candidate_source_zones"],
         "scenario_generation_inputs": prep_summary["scenario_generation_inputs"],
+        "management_aoi_scenario_pressure": prep_summary["management_aoi_scenario_pressure"],
         "output_root_planning": prep_summary["output_root_planning"],
         "command_plan_hooks": prep_summary["command_plan_hooks"],
         "ignored_output_roots": prep_summary["ignored_output_roots"],
@@ -779,6 +800,16 @@ def build_gis_scope_product_entry(row: dict[str, Any], *, source: str) -> dict[s
     }
 
 
+def build_management_aoi_scenario_pressure_report(*, repo_root: Path, candidate_site_id: str) -> dict[str, Any]:
+    candidate_bundle_root = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+    return MANAGEMENT_AOI_SCENARIO_PRESSURE.build_report(
+        candidate_metrics_manifest_path=candidate_bundle_root / "tschamut_public_pilot_release_zone_candidates_manifest.json",
+        candidate_review_manifest_path=candidate_bundle_root / "tschamut_public_pilot_release_zone_candidate_review_manifest.json",
+        policy_path=repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+        output_root=MANAGEMENT_AOI_SCENARIO_PRESSURE_OUTPUT_ROOT / candidate_site_id,
+    )
+
+
 def classify_gis_product_kind(category: str, product: str) -> str:
     if category in {"terrain_crop", "swissimage_context", "swisssurface3d_context", "swisssurface3d_raster_context"}:
         return "raster"
@@ -803,6 +834,7 @@ def build_steps(
     cache_verification_report: dict[str, Any],
     release_plan_report: dict[str, Any],
     candidate_generation_report: dict[str, Any],
+    management_aoi_scenario_pressure_report: dict[str, Any],
     command_plan_report: dict[str, Any],
 ) -> list[dict[str, Any]]:
     candidate_site_id = acquisition_report["candidate_site_id"]
@@ -876,16 +908,32 @@ def build_steps(
         {
             "step_id": "release_plan_dry_run",
             "label": "Scenario-table generation",
-            "status": release_plan_report["scenario_plan_status"],
-            "blocked_reason": release_plan_report.get("blocked_reason", ""),
+            "status": (
+                "blocked_empty_candidate_set"
+                if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                else release_plan_report["scenario_plan_status"]
+            ),
+            "blocked_reason": (
+                management_aoi_scenario_pressure_report.get("blocked_reason", "")
+                if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                else release_plan_report.get("blocked_reason", "")
+            ),
             "expected_inputs": expected_inputs_from_scenario_generation(release_plan_report),
             "generated_output_roots": [],
             "ignored_output_roots": [],
             "blockers": build_step_blockers(
                 "release_plan_dry_run",
-                release_plan_report["scenario_plan_status"],
+                (
+                    "blocked_empty_candidate_set"
+                    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                    else release_plan_report["scenario_plan_status"]
+                ),
                 [],
-                release_plan_report.get("missing_inputs", []),
+                (
+                    list(management_aoi_scenario_pressure_report.get("command_plan_implications", []))
+                    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                    else release_plan_report.get("missing_inputs", [])
+                ),
             ),
         },
         {
@@ -1197,6 +1245,8 @@ def aggregate_workflow_status(statuses: Any) -> str:
     statuses = list(statuses)
     if any(status == "blocked_missing_inputs" for status in statuses):
         return "blocked_missing_inputs"
+    if any(status == "blocked_empty_candidate_set" for status in statuses):
+        return "blocked_empty_candidate_set"
     if any(status != "ready" for status in statuses):
         return "deferred_public_context_inputs"
     return "ready"
@@ -1216,6 +1266,8 @@ def dedupe(items: list[str]) -> list[str]:
 def classify_prepared_pilot_compiler(report: dict[str, Any]) -> str:
     if report.get("workflow_status") == "blocked_missing_inputs":
         return "blocked_missing_inputs"
+    if report.get("workflow_status") == "blocked_empty_candidate_set":
+        return "blocked_empty_candidate_set"
     if command_plan_over_budget(report):
         return "blocked_over_budget"
     if report.get("command_plan_report", {}).get("blocked_template_commands"):
@@ -1235,6 +1287,22 @@ def first_compiler_blocker(report: dict[str, Any]) -> dict[str, Any]:
             "missing_inputs": compiler_missing_inputs,
             "command_plan_blocked_commands": [],
             "first_missing_input": compiler_missing_inputs[0],
+        }
+
+    if report.get("workflow_status") == "blocked_empty_candidate_set":
+        management_pressure_report = report.get("management_aoi_scenario_pressure", {})
+        source_inputs = management_pressure_report.get("source_inputs", {}) if isinstance(management_pressure_report, dict) else {}
+        missing_inputs = [str(item) for item in source_inputs.values() if str(item).strip()]
+        first_missing_input = missing_inputs[0] if missing_inputs else "blocked_empty_candidate_set"
+        return {
+            "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+            "status": "blocked_empty_candidate_set",
+            "step_id": "release_plan_dry_run",
+            "label": "Scenario-table generation",
+            "blocked_reason": str(management_pressure_report.get("blocked_reason") if isinstance(management_pressure_report, dict) else "no candidate rows can be generated without inventing candidates"),
+            "missing_inputs": missing_inputs,
+            "command_plan_blocked_commands": list(report.get("command_plan_report", {}).get("blocked_template_commands", [])),
+            "first_missing_input": first_missing_input,
         }
 
     if command_plan_over_budget(report):
@@ -1659,6 +1727,7 @@ def build_run_manifest(
         "output_profile": output_profile,
         "execution_hints": execution_hints,
         "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
+        "management_aoi_scenario_pressure": prep_summary.get("management_aoi_scenario_pressure", {}),
         "command_transcript": command_transcript,
         "handoff_layout": handoff_layout,
         "first_blocker": first_blocker,
@@ -1885,6 +1954,23 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"- scenario_table_manifest_path: {scenario_generation_inputs.get('scenario_table_manifest_path', '')}")
     lines.append(f"- blocked_execution_status: {scenario_generation_inputs.get('blocked_execution_status', '')}")
     lines.append(f"- conditional_only_weighting: {scenario_generation_inputs.get('conditional_only_weighting', '')}")
+    management_pressure = report.get("management_aoi_scenario_pressure", {})
+    lines.extend(
+        [
+            "",
+            "management_aoi_scenario_pressure:",
+            f"- scenario_pressure_status: {management_pressure.get('scenario_pressure_status', '')}",
+            f"- blocked_reason: {management_pressure.get('blocked_reason', '')}",
+        ]
+    )
+    if management_pressure.get("source_inputs"):
+        lines.append("- source_inputs:")
+        for key, value in (management_pressure.get("source_inputs") or {}).items():
+            lines.append(f"  - {key}: {value}")
+    if management_pressure.get("command_plan_implications"):
+        lines.append("- command_plan_implications:")
+        for item in management_pressure.get("command_plan_implications", []):
+            lines.append(f"  - {item.get('command_id', '')}: {item.get('status', '')}")
     lines.extend(
         [
             "",
@@ -2178,8 +2264,8 @@ def command_execution_class(command: dict[str, Any]) -> str:
 
 
 def blocked_execution_status(command_plan_report: dict[str, Any], workflow_status: str | None = None) -> str:
-    if workflow_status == "blocked_missing_inputs":
-        return "blocked_missing_inputs"
+    if workflow_status in {"blocked_missing_inputs", "blocked_empty_candidate_set"}:
+        return str(workflow_status)
     command_plan_status = str(command_plan_report.get("command_plan_status") or "")
     output_profile_validation_status = str(command_plan_report.get("output_profile_validation", {}).get("status") or "")
     if command_plan_status and command_plan_status != "ready":
@@ -2245,6 +2331,13 @@ def build_case_skeleton_output(
         skeleton_status = "ready"
     if report_inputs["workflow_status"] == "blocked_missing_inputs":
         blocked_reason = "workflow blocked_missing_inputs; required inputs are missing"
+    elif report_inputs["workflow_status"] == "blocked_empty_candidate_set":
+        blocked_reason = str(
+            report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}).get(
+                "blocked_reason",
+                "workflow blocked_empty_candidate_set; no candidate rows can be generated without inventing candidates",
+            )
+        )
     elif report_inputs["workflow_status"] == "blocked_over_budget":
         blocked_reason = "workflow blocked_over_budget; command-plan output profile exceeds the scalable budget"
     else:
@@ -2389,11 +2482,13 @@ def build_case_skeleton_output(
             **report_inputs,
             "workflow_status": report_inputs["workflow_status"],
             "command_plan_report": report_inputs["command_plan_report"],
+            "management_aoi_scenario_pressure": report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}),
         }),
         first_blocker=first_compiler_blocker({
             **report_inputs,
             "workflow_status": report_inputs["workflow_status"],
             "command_plan_report": report_inputs["command_plan_report"],
+            "management_aoi_scenario_pressure": report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}),
         }),
         prepared_pilot_input_readiness=prepared_pilot_input_readiness,
     )

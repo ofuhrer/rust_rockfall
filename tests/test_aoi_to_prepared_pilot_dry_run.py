@@ -18,6 +18,9 @@ from scripts.audit_gis_cog_package_readiness import build_gis_cog_readiness_repo
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
+MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT = (
+    ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability"
+)
 
 
 def _load_module(path: Path, name: str):
@@ -235,6 +238,54 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
         self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
 
+    def test_management_candidate_pressure_bundle_preserves_the_empty_candidate_set_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            self._copy_management_scenario_pressure_bundle(repo_root, "chant_sura_fluelapass_portability_example_v1")
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+        compiler = first["prepared_pilot_compiler"]
+        scenario_pressure = first["management_aoi_scenario_pressure"]
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["workflow_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["preparation_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["workflow_steps"][3]["status"], "blocked_empty_candidate_set")
+        self.assertIn("no scenario rows", first["workflow_steps"][3]["blocked_reason"])
+        self.assertEqual(first["scenario_generation_inputs"]["management_aoi_scenario_pressure_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["scenario_generation_inputs"]["blocked_execution_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["case_skeleton_output"]["blocked_execution_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["case_skeleton_output"]["case_skeleton"]["blocked_reason"], scenario_pressure["blocked_reason"])
+        self.assertEqual(compiler["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "release_plan_dry_run")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertIn("no scenario rows", compiler["first_blocker"]["blocked_reason"])
+        self.assertEqual(compiler["run_manifest"]["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["run_manifest"]["first_blocker"]["step_id"], "release_plan_dry_run")
+        self.assertEqual(compiler["run_manifest"]["management_aoi_scenario_pressure"]["scenario_pressure_status"], "blocked_empty_candidate_set")
+        self.assertTrue(
+            any(
+                item.get("command_id") == "second_site_release_plan_execution_template"
+                for item in compiler["run_manifest"]["management_aoi_scenario_pressure"]["command_plan_implications"]
+            )
+        )
+
     def test_fixture_backed_inputs_classify_as_fixture_backed_and_keep_the_handoff_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
@@ -423,6 +474,61 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 for item in compiler["prepared_pilot_input_readiness"]["first_blocker"]["missing_inputs"]
             )
         )
+
+    def test_empty_candidate_set_preserves_precise_blocked_package_and_next_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            with mock.patch.object(
+                planner,
+                "build_management_aoi_scenario_pressure_report",
+                return_value={
+                    "schema_version": "management_aoi_scenario_pressure_v1",
+                    "scenario_pressure_status": "blocked_empty_candidate_set",
+                    "blocked_reason": "no scenario rows can be generated without inventing candidates",
+                    "source_inputs": {
+                        "source_scenario_policy_path": str(
+                            repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+                        ),
+                        "scenario_table_path": str(
+                            repo_root
+                            / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
+                        ),
+                    },
+                    "command_plan_implications": [
+                        {"command_id": "second_site_release_plan_dry_run", "status": "blocked_not_ready"},
+                        {"command_id": "second_site_release_plan_execution_template", "status": "blocked_not_ready"},
+                    ],
+                },
+            ):
+                report = planner.build_report(
+                    config_path,
+                    repo_root=repo_root,
+                    release_polygon_path=release_polygon_path,
+                    skeleton_output_root=output_root,
+                )
+
+        compiler = report["prepared_pilot_compiler"]
+        self.assertEqual(report["workflow_status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["case_skeleton_output"]["blocked_execution_status"], "blocked_empty_candidate_set")
+        self.assertEqual(
+            report["case_skeleton_output"]["blocked_reason"],
+            "no scenario rows can be generated without inventing candidates",
+        )
+        self.assertEqual(compiler["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "release_plan_dry_run")
+        self.assertIn(
+            "no scenario rows can be generated without inventing candidates",
+            compiler["first_blocker"]["blocked_reason"],
+        )
+        self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
+        self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
+        self.assertIn("blocked_empty_candidate_set", planner.render_text_report(report))
 
     def test_missing_context_blocks_compiler_with_context_blocker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -808,6 +914,10 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         )
         self._write_acquisition_package(repo_root, classification="real_staged")
         self._write_real_context_cache_manifest(repo_root)
+
+    def _copy_management_scenario_pressure_bundle(self, repo_root: Path, candidate_site_id: str) -> None:
+        destination = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+        shutil.copytree(MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT, destination, dirs_exist_ok=True)
 
     def _compiler_report_with_missing_prepared_input(
         self,

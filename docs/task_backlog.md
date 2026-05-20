@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-379: Compile Management AOI Prepared Pilot
-
-Goal: Compile the management AOI terrain, context, candidate zones, and scenario tables into a prepared-pilot command package without running ensembles.
-
-Capability gap reduced: The AOI-to-workflow compiler must operate on real candidate/scenario inputs, not only fixtures.
-
-Why this outranks alternatives: A prepared pilot is the handoff between automation and Balfrin execution.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Deterministic prepared-pilot manifest, command plan, ignored-root layout, expected outputs, and first-blocker/next-command report.
-- Tests or fixture updates covering real-input-ready and blocked states.
-
-Definition of done:
-
-- The management AOI can be prepared up to the no-simulation command-plan boundary with real inputs or precise blockers.
-
-Boundaries: No ensemble execution; no operational claim; no raw data commits.
-
 ### TB-380: Build Management AOI Multi-Zone Balfrin Handoff
 
 Goal: Convert the prepared management AOI pilot into a bounded Balfrin multi-zone handoff package with reduced-output mode, output budgets, authorization records, and preservation plan.

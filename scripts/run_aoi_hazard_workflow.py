@@ -1027,16 +1027,17 @@ def build_prepare_report(
         cache_report = build_cache_step(repo_root=repo_root, candidate_site_id=candidate_site_id, paths=paths)
         terrain_report = build_terrain_step(repo_root=repo_root, site_config=site_config, paths=paths)
         release_candidate_report = build_release_candidate_step(repo_root=repo_root, paths=paths)
-        scenario_freeze_report = build_scenario_freeze_step(
-            repo_root=repo_root,
-            candidate_site_id=candidate_site_id,
-            release_candidate_report=release_candidate_report,
-            paths=paths,
-        )
         prepared_pilot_report = PREPARED_PILOT_COMPILER.build_report(
             site_config,
             repo_root=repo_root,
             skeleton_output_root=prepared_pilot_output_root,
+        )
+        scenario_freeze_report = build_scenario_freeze_step(
+            repo_root=repo_root,
+            candidate_site_id=candidate_site_id,
+            release_candidate_report=release_candidate_report,
+            scenario_pressure_report=prepared_pilot_report.get("management_aoi_scenario_pressure", {}),
+            paths=paths,
         )
 
     workflow_steps = [
@@ -2666,27 +2667,49 @@ def build_release_candidate_step(*, repo_root: Path, paths: dict[str, Path]) -> 
     }
 
 
-def build_scenario_freeze_step(*, repo_root: Path, candidate_site_id: str, release_candidate_report: dict[str, Any], paths: dict[str, Path]) -> dict[str, Any]:
+def build_scenario_freeze_step(
+    *,
+    repo_root: Path,
+    candidate_site_id: str,
+    release_candidate_report: dict[str, Any],
+    scenario_pressure_report: dict[str, Any],
+    paths: dict[str, Path],
+) -> dict[str, Any]:
     source_scenario_policy = paths.get("source_scenario_policy", repo_root / "validation/policies" / f"{candidate_site_id}_source_scenario_policy_v1.yaml")
     scenario_table = paths.get("scenario_table", repo_root / "data/processed/swisstopo" / candidate_site_id / "input" / "scenario_table.csv")
     command = (
         "PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py "
         f"--mode freeze --review-package <candidate-review-package> --output-root <freeze-output-root> --format json"
     )
-    ready = str(release_candidate_report.get("status") or "") == "ready"
+    scenario_pressure_status = str(scenario_pressure_report.get("scenario_pressure_status") or "")
+    ready = str(release_candidate_report.get("status") or "") == "ready" and scenario_pressure_status != "blocked_empty_candidate_set"
     return {
         "step_id": "scenario_freeze_readiness",
         "label": "Scenario-freeze readiness",
-        "status": "ready" if ready else "blocked_missing_inputs",
-        "blocked_reason": "" if ready else "release-candidate planning is not ready",
+        "status": (
+            "blocked_empty_candidate_set"
+            if scenario_pressure_status == "blocked_empty_candidate_set"
+            else "ready" if ready else "blocked_missing_inputs"
+        ),
+        "blocked_reason": (
+            str(scenario_pressure_report.get("blocked_reason", ""))
+            if scenario_pressure_status == "blocked_empty_candidate_set"
+            else "" if ready else "release-candidate planning is not ready"
+        ),
         "expected_input_path": str(scenario_table) if scenario_table.exists() else str(source_scenario_policy),
         "expected_input_paths": [str(source_scenario_policy), str(scenario_table)],
         "command": command,
         "report": {
             "schema_version": "aoi_scenario_freeze_readiness_v1",
-            "status": "ready" if ready else "blocked_missing_inputs",
+            "status": (
+                "blocked_empty_candidate_set"
+                if scenario_pressure_status == "blocked_empty_candidate_set"
+                else "ready" if ready else "blocked_missing_inputs"
+            ),
             "review_package_required": True,
             "review_package_ready": ready,
+            "scenario_pressure_status": scenario_pressure_status,
+            "scenario_pressure_report": scenario_pressure_report,
         },
     }
 

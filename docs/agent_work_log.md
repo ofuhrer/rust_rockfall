@@ -4424,3 +4424,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no source-frequency semantics, no annual probability, no physics tuning, no hazard execution, and no invented candidate set or positive scenario table.
 - Next task: `TB-379`
+
+### TB-379: Compile Management AOI Prepared Pilot
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: compile the management AOI terrain, context, candidate-zone, and scenario-table handoff into the prepared-pilot command package while preserving the zero-candidate management-AOI blocker.
+- Files changed: `docs/public_real_site_geodata_preparation.md`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`
+- Implementation summary:
+  - Threaded the committed TB-377 zero-candidate management-AOI pressure bundle into the prepared-pilot compiler so the dry-run report preserves `blocked_empty_candidate_set` instead of pretending the candidate set is ready.
+  - Propagated the same blocker into the workflow front door, so the prepare report now names the scenario-freeze blocker and next command instead of collapsing it into a generic missing-input state.
+  - Added focused regression coverage for the prepared-pilot manifest and workflow prepare path using the committed candidate-pressure bundle, plus a doc note describing the preserved empty-candidate blocker.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_management_candidate_pressure_bundle_preserves_the_empty_candidate_set_blocker tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepare_reports_the_empty_candidate_set_blocker_when_tb377_bundle_is_present`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_run_aoi_hazard_workflow`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: no ensemble execution, no operational claim, no invented candidate rows, no raw data commits, and the zero-candidate management-AOI blocker stays preserved end-to-end.
+- Next task: `TB-380`

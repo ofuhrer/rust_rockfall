@@ -21,6 +21,9 @@ SCRIPT_PATH = ROOT / "scripts" / "run_aoi_hazard_workflow.py"
 PACKAGE_SCRIPT_PATH = ROOT / "scripts" / "package_aoi_hazard_map.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
+MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT = (
+    ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability"
+)
 
 
 def _load_module(path: Path, name: str):
@@ -189,6 +192,40 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(report["workflow_steps"][4]["status"], "blocked_missing_inputs")
         self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_prepare_reports_the_empty_candidate_set_blocker_when_tb377_bundle_is_present(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_prepared_pilot_inputs(repo_root, config_path)
+            self._copy_management_scenario_pressure_bundle(repo_root)
+            self._write_real_context_cache_manifest(repo_root)
+            output_root = (
+                Path(output_tmp)
+                / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            )
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+                prepared_pilot_output_root=output_root,
+            )
+
+        self.assertEqual(report["status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["next_step"], "scenario_freeze_readiness")
+        self.assertIn("generate_candidate_source_zone_scenarios.py", report["next_command"])
+        self.assertEqual(report["workflow_steps"][5]["status"], "blocked_empty_candidate_set")
+        self.assertIn("no scenario rows", report["workflow_steps"][5]["blocked_reason"])
+        self.assertEqual(report["prepared_pilot_compiler"]["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["step_id"], "release_plan_dry_run")
+        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertTrue(
+            any(
+                item.get("command_id") == "second_site_release_plan_execution_template"
+                for item in report["prepared_pilot_compiler"]["run_manifest"]["management_aoi_scenario_pressure"]["command_plan_implications"]
+            )
+        )
 
     def test_prepare_fixture_backed_cache_blocks_terrain_preprocessing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1215,6 +1252,10 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
         )
         self._write_real_context_cache_manifest(repo_root)
+
+    def _copy_management_scenario_pressure_bundle(self, repo_root: Path, candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1") -> None:
+        destination = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+        shutil.copytree(MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT, destination, dirs_exist_ok=True)
 
     def _write_acquisition_package(
         self,

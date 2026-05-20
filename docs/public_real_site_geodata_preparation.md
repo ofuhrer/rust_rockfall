@@ -404,6 +404,13 @@ execution hints with a deterministic `ready_for_local_smoke`,
 compiler package is still a planning artifact and does not authorize any live
 Balfrin submission.
 
+When the management AOI candidate sweep is empty, the compiler now preserves
+that exact boundary instead of collapsing it into a generic dry-run note. The
+case-skeleton and run-manifest reports surface `blocked_empty_candidate_set`
+with the scenario-pressure blocker, the first blocker, and the next command
+chain still explicit, so the package stays honest about why scenario
+generation stops before any ensemble work.
+
 The portable command plan now exposes the canonical package-level conversion
 path directly, including the standard audit command, the `--export-cog`
 builder path to the ignored `gate_v1_cog_export` package, and the
@@ -551,6 +558,10 @@ exist. In its optional ignored-root output mode it writes a deterministic case
 skeleton, command manifest, expected-output-roots record, and blocked-execution
 record so operators can inspect the handoff bundle before any run is
 authorized.
+When the committed management candidate-pressure bundle is present, the same
+helper preserves `blocked_empty_candidate_set` instead of inventing scenario
+rows, and the prepared-pilot report carries the candidate-pressure bundle,
+first blocker, and next-command details through to the command package.
 
 The next dry-run helper,
 `scripts/plan_release_plan_dry_run.py`, turns the same fixture-backed candidate
