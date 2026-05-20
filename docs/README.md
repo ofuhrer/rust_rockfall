@@ -92,6 +92,8 @@ starting context for implementation unless a task explicitly asks for them.
   hazard probe gate report before `sbatch`.
 - `balfrin_smallest_multi_zone_hazard_run_tb352.md`: TB-352 fail-closed
   smallest multi-zone hazard run gate report before `sbatch`.
+- `balfrin_two_zone_hazard_run_tb362.md`: TB-362 fail-closed two-zone hazard
+  run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic

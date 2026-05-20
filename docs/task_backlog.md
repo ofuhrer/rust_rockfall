@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-362: Execute Smallest Two-Zone Balfrin Hazard Run
-
-Goal: Submit and monitor the smallest repaired two-zone hazard package on Balfrin `postproc` if and only if TB-361 reports ready for submit.
-
-Capability gap reduced: Missing measured multi-zone Balfrin hazard execution.
-
-Why this outranks alternatives: This is the decisive evidence gap separating the current projection from measured scale capability.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Live two-zone `postproc` job id, run root, completion status, stdout/stderr pointers, and preserved artifact inventory.
-- Fail-closed report if any pre-submit or scheduler guard stops the run.
-
-Definition of done:
-
-- Either a completed measured two-zone run is preserved and ready for collection, or a specific persistent blocker is recorded without submitting an unsafe job.
-
-Boundaries: GPT-5.5 worker only; `postproc` partition only; respect the 6-hour full-partition rediscussion rule; no distributed execution or scale-up claim.
-
 ### TB-363: Integrate Two-Zone Balfrin Hazard Evidence
 
 Goal: Collect, classify, and thread the TB-362 two-zone hazard evidence through the scale matrix, management package, projection, and maturity snapshot.

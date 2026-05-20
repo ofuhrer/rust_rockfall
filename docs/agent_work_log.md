@@ -3995,3 +3995,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only/pre-submit gate repair only; no `sbatch`, no live submission, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-362`
+
+### TB-362: Execute Smallest Two-Zone Balfrin Hazard Run
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: submit and monitor the smallest repaired two-zone Balfrin hazard package on `postproc` only if all access, readiness, authorization, output-budget, and scheduler guards passed immediately before submission.
+- Files changed: `docs/balfrin_two_zone_hazard_run_tb362.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran Balfrin access against `/users/olifu/work/rust_rockfall`; SSH, remote checkout hygiene, and pre-submit readiness passed at remote head `8b94c12d6d1fa89a4928e15b243805b19600d31b`.
+  - Regenerated an explicit two-zone/two-chunk/two-worker handoff package under `/tmp/tb362_two_zone_handoff` on Balfrin and ran the smallest multi-zone authorization preflight against that exact package.
+  - Stopped before `sbatch` because the remote preflight returned `blocked_reducer_budget` with `output_profile_status=blocked_output_profile`, despite `authorization_status=authorized`, `reducer_budget_status=ready`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
+  - Recorded the fail-closed artifact inventory, blocked submit command, and scheduler guard in `docs/balfrin_two_zone_hazard_run_tb362.md`; no live job id or measured two-zone run root exists.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-362 --format json`
+  - `rg -n "^### TB-362:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb362_balfrin_access_preflight.json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb362_two_zone_access_preflight.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/tb362_two_zone_handoff --requested-release-zone-batch-size 2 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json --json-output /tmp/tb362_two_zone_handoff/package_stdout.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/tb362_two_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/tb362_two_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb362_two_zone_access_preflight.json --format json > /tmp/tb362_two_zone_handoff/preflight.json'` (expected exit `2` with `blocked_reducer_budget`)
+  - `ssh balfrin 'sinfo -h -p postproc -o "sinfo|%P|%a|%D|%C|%l"; squeue -h -p postproc -o "squeue|%i|%t|%M|%l|%C|%u|%j"'`
+- Result/status: implemented_blocked_report
+- Boundaries: pre-submit fail-closed report only; no `sbatch`, no live job id, no measured two-zone Balfrin hazard run, no generated artifact commit, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-363` must classify TB-362 as failed-closed/blocked rather than measured unless a later task resolves the output-profile blocker and obtains a real two-zone run.
