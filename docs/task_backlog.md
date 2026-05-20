@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-375: Run Real-AOI Terrain Preprocessing Pipeline
-
-Goal: Convert the management AOI terrain products into deterministic prepared terrain artifacts with provenance, extent, resolution, CRS, and vertical-datum metadata.
-
-Capability gap reduced: The terrain preprocessing path needs real-AOI evidence beyond fixture-backed dry runs.
-
-Why this outranks alternatives: Release-zone candidate generation and scenario scaling require a prepared real terrain surface.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Ignored prepared terrain root for the management AOI, or a blocked report naming the exact terrain-preprocessing failure.
-- Runtime/output measurements and provenance manifest.
-
-Definition of done:
-
-- The terrain-preprocessing status advances to ready for release-zone candidate generation or records a precise real-input blocker.
-
-Boundaries: No raw data commits; no hazard execution; no terrain smoothing/tuning beyond existing documented preprocessing policy.
-
 ### TB-376: Generate Real-AOI Release-Zone Candidate Sweep
 
 Goal: Run deterministic release-zone candidate generation on the prepared management AOI terrain and produce candidate masks, polygons, statistics, and GIS-ready review outputs.
