@@ -40,31 +40,34 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 ## Active Tasks
 
 
-### TB-368: Measure Repaired Two-Zone Hazard Throughput Bottlenecks
+### TB-368: Preserve Trajectory Chunks And Rerun Two-Zone Balfrin Path
 
-Goal: If TB-366 produces a measured run, profile the two-zone hazard-output path to identify the first actionable throughput, manifest, reducer, or file-count bottleneck.
+Goal: Verify the post-TB-367 trajectory/reducer worker repair preserves `output/trajectory_chunks`, trajectory chunk manifests, and restartability metadata, then rerun the bounded two-zone Balfrin path if all gates pass.
 
-Capability gap reduced: Performance work currently lacks a measured multi-zone hazard target.
+Capability gap reduced: The repaired submit path now uses the right command plan and output root, but measured two-zone evidence is still blocked by missing trajectory chunk/restartability artifacts.
 
-Why this outranks alternatives: Optimization should follow measured bottlenecks, not preemptively target scratch, fixture-backed, postproc-only, or failed-closed evidence.
+Why this outranks alternatives: Throughput profiling and bottleneck reduction require a preserved measured run root; TB-367 narrowed the blocker to trajectory chunk preservation.
 
 Inspect first:
 
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `docs/output_budget_reducer_scaling_gate.md`
+- `docs/balfrin_two_zone_hazard_run_tb367.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_probe_preservation_gate.py`
+- `tests/test_balfrin_probe_driver.py`
+- `tests/test_balfrin_probe_preservation_gate.py`
 
 Deliverables:
 
-- Measured bottleneck profile for the preserved two-zone hazard root, or explicit no-op/deferred status if no measured root exists.
-- Ranked optimization target with evidence labels.
+- Dry-run proof that the generated command plan includes `--trajectory-workers 2`, `--reducer-workers 2`, and a run-root `output/trajectory_chunks` preservation path.
+- One gated Balfrin `postproc` rerun if the pre-submit/preservation checks pass.
+- Preserved run-root metrics and preservation-gate result, or a fail-closed report naming the remaining non-trajectory-chunk blocker.
 
 Definition of done:
 
-- The next performance task can point at one measured first bottleneck and one concrete optimization hypothesis, or it explicitly defers because no measured root exists.
+- Either the rerun produces a completed preserved two-zone run root whose preservation gate is ready/accepted, or the repository records a specific blocker that is not the missing `output/trajectory_chunks`/restartability metadata issue from TB-367.
 
-Boundaries: No code optimization unless the task finds an unambiguous trivial fix; no new run; no scale-up claim.
+Boundaries: GPT-5.5 worker only for live Balfrin work; `postproc` only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
 
 ### TB-369: Reduce First Measured Two-Zone Output Bottleneck
 
