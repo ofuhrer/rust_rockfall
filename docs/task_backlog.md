@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-338: Swiss-Scale Feasibility Projection From Measured Evidence
-
-Goal: Produce a measured-evidence-based projection for 10, 100, regional, and Swiss-scale AOI workflows using current release-zone, scenario, runtime, reducer, and GIS evidence.
-
-Capability gap reduced: Management needs a defensible answer on whether Swiss-scale execution is feasible or out of reach under current architecture.
-
-Why this outranks alternatives: This projection should come after two/four-zone, release/scenario, and packaging evidence are integrated.
-
-Inspect first:
-
-- `scripts/estimate_large_scale_execution.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/hazard_workflow_scale_review.md`
-
-Deliverables:
-
-- Swiss-scale projection report separating measured evidence, extrapolated assumptions, no-go thresholds, and unknowns.
-- Runtime, storage, reducer, manifest, GIS/COG, and operator-effort estimates for defined AOI sizes.
-- Recommendation of feasible, conditionally feasible, or out-of-reach under current single-node/postproc constraints.
-
-Definition of done:
-
-- The repo can give management a bounded, evidence-labeled Swiss-scale feasibility projection without overclaiming.
-
-Boundaries: Projection and synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
-
 ### TB-339: Balfrin Scale Demonstration Management Package
 
 Goal: Produce a concise management-facing package that explains current Balfrin feasibility, measured scale evidence, failed-closed branches, next run choice, and Swiss-scale projection.
