@@ -58,7 +58,7 @@ public inputs by default, run arbitrary real AOIs end to end, execute
 second-site ensembles, or generate physically annualized intensity-frequency
 products.
 
-TB-338/TB-339 added the current management-facing scale synthesis:
+TB-338/TB-359 added and refreshed the current management-facing scale synthesis:
 `docs/swiss_scale_feasibility_projection.md` and
 `docs/balfrin_scale_demonstration_management_package.md`. The current answer is
 that 10-zone single-AOI work is feasible under the present single-node/postproc
@@ -66,6 +66,15 @@ boundary, 100-zone work is conditionally feasible but deferred, and regional or
 Swiss-wide execution is out of reach until public-geodata automation,
 release/scenario generation, multi-zone hazard execution, reducer/manifest
 pressure, and GIS/COG packaging blockers are reduced with measured evidence.
+TB-340 through TB-359 moved the next workflow layer forward: real-AOI
+public-geodata acquisition and cache-integrity planning, real-AOI terrain and
+context preprocessing, release-zone candidate sweep/stability/review tooling,
+candidate scenario pressure gates, an AOI prepared-pilot compiler, large-AOI GIS
+manifest repair, regenerated multi-zone Balfrin submit contracts, fail-closed
+two-zone/four-zone submit evidence, measured four-zone postproc/reducer
+pressure, hazard-throughput no-op boundaries, and the latest Swiss-scale
+projection refresh. These changes improve automation and evidence separation,
+but they still do not provide measured multi-zone Balfrin hazard execution.
 
 The user-facing AOI bounds-to-review-map walkthrough now lives in
 `docs/public_real_site_geodata_preparation.md`.

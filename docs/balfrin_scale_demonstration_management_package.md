@@ -19,6 +19,11 @@ toward a larger Balfrin demonstration?
   evidence, not measured hazard execution evidence.
 - TB-312's four-zone postproc/reducer package is measured, but it is
   postproc-only and does not upgrade hazard execution capability.
+- TB-340 through TB-359 improved real-AOI acquisition/preprocessing automation,
+  release-zone/scenario pressure tooling, submit-contract regeneration,
+  fail-closed branch integration, reducer-pressure evidence, and the current
+  Swiss-scale projection. Those changes reduce workflow ambiguity but still do
+  not provide measured multi-zone hazard execution.
 - GIS/COG packaging remains blocked for large AOI stress packages because the
   packaged AOI root lacks required pilot GIS package manifest fields.
 

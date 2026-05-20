@@ -39,6 +39,538 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+### TB-360: Repair Smallest Multi-Zone Submit Contract
+
+Goal: Regenerate the smallest live multi-zone submit package so it targets the executable pilot-run contract, the correct writable Balfrin run root, and the intended live-shape profile.
+
+Capability gap reduced: The next measured scale step is blocked by submit-package mismatches rather than by simulator evidence.
+
+Why this outranks alternatives: A measured two-zone hazard run cannot happen until the failed-closed TB-309/TB-321/TB-352 contract drift is removed.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `docs/current_maturity_snapshot.md`
+- `docs/balfrin_scale_demonstration_management_package.md`
+- `docs/multi_zone_reducer_pressure_probe.md`
+
+Deliverables:
+
+- Regenerated two-zone submit package or generator fix that uses the executable contract, writable run root, reduced-output mode, and current authorization/audit shape.
+- Focused regression that fails if the handoff points at a wrapper manifest, review-only profile, or unwritable `/scratch/rust_rockfall` path.
+
+Definition of done:
+
+- The local submit-package preflight advances past manifest/profile/run-root mismatch and either becomes ready for gated live submission or names only a real measured resource blocker.
+
+Boundaries: No live submission, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
+
+### TB-361: Verify Two-Zone Balfrin Pre-Submit Gate On Remote Checkout
+
+Goal: Run the repaired two-zone package through Balfrin access, checkout hygiene, authorization, output-budget, and preservation preflights without submitting a job.
+
+Capability gap reduced: Separates local package correctness from remote Balfrin execution readiness.
+
+Why this outranks alternatives: The recent failures happened before `sbatch`; a remote read-only/pre-submit gate must pass before another live attempt is useful.
+
+Inspect first:
+
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/orchestration_strategy.md`
+- `docs/balfrin_probe_slurm_driver.md`
+
+Deliverables:
+
+- Recorded pre-submit result for the repaired two-zone package.
+- Clear classification of `ready_for_submit`, `blocked_dirty_remote_checkout`, `blocked_reducer_budget`, `blocked_authorization`, or other concrete blocker.
+
+Definition of done:
+
+- A GPT-5.5 worker records the remote pre-submit classification and leaves no ambiguity about whether a live two-zone postproc job may be attempted next.
+
+Boundaries: Balfrin read-only/pre-submit only; no `sbatch`; no generated artifact commit; no claim upgrade.
+
+### TB-362: Execute Smallest Two-Zone Balfrin Hazard Run
+
+Goal: Submit and monitor the smallest repaired two-zone hazard package on Balfrin `postproc` if and only if TB-361 reports ready for submit.
+
+Capability gap reduced: Missing measured multi-zone Balfrin hazard execution.
+
+Why this outranks alternatives: This is the decisive evidence gap separating the current projection from measured scale capability.
+
+Inspect first:
+
+- `docs/orchestration_strategy.md`
+- `docs/balfrin_probe_slurm_driver.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Live two-zone `postproc` job id, run root, completion status, stdout/stderr pointers, and preserved artifact inventory.
+- Fail-closed report if any pre-submit or scheduler guard stops the run.
+
+Definition of done:
+
+- Either a completed measured two-zone run is preserved and ready for collection, or a specific persistent blocker is recorded without submitting an unsafe job.
+
+Boundaries: GPT-5.5 worker only; `postproc` partition only; respect the 6-hour full-partition rediscussion rule; no distributed execution or scale-up claim.
+
+### TB-363: Integrate Two-Zone Balfrin Hazard Evidence
+
+Goal: Collect, classify, and thread the TB-362 two-zone hazard evidence through the scale matrix, management package, projection, and maturity snapshot.
+
+Capability gap reduced: Prevents live-run evidence from remaining an isolated scratch artifact.
+
+Why this outranks alternatives: Measured evidence only changes the feasibility answer after it is collected, budgeted, classified, and surfaced consistently.
+
+Inspect first:
+
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- Updated measured/failed-closed classification for the two-zone branch.
+- Runtime, memory, validation/hazard bytes, file counts, reducer pressure, GIS status, and claim boundaries reflected in canonical docs/helpers.
+
+Definition of done:
+
+- The two-zone branch is deterministically classified as measured, failed-closed, or blocked, and no stale projection surface contradicts that classification.
+
+Boundaries: Collection/synthesis only; no new run, no operational claim, no scale-up authorization.
+
+### TB-364: Measure Two-Zone Hazard Throughput Bottlenecks
+
+Goal: If TB-362 produces a measured run, profile the two-zone hazard-output path to identify the first actionable throughput, manifest, reducer, or file-count bottleneck.
+
+Capability gap reduced: Performance work currently lacks a measured multi-zone hazard target.
+
+Why this outranks alternatives: Optimization should follow measured bottlenecks, not preemptively target scratch or postproc-only evidence.
+
+Inspect first:
+
+- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/hazard_throughput_bottleneck_report.md`
+- `docs/output_budget_reducer_scaling_gate.md`
+
+Deliverables:
+
+- Measured bottleneck profile for the preserved two-zone hazard root, or explicit no-op/deferred status if no measured root exists.
+- Ranked optimization target with evidence labels.
+
+Definition of done:
+
+- The next performance task can point at one measured first bottleneck and one concrete optimization hypothesis.
+
+Boundaries: No code optimization unless the task finds an unambiguous trivial fix; no new run; no scale-up claim.
+
+### TB-365: Reduce First Measured Two-Zone Output Bottleneck
+
+Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-364.
+
+Capability gap reduced: Converts measured scale friction into lower runtime/output pressure.
+
+Why this outranks alternatives: Reducing the first measured bottleneck is higher leverage than broad refactors or additional projection reports.
+
+Inspect first:
+
+- `docs/hazard_throughput_bottleneck_report.md`
+- `scripts/build_hazard_layers.py`
+- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- `src/validation/runner.rs`
+- `src/manifest.rs`
+
+Deliverables:
+
+- One focused code or command-plan change that reduces the measured bottleneck while preserving rebuild-compatible reduced outputs.
+- Regression showing unchanged scientific/claim semantics.
+
+Definition of done:
+
+- Focused tests and a before/after measurement or bounded proof show the targeted bottleneck is reduced or the attempted optimization is rejected with evidence.
+
+Boundaries: No physics change, no tuning, no lossy deletion of replay-critical outputs, no claim upgrade.
+
+### TB-366: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
+
+Goal: Submit and monitor the smallest four-zone hazard run only after two-zone evidence is measured and output pressure is accepted or reduced.
+
+Capability gap reduced: The projection needs a second measured scale point beyond two zones before 10-zone/100-zone extrapolation becomes credible.
+
+Why this outranks alternatives: Four-zone hazard execution is the next meaningful scale step after a successful two-zone run and bottleneck review.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `docs/multi_zone_reducer_pressure_probe.md`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- Live four-zone `postproc` job evidence, or a fail-closed blocker that names the precise resource/contract gate.
+- Preserved run root and metrics if execution completes.
+
+Definition of done:
+
+- Four-zone hazard execution is measured or explicitly blocked with a non-ambiguous next unblock action.
+
+Boundaries: GPT-5.5 worker only; `postproc` only; requires accepted TB-363/TB-364 evidence; no distributed execution or scale-up claim.
+
+### TB-367: Integrate Four-Zone Hazard Evidence Into Scale Projection
+
+Goal: Thread measured or failed-closed four-zone hazard evidence into the scale matrix, Swiss-scale projection, and management package.
+
+Capability gap reduced: Keeps management feasibility statements synchronized with the newest measured scale point.
+
+Why this outranks alternatives: A second measured scale point materially changes confidence in 10-zone and 100-zone projections.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- Updated 10-zone and 100-zone feasibility classification based on two-/four-zone evidence.
+- Explicit separation of measured, extrapolated, failed-closed, and unknown terms.
+
+Definition of done:
+
+- The management-facing feasibility answer reflects the four-zone branch without overstating scale readiness.
+
+Boundaries: Synthesis only; no new run; no operational, annual, physical-probability, or scale-up claim.
+
+### TB-368: Select And Freeze Management AOI Acquisition Target
+
+Goal: Choose one concrete real AOI for the next public-geodata acquisition/preprocessing demonstration and freeze its bounds, CRS, products, expected tiles, and ignored-root layout.
+
+Capability gap reduced: Real-AOI automation needs one reproducible target rather than abstract AOI examples.
+
+Why this outranks alternatives: Download/preprocess automation cannot be demonstrated convincingly until the target AOI and products are fixed.
+
+Inspect first:
+
+- `docs/swisstopo_data_strategy.md`
+- `docs/public_real_site_geodata_preparation.md`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/bootstrap_aoi_manifest.py`
+- `data/datasets.yaml`
+
+Deliverables:
+
+- Tracked AOI acquisition manifest or planning fixture with deterministic bounds, products, tile ids, expected staging roots, and claim boundaries.
+- Dry-run command sequence for the acquisition target.
+
+Definition of done:
+
+- A worker can run one command to see exactly which public products and ignored roots are needed for the selected AOI.
+
+Boundaries: No large raw swisstopo product commits; no live download unless explicitly allowed by the task; no hazard execution.
+
+### TB-369: Acquire Or Stage Real Public Geodata For Management AOI
+
+Goal: Use the frozen AOI target to acquire or operator-stage the required public terrain/context products into ignored roots with checksums and provenance.
+
+Capability gap reduced: The workflow still depends on fixtures and synthetic staging for many AOI paths.
+
+Why this outranks alternatives: Real public inputs are the first gate for any credible arbitrary-AOI demonstration.
+
+Inspect first:
+
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/bootstrap_aoi_manifest.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `docs/swisstopo_data_strategy.md`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Ignored real-AOI input roots or a blocked acquisition report naming exact missing products and operator actions.
+- Provenance/checksum manifest for all staged products.
+
+Definition of done:
+
+- The AOI input gate reports real staged products, or a concrete non-stale acquisition blocker remains with exact next action.
+
+Boundaries: Do not commit raw swisstopo data; preserve CRS/datum/provenance; no ensemble execution.
+
+### TB-370: Validate Management AOI Cache Integrity
+
+Goal: Verify acquired/staged AOI public-geodata products for checksum stability, required metadata, CRS/datum consistency, tile coverage, and missing-product classification.
+
+Capability gap reduced: Prevents downstream preprocessing from silently accepting partial or mismatched real public inputs.
+
+Why this outranks alternatives: Cache integrity must be trusted before terrain preprocessing or release-zone generation can be interpreted.
+
+Inspect first:
+
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/bootstrap_aoi_manifest.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+
+Deliverables:
+
+- Deterministic cache-integrity report for the management AOI.
+- Focused tests for missing, partial, metadata-mismatched, and ready cache states.
+
+Definition of done:
+
+- The AOI cache reports either ready real products or exact product-level blockers without relying on fixture-backed evidence.
+
+Boundaries: No raw data commits; no terrain mutation beyond read-only inspection; no hazard claim.
+
+### TB-371: Run Real-AOI Terrain Preprocessing Pipeline
+
+Goal: Convert the management AOI terrain products into deterministic prepared terrain artifacts with provenance, extent, resolution, CRS, and vertical-datum metadata.
+
+Capability gap reduced: The terrain preprocessing path needs real-AOI evidence beyond fixture-backed dry runs.
+
+Why this outranks alternatives: Release-zone candidate generation and scenario scaling require a prepared real terrain surface.
+
+Inspect first:
+
+- `scripts/plan_aoi_terrain_preprocessing.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+
+Deliverables:
+
+- Ignored prepared terrain root for the management AOI, or a blocked report naming the exact terrain-preprocessing failure.
+- Runtime/output measurements and provenance manifest.
+
+Definition of done:
+
+- The terrain-preprocessing status advances to ready for release-zone candidate generation or records a precise real-input blocker.
+
+Boundaries: No raw data commits; no hazard execution; no terrain smoothing/tuning beyond existing documented preprocessing policy.
+
+### TB-372: Generate Real-AOI Release-Zone Candidate Sweep
+
+Goal: Run deterministic release-zone candidate generation on the prepared management AOI terrain and produce candidate masks, polygons, statistics, and GIS-ready review outputs.
+
+Capability gap reduced: Release zones remain the largest Swiss-wide manual automation gap.
+
+Why this outranks alternatives: The project cannot scale nationally while release zones are curated manually.
+
+Inspect first:
+
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `scripts/summarize_balfrin_target_area_candidate_stability.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Deterministic candidate-zone outputs for the management AOI in ignored roots.
+- Candidate counts, area statistics, heuristic parameters, runtime/output measurements, and review-map pointers.
+
+Definition of done:
+
+- The candidate sweep is reproducible and reviewable, or a concrete terrain/input blocker is recorded.
+
+Boundaries: No operational release-zone claim, no parameter tuning to match desired zones, no hazard execution.
+
+### TB-373: Measure Real-AOI Release-Zone Stability
+
+Goal: Quantify candidate-zone sensitivity for the management AOI under bounded slope, resolution, smoothing, and AOI-boundary perturbations.
+
+Capability gap reduced: Defensibility of terrain-driven release-zone generation on real terrain.
+
+Why this outranks alternatives: Candidate zones must be stable enough to support scenario generation before larger Balfrin runs are meaningful.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_target_area_candidate_stability.py`
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `docs/current_maturity_snapshot.md`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Stability classes, persistent/unstable candidate masks, and sensitivity summary for the management AOI.
+- Recommendation on whether candidates are ready for scenario generation, need review, or are unstable.
+
+Definition of done:
+
+- Candidate-zone stability is measured and classified without changing physics or tuning thresholds to force acceptance.
+
+Boundaries: No operational release-zone claim, no calibration, no hazard execution.
+
+### TB-374: Generate Large Real-AOI Scenario Table From Candidates
+
+Goal: Generate deterministic block/scenario tables from the real-AOI candidate zones and measure scenario cardinality, manifest pressure, and family composition.
+
+Capability gap reduced: Scenario generation is still a major manual and scaling uncertainty.
+
+Why this outranks alternatives: Multi-zone execution pressure is driven by candidate and scenario cardinality; it must be measured before submitting larger jobs.
+
+Inspect first:
+
+- `scripts/generate_candidate_source_zone_scenarios.py`
+- `scripts/preview_aoi_scenario_cost_estimate.py`
+- `scripts/generate_tschamut_block_scenario_tables.py`
+- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
+
+Deliverables:
+
+- Deterministic real-AOI scenario table or blocked report.
+- Scenario counts by candidate family, output bytes, manifest pressure, and command-plan implications.
+
+Definition of done:
+
+- Scenario-generation pressure is quantified for the management AOI and ready for prepared-pilot compilation or explicit deferral.
+
+Boundaries: No source-frequency semantics, no annual probability, no physics tuning, no hazard execution.
+
+### TB-375: Compile Management AOI Prepared Pilot
+
+Goal: Compile the management AOI terrain, context, candidate zones, and scenario tables into a prepared-pilot command package without running ensembles.
+
+Capability gap reduced: The AOI-to-workflow compiler must operate on real candidate/scenario inputs, not only fixtures.
+
+Why this outranks alternatives: A prepared pilot is the handoff between automation and Balfrin execution.
+
+Inspect first:
+
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/generate_pilot_command_plan.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Deterministic prepared-pilot manifest, command plan, ignored-root layout, expected outputs, and first-blocker/next-command report.
+- Tests or fixture updates covering real-input-ready and blocked states.
+
+Definition of done:
+
+- The management AOI can be prepared up to the no-simulation command-plan boundary with real inputs or precise blockers.
+
+Boundaries: No ensemble execution; no operational claim; no raw data commits.
+
+### TB-376: Build Management AOI Multi-Zone Balfrin Handoff
+
+Goal: Convert the prepared management AOI pilot into a bounded Balfrin multi-zone handoff package with reduced-output mode, output budgets, authorization records, and preservation plan.
+
+Capability gap reduced: Real-AOI prepared pilots need an HPC handoff path before execution feasibility can be tested.
+
+Why this outranks alternatives: This is the bridge from local AOI automation to measured Balfrin scale evidence.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/validate_multi_zone_reducer_pressure_gate.py`
+- `docs/balfrin_probe_slurm_driver.md`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- Bounded handoff package for the management AOI with exact run root, command list, budget checks, and authorization audit.
+- Classification as ready, blocked by budget, blocked by authorization, or blocked by missing prepared-pilot inputs.
+
+Definition of done:
+
+- A GPT-5.5 worker has enough package evidence to decide whether a live management-AOI postproc run can be attempted.
+
+Boundaries: No live submission in this task; `postproc` only for future live work; no distributed execution or scale-up claim.
+
+### TB-377: Execute Bounded Management AOI Multi-Zone Balfrin Run
+
+Goal: Submit and monitor a bounded management-AOI multi-zone hazard run on Balfrin `postproc` if TB-376 reports ready.
+
+Capability gap reduced: Missing measured real-AOI multi-zone Balfrin hazard execution.
+
+Why this outranks alternatives: This is the closest direct evidence for whether a full-scale Balfrin demonstration is feasible or out of reach.
+
+Inspect first:
+
+- `docs/orchestration_strategy.md`
+- `docs/balfrin_probe_slurm_driver.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Live management-AOI job id, run root, runtime, memory, validation/hazard output pressure, reducer pressure, and preservation evidence.
+- Fail-closed report if readiness or scheduler gates block submission.
+
+Definition of done:
+
+- The management-AOI multi-zone branch is measured or explicitly failed closed with the first persistent blocker named.
+
+Boundaries: GPT-5.5 worker only; `postproc` only; respect the 6-hour full-partition rediscussion rule; no scale-up or operational claim.
+
+### TB-378: Stress Large-AOI GIS And COG Packaging From Real Outputs
+
+Goal: Stress-test GIS package manifest generation, raster package completeness, and COG conversion/scope classification against the largest available real-AOI or measured multi-zone outputs.
+
+Capability gap reduced: Management-facing feasibility needs to know whether GIS packaging breaks before compute does.
+
+Why this outranks alternatives: GIS/COG remains a lower-priority blocker, but it becomes material once real-AOI/multi-zone outputs exist.
+
+Inspect first:
+
+- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
+- `scripts/package_aoi_hazard_map.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- Package runtime, file count, raster count, manifest pressure, COG readiness, and scope-delta classification.
+- Explicit first GIS/COG blocker and whether it affects demonstration readability or only production packaging.
+
+Definition of done:
+
+- GIS/COG feasibility for the largest current real output is classified without overstating operational readiness.
+
+Boundaries: No generated raster commits; no operational GIS claim; no new hazard run.
+
+### TB-379: Refresh Management Swiss-Scale Feasibility Decision
+
+Goal: Update the Swiss-scale feasibility projection and management package after the two-zone/four-zone/management-AOI evidence sequence completes.
+
+Capability gap reduced: Management needs a current answer on whether Swiss-scale is feasible, conditional, or out of reach based on measured evidence.
+
+Why this outranks alternatives: This synthesis is only useful after the execution and automation evidence above has landed.
+
+Inspect first:
+
+- `docs/swiss_scale_feasibility_projection.md`
+- `docs/balfrin_scale_demonstration_management_package.md`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Updated projection table separating measured evidence, extrapolated assumptions, failed-closed branches, no-go thresholds, and unknowns.
+- Recommendation for 10-zone, 100-zone, regional, and Swiss-wide classes.
+
+Definition of done:
+
+- Management can read one current feasibility package that reflects the latest measured Balfrin and real-AOI automation evidence.
+
+Boundaries: Synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

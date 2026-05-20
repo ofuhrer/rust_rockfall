@@ -10,8 +10,8 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-339 have now completed the latest
-post-review and scale-synthesis queue: Balfrin next-action and metrics-completion preflights were
+primarily swisstopo. TB-222 through TB-359 have now completed the latest
+post-review, scale-synthesis, and real-AOI automation queue: Balfrin next-action and metrics-completion preflights were
 sharpened; read-only target-area metric and spatial-artifact recovery paths
 were added; multi-zone handoff budgets and authorization gates were refreshed;
 blocked metrics-completion and multi-zone Balfrin attempts were integrated
@@ -27,7 +27,14 @@ refreshed the authoritative status surfaces after those evidence changes. TB-338
 then added a measured-evidence Swiss-scale feasibility projection, and TB-339
 packaged the measured, projection-only, failed-closed, fixture-backed, blocked,
 and deferred Balfrin scale-demonstration evidence into one management-facing
-surface. The current architectural answer is: a 10-zone single-AOI workflow is
+surface. TB-340 through TB-359 then added real-AOI public-geodata acquisition
+planning, cache-integrity gates, real-AOI terrain/context preprocessing,
+release-zone candidate sweep/stability/review tooling, candidate scenario
+pressure checks, an AOI prepared-pilot compiler, large-AOI GIS manifest repair,
+regenerated multi-zone Balfrin submit contracts, fail-closed smallest/four-zone
+submit records, measured four-zone postproc/reducer pressure, hazard-throughput
+no-op boundaries, and a refreshed Swiss-scale projection. The current
+architectural answer is: a 10-zone single-AOI workflow is
 feasible under the current single-node/postproc boundary; a 100-zone workflow is
 conditionally feasible as a deferred planning case; regional and Swiss-wide
 execution remain out of reach under current single-node/postproc constraints.
@@ -45,10 +52,11 @@ contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
 matrix gives workers one compact evidence dashboard. The active backlog was
-exhausted after TB-339 and is being refilled with execution-oriented work around
-real public-geodata acquisition, terrain preprocessing, release-zone/scenario
-automation, measured multi-zone Balfrin hazard execution, and scale-performance
-evidence. The
+exhausted after TB-359 and is being refilled with execution-oriented work around
+multi-zone submit-contract repair, measured two-zone/four-zone Balfrin hazard
+execution, real public-geodata acquisition, terrain preprocessing,
+release-zone/scenario automation, reducer/GIS pressure reduction, and
+scale-performance evidence. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -172,12 +180,14 @@ These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic
 demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
-TB-338/TB-339 now package the measured evidence, the projection-only Swiss-scale
+TB-338/TB-359 now package the measured evidence, the projection-only Swiss-scale
 feasibility classification, the failed-closed submit branches, and the
 deferred next authorized step into one management-facing surface without
 upgrading any claim. The readiness matrix points the next runnable milestone
 at hazard-builder optimization, but that remains separate from the next
-authorized step of management review.
+authorized step of management review. TB-359 refreshed this synthesis after the
+real-AOI and multi-zone evidence cycle: the next decisive evidence gap is still
+measured multi-zone Balfrin hazard execution, not another projection-only report.
 The largest near-term gaps have moved from "can the Balfrin demo execute?" and
 "can an AOI dry run be composed?" to "can real arbitrary-AOI public geodata be
 acquired and preprocessed reproducibly?", "can release-zone and scenario
