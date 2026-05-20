@@ -2,20 +2,41 @@ schema_version: public_geodata_cache_verification_manifest_v1
 candidate_site_id: chant_sura_fluelapass_portability_example_v1
 candidate_site_name: Chant Sura / Fluelapass portability example
 products:
-  - product_id: terrain_crop
-    source_product_id: swissalti3d_fixture_terrain_crop
-    source_product_name: swissALTI3D
-    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
-    product_version_or_date: 2019-01-01
-    tile_id_or_delivery_identifier: 2793-1180
-    checksum_sha256: d6d70bad700a5f587cd3294d7c67dfc46c2ba9e5b0003373c58d5ec0e0ba2741
-    crs: EPSG:2056
-    resolution_m: 2.0
-    crop_extent_lv95_m:
-      xmin: 2793000.0
-      ymin: 1180200.0
-      xmax: 2793008.0
-      ymax: 1180208.0
-    license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
-    staged_path: terrain.asc
-    metadata_path: terrain_metadata.yaml
+- product_id: terrain_crop
+  source_product_id: swissalti3d_2m
+  source_product_name: swissALTI3D
+  source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+  product_version_or_date: 2019-01-01
+  tile_id_or_delivery_identifier: 2793-1180
+  checksum_sha256: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
+  crs: EPSG:2056
+  resolution_m: 2.0
+  crop_extent_lv95_m:
+    xmin: 2793000.0
+    ymin: 1180200.0
+    xmax: 2793008.0
+    ymax: 1180208.0
+  license_or_terms_reference: swisstopo open data terms; verify current terms before
+    redistribution
+  staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+  metadata_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+  raw_checksum: 0b71e46fce745f0f441923f986a2515b51a7fd7f91b33c1fb34c7b47aa21a512
+  processed_checksum: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
+  preprocessing_command_and_timestamp: gdal_translate -of AAIGrid -projwin 2793000
+    1180208 2793008 1180200 data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+  required: true
+  staging_status: verified
+  verification_status: verified
+  provenance_classification: real_staged
+  observed_checksum_sha256: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
+  observed_metadata_mismatches: []
+  downloaded_bytes: 1096566
+staging_status: verified
+cache_manifest_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml
+staged_product_count: 1
+optional_missing_product_count: 0
+missing_product_count: 0
+checksum_mismatch_product_count: 0
+metadata_mismatch_product_count: 0
+unsupported_product_count: 0

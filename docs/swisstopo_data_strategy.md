@@ -192,11 +192,11 @@ That is only partially implemented today.
 
 Implemented pieces now include deterministic AOI tile/product discovery,
 public-geodata cache verification, an explicit opt-in acquisition/staging
-driver, fixture-backed terrain preprocessing, deterministic release-zone
-candidate and scenario dry runs, a guided AOI front door, local smoke/package
-execution for bounded fixtures, and an openable diagnostic QA review surface.
-These pieces make the user path inspectable and reproducible, but they do not
-yet constitute a real arbitrary-AOI production workflow.
+driver, one real-staged Chant Sura swissALTI3D terrain crop, deterministic
+release-zone candidate and scenario dry runs, a guided AOI front door, local
+smoke/package execution for bounded fixtures, and an openable diagnostic QA
+review surface. These pieces make the user path inspectable and reproducible,
+but they do not yet constitute a real arbitrary-AOI production workflow.
 
 The largest missing automation pieces are:
 

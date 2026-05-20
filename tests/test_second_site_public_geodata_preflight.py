@@ -48,18 +48,16 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertEqual(report["public_geodata_workflow_contract"]["required_aoi_metadata"][2]["field"], "site_extent.crs")
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["schema_version"], "swiss_public_geodata_cache_contract_v1")
-        self.assertIn(
-            "prepare_<site_id>_public_benchmark.py",
-            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"][0]["command"],
-        )
+        stage_commands = [
+            row["command"]
+            for row in report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"]
+        ]
+        self.assertTrue(any("prepare_<site_id>_public_benchmark.py" in command for command in stage_commands))
         self.assertIn(
             "verify_public_geodata_cache.py",
             report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["verify_commands"][0]["command"],
         )
-        self.assertIn(
-            "stage_public_geodata_cache.py",
-            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"][2]["command"],
-        )
+        self.assertTrue(any("stage_public_geodata_cache.py" in command for command in stage_commands))
         self.assertEqual(report["terrain_manifest_status"], "ready")
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")

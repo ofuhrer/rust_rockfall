@@ -1,6 +1,6 @@
 # Chant Sura / Flüelapass Real-Context Acquisition Decision
 
-Status: deferred real public-context staging; current repo-root readiness is blocked_missing_inputs.
+Status: deferred real public-context staging; current repo-root readiness is deferred_public_context_inputs.
 
 This decision pack is read-only. It does not download swisstopo products, run a
 second-site ensemble, or treat synthetic fixtures as evidence.
@@ -24,17 +24,18 @@ decision: defer
 recommendation: defer_real_context_staging
 decision_rationale: >-
   The current helper reports show that the candidate is structurally ready for
-  acquisition review, but the clean-checkout acquisition planner still reports
-  blocked_missing_inputs until the expected local core files are staged, and
-  the public-context bundle remains intentionally deferred. The task boundary
+  acquisition review. The swissALTI3D terrain crop and terrain metadata now
+  verify as real-staged inputs, while the remaining source/scenario records are
+  still fixture-backed and the public-context bundle remains intentionally
+  deferred. The task boundary
   forbids any real swisstopo downloads until explicit acquisition
   authorization exists. Measured Balfrin evidence now exists, but the current
   interpretation remains conditional, bounded, and non-operational; it does
   not automatically authorize second-site public-context staging.
 readiness_impact:
-  planner_boundary: blocked_missing_inputs
-  public_context_boundary: blocked_missing_inputs
-  real_context_readiness_gate: blocked_missing_inputs
+  planner_boundary: ready
+  public_context_boundary: deferred_public_context_inputs
+  real_context_readiness_gate: blocked_partial_real_inputs
   second_site_ensemble: blocked
   operational_claims_allowed: false
   scale_up_authorized: false
@@ -51,8 +52,9 @@ expected_cache_roots:
 Current repo-root state:
 
 - `proceed`: none. The Balfrin trigger matrix only reaches `proceed` when measured conditional-diagnostic evidence is present.
-- `fixture_backed`: the current terrain crop cache row is still fixture-backed, so it is not real public evidence even though the file is present in the ignored input root.
-- `staged`: `terrain_metadata`, `aoi_tile_catalog`, `source_zone_metadata`, `scenario_table`, and `source_scenario_policy`.
+- `real_staged`: the swissALTI3D terrain crop cache row now verifies as real-staged public geodata with a deterministic AOI crop and provenance sidecar.
+- `real_staged`: `terrain_metadata`.
+- `fixture_backed`: `aoi_tile_catalog`, `source_zone_metadata`, `scenario_table`, and `source_scenario_policy`.
 - `missing`: `swisstlm3d_metadata`.
 - `deferred`: `SWISSIMAGE`, `swissTLM3D`, `swissSURFACE3D`, `swissSURFACE3D Raster`, `swissBUILDINGS3D`.
 - `locally-stageable`: the site-specific context bundle can be promoted from the shared ignored raw cache, but this pack does not execute those commands.
@@ -61,18 +63,18 @@ The operator execution plan below is the concrete handoff. It names the exact ro
 
 The current clean-checkout helpers report:
 
-- `plan_swisstopo_aoi_acquisition.py -> blocked_missing_inputs`
-- `check_second_site_public_geodata_preflight.py -> blocked_missing_inputs`
-- `check_chant_sura_real_context_readiness_gate.py -> blocked_missing_inputs`
-- `plan_aoi_to_prepared_pilot_dry_run.py -> blocked_missing_inputs`
+- `plan_swisstopo_aoi_acquisition.py -> ready`
+- `check_second_site_public_geodata_preflight.py -> deferred_public_context_inputs`
+- `check_chant_sura_real_context_readiness_gate.py -> blocked_partial_real_inputs`
+- `plan_aoi_to_prepared_pilot_dry_run.py -> blocked_fixture_backed_inputs`
 
 ### Product Readiness Matrix
 
 | Product | Decision | Current state | Exact root | Expected metadata | Verifier command | Stop condition |
 |---|---|---|---|---|---|---|
-| swissALTI3D terrain crop | stage | ready on the product row, but the overall gate still blocks on missing metadata inputs | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc` | `terrain_metadata.yaml` must carry `crs`, `vertical_datum`, `crop_provenance`, and `checksum` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the AOI catalog, terrain sidecar, source-zone metadata, scenario table, or policy row is still missing; the crop alone is not readiness evidence. |
-| swissALTI3D terrain metadata | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml` | `crs`, `vertical_datum`, `crop_provenance`, `checksum` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the sidecar omits LN02/CRS/checksum provenance or if the gate still reports `blocked_missing_inputs`. |
-| AOI tile catalog for deterministic swisstopo discovery | stage | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml` | `tile_id`, `source_product`, `source_url`, `extent_lv95_m` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the catalog cannot resolve AOI tile `2793-1180` or discovery remains `blocked_missing_inputs`. |
+| swissALTI3D terrain crop | stage | ready_real | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc` | `terrain_metadata.yaml` carries CRS, extent, checksum, raw checksum, processed checksum, and preprocessing command | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns anything other than `ready`; the crop alone still does not authorize a second-site ensemble. |
+| swissALTI3D terrain metadata | stage | ready_real | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml` | source product, CRS, crop extent, raw checksum, processed checksum, and preprocessing command | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the sidecar disagrees with the cache manifest. |
+| AOI tile catalog for deterministic swisstopo discovery | stage | ready | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml` | `tile_id`, `source_product`, `source_url`, `extent_lv95_m` | `PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readiness_gate.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` | Stop if the catalog cannot resolve AOI tile `2793-1180`. |
 | SWISSIMAGE | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage` | Cache verifier fields: `source_product_id`, `source_product_name`, `source_url_or_download_record`, `product_version_or_date`, `tile_id_or_delivery_identifier`, `checksum_sha256`, `crs`, `resolution_m`, `crop_extent_lv95_m`, `license_or_terms_reference`, `raw_checksum`, `processed_checksum`, `preprocessing_command_and_timestamp` | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns anything other than `verified`; do not download to "fix" a missing row. |
 | swissTLM3D | defer | deferred_public_context | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d` | Same cache verifier fields as above; the row also expects the staged archive contract to remain auditable | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the verifier returns `missing`, `checksum_mismatch`, or `metadata_mismatch`. |
 | swissTLM3D metadata | defer | missing | `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` | `metadata.json`, `source_product`, `staged_asset_present`, plus the cache verifier fields above | `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` | Stop if the metadata sidecar is absent or if it cannot be reconciled with the cache contract. |
@@ -247,7 +249,9 @@ products:
 ### Second-Site Readiness Snapshot
 
 This second-site readiness check on the Chant Sura / Flüelapass candidate
-classifies the candidate as `blocked_missing_inputs`. It is not the frozen
+classifies the candidate as `deferred_public_context_inputs`, with the
+real-context gate separately reporting `blocked_partial_real_inputs` because
+source/scenario records remain fixture-backed. It is not the frozen
 Tschamut target-area Balfrin demonstration contract; that contract is recorded
 separately in
 `validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml`.
@@ -256,16 +260,18 @@ Current helper outputs:
 
 - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `deferred_public_context_inputs`
 - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `deferred_public_context_inputs`
-- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` -> `fixture_backed`
+- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` -> `ready`
 
 Exact current blockers and operator actions:
 
-- replace the fixture-backed terrain crop and terrain metadata with a real crop derived from `data/raw/swisstopo/swissalti3d_2019_2696-1167_2_2056_5728.tif`, then refresh the checksum and provenance sidecar under `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/`
+- replace the fixture-backed AOI tile catalog, source-zone metadata, scenario
+  table, and source-scenario policy with real site-specific records before
+  treating the prepared pilot as real-input ready
 - stage `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` from the real `data/raw/swisstopo/swisstlm3d/swisstlm3d_2021-04_2056_5728.shp.zip` archive and copy or symlink the archive into `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d`
 - promote the already present real raw cache files into site-specific ignored context roots for `SWISSIMAGE`, `swissSURFACE3D Raster`, and `swissBUILDINGS3D`
 - acquire the missing `swissSURFACE3D` public product from its swisstopo product page and stage it into `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d`
 
-The candidate remains blocked until the real terrain crop is no longer fixture-backed and the missing context sidecar/product rows are staged in ignored roots with checksums and provenance.
+The candidate remains deferred until the missing context sidecar/product rows are staged in ignored roots with checksums and provenance.
 
 ## Exact Commands
 
@@ -321,10 +327,10 @@ family already listed in the acquisition plan:
 
 Observed current statuses:
 
-- `plan_swisstopo_aoi_acquisition.py` -> `blocked_missing_inputs`
-- `check_second_site_public_geodata_preflight.py` -> `blocked_missing_inputs`
-- `check_chant_sura_real_context_readiness_gate.py` -> `blocked_missing_inputs`
-- `plan_aoi_to_prepared_pilot_dry_run.py` -> `blocked_missing_inputs`
+- `plan_swisstopo_aoi_acquisition.py` -> `ready`
+- `check_second_site_public_geodata_preflight.py` -> `deferred_public_context_inputs`
+- `check_chant_sura_real_context_readiness_gate.py` -> `blocked_partial_real_inputs`
+- `plan_aoi_to_prepared_pilot_dry_run.py` -> `blocked_fixture_backed_inputs`
 
 ## TB-250 Missing-Input Acquisition Handoff
 

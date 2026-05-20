@@ -119,11 +119,11 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             )
 
         report = json.loads(stdout.getvalue())
-        self.assertEqual(exit_code, 2)
+        self.assertEqual(exit_code, 0)
         self.assertEqual(report["verification_status"], "verified")
-        self.assertEqual(report["cache_audit_status"], "fixture_backed")
-        self.assertEqual(report["cache_integrity_status"], "fixture_backed")
-        self.assertEqual(report["products"][0]["provenance_classification"], "fixture_backed")
+        self.assertEqual(report["cache_audit_status"], "ready")
+        self.assertEqual(report["cache_integrity_status"], "ready")
+        self.assertEqual(report["products"][0]["provenance_classification"], "real_staged")
         self.assertEqual(report["products"][0]["actual"]["metadata"]["product_version_or_date"], "2019-01-01")
 
     def test_main_exit_code_tracks_cache_integrity_status(self) -> None:

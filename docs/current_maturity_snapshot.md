@@ -243,8 +243,9 @@ until the dominant uncertainty and physical-credibility gaps below are reduced
 with measured evidence. Second-site pilots remain non-executed, but Chant Sura
 / Fluelapass now has a concrete candidate manifest, reusable public-geodata
 contract reporting, deterministic acquisition planning, a public-geodata cache
-verification contract, fixture-backed AOI terrain preprocessing, deterministic
-release-zone candidate sensitivity reporting, a measured real-terrain
+verification contract, one real-staged swissALTI3D AOI terrain crop for the
+Chant Sura / Fluelapass candidate, deterministic release-zone candidate
+sensitivity reporting, a measured real-terrain
 candidate sweep with runtime/output measurements and multi-zone readiness
 reporting, a measured real-terrain candidate stability report with persistent,
 threshold-sensitive, and rejected candidate classes plus candidate-count
@@ -368,8 +369,9 @@ objective are:
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
    contract, deterministic acquisition planning, a public-geodata cache
-   verifier, fixture-backed AOI terrain preprocessing, a tiny synthetic
-   core-input staging path, a real-context readiness gate, a product readiness
+   verifier, a real-staged Chant Sura swissALTI3D terrain crop, a tiny
+   synthetic core-input staging path for the still-fixture-backed
+   source/scenario records, a real-context readiness gate, a product readiness
    pack, a release-zone heuristic dry run, a release-plan dry run, an
    AOI-to-prepared-pilot dry-run orchestrator, and an optional ignored-root
    case-skeleton/command bundle that remains blocked from execution. The
@@ -542,7 +544,12 @@ objective are:
     context. The decision pack lists the required products, cache/output roots,
     readiness impact, reproduction commands, and product-by-product stage/defer
     matrix, but no public context was downloaded and no second-site ensemble or
-    hazard build was run. TB-249 through TB-251 tightened this boundary: the
+    hazard build was run. The current repo-root cache verifier now reports the
+    Chant Sura swissALTI3D terrain crop as `ready` / `real_staged`; the
+    real-context gate remains `blocked_partial_real_inputs` because the AOI
+    tile catalog, source-zone metadata, scenario table, and source-scenario
+    policy are still fixture-backed, and public-context products remain
+    deferred. TB-249 through TB-251 tightened this boundary: the
     real-context readiness gate now reports fixture-backed, partial-real,
     metadata-mismatch, missing-row, and missing-file cases separately; the
     no-download acquisition handoff gives a concrete next action such as

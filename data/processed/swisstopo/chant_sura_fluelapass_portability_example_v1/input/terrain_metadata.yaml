@@ -1,17 +1,18 @@
 schema_version: 1
-tile_id: chant_sura_fluelapass_regression_fixture_lv95_crop
-source_dataset: chant_sura_fluelapass_regression_fixture
-source_product: swissALTI3D
-source_product_id: swissalti3d_fixture_terrain_crop
+source_product_id: swissalti3d_2m
 source_product_name: swissALTI3D
 source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
-product_version_or_date: 2019-01-01
+product_version_or_date: '2019-01-01'
 tile_id_or_delivery_identifier: 2793-1180
-checksum_sha256: d6d70bad700a5f587cd3294d7c67dfc46c2ba9e5b0003373c58d5ec0e0ba2741
-license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+checksum_sha256: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
 crs: EPSG:2056
-resolution_m: 2.0
+resolution_m: 2
 crop_extent_lv95_m:
+  xmin: 2793000.0
+  ymin: 1180200.0
+  xmax: 2793008.0
+  ymax: 1180208.0
+extent_lv95_m:
   xmin: 2793000.0
   ymin: 1180200.0
   xmax: 2793008.0
@@ -22,31 +23,31 @@ raster:
   width_px: 4
   height_px: 4
   nodata: -9999.0
-extent_lv95_m:
-  xmin: 2793000.0
-  ymin: 1180200.0
-  xmax: 2793008.0
-  ymax: 1180208.0
+license_or_terms_reference: swisstopo open data terms; verify current terms before
+  redistribution
+raw_checksum: 0b71e46fce745f0f441923f986a2515b51a7fd7f91b33c1fb34c7b47aa21a512
+processed_checksum: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
+preprocessing_command_and_timestamp: gdal_translate -of AAIGrid -projwin 2793000
+  1180208 2793008 1180200 data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/swissalti3d_2019_2793-1180_2_2056_5728.tif
+  data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+metadata_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+provenance_classification: real_staged
 coordinate_reference_system:
   epsg: 2056
-  horizontal_name: CH1903+ / LV95
+  horizontal_crs: LV95
   vertical_datum: LN02
-  coordinate_unit: m
-  height_unit: m
 preprocessing:
-  status: staged_real
   crop_extent_lv95_m:
     xmin: 2793000.0
     ymin: 1180200.0
     xmax: 2793008.0
     ymax: 1180208.0
-  resampling_method: none
-  raw_sha256: null
-  processed_sha256: d6d70bad700a5f587cd3294d7c67dfc46c2ba9e5b0003373c58d5ec0e0ba2741
-  tool: regression_fixture_manual_grid
-  processed_utc: null
+  command: gdal_translate -of AAIGrid -projwin 2793000 1180208 2793008 1180200
+    data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
 provenance:
-  intended_use: chant_sura_fluelapass_aoi_regression_fixture
-  notes:
-    - Regression fixture only; not validation evidence.
-    - Exercises CRS, vertical datum, crop extent, checksum, and provenance fields.
+  intended_use: deterministic real-AOI terrain preprocessing input for non-operational
+    conditional workflow testing
+  source: public swissALTI3D tile cropped to the frozen Chant Sura / Flüelapass
+    management AOI
