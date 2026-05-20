@@ -259,6 +259,47 @@ Bounded next target:
 - batch or vectorize trajectory-cell updates inside the existing accumulator.
 - expected impact: reduce the dominant explicit-grid trajectory accumulation
 
+## TB-334 Multi-Zone Profile
+
+TB-334 rechecked the largest available local multi-zone evidence instead of
+guessing at a new optimization target. The scratch-local ladder in
+`docs/multi_zone_reducer_pressure_probe.md` stays the clearest measured source
+for phase costs, while the Balfrin four-zone postproc package in
+`scripts/summarize_balfrin_scale_readiness_matrix.py` remains separate
+post-processing evidence and does not count as a hazard-execution profile.
+
+Measured scratch-local rung summary:
+
+| Zones | Status | Accumulation s | Raster write s | Reducer merge s | Total wall s |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 2 | `probe_ready` | `0.090298` | `0.022384` | `0.006235` | `0.218312` |
+| 4 | `probe_ready` | `0.090089` | `0.021907` | `0.006222` | `0.211048` |
+| 8 | `multi_zone_dry_run_blocked` | `0.088567` | `0.023540` | `0.006084` | `0.223721` |
+| 12 | `multi_zone_dry_run_blocked` | `0.104789` | `0.022471` | `0.007194` | `0.230328` |
+
+The dominant hazard-phase bottleneck is still `accumulation_seconds`. Raster
+writing and reducer merge stay an order of magnitude smaller on the same rung,
+and the 12-zone scratch probe shows manifest and output pressure separately:
+manifest bundle size `21011` bytes, output file count `62`, reducer wall time
+`2.99` s.
+
+Numeric acceptance floor for a future optimization:
+
+- Require at least a 10% reduction in `accumulation_seconds` on the blocked
+  8-zone scratch-local rung.
+- That means a candidate must come in at `0.079711` s or lower, down from the
+  measured `0.088567` s, while preserving manifest determinism and hazard-layer
+  signatures.
+
+Recommendation:
+
+- No-op for now. None of the measured local or postproc artifacts clears the
+  10% floor, and the 4-zone Balfrin postproc package is not hazard-execution
+  evidence.
+- The next performance task should use a newly measured accumulator or reader
+  slice as its target; otherwise defer performance work until the threshold can
+  be tested against a structural batching/vectorization candidate.
+
 ## Hazard Accumulation Hypothesis Benchmark
 
 TB-298 added a fixture-backed benchmark harness at

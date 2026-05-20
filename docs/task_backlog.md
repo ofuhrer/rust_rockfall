@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-334: Hazard Accumulation Profiling At Multi-Zone Scale
-
-Goal: Profile hazard accumulation, raster writing, reducer merge, and manifest generation using the largest available measured/local multi-zone artifacts.
-
-Capability gap reduced: TB-313 rejected one accumulator micro-optimization; future performance work needs a new measured bottleneck and acceptance floor.
-
-Why this outranks alternatives: Optimization should follow measured phase costs, not broad speculation.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/build_hazard_layers.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Phase-level profile for available two/four-zone evidence or scratch-local ladder artifacts.
-- Identification of the dominant bottleneck and a numeric acceptance threshold for any proposed optimization.
-- Explicit no-op recommendation if no bottleneck clears the threshold.
-
-Definition of done:
-
-- The next performance task has a measured target, or performance work is explicitly deferred.
-
-Boundaries: Profiling/analysis only unless a trivial measurement harness fix is required; no physics changes, no new Balfrin job, no operational claim.
-
 ### TB-335: Implement Measured Hazard Throughput Improvement
 
 Goal: Implement one narrowly scoped performance improvement only if TB-334 identifies a measured bottleneck with a defensible acceptance threshold.
