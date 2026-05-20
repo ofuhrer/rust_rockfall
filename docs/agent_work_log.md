@@ -4781,3 +4781,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: bounded refactor only, no workflow rewrite, no public status rename, no scientific-semantics change, no new wrapper/gate/report vocabulary, and no Balfrin operational or scale-up claim.
 - Next task: TB-396
+
+### TB-396: Split Hazard Layer Packaging Primitives From Giant Builder
+
+- Date: 2026-05-21
+- Commit: `19d142a`
+- Objective: move a narrow hazard-layer packaging primitive out of `scripts/build_hazard_layers.py` without changing CLI behavior or output schemas.
+- Files changed: `scripts/build_hazard_layers.py`, `scripts/hazard_output_manifests.py`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Moved the map-package manifest section helper, output-path selector, and manifest writer into `scripts/hazard_output_manifests.py` so the builder now imports the packaging primitive instead of defining it inline.
+  - Kept the manifest schema, path fallback, and research-diagnostic limitations unchanged while preserving the existing builder call sites.
+  - Added focused unit coverage for the extracted helper and retained an end-to-end smoke-path regression that still writes the labeled hazard package.
+  - Next safe extraction seam appears to be `write_pilot_gis_package_manifest`, which mirrors the extracted map-package writer and still lives inside the builder.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_map_package_manifest_helpers_write_the_expected_schema tests.test_hazard_layers.HazardLayerTests.test_map_package_metadata_rejects_annual_frequency_and_source_mismatch`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_phase1_smoke_example_runs_validation_and_labelled_hazard_package`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no hazard physics change, no output schema break, no new workflow wrapper, and no hazard operational or scale-up claim.
+- Next task: `TB-397`
