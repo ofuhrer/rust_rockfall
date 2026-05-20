@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-351: Multi-Zone Submit Contract Regeneration
-
-Goal: Regenerate the smallest live multi-zone Balfrin hazard submit package so reviewed commands, authorization records, writable run roots, and executable manifest schema match exactly.
-
-Capability gap reduced: Previous two-zone and four-zone live submit attempts failed closed before `sbatch` because package and executable contracts diverged.
-
-Why this outranks alternatives: A measured multi-zone Balfrin hazard result cannot happen until the submit-contract mismatch is removed.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `docs/balfrin_two_zone_probe_tb309.md`
-
-Deliverables:
-
-- A regenerated two-zone live package with reviewed command, authorization/audit record, writable run root, executable manifest schema, and output-budget summary.
-- Tests proving stale checksum, wrong schema, and unwritable root cases fail closed.
-
-Definition of done:
-
-- The authorization preflight reaches ready-for-submit for the smallest live multi-zone hazard package, without submitting the job.
-
-Boundaries: No live Balfrin job in this task, no scale-up claim, no distributed execution.
-
 ### TB-352: Execute Smallest Multi-Zone Balfrin Hazard Run
 
 Goal: Submit and monitor the regenerated smallest live multi-zone Balfrin hazard package under the existing `postproc` clearance.

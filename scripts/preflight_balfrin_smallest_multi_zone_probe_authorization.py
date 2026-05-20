@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import shlex
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ STATUS_BLOCKED_ACCESS = "blocked_access"
 STATUS_BLOCKED_PACKAGE = "blocked_reviewed_package"
 STATUS_BLOCKED_ACCESS_NOT_CHECKED = "blocked_balfrin_access_not_checked"
 STATUS_BLOCKED_SUBMIT_CONTRACT = "blocked_submit_contract"
+REVIEWED_BALFRIN_RUN_ROOT_PREFIX = Path("/scratch/mch/olifu/rust_rockfall/probes")
 
 ACCESS_PREFLIGHT_COMMAND = (
     "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json"
@@ -364,6 +366,72 @@ def _authorization_requirement(
     }
 
 
+def _parse_option(tokens: list[str], option: str) -> str | None:
+    for idx, token in enumerate(tokens):
+        if token == option and idx + 1 < len(tokens):
+            return tokens[idx + 1]
+        if token.startswith(f"{option}="):
+            return token.split("=", 1)[1]
+    return None
+
+
+def _local_run_root_writability_status(run_root: Path) -> dict[str, Any]:
+    run_root = run_root.expanduser()
+    existing = run_root if run_root.exists() else run_root.parent
+    while not existing.exists() and existing != existing.parent:
+        existing = existing.parent
+    if not existing.exists():
+        return {
+            "status": "not_checked",
+            "reason": f"no existing ancestor for run root {run_root}",
+            "checked_path": str(existing),
+        }
+    writable = os.access(existing, os.W_OK | os.X_OK)
+    return {
+        "status": "ready" if writable else STATUS_BLOCKED_SUBMIT_CONTRACT,
+        "reason": "" if writable else f"run-root ancestor is not writable: {existing}",
+        "checked_path": str(existing),
+    }
+
+
+def _reviewed_run_root_contract_status(run_root_token: str | None) -> dict[str, Any]:
+    if not run_root_token:
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "run_root": None,
+            "writability_status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "blocked_reason": "authorization submit command is missing --run-root",
+        }
+    run_root = Path(run_root_token).expanduser()
+    if run_root.is_absolute() and str(run_root).startswith("/scratch/"):
+        try:
+            run_root.relative_to(REVIEWED_BALFRIN_RUN_ROOT_PREFIX)
+        except ValueError:
+            return {
+                "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+                "run_root": str(run_root),
+                "writability_status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+                "blocked_reason": (
+                    "authorization submit command targets an unreviewed Balfrin scratch root; "
+                    f"expected a path under {REVIEWED_BALFRIN_RUN_ROOT_PREFIX}"
+                ),
+            }
+        return {
+            "status": "ready",
+            "run_root": str(run_root),
+            "writability_status": "reviewed_balfrin_scratch_root",
+            "blocked_reason": "",
+        }
+    local_status = _local_run_root_writability_status(run_root)
+    return {
+        "status": local_status["status"],
+        "run_root": str(run_root),
+        "writability_status": local_status["status"],
+        "checked_path": local_status["checked_path"],
+        "blocked_reason": local_status["reason"],
+    }
+
+
 def _submit_contract_status(run_shape: dict[str, Any]) -> dict[str, Any]:
     command = str(run_shape.get("authorization_submit_command") or "").strip()
     if not command:
@@ -413,11 +481,24 @@ def _submit_contract_status(run_shape: dict[str, Any]) -> dict[str, Any]:
             "run_id": None,
             "blocked_reason": str(exc),
         }
+    run_root_contract = _reviewed_run_root_contract_status(_parse_option(tokens, "--run-root"))
+    if run_root_contract["status"] != "ready":
+        return {
+            "status": STATUS_BLOCKED_SUBMIT_CONTRACT,
+            "command": command,
+            "probe_manifest_path": str(manifest_path),
+            "run_id": run_id,
+            "run_root": run_root_contract.get("run_root"),
+            "run_root_writability_status": run_root_contract.get("writability_status"),
+            "blocked_reason": run_root_contract.get("blocked_reason", ""),
+        }
     return {
         "status": "ready",
         "command": command,
         "probe_manifest_path": str(manifest_path),
         "run_id": run_id,
+        "run_root": run_root_contract.get("run_root"),
+        "run_root_writability_status": run_root_contract.get("writability_status"),
         "blocked_reason": "",
     }
 

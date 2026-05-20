@@ -453,6 +453,83 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertFalse(report["ready_for_authorization_review"])
         self.assertFalse(report["ready_for_authorized_submission"])
 
+    def test_stale_authorization_checksum_blocks_closed(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            package_sha = self._write_package(package)
+            self._write_authorization(auth, package, package_sha)
+            payload = json.loads(package.read_text(encoding="utf-8"))
+            payload["package_summary"] = {"status": "mutated_after_authorization"}
+            package.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_missing_authorization")
+        self.assertIn("checksum does not match", report["blocked_reason"])
+        self.assertNotEqual(report["reviewed_handoff_package_sha256"], package_sha)
+
+    def test_wrong_reviewed_package_schema_blocks_closed(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            self._write_package(package)
+            payload = json.loads(package.read_text(encoding="utf-8"))
+            payload["schema_version"] = "wrong_schema_v1"
+            package.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            package_sha = hashlib.sha256(package.read_bytes()).hexdigest()
+            self._write_authorization(auth, package, package_sha)
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_reviewed_package")
+        self.assertIn("schema", report["blocked_reason"])
+        self.assertFalse(report["ready_for_authorized_submission"])
+
+    def test_unreviewed_unwritable_balfrin_run_root_blocks_closed(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package = tmp / "reviewed_package.json"
+            auth = tmp / "authorization.yaml"
+            self._write_package(package)
+            payload = json.loads(package.read_text(encoding="utf-8"))
+            payload["follow_up_recommendation"]["minimum_measured_multi_zone_run"][
+                "authorization_submit_command"
+            ] = (
+                "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
+                "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml "
+                "--run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 "
+                "--run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --authorized-submit "
+                f"--reviewed-handoff-package {package} --authorization-record {auth}"
+            )
+            package.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            package_sha = hashlib.sha256(package.read_bytes()).hexdigest()
+            self._write_authorization(auth, package, package_sha)
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        self.assertEqual(report["preflight_status"], "blocked_submit_contract")
+        self.assertEqual(report["submit_contract_status"], "blocked_submit_contract")
+        self.assertEqual(report["submit_contract_requirement"]["run_root_writability_status"], "blocked_submit_contract")
+        self.assertIn("unreviewed Balfrin scratch root", report["blocked_reason"])
+
     def test_expired_balfrin_access_status_maps_to_blocked_access_and_preserves_consumed_status(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             tmp = Path(tmpdir)

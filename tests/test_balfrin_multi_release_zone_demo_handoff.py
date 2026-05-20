@@ -10,6 +10,8 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
+import yaml
+
 from scripts.lib import command_plan_contract as COMMAND_PLAN
 
 
@@ -39,6 +41,9 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
 
             command_plan = json.loads(Path(first["command_plan_path"]).read_text(encoding="utf-8"))
             package = json.loads(Path(first["package_json_path"]).read_text(encoding="utf-8"))
+            authorization_record_path = artifact_dir / "balfrin_multi_zone_live_authorization_record_v1.yaml"
+            authorization_record = yaml.safe_load(authorization_record_path.read_text(encoding="utf-8"))
+            package_sha256 = MODULE.file_sha256(Path(first["package_json_path"]))
             sbatch_script = Path(first["sbatch_script_path"]).read_text(encoding="utf-8")
             pressure_report_path = Path(first["multi_zone_pressure"]["pressure_artifact_dir"]) / (
                 "multi_zone_reducer_pressure_probe_v1.json"
@@ -50,6 +55,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             self.assertTrue(Path(first["sbatch_script_path"]).exists())
             self.assertTrue(Path(first["package_json_path"]).exists())
             self.assertTrue(Path(first["package_md_path"]).exists())
+            self.assertTrue(authorization_record_path.exists())
             self.assertTrue(Path(first["candidate_output_root"]).exists())
             self.assertTrue(Path(first["target_area_output_root"]).exists())
             self.assertTrue(Path(first["multi_zone_pressure"]["pressure_artifact_dir"]).exists())
@@ -58,6 +64,11 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "balfrin_multi_release_zone_demo_package_v1")
+        self.assertEqual(authorization_record["authorized_task"], "TB-351")
+        self.assertEqual(authorization_record["authorization_status"], "authorized_for_one_bounded_probe")
+        self.assertEqual(authorization_record["reviewed_handoff_package_path"], str(Path(first["package_json_path"]).resolve()))
+        self.assertEqual(authorization_record["reviewed_handoff_package_sha256"], package_sha256)
+        self.assertIn("/scratch/mch/olifu/rust_rockfall/probes", authorization_record["run_root"])
         self.assertEqual(first["package_status"], "mixed_provenance")
         self.assertEqual(first["package_constraint_status"], "warning")
         self.assertEqual(first["submission_classification"], "blocked_pending_new_human_authorization")

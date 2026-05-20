@@ -3745,3 +3745,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: GIS package readiness only; no operational map claim, no hazard-value change, no scale-up claim, and no distributed-execution or physical-probability claim.
 - Next task: `TB-351`
+
+### TB-351: Multi-Zone Submit Contract Regeneration
+- Date: 2026-05-20
+- Commit: local
+- Objective: regenerate the smallest live multi-zone Balfrin submit contract so the reviewed command, authorization record, writable run root, executable manifest, and output-budget gate agree before any scheduler submission.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_authorized_multi_zone_submit.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Made the handoff generator write a fresh TB-351 authorization/audit record after the final reviewed package JSON is materialized, binding it to the final package SHA-256 and the reviewed `postproc` submit command.
+  - Extended the authorization preflight submit-contract check to retain executable-manifest validation and fail closed when the reviewed command targets an unreviewed Balfrin scratch root instead of `/scratch/mch/olifu/rust_rockfall/probes/...`.
+  - Added focused fail-closed coverage for stale authorization checksums, wrong reviewed-package schema, and unwritable/unreviewed run-root contracts, plus coverage that regenerated packages carry a fresh authorization record.
+  - Regenerated the ignored `/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1` package and confirmed the preflight reports `ready_for_authorization_review`, `ready_for_authorized_submission=true`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted` for the two-zone/two-scenario shape.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_authorized_multi_zone_submit`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb351_balfrin_access.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json --json-output /tmp/tb351_handoff_stdout.json > /tmp/tb351_generate_stdout.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb351_balfrin_access.json --format json > /tmp/tb351_preflight.json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no `sbatch`, no live Balfrin hazard job, no measured multi-zone evidence, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-352`

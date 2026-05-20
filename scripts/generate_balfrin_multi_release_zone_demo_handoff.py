@@ -62,6 +62,7 @@ SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
     "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
+SMALLEST_MULTI_ZONE_AUTHORIZED_TASK = "TB-351"
 BUDGET_ACCEPTANCE_CONTRACT_VERSION = "balfrin_multi_zone_output_budget_acceptance_v1"
 BALFRIN_COMMAND_GROUP_ORDER = (
     "candidate_release_candidates",
@@ -3484,6 +3485,39 @@ def write_package_files(report: dict[str, Any]) -> None:
     sbatch_path.chmod(0o750)
     package_json_path.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
     package_md_path.write_text(render_text_report(report) + "\n", encoding="utf-8")
+    write_authorization_record(
+        authorization_record_path=artifact_dir / DEFAULT_AUTHORIZATION_RECORD_PATH.name,
+        reviewed_handoff_package_path=package_json_path,
+        reviewed_handoff_package_sha256=file_sha256(package_json_path),
+        authorization_submit_command=str(report.get("authorization_submit_command") or ""),
+    )
+
+
+def write_authorization_record(
+    *,
+    authorization_record_path: Path,
+    reviewed_handoff_package_path: Path,
+    reviewed_handoff_package_sha256: str,
+    authorization_submit_command: str,
+) -> None:
+    payload = {
+        "schema_version": "balfrin_multi_zone_live_authorization_v1",
+        "authorization_status": "authorized_for_one_bounded_probe",
+        "authorized_task": SMALLEST_MULTI_ZONE_AUTHORIZED_TASK,
+        "no_rerun_without_renewed_authorization": True,
+        "reviewed_handoff_package_path": str(reviewed_handoff_package_path.resolve()),
+        "reviewed_handoff_package_sha256": reviewed_handoff_package_sha256,
+        "authorization_submit_command": authorization_submit_command,
+        "run_root": str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+        "run_id": SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+        "partition": "postproc",
+        "live_submission_authorized_by_record_only": False,
+        "boundary_note": (
+            "This record authorizes one bounded postproc pre-submit package contract for review; "
+            "it does not run sbatch or create measured hazard evidence."
+        ),
+    }
+    dump_yaml(authorization_record_path, payload)
 
 
 def materialize_artifacts(

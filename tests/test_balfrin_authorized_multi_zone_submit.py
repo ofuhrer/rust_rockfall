@@ -75,7 +75,7 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
                     "authorization_submit_command": (
                         "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
                         "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml "
-                        "--run-root /scratch/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 "
+                        "--run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 "
                         "--run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --authorized-submit "
                         f"--reviewed-handoff-package {path} --authorization-record {path.parent / 'authorization_record.yaml'}"
                     ),
