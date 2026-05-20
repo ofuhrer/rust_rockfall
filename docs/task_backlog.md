@@ -66,6 +66,86 @@ Definition of done:
 
 Boundaries: No threshold tuning to force candidates, no field-validation claim, no operational release-zone claim, no scenario generation, no hazard run, and no Balfrin submission.
 
+### TB-385: Rebuild Management AOI Scenario And Prepared-Pilot Chain
+
+Goal: Re-run the management-AOI scenario-pressure and prepared-pilot chain after TB-384 resolves or defers the candidate-screening blocker.
+
+Capability gap reduced: The scenario/prepared-pilot state must reflect the current candidate evidence rather than stale zero-candidate propagation.
+
+Why this outranks alternatives: Balfrin handoff cannot be meaningful until the scenario table and prepared-pilot compiler are synchronized with the latest candidate package or explicit deferral.
+
+Inspect first:
+
+- `scripts/summarize_management_aoi_scenario_pressure.py`
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Updated deterministic scenario-pressure and prepared-pilot reports that either consume a non-empty candidate package or preserve TB-384's explicit deferral reason.
+- Tests covering the current candidate-evidence branch and the first downstream blocker.
+
+Definition of done:
+
+- The management-AOI prepared-pilot compiler no longer reports a stale zero-screenable-cell diagnosis; it is either ready for handoff or blocked on the current named requirement.
+
+Boundaries: No invented candidates, no source-frequency semantics, no annual probability, no hazard execution, and no Balfrin submission.
+
+### TB-386: Rebuild Management AOI Balfrin Handoff Decision
+
+Goal: Rebuild the management-AOI Balfrin handoff and no-submit/run decision after the scenario/prepared-pilot chain is current.
+
+Capability gap reduced: The Balfrin execution decision must reflect the latest prepared-pilot state instead of stale TB-380/TB-381 blocked artifacts.
+
+Why this outranks alternatives: Live Balfrin work should resume only when the handoff package has current candidate, scenario, budget, and authorization evidence.
+
+Inspect first:
+
+- `scripts/build_management_aoi_balfrin_handoff.py`
+- `scripts/execute_management_aoi_balfrin_run.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `docs/balfrin_probe_slurm_driver.md`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- Updated handoff classification and execution decision: ready for a GPT-5.5 `postproc` run, blocked by current inputs/budgets/access, or explicitly deferred.
+- If ready, exact next submit package and preservation requirements; if blocked, first persistent blocker and no-submit evidence.
+
+Definition of done:
+
+- The Balfrin decision surface is current and does not rely on stale zero-candidate artifacts.
+
+Boundaries: GPT-5.5 worker for Balfrin-facing inspection; no live submission unless all gates pass under the standing `postproc` authorization rule; no scale-up or operational claim.
+
+### TB-387: Refresh Management Feasibility Projection From Current Branch
+
+Goal: Refresh the management-facing Swiss-scale feasibility projection after the candidate, prepared-pilot, and Balfrin-decision branch has been rebuilt.
+
+Capability gap reduced: Management needs a current feasibility answer that separates measured progress, upstream data blockers, failed-closed branches, and extrapolation assumptions.
+
+Why this outranks alternatives: A feasibility synthesis is useful only after the current execution branch has stopped at the right layer.
+
+Inspect first:
+
+- `docs/swiss_scale_feasibility_projection.md`
+- `docs/balfrin_scale_demonstration_management_package.md`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Updated projection table separating measured evidence, extrapolated assumptions, failed-closed branches, no-go thresholds, and unknowns.
+- Recommendation for the next 10-zone, 100-zone, regional, and Swiss-wide feasibility steps.
+
+Definition of done:
+
+- Management can read one current feasibility package that reflects the latest candidate-screening and Balfrin-decision evidence.
+
+Boundaries: Synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
