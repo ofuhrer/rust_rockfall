@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-354: Four-Zone Hazard Package From Measured Two-Zone Evidence
-
-Goal: Generate a four-zone hazard package only if TB-352 produced measured two-zone evidence and TB-353 integrated it successfully.
-
-Capability gap reduced: The next scale rung needs to be derived from measured evidence rather than review-only or stale package assumptions.
-
-Why this outranks alternatives: Four-zone hazard execution is the smallest meaningful step toward the existing 10-zone feasibility projection after two-zone evidence exists.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- Four-zone live hazard package with reduced outputs, output-budget gate, reducer/manifest budget, reviewed command, authorization/audit record, and expected artifact roots.
-- Explicit defer/no-go classification if two-zone evidence is missing or budgets are exceeded.
-
-Definition of done:
-
-- The four-zone package is ready-for-submit or deferred with a specific measured blocker.
-
-Boundaries: No live submission in this task, no distributed execution, no operational or scale-up claim.
-
 ### TB-355: Execute Four-Zone Balfrin Hazard Run
 
 Goal: Submit and monitor the four-zone Balfrin hazard package if TB-354 reaches ready-for-submit.

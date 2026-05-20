@@ -250,9 +250,12 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["review_readiness_classification"], "ready_for_review")
         self.assertIn("four-zone review package is ready for review", first["review_readiness_reason"])
         hazard_package = first["four_zone_hazard_execution_package"]
-        self.assertEqual(hazard_package["status"], "ready_for_review")
-        self.assertEqual(hazard_package["readiness_classification"], "ready_for_review")
-        self.assertIn("compact manifests", hazard_package["readiness_reason"])
+        self.assertEqual(hazard_package["status"], "deferred_missing_measured_two_zone_evidence")
+        self.assertEqual(hazard_package["readiness_classification"], "deferred_missing_measured_two_zone_evidence")
+        self.assertEqual(hazard_package["decision"], "defer")
+        self.assertEqual(hazard_package["decision_status"], "deferred")
+        self.assertFalse(hazard_package["ready_for_submit"])
+        self.assertIn("TB-352 failed closed", hazard_package["readiness_reason"])
         self.assertEqual(hazard_package["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(
             hazard_package["command_plan"]["output_profile_policy"]["classification"],
@@ -268,6 +271,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             hazard_package["authorization_audit_record"]["authorization_submit_command"],
             first["authorization_submit_command"],
         )
+        self.assertEqual(hazard_package["authorization_audit_record"]["status"], "deferred")
         self.assertEqual(hazard_package["reduced_output_settings"]["conditional_curve_export"], "summary-only")
         self.assertEqual(hazard_package["reduced_output_settings"]["grid_csv_export"], "none")
         self.assertTrue(hazard_package["preservation_instructions"]["checklist"])
@@ -280,6 +284,22 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(hazard_package["expected_output_budget"]["validation"]["status"], "accepted")
         self.assertEqual(hazard_package["expected_output_budget"]["projection"]["status"], "acceptable")
         self.assertEqual(hazard_package["expected_output_budget"]["manifest_pruning_status"], "budget_passes_no_reduction_needed")
+        self.assertEqual(hazard_package["measured_two_zone_evidence"]["status"], "missing")
+        self.assertEqual(
+            hazard_package["measured_two_zone_evidence"]["classification"],
+            "deferred_missing_measured_two_zone_evidence",
+        )
+        self.assertFalse(hazard_package["measured_two_zone_evidence"]["measured_on_balfrin"])
+        self.assertEqual(
+            hazard_package["expected_artifact_roots"],
+            {
+                "artifact_dir": first["artifact_dir"],
+                "candidate_output_root": first["candidate_output_root"],
+                "target_area_output_root": first["target_area_output_root"],
+                "pressure_artifact_dir": first["pressure_artifact_dir"],
+                "pressure_probe_root": first["pressure_probe_root"],
+            },
+        )
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]
@@ -360,6 +380,9 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("## Four-Zone Review Package", rendered)
         self.assertIn("## Smallest Run Estimates", rendered)
         self.assertIn("Blocked classification: `blocked_pending_authorization`", rendered)
+        self.assertIn("## Measured Two-Zone Evidence", rendered)
+        self.assertIn("deferred_missing_measured_two_zone_evidence", rendered)
+        self.assertIn("## Four-Zone Hazard Execution Package", rendered)
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(package["authorization_classification"], "blocked_pending_authorization")
         self.assertEqual(package["constraint_pressure"]["status"], "warning")
@@ -369,6 +392,34 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("preservation_gate_checklist", smallest_run)
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
+
+    def test_four_zone_live_hazard_decision_falls_back_to_no_go_when_budgets_exceed(self) -> None:
+        decision = MODULE.classify_four_zone_hazard_execution_decision(
+            measured_two_zone_evidence={
+                "status": "measured",
+                "classification": "measured_two_zone_evidence_present",
+                "decision": "measured",
+                "summary": "measured two-zone evidence is present",
+            },
+            output_budget_validation={
+                "status": "blocked_threshold_exceeded",
+                "summary": "manifest size exceeded the acceptance threshold",
+            },
+            constraint_pressure={
+                "status": "blocked",
+                "summary": "reducer budget exceeded the measured constraint",
+            },
+            manifest_pruning={
+                "status": "blocked_budget_reduction_needed",
+                "summary": "manifest pruning still requires reduction",
+            },
+        )
+
+        self.assertEqual(decision["decision"], "no_go")
+        self.assertEqual(decision["decision_status"], "blocked")
+        self.assertEqual(decision["classification"], "no_go_output_budget_exceeded")
+        self.assertFalse(decision["ready_for_submit"])
+        self.assertIn("manifest size exceeded", decision["no_go_reason"])
 
     def test_compact_manifest_mode_preserves_replay_critical_report_shape(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

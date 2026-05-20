@@ -781,6 +781,8 @@ def build_report(
             single_job_report=single_job_report,
         ),
         "multi_zone_pressure": pressure_report,
+        "pressure_artifact_dir": pressure_report.get("pressure_artifact_dir"),
+        "pressure_probe_root": pressure_report.get("pressure_probe_root"),
         "scenario_pressure_projection": scenario_pressure_projection,
         "output_budget_acceptance_thresholds": build_output_budget_acceptance_thresholds(),
         "output_budget_acceptance_validation": handoff_output_budget_projection.get(
@@ -826,6 +828,7 @@ def build_report(
         ],
         "blocked_reason": "live execution requires new human authorization; this helper only materializes a dry-run package",
     }
+    report["measured_two_zone_evidence"] = build_measured_two_zone_evidence_gate(report)
     report["four_zone_hazard_execution_package"] = build_four_zone_hazard_execution_package(report)
 
     write_package_files(report)
@@ -3176,6 +3179,7 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
     follow_up = dict(report.get("follow_up_recommendation") or {})
     minimum_run = dict(follow_up.get("minimum_measured_multi_zone_run") or {})
     command_plan = dict(report.get("command_plan") or {})
+    measured_two_zone_evidence = build_measured_two_zone_evidence_gate(report)
     command_plan_summary = {
         "schema_version": command_plan.get("schema_version"),
         "command_plan_status": command_plan.get("command_plan_status"),
@@ -3189,6 +3193,7 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
     output_budget_validation = dict(review_package.get("output_budget_acceptance_validation") or {})
     output_budget_thresholds = dict(review_package.get("output_budget_acceptance_thresholds") or {})
     output_budget_projection = dict(review_package.get("projection") or {})
+    manifest_pruning = dict(review_package.get("manifest_pruning") or {})
     preservation_checklist = list(minimum_run.get("preservation_gate_checklist") or review_package.get("preservation_gate_checklist") or [])
     expected_output_budget = {
         "status": review_package.get("output_budget_acceptance_status"),
@@ -3205,10 +3210,16 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
         "projection": output_budget_projection,
         "manifest_pruning_status": review_package.get("manifest_pruning_status"),
         "manifest_pruning_summary": review_package.get("manifest_pruning_summary"),
-        "manifest_pruning": dict(review_package.get("manifest_pruning") or {}),
+        "manifest_pruning": manifest_pruning,
     }
+    live_decision = classify_four_zone_hazard_execution_decision(
+        measured_two_zone_evidence=measured_two_zone_evidence,
+        output_budget_validation=output_budget_validation,
+        constraint_pressure=dict(review_package.get("constraint_pressure") or {}),
+        manifest_pruning=manifest_pruning,
+    )
     preservation_instructions = {
-        "status": review_package.get("readiness_classification"),
+        "status": live_decision["classification"],
         "checklist": preservation_checklist,
         "ignored_output_roots": list(report.get("ignored_output_roots") or []),
         "do_not_commit_paths": [
@@ -3220,10 +3231,11 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
         "notes": [
             "Keep generated scratch roots under /tmp or validation/private only.",
             "Do not commit live Balfrin outputs, scratch-root artifacts, or generated package files.",
+            "Do not submit the four-zone hazard package until measured two-zone evidence is present and the live decision switches to ready_for_submit.",
         ],
     }
     authorization_audit_record = {
-        "status": "reviewed",
+        "status": live_decision["audit_status"],
         "reviewed_handoff_package_path": report.get("package_json_path"),
         "authorization_record_path": minimum_run.get("authorization_record_path"),
         "authorization_review_command": report.get("authorization_review_command"),
@@ -3232,14 +3244,21 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
         "live_execution_requires_new_human_authorization": report.get(
             "live_execution_requires_new_human_authorization", True
         ),
-        "boundary_note": "This audit record only preserves the reviewed-package paths and later-submit command; it does not authorize execution.",
+        "boundary_note": live_decision["audit_boundary_note"],
     }
     reduced_output_settings = dict(review_package.get("reduced_output_defaults") or {})
     reduced_output_settings["output_profile_policy"] = dict(review_package.get("output_profile_policy") or {})
     return {
-        "status": review_package.get("readiness_classification"),
-        "readiness_classification": review_package.get("readiness_classification"),
-        "readiness_reason": review_package.get("readiness_reason"),
+        "status": live_decision["classification"],
+        "readiness_classification": live_decision["classification"],
+        "readiness_reason": live_decision["reason"],
+        "decision": live_decision["decision"],
+        "decision_status": live_decision["decision_status"],
+        "decision_classification": live_decision["classification"],
+        "decision_reason": live_decision["reason"],
+        "ready_for_submit": live_decision["ready_for_submit"],
+        "defer_reason": live_decision["defer_reason"],
+        "no_go_reason": live_decision["no_go_reason"],
         "review_readiness_classification": report.get("review_readiness_classification"),
         "review_readiness_reason": report.get("review_readiness_reason"),
         "release_zone_count": review_package.get("release_zone_count"),
@@ -3249,6 +3268,14 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
         "authorization_audit_record": authorization_audit_record,
         "reduced_output_settings": reduced_output_settings,
         "expected_output_budget": expected_output_budget,
+        "measured_two_zone_evidence": measured_two_zone_evidence,
+        "expected_artifact_roots": {
+            "artifact_dir": report.get("artifact_dir"),
+            "candidate_output_root": report.get("candidate_output_root"),
+            "target_area_output_root": report.get("target_area_output_root"),
+            "pressure_artifact_dir": report.get("pressure_artifact_dir"),
+            "pressure_probe_root": report.get("pressure_probe_root"),
+        },
         "preservation_instructions": preservation_instructions,
         "expected_runtime_seconds": review_package.get("expected_runtime_seconds"),
         "expected_storage_bytes": review_package.get("expected_storage_bytes"),
@@ -3259,6 +3286,107 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
         "reviewed_handoff_package_path": report.get("package_json_path"),
         "authorization_record_path": minimum_run.get("authorization_record_path"),
         "claim_boundaries": dict(review_package.get("claim_boundaries") or {}),
+    }
+
+
+def build_measured_two_zone_evidence_gate(report: dict[str, Any]) -> dict[str, Any]:
+    evidence = dict(report.get("measured_two_zone_evidence") or {})
+    status = str(evidence.get("status") or "").strip()
+    if status in {"measured_on_balfrin", "measured"}:
+        return {
+            "status": "measured",
+            "classification": "measured_two_zone_evidence_present",
+            "decision": "measured",
+            "summary": evidence.get("summary")
+            or "Measured two-zone evidence is present and can support a live four-zone hazard review.",
+            "source_task": evidence.get("source_task", "TB-352"),
+            "source_report": evidence.get("source_report"),
+            "blocker": None,
+            "measured_on_balfrin": True,
+        }
+    return {
+        "status": "missing",
+        "classification": "deferred_missing_measured_two_zone_evidence",
+        "decision": "defer",
+        "summary": (
+            evidence.get("summary")
+            or "TB-352 failed closed before scheduler submission, so measured two-zone hazard evidence is unavailable."
+        ),
+        "source_task": evidence.get("source_task", "TB-352"),
+        "source_report": evidence.get("source_report"),
+        "blocker": evidence.get("blocker")
+        or "TB-352 failed closed before scheduler submission; no measured two-zone hazard evidence is available.",
+        "measured_on_balfrin": False,
+    }
+
+
+def classify_four_zone_hazard_execution_decision(
+    *,
+    measured_two_zone_evidence: dict[str, Any],
+    output_budget_validation: dict[str, Any],
+    constraint_pressure: dict[str, Any],
+    manifest_pruning: dict[str, Any],
+) -> dict[str, Any]:
+    evidence_status = str(measured_two_zone_evidence.get("status") or "").strip()
+    if evidence_status != "measured":
+        reason = measured_two_zone_evidence.get("blocker") or measured_two_zone_evidence.get("summary") or (
+            "TB-352 failed closed before scheduler submission, so the four-zone hazard package remains deferred."
+        )
+        return {
+            "decision": "defer",
+            "decision_status": "deferred",
+            "classification": "deferred_missing_measured_two_zone_evidence",
+            "reason": reason,
+            "defer_reason": reason,
+            "no_go_reason": None,
+            "ready_for_submit": False,
+            "audit_status": "deferred",
+            "audit_boundary_note": (
+                "This audit record preserves the reviewed-package paths and defer reason only; it does not authorize execution."
+            ),
+        }
+
+    budget_blockers: list[str] = []
+    if output_budget_validation.get("status") != "accepted":
+        budget_blockers.append(
+            output_budget_validation.get("summary")
+            or "output-budget acceptance validation did not accept the four-zone package"
+        )
+    if constraint_pressure.get("status") in {"blocked", "blocked_missing_inputs"}:
+        budget_blockers.append(constraint_pressure.get("summary") or "reducer or manifest budget gate is blocked")
+    if manifest_pruning.get("status") not in {"budget_passes_no_reduction_needed"}:
+        budget_blockers.append(manifest_pruning.get("summary") or "manifest pruning does not pass without reduction")
+    if budget_blockers:
+        reason = "; ".join(dict.fromkeys(budget_blockers))
+        return {
+            "decision": "no_go",
+            "decision_status": "blocked",
+            "classification": "no_go_output_budget_exceeded",
+            "reason": reason,
+            "defer_reason": None,
+            "no_go_reason": reason,
+            "ready_for_submit": False,
+            "audit_status": "reviewed_no_go",
+            "audit_boundary_note": (
+                "This audit record preserves the reviewed-package paths and no-go blocker only; it does not authorize execution."
+            ),
+        }
+
+    reason = (
+        "Measured two-zone evidence is present and the live four-zone package stays within the current output and reducer budgets."
+    )
+    return {
+        "decision": "ready_for_submit",
+        "decision_status": "ready",
+        "classification": "ready_for_submit",
+        "reason": reason,
+        "defer_reason": None,
+        "no_go_reason": None,
+        "ready_for_submit": True,
+        "audit_status": "reviewed",
+        "audit_boundary_note": (
+            "This audit record preserves the reviewed-package paths and submit command only; it does not run sbatch or authorize execution."
+        ),
     }
 
 
@@ -3620,6 +3748,15 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Measured output file count max: `{measured_constraints.get('output_file_count_max')}`",
         f"- Constraint source: `{constraint_source.get('source_document')}`",
         "",
+        "## Measured Two-Zone Evidence",
+        "",
+        f"- Status: `{report.get('measured_two_zone_evidence', {}).get('status')}`",
+        f"- Classification: `{report.get('measured_two_zone_evidence', {}).get('classification')}`",
+        f"- Decision: `{report.get('measured_two_zone_evidence', {}).get('decision')}`",
+        f"- Summary: {report.get('measured_two_zone_evidence', {}).get('summary')}",
+        f"- Source task: `{report.get('measured_two_zone_evidence', {}).get('source_task')}`",
+        f"- Blocker: {report.get('measured_two_zone_evidence', {}).get('blocker')}",
+        "",
         "## Four-Zone Review Package",
         "",
         f"- Review readiness: `{report.get('review_readiness_classification')}`",
@@ -3644,6 +3781,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Package status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('status')}`",
         f"- Readiness classification: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('readiness_classification')}`",
         f"- Readiness reason: {dict(report.get('four_zone_hazard_execution_package') or {}).get('readiness_reason')}",
+        f"- Decision: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('decision')}`",
+        f"- Decision status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('decision_status')}`",
+        f"- Ready for submit: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('ready_for_submit')}`",
+        f"- Defer reason: {dict(report.get('four_zone_hazard_execution_package') or {}).get('defer_reason')}",
+        f"- No-go reason: {dict(report.get('four_zone_hazard_execution_package') or {}).get('no_go_reason')}",
         f"- Command plan status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_plan_status')}`",
         f"- Command count: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_count')}`",
         f"- Command ids: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_ids', [])}`",
@@ -3651,6 +3793,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Reduced-output settings: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('reduced_output_settings', {})}`",
         f"- Expected output budget status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('expected_output_budget', {}).get('status')}`",
         f"- Expected output budget profile: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('expected_output_budget', {}).get('threshold_profile_id')}`",
+        f"- Measured two-zone evidence: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('measured_two_zone_evidence', {})}`",
+        f"- Expected artifact roots: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('expected_artifact_roots', {})}`",
         f"- Preservation instructions: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('preservation_instructions', {})}`",
         "",
         "## Manifest Pruning",

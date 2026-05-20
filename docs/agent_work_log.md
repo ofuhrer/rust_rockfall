@@ -3804,3 +3804,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no new Balfrin job, no scheduler submission, no operational or scale-up claim, and no physical-probability, annual-frequency, risk, exposure, vulnerability, or distributed-execution claim.
 - Next task: `TB-354`
+
+### TB-354: Four-Zone Hazard Package From Measured Two-Zone Evidence
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: generate the four-zone hazard package only if measured two-zone evidence exists and the reducer/output budgets remain within bounds; otherwise defer with a specific blocker.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit measured-two-zone evidence gate and a live hazard-decision classifier to the four-zone handoff package so the report can distinguish `defer`, `no_go`, and `ready_for_submit` without fabricating measured evidence.
+  - Surfaced the live hazard package's reduced-output settings, output-budget projection, reducer/manifest pruning budget, authorization/audit record, and expected artifact roots in the report and text rendering.
+  - Updated the handoff tests to assert the deferred blocker for the missing measured two-zone evidence path and to cover the no-go branch when budgets are exceeded.
+  - Removed TB-354 from the active backlog after implementing the fail-closed package surface.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+- Result/status: implemented_blocked_report
+- Boundaries: no live submission, no distributed execution, no operational or scale-up claim, and no physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-355`
