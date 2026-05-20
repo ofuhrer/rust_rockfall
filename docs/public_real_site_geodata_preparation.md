@@ -499,6 +499,11 @@ staging. It reads the small AOI/site config and emits the required public
 swisstopo product categories, expected staging paths, and unresolved
 acquisition decisions so the future staging choice stays explicit before
 downloads or copies are attempted.
+The same helper now also supports `--mode explicit-acquire`, which materializes
+the deterministic acquisition-plan and cache-manifest package under an ignored
+output root while keeping raw swisstopo products out of git. Both modes surface
+generated-root warnings so the operator can see which roots must remain
+untracked.
 
 The follow-on dry-run helper,
 `scripts/plan_release_zone_heuristic_dry_run.py`, keeps the same Chant Sura /

@@ -3549,3 +3549,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: management synthesis only; no new Balfrin job, no operational claim, no annual/physical/risk semantics, no scale-up authorization, and no distributed execution claim.
 - Next task: `none`
+
+### TB-340: Real AOI Public-Geodata Acquisition Driver
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: turn the AOI product-discovery and staging plan into a deterministic acquisition driver with dry-run and explicit-acquire modes for one real AOI without running simulation.
+- Files changed: `scripts/plan_swisstopo_aoi_acquisition.py`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `dry-run` and `explicit-acquire` modes to the AOI acquisition planner, including deterministic tile and product manifests, generated-root warnings, and fail-closed handling for missing AOI definitions or tracked output roots.
+  - Materialized the explicit-acquire package as metadata-only JSON, YAML, and cache-manifest outputs under ignored AOI roots while preserving the no-download boundary for raw swisstopo products.
+  - Extended the focused planner tests to cover missing AOI, dry-run output shape, explicit-acquire materialization, and rejected tracked-output roots, then aligned the public-site preparation and swisstopo strategy docs with the new planner modes.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_swisstopo_aoi_acquisition.py tests/test_swisstopo_aoi_acquisition_planner.py scripts/run_aoi_hazard_workflow.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: acquisition planning and metadata-only package materialization only; no simulation, no operational claim, no annual/physical/risk semantics, and no large raw geodata commit.
+- Next task: `TB-341`

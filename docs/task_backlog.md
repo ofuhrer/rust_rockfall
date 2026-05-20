@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-340: Real AOI Public-Geodata Acquisition Driver
-
-Goal: Turn the current AOI product-discovery and staging plans into a deterministic acquisition driver for one user-selected real AOI without running simulation.
-
-Capability gap reduced: Arbitrary-AOI workflows still depend on manual public-geodata collection and cannot yet start from only an AOI definition.
-
-Why this outranks alternatives: Real input acquisition is the first blocker before terrain preprocessing, release-zone generation, scenario generation, or Balfrin execution can be meaningful for a new area.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A dry-run and explicit-acquire mode that emits deterministic product/tile manifests, expected staging roots, source URLs or acquisition references, and generated-root warnings for a real AOI.
-- Tests covering missing AOI, dry-run, and no-commit generated-output behavior.
-
-Definition of done:
-
-- A worker can run one command from an AOI definition and get a deterministic acquisition plan or explicitly staged public-geodata inputs without committing raw swisstopo products.
-
-Boundaries: No simulation, no operational claim, no annual/physical/risk semantics, no large raw geodata commit.
-
 ### TB-341: Public-Geodata Cache Integrity And Provenance Gate
 
 Goal: Verify staged real public-geodata tiles for an arbitrary AOI with checksums, CRS, vertical datum, resolution, product ids, and source provenance before preprocessing.

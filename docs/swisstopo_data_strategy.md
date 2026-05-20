@@ -312,6 +312,11 @@ the expected staging roots and metadata contracts for SWISSIMAGE,
 swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D, but
 it does not download anything and it does not convert the deferred public
 context into readiness.
+The acquisition planner also has an `--mode explicit-acquire` package writer
+that materializes the deterministic acquisition-plan and cache-manifest files
+under an ignored AOI output root. It still stays metadata-only, keeps raw
+swisstopo products out of git, and reports generated-root warnings instead of
+guessing which paths are safe to commit.
 
 The AOI resolver now also emits per-product rows for the selected swisstopo
 bundle, with the swissALTI3D terrain row resolving to tile ids from the AOI

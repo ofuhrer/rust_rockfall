@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Plan swisstopo acquisition needs from a small AOI/site config.
 
-This helper is a dry-run planner only. It does not download public geodata,
-stage tiles, or authorize any ensemble work. Instead, it translates a candidate
+The helper supports a read-only dry run and an explicit-acquire package
+materialization mode. It does not download public geodata, stage raw swisstopo
+products, or authorize any ensemble work. Instead, it translates a candidate
 AOI/site configuration into the public swisstopo product categories, expected
-staging paths, and unresolved acquisition decisions that still need a real
-staging choice.
+staging paths, tile manifests, and unresolved acquisition decisions that still
+need a real staging choice.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "swisstopo_aoi_acquisition_dry_run_v1"
+ACQUISITION_MODES = {"dry-run", "explicit-acquire"}
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
@@ -53,11 +55,13 @@ PREFLIGHT = _load_preflight_module()
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
+    parser.add_argument("--mode", choices=sorted(ACQUISITION_MODES), default="dry-run")
+    parser.add_argument("--output-root", type=Path, default=None)
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report(args.site_config)
+    report = build_report(args.site_config, mode=args.mode, output_root=args.output_root)
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -68,7 +72,15 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if report["planner_status"] == "ready" else 2
 
 
-def build_report(site_config: Path | None, site_id: str | None = None) -> dict[str, Any]:
+def build_report(
+    site_config: Path | None,
+    site_id: str | None = None,
+    *,
+    mode: str = "dry-run",
+    output_root: Path | None = None,
+) -> dict[str, Any]:
+    if mode not in ACQUISITION_MODES:
+        raise ValueError(f"unsupported acquisition mode: {mode}")
     config = PREFLIGHT.load_site_config(site_config) if site_config is not None and site_config.exists() else {}
     config_base = site_config.parent if site_config is not None else ROOT
 
@@ -77,6 +89,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     candidate_site_name = PREFLIGHT.text_value(config.get("candidate_site_name")) or "unspecified"
     selection_rationale = PREFLIGHT.text_value(config.get("candidate_selection_rationale"))
     site_extent = config.get("site_extent") if isinstance(config.get("site_extent"), dict) else {}
+    aoi_definition_status, aoi_definition_blockers = classify_aoi_definition(candidate_site_id, site_extent)
 
     acquisition_manifest_path = PREFLIGHT.resolve_repo_path(
         config.get("acquisition_manifest_path"),
@@ -91,6 +104,37 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     public_context_acquisition_plan = PREFLIGHT.build_public_context_acquisition_plan(acquisition_manifest, [])
     workflow_contract = acquisition_report["public_geodata_workflow_contract"]
     aoi_tile_discovery = acquisition_report["aoi_tile_discovery"]
+    tile_manifest = build_tile_manifest(candidate_site_id, candidate_site_name, site_extent, aoi_tile_discovery)
+    product_manifest = build_product_manifest(candidate_site_id, candidate_site_name, public_context_acquisition_plan, aoi_tile_discovery)
+    generated_root_warnings = build_generated_root_warnings(candidate_site_id, paths, acquisition_manifest, repo_root=PREFLIGHT.ROOT)
+    acquisition_package_paths: dict[str, str] = {}
+    acquisition_package_status = "not_requested"
+    if mode == "explicit-acquire":
+        if aoi_definition_status == "ready" and acquisition_manifest_path.exists() and aoi_tile_discovery.get("discovery_status") != "blocked_missing_inputs":
+            resolved_output_root = resolve_acquisition_output_root(
+                output_root or paths["processed_input_root"],
+                repo_root=PREFLIGHT.ROOT,
+            )
+            acquisition_package_paths = materialize_explicit_acquisition_package(
+                output_root=resolved_output_root,
+                repo_root=PREFLIGHT.ROOT,
+                report_base={
+                    "candidate_site_id": candidate_site_id,
+                    "candidate_site_name": candidate_site_name,
+                    "site_extent": site_extent,
+                    "acquisition_manifest": acquisition_manifest,
+                    "aoi_tile_discovery": aoi_tile_discovery,
+                    "public_geodata_workflow_contract": workflow_contract,
+                    "tile_manifest": tile_manifest,
+                    "product_manifest": product_manifest,
+                },
+                acquisition_manifest=acquisition_manifest,
+                aoi_tile_discovery=aoi_tile_discovery,
+                public_context_acquisition_plan=public_context_acquisition_plan,
+            )
+            acquisition_package_status = "materialized"
+        else:
+            acquisition_package_status = "blocked_missing_inputs"
 
     product_rows: list[dict[str, Any]] = []
     metadata_rows: list[dict[str, Any]] = []
@@ -152,24 +196,33 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         if row["required"] and row["category"] in DEFERRED_PUBLIC_CONTEXT_CATEGORIES and row["current_status"] != "ready"
     ]
     planner_status = "ready"
-    if not acquisition_manifest_path.exists():
+    if aoi_definition_status != "ready":
+        planner_status = "blocked_missing_inputs"
+    elif not acquisition_manifest_path.exists():
         planner_status = "blocked_missing_inputs"
     elif acquisition_report.get("aoi_tile_discovery", {}).get("discovery_status") == "blocked_missing_inputs":
         planner_status = "blocked_missing_inputs"
 
     report = {
         "schema_version": SCHEMA_VERSION,
+        "acquisition_mode": mode,
         "planner_status": planner_status,
         "acquisition_boundary_status": boundary_status,
+        "aoi_definition_status": aoi_definition_status,
+        "aoi_definition_blockers": aoi_definition_blockers,
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
         "candidate_selection_rationale": selection_rationale or "site selection remains blocked or unspecified",
         "site_extent": site_extent if site_extent else "placeholder_extent_missing",
         "acquisition_manifest_path": str(acquisition_manifest_path),
         "acquisition_manifest_status": "ready" if acquisition_manifest_path.exists() else "blocked_missing_inputs",
+        "acquisition_package_status": acquisition_package_status,
+        "acquisition_package_paths": acquisition_package_paths,
         "public_context_acquisition_summary": PREFLIGHT.build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
         "aoi_tile_discovery": aoi_tile_discovery,
+        "tile_manifest": tile_manifest,
+        "product_manifest": product_manifest,
         "public_geodata_workflow_contract": workflow_contract,
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
@@ -177,6 +230,7 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "unresolved_acquisition_decisions": unresolved_acquisition_decisions,
         "deferred_public_context_categories": boundary_categories,
         "deferred_public_context_status": boundary_status,
+        "generated_root_warnings": generated_root_warnings,
         "claim_boundaries": PREFLIGHT.claim_boundaries(),
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
@@ -222,6 +276,197 @@ def should_record_unresolved(category: str, required: bool, staged: bool) -> boo
     return required or category in DEFERRED_PUBLIC_CONTEXT_CATEGORIES
 
 
+def classify_aoi_definition(candidate_site_id: str, site_extent: dict[str, Any]) -> tuple[str, list[str]]:
+    blockers: list[str] = []
+    if not candidate_site_id or candidate_site_id == "unspecified_second_site":
+        blockers.append("missing AOI candidate_site_id")
+    if not isinstance(site_extent, dict) or not site_extent:
+        blockers.append("missing AOI site_extent")
+        return ("blocked_missing_inputs", blockers)
+    if PREFLIGHT.text_value(site_extent.get("crs")) != "EPSG:2056":
+        blockers.append("site_extent.crs must be EPSG:2056")
+    for key in ("xmin", "ymin", "xmax", "ymax"):
+        if key not in site_extent or site_extent.get(key) in (None, ""):
+            blockers.append(f"site_extent.{key} is required")
+    return ("ready" if not blockers else "blocked_missing_inputs", blockers)
+
+
+def build_tile_manifest(
+    candidate_site_id: str,
+    candidate_site_name: str,
+    site_extent: dict[str, Any],
+    aoi_tile_discovery: dict[str, Any],
+) -> dict[str, Any]:
+    tile_candidates = aoi_tile_discovery.get("tile_candidates") or []
+    return {
+        "schema_version": "swisstopo_aoi_tile_manifest_v1",
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "site_extent": site_extent if site_extent else "placeholder_extent_missing",
+        "tile_candidate_count": len(tile_candidates),
+        "tile_ids": [entry.get("tile_id", "") for entry in tile_candidates if entry.get("tile_id")],
+        "tiles": [
+            {
+                "tile_id": entry.get("tile_id", ""),
+                "product_id": entry.get("product_id", ""),
+                "source_product": entry.get("source_product", ""),
+                "resolution_m": entry.get("resolution_m", ""),
+                "crs": entry.get("crs", ""),
+                "source_filename": entry.get("source_filename", ""),
+                "source_url": entry.get("source_url", ""),
+            }
+            for entry in tile_candidates
+        ],
+    }
+
+
+def build_product_manifest(
+    candidate_site_id: str,
+    candidate_site_name: str,
+    public_context_acquisition_plan: list[dict[str, Any]],
+    aoi_tile_discovery: dict[str, Any],
+) -> dict[str, Any]:
+    terrain_rows = []
+    for row in aoi_tile_discovery.get("product_resolution_rows") or []:
+        terrain_rows.append(
+            {
+                "product_label": row.get("product_label", ""),
+                "category": row.get("category", ""),
+                "source_product_id": row.get("source_product_id", ""),
+                "source_product_name": row.get("source_product_name", ""),
+                "source_url_or_download_record": row.get("source_url_or_download_record", ""),
+                "product_version_or_date": row.get("product_version_or_date", ""),
+                "license_or_terms_reference": row.get("license_or_terms_reference", ""),
+                "expected_tile_ids": row.get("expected_tile_ids", []),
+                "expected_staged_path": row.get("processed_path", ""),
+                "expected_staging_root": row.get("expected_staging_root", ""),
+                "resolver_status": row.get("resolver_status", ""),
+                "tile_resolution_status": row.get("tile_resolution_status", ""),
+                "tile_blockers": row.get("tile_blockers", []),
+            }
+        )
+    return {
+        "schema_version": "swisstopo_aoi_public_geodata_product_manifest_v1",
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "products": [
+            {
+                "category": entry.get("category", ""),
+                "product": entry.get("product", ""),
+                "required": entry.get("required", False),
+                "current_status": entry.get("current_status", ""),
+                "expected_staged_path": entry.get("expected_staged_path", ""),
+                "expected_staging_root": entry.get("expected_staging_root", ""),
+                "source_reference": entry.get("source_reference", ""),
+                "notes": entry.get("notes", ""),
+                "metadata_contract": entry.get("metadata_contract", []),
+                "staging_mode": entry.get("staging_mode", ""),
+            }
+            for entry in public_context_acquisition_plan
+        ],
+        "terrain_rows": terrain_rows,
+    }
+
+
+def build_generated_root_warnings(
+    candidate_site_id: str,
+    paths: dict[str, Path],
+    acquisition_manifest: dict[str, Any],
+    *,
+    repo_root: Path,
+) -> list[str]:
+    raw_cache_root = repo_root / "data" / "raw" / "swisstopo" / candidate_site_id
+    validation_root = paths.get("validation_private_root") or paths["validation_case_root"]
+    warnings = [
+        f"do not commit generated AOI acquisition outputs under {paths['processed_input_root']}",
+        f"do not commit generated AOI context outputs under {paths['processed_context_root']}",
+        f"do not commit generated validation outputs under {validation_root}",
+        f"do not commit generated hazard outputs under {paths['hazard_results_root']}",
+        f"do not commit raw swisstopo inputs under {raw_cache_root}",
+    ]
+    for root in acquisition_manifest.get("expected_ignored_output_roots") or []:
+        warnings.append(f"keep ignored output root untracked: {root}")
+    return warnings
+
+
+def resolve_acquisition_output_root(output_root: Path, *, repo_root: Path) -> Path:
+    resolved = output_root if output_root.is_absolute() else repo_root / output_root
+    if not is_allowed_acquisition_output_root(resolved, repo_root):
+        raise ValueError(f"acquisition output root must stay under /tmp or ignored AOI roots: {resolved}")
+    return resolved
+
+
+def is_allowed_acquisition_output_root(output_root: Path, repo_root: Path) -> bool:
+    resolved = output_root.resolve()
+    allowed_roots = [
+        Path("/tmp").resolve(),
+        (repo_root / "data/processed/swisstopo").resolve(),
+        (repo_root / "validation/private").resolve(),
+        (repo_root / "hazard/results").resolve(),
+    ]
+    return any(resolved == root or resolved.is_relative_to(root) for root in allowed_roots)
+
+
+def materialize_explicit_acquisition_package(
+    *,
+    output_root: Path,
+    repo_root: Path,
+    report_base: dict[str, Any],
+    acquisition_manifest: dict[str, Any],
+    aoi_tile_discovery: dict[str, Any],
+    public_context_acquisition_plan: list[dict[str, Any]],
+) -> dict[str, str]:
+    output_root.mkdir(parents=True, exist_ok=True)
+    plan_json_path = output_root / "public_geodata_acquisition_plan.json"
+    plan_yaml_path = output_root / "public_geodata_acquisition_plan.yaml"
+    cache_manifest_path = output_root / "public_geodata_cache_manifest.yaml"
+    plan_payload = {
+        "schema_version": SCHEMA_VERSION,
+        "candidate_site_id": report_base["candidate_site_id"],
+        "candidate_site_name": report_base["candidate_site_name"],
+        "site_extent": report_base["site_extent"],
+        "tile_manifest": report_base["tile_manifest"],
+        "product_manifest": report_base["product_manifest"],
+        "generated_root_warnings": build_generated_root_warnings(
+            report_base["candidate_site_id"],
+            {
+                "processed_input_root": output_root,
+                "processed_context_root": repo_root / "data" / "processed" / "swisstopo" / report_base["candidate_site_id"] / "context",
+                "validation_private_root": repo_root / "validation" / "private" / report_base["candidate_site_id"],
+                "hazard_results_root": repo_root / "hazard" / "results" / report_base["candidate_site_id"],
+                "validation_case_root": repo_root / "validation" / "private" / report_base["candidate_site_id"],
+            },
+            acquisition_manifest,
+            repo_root=repo_root,
+        ),
+        "public_geodata_workflow_contract": report_base["public_geodata_workflow_contract"],
+        "aoi_tile_discovery": aoi_tile_discovery,
+        "public_context_acquisition_plan": public_context_acquisition_plan,
+    }
+    plan_json_path.write_text(json.dumps(plan_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    plan_yaml_path.write_text(yaml.safe_dump(plan_payload, sort_keys=False), encoding="utf-8")
+
+    cache_manifest_template = PREFLIGHT.build_public_geodata_cache_manifest_template(
+        candidate_site_id=report_base["candidate_site_id"],
+        candidate_site_name=report_base["candidate_site_name"],
+        paths={
+            "processed_input_root": output_root,
+            "processed_context_root": repo_root / "data" / "processed" / "swisstopo" / report_base["candidate_site_id"] / "context",
+            "validation_case_root": repo_root / "validation" / "private" / report_base["candidate_site_id"],
+            "hazard_results_root": repo_root / "hazard" / "results" / report_base["candidate_site_id"],
+        },
+        acquisition_manifest=acquisition_manifest,
+        aoi_tile_discovery=aoi_tile_discovery,
+    )
+    cache_manifest_path.write_text(yaml.safe_dump(cache_manifest_template, sort_keys=False), encoding="utf-8")
+    return {
+        "output_root": str(output_root),
+        "public_geodata_acquisition_plan_json": str(plan_json_path),
+        "public_geodata_acquisition_plan_yaml": str(plan_yaml_path),
+        "public_geodata_cache_manifest_yaml": str(cache_manifest_path),
+    }
+
+
 def acquisition_boundary_status(product_rows: list[dict[str, Any]]) -> str:
     core_missing = [
         row
@@ -243,12 +488,15 @@ def acquisition_boundary_status(product_rows: list[dict[str, Any]]) -> str:
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
+        f"acquisition_mode: {report['acquisition_mode']}",
         f"planner_status: {report['planner_status']}",
         f"acquisition_boundary_status: {report['acquisition_boundary_status']}",
+        f"aoi_definition_status: {report['aoi_definition_status']}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
         f"candidate_selection_rationale: {report['candidate_selection_rationale']}",
         f"acquisition_manifest_path: {report['acquisition_manifest_path']}",
+        f"acquisition_package_status: {report['acquisition_package_status']}",
         "",
         "public_geodata_workflow_contract:",
     ]
@@ -286,6 +534,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("public_context_acquisition_plan:")
     lines.extend(render_acquisition_plan_rows(report.get("public_context_acquisition_plan") or []))
     lines.append("")
+    lines.append("tile_manifest:")
+    lines.extend(render_manifest_rows(report.get("tile_manifest") or {}))
+    lines.append("")
+    lines.append("product_manifest:")
+    lines.extend(render_manifest_rows(report.get("product_manifest") or {}))
+    lines.append("")
     lines.append("aoi_tile_discovery:")
     lines.extend(render_aoi_tile_discovery_rows(report.get("aoi_tile_discovery") or {}))
     lines.append("")
@@ -308,6 +562,14 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("deferred_public_context_categories:")
     lines.extend(f"- {category}" for category in report["deferred_public_context_categories"])
+    lines.append("")
+    lines.append("generated_root_warnings:")
+    lines.extend(f"- {warning}" for warning in report["generated_root_warnings"])
+    if report.get("acquisition_package_paths"):
+        lines.append("")
+        lines.append("acquisition_package_paths:")
+        for key, path in report["acquisition_package_paths"].items():
+            lines.append(f"- {key}: {path}")
     return "\n".join(lines)
 
 
@@ -403,6 +665,50 @@ def render_aoi_tile_discovery_rows(report: dict[str, Any]) -> list[str]:
     rendered.append("- no_download_boundary:")
     for key, value in (report.get("no_download_boundary") or {}).items():
         rendered.append(f"  - {key}: {value}")
+    return rendered
+
+
+def render_manifest_rows(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    rendered = [f"- schema_version: {report.get('schema_version', '')}"]
+    for key in ("candidate_site_id", "candidate_site_name", "tile_candidate_count"):
+        if key in report:
+            rendered.append(f"- {key}: {report.get(key, '')}")
+    if report.get("site_extent"):
+        rendered.append("- site_extent:")
+        site_extent = report["site_extent"]
+        if isinstance(site_extent, dict):
+            for key in ("crs", "xmin", "ymin", "xmax", "ymax"):
+                if key in site_extent:
+                    rendered.append(f"  - {key}: {site_extent[key]}")
+        else:
+            rendered.append(f"  - {site_extent}")
+    if report.get("tile_ids"):
+        rendered.append(f"- tile_ids: {', '.join(report['tile_ids'])}")
+    if report.get("tiles"):
+        rendered.append("- tiles:")
+        for entry in report["tiles"]:
+            rendered.append(
+                f"  - {entry.get('tile_id', '')}: product_id={entry.get('product_id', '')}, "
+                f"resolution_m={entry.get('resolution_m', '')}, crs={entry.get('crs', '')}, "
+                f"source_url={entry.get('source_url', '')}"
+            )
+    if report.get("products"):
+        rendered.append("- products:")
+        for entry in report["products"]:
+            rendered.append(
+                f"  - {entry.get('category', '')}: product={entry.get('product', '')}, "
+                f"current_status={entry.get('current_status', '')}, "
+                f"expected_staged_path={entry.get('expected_staged_path', '')}"
+            )
+    if report.get("terrain_rows"):
+        rendered.append("- terrain_rows:")
+        for entry in report["terrain_rows"]:
+            rendered.append(
+                f"  - {entry.get('product_label', '')}: source_product_id={entry.get('source_product_id', '')}, "
+                f"source_url_or_download_record={entry.get('source_url_or_download_record', '')}"
+            )
     return rendered
 
 

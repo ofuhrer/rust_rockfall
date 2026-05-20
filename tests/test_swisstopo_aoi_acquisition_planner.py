@@ -59,6 +59,9 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
                 planner.PREFLIGHT.ROOT = original_planner_root
 
         self.assertEqual(report["planner_status"], "ready")
+        self.assertEqual(report["acquisition_mode"], "dry-run")
+        self.assertEqual(report["aoi_definition_status"], "ready")
+        self.assertEqual(report["acquisition_package_status"], "not_requested")
         self.assertEqual(report["acquisition_boundary_status"], "deferred_public_context_inputs")
         self.assertEqual(report["candidate_site_id"], "chant_sura_fluelapass_portability_example_v1")
         self.assertEqual(report["candidate_site_name"], "Chant Sura / Flüelapass portability example")
@@ -69,6 +72,13 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2793-1180")
+        self.assertEqual(report["tile_manifest"]["schema_version"], "swisstopo_aoi_tile_manifest_v1")
+        self.assertEqual(report["tile_manifest"]["tile_ids"], ["2793-1180"])
+        self.assertEqual(report["product_manifest"]["schema_version"], "swisstopo_aoi_public_geodata_product_manifest_v1")
+        self.assertTrue(report["product_manifest"]["terrain_rows"])
+        self.assertTrue(
+            any("do not commit raw swisstopo inputs" in warning for warning in report["generated_root_warnings"])
+        )
         self.assertEqual(report["aoi_tile_discovery"]["catalog_manifest"]["catalog_product_id"], "swissalti3d_2m")
         self.assertEqual(report["aoi_tile_discovery"]["product_candidate_count"], 1)
         self.assertEqual(report["aoi_tile_discovery"]["product_candidates"][0]["product_id"], "swissalti3d_2m")
@@ -131,6 +141,15 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertFalse(product_rows["barrier_inventory"]["required"])
         plan_rows = {entry["category"]: entry for entry in report["public_context_acquisition_plan"]}
         self.assertTrue(plan_rows["swissimage_context"]["expected_staging_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"))
+        self.assertEqual(report["aoi_definition_status"], "ready")
+        self.assertEqual(report["acquisition_mode"], "dry-run")
+        self.assertEqual(report["acquisition_package_status"], "not_requested")
+        self.assertEqual(report["tile_manifest"]["schema_version"], "swisstopo_aoi_tile_manifest_v1")
+        self.assertEqual(report["tile_manifest"]["tile_ids"], ["2793-1180"])
+        self.assertEqual(report["product_manifest"]["schema_version"], "swisstopo_aoi_public_geodata_product_manifest_v1")
+        self.assertEqual(report["product_manifest"]["products"][0]["source_reference"], "docs/swisstopo_data_strategy.md")
+        self.assertTrue(any("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1" in warning for warning in report["generated_root_warnings"]))
+        self.assertTrue(any("validation/private/chant_sura_fluelapass_portability_example_v1" in warning for warning in report["generated_root_warnings"]))
 
         metadata_rows = {entry["category"]: entry for entry in report["required_metadata_records"]}
         self.assertEqual(metadata_rows["terrain_metadata"]["current_status"], "ready")
@@ -152,6 +171,78 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["claim_boundaries"]["operational_claims_allowed"], False)
         self.assertEqual(report["claim_boundaries"]["scale_up_authorized"], False)
         self.assertTrue(report["public_context_acquisition_plan"][0]["expected_staging_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"))
+
+    def test_missing_aoi_definition_blocks_acquisition_planning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            config_data.pop("site_extent", None)
+            config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path)
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
+
+        self.assertEqual(report["planner_status"], "blocked_missing_inputs")
+        self.assertEqual(report["aoi_definition_status"], "blocked_missing_inputs")
+        self.assertIn("missing AOI site_extent", report["aoi_definition_blockers"])
+        self.assertEqual(report["acquisition_mode"], "dry-run")
+        self.assertTrue(report["generated_root_warnings"])
+
+    def test_explicit_acquire_materializes_metadata_only_package_under_ignored_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            output_root = repo_root / "data" / "processed" / "swisstopo" / "chant_sura_fluelapass_portability_example_v1" / "input" / "acquisition_driver"
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path, mode="explicit-acquire", output_root=output_root)
+                self.assertEqual(report["acquisition_mode"], "explicit-acquire")
+                self.assertEqual(report["acquisition_package_status"], "materialized")
+                self.assertTrue((output_root / "public_geodata_acquisition_plan.json").exists())
+                self.assertTrue((output_root / "public_geodata_acquisition_plan.yaml").exists())
+                self.assertTrue((output_root / "public_geodata_cache_manifest.yaml").exists())
+                self.assertEqual(Path(report["acquisition_package_paths"]["output_root"]).resolve(), output_root.resolve())
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
+
+    def test_explicit_acquire_rejects_tracked_output_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                with self.assertRaises(ValueError):
+                    planner.build_report(config_path, mode="explicit-acquire", output_root=repo_root / "tracked_output")
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
 
     def test_text_and_json_output_remain_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -182,12 +273,19 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertIn("aoi_tile_discovery:", text_report)
         self.assertIn("resolver_status:", text_report)
         self.assertIn("product_resolution_rows:", text_report)
+        self.assertIn("acquisition_mode: dry-run", text_report)
+        self.assertIn("tile_manifest:", text_report)
+        self.assertIn("product_manifest:", text_report)
         self.assertIn("cache_manifest_template:", text_report)
         self.assertIn("public_geodata_contract_readiness_status: ready", text_report)
         self.assertIn("required_public_geodata_products:", text_report)
         self.assertIn("public_context_acquisition_plan:", text_report)
+        self.assertIn("tile_manifest:", text_report)
+        self.assertIn("product_manifest:", text_report)
+        self.assertIn("generated_root_warnings:", text_report)
         self.assertIn("unresolved_acquisition_decisions:", text_report)
         self.assertIn("deferred_public_context_categories:", text_report)
+        self.assertIn("generated_root_warnings:", text_report)
         self.assertIn("catalog_blockers:", text_report)
         self.assertIn("product_candidates:", text_report)
 
@@ -265,6 +363,75 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(discovery["product_candidates"], [])
         self.assertEqual(report["planner_status"], "blocked_missing_inputs")
         self.assertEqual(report["acquisition_boundary_status"], "deferred_public_context_inputs")
+
+    def test_missing_aoi_definition_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = repo_root / "missing_aoi.yaml"
+            config_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "candidate_site_name": "Missing AOI",
+                        "acquisition_manifest_path": str(
+                            ROOT
+                            / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
+                        ),
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path)
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
+
+        self.assertEqual(report["planner_status"], "blocked_missing_inputs")
+        self.assertEqual(report["aoi_definition_status"], "blocked_missing_inputs")
+        self.assertIn("missing AOI candidate_site_id", report["aoi_definition_blockers"])
+        self.assertIn("missing AOI site_extent", report["aoi_definition_blockers"])
+
+    def test_explicit_acquire_materializes_only_into_allowed_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            output_root = repo_root / "data/processed/swisstopo/example/input"
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+
+            original_root = preflight.ROOT
+            original_planner_root = planner.PREFLIGHT.ROOT
+            try:
+                preflight.ROOT = repo_root
+                planner.PREFLIGHT.ROOT = repo_root
+                report = planner.build_report(config_path, mode="explicit-acquire", output_root=output_root)
+                with self.assertRaises(ValueError):
+                    planner.build_report(config_path, mode="explicit-acquire", output_root=repo_root / "docs/generated")
+                self.assertEqual(report["planner_status"], "ready")
+                self.assertEqual(report["acquisition_mode"], "explicit-acquire")
+                self.assertEqual(report["acquisition_package_status"], "materialized")
+                paths = report["acquisition_package_paths"]
+                self.assertEqual(Path(paths["output_root"]).resolve(), output_root.resolve())
+                self.assertTrue((output_root / "public_geodata_acquisition_plan.json").exists())
+                self.assertTrue((output_root / "public_geodata_acquisition_plan.yaml").exists())
+                self.assertTrue((output_root / "public_geodata_cache_manifest.yaml").exists())
+                package = json.loads((output_root / "public_geodata_acquisition_plan.json").read_text(encoding="utf-8"))
+                self.assertEqual(package["tile_manifest"]["tile_ids"], ["2793-1180"])
+                self.assertTrue(
+                    any("do not commit generated AOI acquisition outputs" in warning for warning in package["generated_root_warnings"])
+                )
+            finally:
+                preflight.ROOT = original_root
+                planner.PREFLIGHT.ROOT = original_planner_root
 
     def test_preflight_main_json_output_is_serializable(self) -> None:
         stdout = io.StringIO()
