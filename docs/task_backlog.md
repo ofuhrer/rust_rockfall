@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-385: Rebuild Management AOI Scenario And Prepared-Pilot Chain
-
-Goal: Re-run the management-AOI scenario-pressure and prepared-pilot chain after TB-384 resolves or defers the candidate-screening blocker.
-
-Capability gap reduced: The scenario/prepared-pilot state must reflect the current candidate evidence rather than stale zero-candidate propagation.
-
-Why this outranks alternatives: Balfrin handoff cannot be meaningful until the scenario table and prepared-pilot compiler are synchronized with the latest candidate package or explicit deferral.
-
-Inspect first:
-
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Updated deterministic scenario-pressure and prepared-pilot reports that either consume a non-empty candidate package or preserve TB-384's explicit deferral reason.
-- Tests covering the current candidate-evidence branch and the first downstream blocker.
-
-Definition of done:
-
-- The management-AOI prepared-pilot compiler no longer reports a stale zero-screenable-cell diagnosis; it is either ready for handoff or blocked on the current named requirement.
-
-Boundaries: No invented candidates, no source-frequency semantics, no annual probability, no hazard execution, and no Balfrin submission.
-
 ### TB-386: Rebuild Management AOI Balfrin Handoff Decision
 
 Goal: Rebuild the management-AOI Balfrin handoff and no-submit/run decision after the scenario/prepared-pilot chain is current.

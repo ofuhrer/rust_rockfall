@@ -14,6 +14,7 @@ frequency, probability, or operational claim semantics.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -30,6 +31,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
+DEFERRAL_SCHEMA_VERSION = "release_candidate_zero_result_diagnostic_v1"
 DEFAULT_CANDIDATE_METRICS_MANIFEST = (
     ROOT
     / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability/"
@@ -42,6 +44,25 @@ DEFAULT_CANDIDATE_REVIEW_MANIFEST = (
 )
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb378_management_aoi_scenario_pressure")
+DEFAULT_DEFERRAL_TERRAIN_CROP = ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
+DEFAULT_DEFERRAL_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+DEFAULT_DEFERRAL_SOURCE_ZONE_METADATA = (
+    ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml"
+)
+
+
+def _load_module(module_name: str, filename: str):
+    path = ROOT / "scripts" / filename
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load helper module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+DIAGNOSTIC = _load_module("management_aoi_scenario_pressure_deferral_diagnostic", "diagnose_release_candidate_zero_result.py")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -119,17 +140,32 @@ def build_report(
     bundle_measurements = measure_bundle_pressure(bundle_root)
 
     if candidate_count <= 0:
-        blocked_reason = (
-            "TB-377 preserved a zero-candidate management-AOI result; no scenario rows can be generated "
-            "without inventing candidates."
+        deferral_report = load_management_aoi_deferral_report()
+        deferral_record = dict(deferral_report.get("deferral_record") or {})
+        deferral_blocker = str(deferral_record.get("blocker_type") or "")
+        scenario_pressure_status = (
+            f"blocked_{deferral_blocker}" if deferral_blocker else "blocked_empty_candidate_set"
         )
+        blocked_reason = str(
+            deferral_record.get("required_upstream_replacement")
+            or deferral_record.get("blocking_summary")
+            or deferral_report.get("blocked_reason")
+            or "TB-377 preserved a zero-candidate management-AOI result; no scenario rows can be generated without inventing candidates."
+        )
+        first_blocker = dict(deferral_report.get("first_blocker") or {})
+        unblock_guidance = dict(deferral_report.get("unblock_guidance") or {})
         report = {
             "schema_version": SCHEMA_VERSION,
-            "scenario_pressure_status": "blocked_empty_candidate_set",
+            "scenario_pressure_status": scenario_pressure_status,
             "blocked_reason": blocked_reason,
             "read_only": True,
             "scale_up_authorized": False,
             "operational_claims_allowed": False,
+            "deferral_record": deferral_record,
+            "deferral_diagnostic": dict(deferral_report.get("diagnostic_report") or {}),
+            "first_blocker": first_blocker,
+            "required_upstream_replacement": deferral_record.get("required_upstream_replacement", ""),
+            "blocking_summary": deferral_record.get("blocking_summary", ""),
             "source_inputs": {
                 "candidate_metrics_manifest_path": display_path(candidate_metrics_manifest_path),
                 "candidate_review_manifest_path": display_path(candidate_review_manifest_path),
@@ -172,8 +208,8 @@ def build_report(
                 },
                 {
                     "command_id": "second_site_release_plan_execution_template",
-                    "status": "blocked_not_ready",
-                    "implication": "defer prepared-pilot compilation until the candidate set is non-empty and a scenario table can be emitted",
+                    "status": scenario_pressure_status,
+                    "implication": blocked_reason,
                 },
                 {
                     "command_id": "second_site_aoi_to_prepared_pilot_dry_run",
@@ -181,15 +217,92 @@ def build_report(
                     "implication": "the AOI-to-prepared-pilot path remains a dry-run scaffold only",
                 },
             ],
+            "unblock_guidance": unblock_guidance,
             "claim_boundary": claim_boundary_from_policy(policy),
         }
         write_report(report, output_root)
         return report
 
-    # The zero-candidate management AOI is the only supported scenario-pressure path for TB-378.
-    raise ManagementAoiScenarioPressureError(
-        "management AOI scenario pressure currently supports the zero-candidate blocked report only"
-    )
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "scenario_pressure_status": "ready",
+        "blocked_reason": "",
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "deferral_record": {},
+        "deferral_diagnostic": {},
+        "first_blocker": {
+            "blocker_id": "none",
+            "status": "candidates_present",
+            "reason": "the current candidate package contains at least one candidate cell",
+        },
+        "required_upstream_replacement": "",
+        "blocking_summary": "",
+        "source_inputs": {
+            "candidate_metrics_manifest_path": display_path(candidate_metrics_manifest_path),
+            "candidate_review_manifest_path": display_path(candidate_review_manifest_path),
+            "policy_path": display_path(policy_path),
+        },
+        "candidate_evidence": {
+            "candidate_release_zone_set_status": text_value(candidate_metrics.get("candidate_release_zone_set_status")),
+            "candidate_cell_count": candidate_count,
+            "candidate_area_m2": candidate_area_m2,
+            "candidate_family_cardinality": candidate_family_cardinality,
+            "review_summary": {
+                "candidate_count": int(review_summary.get("candidate_count") or 0),
+                "review_row_count": int(review_summary.get("review_row_count") or 0),
+                "review_decision_counts": dict(review_summary.get("review_decision_counts") or {}),
+                "candidate_stability_class_counts": dict(review_summary.get("candidate_stability_class_counts") or {}),
+            },
+            "bundle_measurements": bundle_measurements,
+        },
+        "scenario_generation_pressure": {
+            "scenario_row_count": candidate_count,
+            "scenario_family_cardinality": [
+                {**family, "row_count": candidate_count}
+                for family in candidate_family_cardinality
+            ],
+            "policy_block_family_cardinality": [
+                {**family, "row_count": candidate_count}
+                for family in policy_block_families
+            ],
+            "scenario_table_csv_bytes": 0,
+            "scenario_table_manifest_bytes": 0,
+            "scenario_table_total_bytes": 0,
+            "manifest_pressure": {
+                "scenario_table_manifest_pressure": "ready",
+                "candidate_bundle_manifest_bytes": bundle_measurements["manifest_bytes"],
+                "candidate_bundle_total_bytes": bundle_measurements["total_bytes"],
+            },
+        },
+        "command_plan_implications": [
+            {
+                "command_id": "second_site_release_plan_dry_run",
+                "status": "ready",
+                "implication": "the current candidate package can be summarized without inventing scenarios",
+            },
+            {
+                "command_id": "second_site_release_plan_execution_template",
+                "status": "ready",
+                "implication": "prepared-pilot compilation can proceed against the current candidate package",
+            },
+            {
+                "command_id": "second_site_aoi_to_prepared_pilot_dry_run",
+                "status": "ready",
+                "implication": "the AOI-to-prepared-pilot path can consume the non-empty candidate package",
+            },
+        ],
+        "unblock_guidance": {
+            "recommended_next_action": "inspect the candidate package and scenario rows before any review or freeze step",
+            "scenario_generation_should_remain_blocked": False,
+            "balfrin_multi_zone_run_should_remain_blocked": False,
+            "max_variant_candidate_cell_count": candidate_count,
+        },
+        "claim_boundary": claim_boundary_from_policy(policy),
+    }
+    write_report(report, output_root)
+    return report
 
 
 def blocked_report(
@@ -300,6 +413,21 @@ def summarize_policy_block_families(policy: dict[str, Any]) -> list[dict[str, An
             }
         )
     return families
+
+
+def load_management_aoi_deferral_report() -> dict[str, Any]:
+    try:
+        report = DIAGNOSTIC.build_report(
+            repo_root=ROOT,
+            terrain_crop_path=DEFAULT_DEFERRAL_TERRAIN_CROP,
+            terrain_metadata_path=DEFAULT_DEFERRAL_TERRAIN_METADATA,
+            source_zone_metadata_path=DEFAULT_DEFERRAL_SOURCE_ZONE_METADATA,
+        )
+    except Exception:
+        return {}
+    if report.get("diagnostic_status") != "zero_candidates_diagnosed":
+        return {}
+    return report
 
 
 def measure_bundle_pressure(bundle_root: Path) -> dict[str, Any]:

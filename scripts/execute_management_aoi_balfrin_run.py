@@ -175,16 +175,21 @@ def first_persistent_blocker(handoff_report: dict[str, Any], handoff_status: str
     scenario = dict(handoff_report.get("scenario_generation_pressure") or {})
     candidate = dict(handoff_report.get("candidate_evidence") or {})
     blocked_reason = str(handoff_report.get("blocked_reason") or "").strip()
-    if int(candidate.get("candidate_cell_count") or 0) == 0:
+    scenario_status = str(scenario.get("scenario_pressure_status") or "")
+    if scenario_status.startswith("blocked_"):
         return {
-            "status": "blocked_empty_candidate_set",
-            "source_status": scenario.get("scenario_pressure_status") or "blocked_empty_candidate_set",
+            "status": scenario_status,
+            "source_status": scenario_status or "blocked_missing_prepared_pilot_inputs",
             "handoff_classification": handoff_status,
             "blocked_reason": blocked_reason
-            or "zero management-AOI candidate cells prevent scenario-row generation",
+            or str(dict(handoff_report.get("scenario_pressure_report") or {}).get("required_upstream_replacement") or "")
+            or "the current management-AOI candidate package is still blocked",
             "candidate_cell_count": int(candidate.get("candidate_cell_count") or 0),
             "candidate_area_m2": float(candidate.get("candidate_area_m2") or 0.0),
             "scenario_row_count": int(scenario.get("scenario_row_count") or 0),
+            "required_upstream_replacement": str(
+                dict(handoff_report.get("scenario_pressure_report") or {}).get("required_upstream_replacement") or ""
+            ),
         }
     return {
         "status": handoff_status or "blocked_missing_prepared_pilot_inputs",

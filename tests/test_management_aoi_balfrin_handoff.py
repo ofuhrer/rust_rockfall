@@ -30,18 +30,18 @@ MODULE = load_module()
 class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
     def _prepared_report(self) -> dict[str, object]:
         return {
-            "workflow_status": "blocked_empty_candidate_set",
+            "workflow_status": "blocked_source_zone_footprint_overlap",
             "prepared_pilot_input_classification": "ready_real",
             "prepared_pilot_compiler": {
-                "classification": "blocked_empty_candidate_set",
+                "classification": "blocked_source_zone_footprint_overlap",
                 "first_blocker": {
-                    "status": "blocked_empty_candidate_set",
-                    "blocked_reason": "no candidate rows can be generated without inventing candidates",
+                    "status": "blocked_source_zone_footprint_overlap",
+                    "blocked_reason": "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint",
                 },
             },
             "case_skeleton_output": {
-                "status": "blocked_empty_candidate_set",
-                "blocked_execution_status": "blocked_empty_candidate_set",
+                "status": "blocked_source_zone_footprint_overlap",
+                "blocked_execution_status": "blocked_source_zone_footprint_overlap",
                 "case_skeleton_path": "/tmp/prepared/aoi_to_prepared_pilot_case_skeleton.yaml",
             },
             "workflow_ignored_output_roots": ["/tmp/prepared"],
@@ -50,10 +50,12 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
     def _scenario_pressure_report(self) -> dict[str, object]:
         return {
             "schema_version": "management_aoi_scenario_pressure_v1",
-            "scenario_pressure_status": "blocked_empty_candidate_set",
+            "scenario_pressure_status": "blocked_source_zone_footprint_overlap",
             "blocked_reason": (
-                "TB-377 preserved a zero-candidate management-AOI result; no scenario rows can be generated "
-                "without inventing candidates."
+                "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint"
+            ),
+            "required_upstream_replacement": (
+                "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint"
             ),
             "candidate_evidence": {
                 "candidate_release_zone_set_status": "emitted",
@@ -98,6 +100,7 @@ class ManagementAoiBalfrinHandoffTests(unittest.TestCase):
         self.assertIn("/scratch/mch/olifu/rust_rockfall/probes/management-aoi", report["exact_run_root"])
         self.assertEqual(report["candidate_evidence"]["candidate_cell_count"], 0)
         self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 0)
+        self.assertEqual(report["scenario_generation_pressure"]["scenario_pressure_status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(report["budget_checks"][0]["gate"], "prepared_pilot_inputs")
         self.assertEqual(report["budget_checks"][0]["status"], "blocked")
         self.assertEqual(report["budget_checks"][2]["status"], "not_evaluated")

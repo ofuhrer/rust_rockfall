@@ -2330,6 +2330,8 @@ def resolve_next_action(
         return "plan"
     if first_step == "scenario_generation":
         return "plan"
+    if first_step == "release_plan_dry_run":
+        return "plan"
     if first_step == "command_planning":
         return "run-local-smoke"
     if first_step == "tiny_bounded_ensemble_handoff":
@@ -2682,18 +2684,18 @@ def build_scenario_freeze_step(
         f"--mode freeze --review-package <candidate-review-package> --output-root <freeze-output-root> --format json"
     )
     scenario_pressure_status = str(scenario_pressure_report.get("scenario_pressure_status") or "")
-    ready = str(release_candidate_report.get("status") or "") == "ready" and scenario_pressure_status != "blocked_empty_candidate_set"
+    scenario_pressure_blocked = scenario_pressure_status in {
+        "blocked_source_zone_footprint_overlap",
+        "blocked_empty_candidate_set",
+    }
+    ready = str(release_candidate_report.get("status") or "") == "ready" and not scenario_pressure_blocked
     return {
         "step_id": "scenario_freeze_readiness",
         "label": "Scenario-freeze readiness",
-        "status": (
-            "blocked_empty_candidate_set"
-            if scenario_pressure_status == "blocked_empty_candidate_set"
-            else "ready" if ready else "blocked_missing_inputs"
-        ),
+        "status": scenario_pressure_status if scenario_pressure_blocked else ("ready" if ready else "blocked_missing_inputs"),
         "blocked_reason": (
             str(scenario_pressure_report.get("blocked_reason", ""))
-            if scenario_pressure_status == "blocked_empty_candidate_set"
+            if scenario_pressure_blocked
             else "" if ready else "release-candidate planning is not ready"
         ),
         "expected_input_path": str(scenario_table) if scenario_table.exists() else str(source_scenario_policy),
@@ -2701,11 +2703,7 @@ def build_scenario_freeze_step(
         "command": command,
         "report": {
             "schema_version": "aoi_scenario_freeze_readiness_v1",
-            "status": (
-                "blocked_empty_candidate_set"
-                if scenario_pressure_status == "blocked_empty_candidate_set"
-                else "ready" if ready else "blocked_missing_inputs"
-            ),
+            "status": scenario_pressure_status if scenario_pressure_blocked else ("ready" if ready else "blocked_missing_inputs"),
             "review_package_required": True,
             "review_package_ready": ready,
             "scenario_pressure_status": scenario_pressure_status,

@@ -33,8 +33,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
             "handoff_status": "blocked_missing_prepared_pilot_inputs",
             "ready_for_live_management_aoi_postproc_run": False,
             "blocked_reason": (
-                "TB-377 preserved a zero-candidate management-AOI result; no scenario rows can be generated "
-                "without inventing candidates."
+                "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint"
             ),
             "package_json_path": str(artifact_dir / "management_aoi_balfrin_handoff_v1.json"),
             "authorization_record_path": str(artifact_dir / "management_aoi_balfrin_authorization_audit_v1.yaml"),
@@ -46,7 +45,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
                 "candidate_area_m2": 0.0,
             },
             "scenario_generation_pressure": {
-                "scenario_pressure_status": "blocked_empty_candidate_set",
+                "scenario_pressure_status": "blocked_source_zone_footprint_overlap",
                 "scenario_row_count": 0,
             },
             "budget_checks": [
@@ -90,7 +89,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
         self.assertEqual(report["no_submit_semantics"]["scheduler_submission_status"], "not_attempted")
         self.assertFalse(report["no_submit_semantics"]["future_submit_command_runnable_now"])
-        self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(report["first_persistent_blocker"]["candidate_cell_count"], 0)
         self.assertEqual(report["first_persistent_blocker"]["scenario_row_count"], 0)
         self.assertEqual(report["validation_output_pressure"]["status"], "not_evaluated")
@@ -128,7 +127,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertEqual(report["execution_status"], "failed_closed")
             self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
-            self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_empty_candidate_set")
+            self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_source_zone_footprint_overlap")
             self.assertTrue((artifact_dir / "management_aoi_balfrin_execution_state_v1.json").exists())
 
 

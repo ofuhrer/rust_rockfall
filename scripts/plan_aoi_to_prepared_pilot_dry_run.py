@@ -46,6 +46,8 @@ PREPARED_PILOT_INPUT_READINESS_SCHEMA_VERSION = "aoi_to_prepared_pilot_input_rea
 REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION = "aoi_to_prepared_pilot_real_input_acquisition_handoff_v1"
 COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
+MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS = "blocked_source_zone_footprint_overlap"
+MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS = "blocked_empty_candidate_set"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -62,6 +64,13 @@ def _load_module(module_name: str, filename: str):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def management_aoi_scenario_pressure_is_named_deferral(status: str) -> bool:
+    return status in {
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS,
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS,
+    }
 
 
 AOI_ACQUISITION = _load_module("aoi_to_prepared_pilot_aoi_acquisition", "plan_swisstopo_aoi_acquisition.py")
@@ -397,11 +406,17 @@ def build_prep_summary(
         "conditional_only_weighting": generic_release_plan_contract.get("generic_scenario_generation", {}).get("conditional_only_weighting", True),
         "management_aoi_scenario_pressure_status": management_aoi_scenario_pressure_report.get("scenario_pressure_status", ""),
         "management_aoi_scenario_pressure_blocked_reason": management_aoi_scenario_pressure_report.get("blocked_reason", ""),
+        "management_aoi_scenario_pressure_deferral_record": management_aoi_scenario_pressure_report.get("deferral_record", {}),
+        "management_aoi_scenario_pressure_required_upstream_replacement": management_aoi_scenario_pressure_report.get(
+            "required_upstream_replacement", ""
+        ),
         "management_aoi_scenario_pressure_source_inputs": management_aoi_scenario_pressure_report.get("source_inputs", {}),
         "management_aoi_scenario_pressure_command_plan_implications": management_aoi_scenario_pressure_report.get("command_plan_implications", []),
     }
-    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set":
-        scenario_generation_inputs["blocked_execution_status"] = "blocked_empty_candidate_set"
+    if management_aoi_scenario_pressure_is_named_deferral(str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")):
+        scenario_generation_inputs["blocked_execution_status"] = str(
+            management_aoi_scenario_pressure_report.get("scenario_pressure_status")
+        )
     prepared_pilot_real_input_readiness = real_context_readiness_report.get("prepared_pilot_real_input_readiness", {})
     real_input_acquisition_handoff = real_context_readiness_report.get("real_input_acquisition_handoff", {})
     command_plan_hooks = [
@@ -909,13 +924,17 @@ def build_steps(
             "step_id": "release_plan_dry_run",
             "label": "Scenario-table generation",
             "status": (
-                "blocked_empty_candidate_set"
-                if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or release_plan_report["scenario_plan_status"])
+                if management_aoi_scenario_pressure_is_named_deferral(
+                    str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")
+                )
                 else release_plan_report["scenario_plan_status"]
             ),
             "blocked_reason": (
-                management_aoi_scenario_pressure_report.get("blocked_reason", "")
-                if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                str(management_aoi_scenario_pressure_report.get("blocked_reason", ""))
+                if management_aoi_scenario_pressure_is_named_deferral(
+                    str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")
+                )
                 else release_plan_report.get("blocked_reason", "")
             ),
             "expected_inputs": expected_inputs_from_scenario_generation(release_plan_report),
@@ -924,14 +943,18 @@ def build_steps(
             "blockers": build_step_blockers(
                 "release_plan_dry_run",
                 (
-                    "blocked_empty_candidate_set"
-                    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                    str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or release_plan_report["scenario_plan_status"])
+                    if management_aoi_scenario_pressure_is_named_deferral(
+                        str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")
+                    )
                     else release_plan_report["scenario_plan_status"]
                 ),
                 [],
                 (
-                    list(management_aoi_scenario_pressure_report.get("command_plan_implications", []))
-                    if management_aoi_scenario_pressure_report.get("scenario_pressure_status") == "blocked_empty_candidate_set"
+                    [str(management_aoi_scenario_pressure_report.get("required_upstream_replacement") or management_aoi_scenario_pressure_report.get("blocked_reason") or "")]
+                    if management_aoi_scenario_pressure_is_named_deferral(
+                        str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")
+                    )
                     else release_plan_report.get("missing_inputs", [])
                 ),
             ),
@@ -1245,8 +1268,14 @@ def aggregate_workflow_status(statuses: Any) -> str:
     statuses = list(statuses)
     if any(status == "blocked_missing_inputs" for status in statuses):
         return "blocked_missing_inputs"
-    if any(status == "blocked_empty_candidate_set" for status in statuses):
-        return "blocked_empty_candidate_set"
+    if any(
+        status in {
+            MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS,
+            MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS,
+        }
+        for status in statuses
+    ):
+        return MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS
     if any(status != "ready" for status in statuses):
         return "deferred_public_context_inputs"
     return "ready"
@@ -1266,8 +1295,11 @@ def dedupe(items: list[str]) -> list[str]:
 def classify_prepared_pilot_compiler(report: dict[str, Any]) -> str:
     if report.get("workflow_status") == "blocked_missing_inputs":
         return "blocked_missing_inputs"
-    if report.get("workflow_status") == "blocked_empty_candidate_set":
-        return "blocked_empty_candidate_set"
+    if report.get("workflow_status") in {
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS,
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS,
+    }:
+        return MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS
     if command_plan_over_budget(report):
         return "blocked_over_budget"
     if report.get("command_plan_report", {}).get("blocked_template_commands"):
@@ -1289,20 +1321,35 @@ def first_compiler_blocker(report: dict[str, Any]) -> dict[str, Any]:
             "first_missing_input": compiler_missing_inputs[0],
         }
 
-    if report.get("workflow_status") == "blocked_empty_candidate_set":
+    workflow_status = str(report.get("workflow_status") or "")
+    if workflow_status in {
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS,
+        MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS,
+    }:
         management_pressure_report = report.get("management_aoi_scenario_pressure", {})
+        deferral_record = dict(management_pressure_report.get("deferral_record") or {}) if isinstance(management_pressure_report, dict) else {}
+        blocked_reason = str(
+            management_pressure_report.get("blocked_reason")
+            if isinstance(management_pressure_report, dict)
+            else ""
+        ).strip()
+        required_upstream_replacement = str(deferral_record.get("required_upstream_replacement") or blocked_reason or workflow_status)
+        missing_inputs = [required_upstream_replacement] if required_upstream_replacement else []
         source_inputs = management_pressure_report.get("source_inputs", {}) if isinstance(management_pressure_report, dict) else {}
-        missing_inputs = [str(item) for item in source_inputs.values() if str(item).strip()]
-        first_missing_input = missing_inputs[0] if missing_inputs else "blocked_empty_candidate_set"
+        if not missing_inputs:
+            missing_inputs = [str(item) for item in source_inputs.values() if str(item).strip()]
+        first_missing_input = missing_inputs[0] if missing_inputs else required_upstream_replacement or workflow_status
         return {
             "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
-            "status": "blocked_empty_candidate_set",
+            "status": MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS,
             "step_id": "release_plan_dry_run",
             "label": "Scenario-table generation",
-            "blocked_reason": str(management_pressure_report.get("blocked_reason") if isinstance(management_pressure_report, dict) else "no candidate rows can be generated without inventing candidates"),
+            "blocked_reason": required_upstream_replacement,
             "missing_inputs": missing_inputs,
             "command_plan_blocked_commands": list(report.get("command_plan_report", {}).get("blocked_template_commands", [])),
             "first_missing_input": first_missing_input,
+            "required_upstream_replacement": required_upstream_replacement,
+            "deferral_record": deferral_record,
         }
 
     if command_plan_over_budget(report):
@@ -2264,7 +2311,7 @@ def command_execution_class(command: dict[str, Any]) -> str:
 
 
 def blocked_execution_status(command_plan_report: dict[str, Any], workflow_status: str | None = None) -> str:
-    if workflow_status in {"blocked_missing_inputs", "blocked_empty_candidate_set"}:
+    if workflow_status in {"blocked_missing_inputs"} or management_aoi_scenario_pressure_is_named_deferral(str(workflow_status or "")):
         return str(workflow_status)
     command_plan_status = str(command_plan_report.get("command_plan_status") or "")
     output_profile_validation_status = str(command_plan_report.get("output_profile_validation", {}).get("status") or "")
@@ -2325,17 +2372,19 @@ def build_case_skeleton_output(
         for command in prep_summary["command_plan_hooks"]
         if command["execution_class"] == "template_only"
     ]
-    if report_inputs["workflow_status"] in {"blocked_missing_inputs", "blocked_over_budget"}:
+    if report_inputs["workflow_status"] in {"blocked_missing_inputs", "blocked_over_budget"} or management_aoi_scenario_pressure_is_named_deferral(
+        str(report_inputs["workflow_status"] or "")
+    ):
         skeleton_status = str(report_inputs["workflow_status"])
     else:
         skeleton_status = "ready"
     if report_inputs["workflow_status"] == "blocked_missing_inputs":
         blocked_reason = "workflow blocked_missing_inputs; required inputs are missing"
-    elif report_inputs["workflow_status"] == "blocked_empty_candidate_set":
+    elif management_aoi_scenario_pressure_is_named_deferral(str(report_inputs["workflow_status"] or "")):
         blocked_reason = str(
             report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}).get(
                 "blocked_reason",
-                "workflow blocked_empty_candidate_set; no candidate rows can be generated without inventing candidates",
+                "workflow blocked_source_zone_footprint_overlap; the current candidate package is blocked on the named footprint-overlap deferral",
             )
         )
     elif report_inputs["workflow_status"] == "blocked_over_budget":

@@ -233,7 +233,7 @@ def classify_handoff(prepared_pilot_report: dict[str, Any], scenario_pressure_re
         str(dict(prepared_pilot_report.get("prepared_pilot_compiler") or {}).get("classification") or ""),
         str(scenario_pressure_report.get("scenario_pressure_status") or ""),
     }
-    if "blocked_empty_candidate_set" in statuses or "blocked_missing_inputs" in statuses:
+    if any(status.startswith("blocked_") for status in statuses if status) or "blocked_missing_inputs" in statuses:
         return "blocked_missing_prepared_pilot_inputs"
     if str(prepared_pilot_report.get("prepared_pilot_input_classification") or "").startswith("blocked"):
         return "blocked_missing_prepared_pilot_inputs"
@@ -295,6 +295,7 @@ def build_command_list(
     run_id: str,
     classification: str,
 ) -> list[dict[str, Any]]:
+    command_status = classification if classification != "ready" else "ready"
     future_submit_command = (
         "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
         "<management_aoi_prepared_pilot_contract.yaml> "
@@ -306,7 +307,7 @@ def build_command_list(
     return [
         {
             "command_id": "prepared_pilot_compiler",
-            "status": "blocked_empty_candidate_set" if classification != "ready" else "ready",
+            "status": command_status,
             "command": (
                 "PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py "
                 f"--output-root {prepared_pilot_output_root} --format json"
@@ -315,7 +316,7 @@ def build_command_list(
         },
         {
             "command_id": "scenario_pressure_summary",
-            "status": "blocked_empty_candidate_set" if classification != "ready" else "ready",
+            "status": command_status,
             "command": "PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json",
             "writes_only_ignored_outputs": True,
         },

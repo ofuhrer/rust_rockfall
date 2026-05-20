@@ -238,7 +238,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
         self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
 
-    def test_management_candidate_pressure_bundle_preserves_the_empty_candidate_set_blocker(self) -> None:
+    def test_management_candidate_pressure_bundle_preserves_the_named_deferral(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
             config_path = self._write_candidate_config(repo_root)
@@ -264,21 +264,21 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         scenario_pressure = first["management_aoi_scenario_pressure"]
 
         self.assertEqual(first, second)
-        self.assertEqual(first["workflow_status"], "blocked_empty_candidate_set")
-        self.assertEqual(first["preparation_status"], "blocked_empty_candidate_set")
-        self.assertEqual(first["workflow_steps"][3]["status"], "blocked_empty_candidate_set")
-        self.assertIn("no scenario rows", first["workflow_steps"][3]["blocked_reason"])
-        self.assertEqual(first["scenario_generation_inputs"]["management_aoi_scenario_pressure_status"], "blocked_empty_candidate_set")
-        self.assertEqual(first["scenario_generation_inputs"]["blocked_execution_status"], "blocked_empty_candidate_set")
-        self.assertEqual(first["case_skeleton_output"]["blocked_execution_status"], "blocked_empty_candidate_set")
+        self.assertEqual(first["workflow_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(first["preparation_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(first["workflow_steps"][3]["status"], "blocked_source_zone_footprint_overlap")
+        self.assertIn("source-zone footprint", first["workflow_steps"][3]["blocked_reason"])
+        self.assertEqual(first["scenario_generation_inputs"]["management_aoi_scenario_pressure_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(first["scenario_generation_inputs"]["blocked_execution_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(first["case_skeleton_output"]["blocked_execution_status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(first["case_skeleton_output"]["case_skeleton"]["blocked_reason"], scenario_pressure["blocked_reason"])
-        self.assertEqual(compiler["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["classification"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(compiler["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_empty_candidate_set")
-        self.assertIn("no scenario rows", compiler["first_blocker"]["blocked_reason"])
-        self.assertEqual(compiler["run_manifest"]["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_source_zone_footprint_overlap")
+        self.assertIn("source-zone footprint", compiler["first_blocker"]["blocked_reason"])
+        self.assertEqual(compiler["run_manifest"]["classification"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(compiler["run_manifest"]["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(compiler["run_manifest"]["management_aoi_scenario_pressure"]["scenario_pressure_status"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["run_manifest"]["management_aoi_scenario_pressure"]["scenario_pressure_status"], "blocked_source_zone_footprint_overlap")
         self.assertTrue(
             any(
                 item.get("command_id") == "second_site_release_plan_execution_template"
@@ -488,8 +488,9 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 "build_management_aoi_scenario_pressure_report",
                 return_value={
                     "schema_version": "management_aoi_scenario_pressure_v1",
-                    "scenario_pressure_status": "blocked_empty_candidate_set",
-                    "blocked_reason": "no scenario rows can be generated without inventing candidates",
+                    "scenario_pressure_status": "blocked_source_zone_footprint_overlap",
+                    "blocked_reason": "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint",
+                    "required_upstream_replacement": "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint",
                     "source_inputs": {
                         "source_scenario_policy_path": str(
                             repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
@@ -500,8 +501,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                         ),
                     },
                     "command_plan_implications": [
-                        {"command_id": "second_site_release_plan_dry_run", "status": "blocked_not_ready"},
-                        {"command_id": "second_site_release_plan_execution_template", "status": "blocked_not_ready"},
+                        {"command_id": "second_site_release_plan_dry_run", "status": "blocked_source_zone_footprint_overlap"},
+                        {"command_id": "second_site_release_plan_execution_template", "status": "blocked_source_zone_footprint_overlap"},
                     ],
                 },
             ):
@@ -513,22 +514,22 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 )
 
         compiler = report["prepared_pilot_compiler"]
-        self.assertEqual(report["workflow_status"], "blocked_empty_candidate_set")
-        self.assertEqual(report["case_skeleton_output"]["blocked_execution_status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["workflow_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(report["case_skeleton_output"]["blocked_execution_status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(
             report["case_skeleton_output"]["blocked_reason"],
-            "no scenario rows can be generated without inventing candidates",
+            "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint",
         )
-        self.assertEqual(compiler["classification"], "blocked_empty_candidate_set")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertEqual(compiler["classification"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(compiler["first_blocker"]["step_id"], "release_plan_dry_run")
         self.assertIn(
-            "no scenario rows can be generated without inventing candidates",
+            "source-zone footprint",
             compiler["first_blocker"]["blocked_reason"],
         )
         self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
         self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
-        self.assertIn("blocked_empty_candidate_set", planner.render_text_report(report))
+        self.assertIn("blocked_source_zone_footprint_overlap", planner.render_text_report(report))
 
     def test_missing_context_blocks_compiler_with_context_blocker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:

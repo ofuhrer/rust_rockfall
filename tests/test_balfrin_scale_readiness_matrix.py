@@ -202,7 +202,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             tiers["management_aoi_multi_zone_run"]["hazard_execution_status"],
             "failed_closed_no_hazard_execution",
         )
-        self.assertEqual(tiers["management_aoi_multi_zone_run"]["blocker"], "blocked_empty_candidate_set")
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["blocker"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 0)
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 0)
         self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])

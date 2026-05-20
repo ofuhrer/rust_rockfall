@@ -212,14 +212,14 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 prepared_pilot_output_root=output_root,
             )
 
-        self.assertEqual(report["status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["status"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(report["next_step"], "scenario_freeze_readiness")
         self.assertIn("generate_candidate_source_zone_scenarios.py", report["next_command"])
-        self.assertEqual(report["workflow_steps"][5]["status"], "blocked_empty_candidate_set")
-        self.assertIn("no scenario rows", report["workflow_steps"][5]["blocked_reason"])
-        self.assertEqual(report["prepared_pilot_compiler"]["classification"], "blocked_empty_candidate_set")
+        self.assertEqual(report["workflow_steps"][5]["status"], "blocked_source_zone_footprint_overlap")
+        self.assertIn("source-zone footprint", report["workflow_steps"][5]["blocked_reason"])
+        self.assertEqual(report["prepared_pilot_compiler"]["classification"], "blocked_source_zone_footprint_overlap")
         self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["status"], "blocked_empty_candidate_set")
+        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["status"], "blocked_source_zone_footprint_overlap")
         self.assertTrue(
             any(
                 item.get("command_id") == "second_site_release_plan_execution_template"
