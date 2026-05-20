@@ -4804,3 +4804,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no hazard physics change, no output schema break, no new workflow wrapper, and no hazard operational or scale-up claim.
 - Next task: `TB-397`
+
+### TB-397: Audit Clean-Checkout Dependence In Core Workflow Tests
+
+- Date: 2026-05-21
+- Commit: `8cbb836`
+- Objective: remove the highest-risk stale clean-checkout coupling in the portable pilot command-plan tests by replacing the task-numbered `/tmp` scratch root with an explicit module constant.
+- Files changed: `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Replaced the stale `/tmp/tb062_chant_sura_fluelapass_case_skeleton` root with a named scratch constant in the Chant Sura / Flüelapass dry-run helper so the default path is explicit and no longer tied to an old task artifact.
+  - Loaded that helper into the portable pilot command-plan generator and used the exported scratch root and filename constants to build the plan metadata instead of hard-coding the historical `/tmp/tb062...` path.
+  - Updated the command-plan regression to assert the exported root/path constants directly, which keeps the coverage while removing the hidden stale-root dependency.
+  - Removed TB-397 from the active backlog before recording this work-log entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: bounded workflow-test cleanup only; no broad test rewrite, no generated artifacts, no CI-only workaround, and no Balfrin operational or scale-up claim.
+- Next task: `TB-398`
