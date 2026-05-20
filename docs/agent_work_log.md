@@ -4205,3 +4205,38 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no physics change, no tuning, no lossy deletion of replay-critical outputs, no operational claim, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no scale-up claim.
 - Next task: `TB-370`
+
+### TB-370: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: submit and monitor the smallest four-zone Balfrin `postproc` hazard run only if two-zone preservation evidence and output-pressure gates pass.
+- Files changed: `docs/balfrin_four_zone_hazard_run_tb370.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified the local task context and confirmed TB-370 was the active lowest-numbered task with no backlog refill needed.
+  - Fast-forwarded the Balfrin checkout at `/users/olifu/work/rust_rockfall` to `00e0fd429f4f60ceb1add0f8407ac9c60521e947` and confirmed the remote worktree was clean.
+  - Reran the Balfrin access preflight after the fast-forward; it reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, and clean remote checkout hygiene.
+  - Verified the TB-368 two-zone run root on Balfrin with the preservation helper; it reported `gate_status=ready_for_demonstration_evidence`, `metrics_contract_status=complete`, complete required run-root entries, and no missing output families.
+  - Checked `postproc` scheduler state and confirmed this TB-370 path would not keep the partition fully busy for more than the six-hour rediscussion boundary.
+  - Regenerated the four-zone handoff package on the clean Balfrin checkout with `--requested-release-zone-batch-size 4`; it failed closed before submission with `four_zone_ready_for_submit=false`, `four_zone_status=deferred_missing_measured_two_zone_evidence`, `four_zone_decision=defer`, and `review_readiness_classification=blocked_efficiency`.
+  - Confirmed the four-zone output budget itself was accepted under `next_larger_four_zone_review_only_probe`; no `sbatch` command was run because the repository live-submit decision gate was not ready.
+  - Recorded the fail-closed outcome and removed TB-370 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-370 --format json`
+  - `rg -n "^### TB-370:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD && git status --porcelain=v1 -uall'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --format json > /tmp/tb370_tb368_preservation_gate_remote.json'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb370_access_preflight_after_pull.json`
+  - `ssh balfrin 'sinfo -h -p postproc -o "%P|%D|%t|%C"; squeue -h -p postproc -o "%i|%u|%T|%M|%l|%D|%C|%j"'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && rm -rf /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1 && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --requested-release-zone-batch-size 4 --format json > /tmp/tb370_remote_handoff.json'`
+- Result/status: implemented_blocked_report
+- Boundaries: no TB-370 `sbatch` command was run, no four-zone job id or run root was produced, no generated Balfrin artifact was committed, no non-`postproc` partition was used, no distributed execution or scale-up claim was made, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was introduced.
+- Next task: `TB-371` should first integrate the TB-370 fail-closed blocker and add the smallest unblock: repair the four-zone handoff/scale-readiness evidence contract so TB-368 measured two-zone preservation evidence is consumed by the live-submit decision before any new four-zone submission attempt.

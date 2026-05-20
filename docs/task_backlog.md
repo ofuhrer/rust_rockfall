@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-
-### TB-370: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
-
-Goal: Submit and monitor the smallest four-zone hazard run only after two-zone evidence is measured and output pressure is accepted or reduced.
-
-Capability gap reduced: The projection needs a second measured scale point beyond two zones before 10-zone/100-zone extrapolation becomes credible.
-
-Why this outranks alternatives: Four-zone hazard execution is the next meaningful scale step after a successful two-zone run and bottleneck review.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Live four-zone `postproc` job evidence, or a fail-closed blocker that names the precise resource/contract gate.
-- Preserved run root and metrics if execution completes.
-
-Definition of done:
-
-- Four-zone hazard execution is measured or explicitly blocked with a non-ambiguous next unblock action.
-
-Boundaries: GPT-5.5 worker only; `postproc` only; requires accepted TB-367/TB-368 evidence; no distributed execution or scale-up claim.
-
 ### TB-371: Integrate Four-Zone Hazard Evidence Into Scale Projection
 
 Goal: Thread measured or failed-closed four-zone hazard evidence into the scale matrix, Swiss-scale projection, and management package.

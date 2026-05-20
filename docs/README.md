@@ -103,6 +103,8 @@ starting context for implementation unless a task explicitly asks for them.
 - `balfrin_two_zone_hazard_run_tb368.md`: TB-368 completed one `postproc`
   rerun with preserved `output/trajectory_chunks` and a ready preservation
   gate.
+- `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
+  run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic
