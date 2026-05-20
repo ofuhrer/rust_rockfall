@@ -87,12 +87,15 @@ where reducer-manifest bytes, sidecar counts, per-family counts, and merge
 order are regression-checked before any larger live root is considered. The
 current TB-245 handoff recheck still reports
 `blocked_budget_reduction_needed`, so manifest reduction is still needed
-before the current handoff projection can be treated as budget-safe. TB-246
-adds a compact manifest-pruning path that reduces the projected handoff from
-`62` files / `26057` manifest bytes / `21` sidecars to `39` files / `17788`
-manifest bytes / `2` sidecars while keeping replay-safe hashes and merge-state
-fields explicit, but the compact path still remains blocked on
-`manifest_size_bytes`.
+before the current handoff projection can be treated as budget-safe. TB-336
+hardens the default multi-zone probe into a bounded replay-preserving mix:
+`trajectory_chunk_manifest` fanout is dropped, the default reducer chunk count
+is reduced to `2`, and the 12-zone scratch projection now lands at `48` files
+/ `18274` manifest bytes / `9` sidecars / `614` reducer-manifest bytes while
+keeping the execution plans, indexes, merge-state files, and replay-safe
+hashes explicit. The compact path still remains blocked on
+`manifest_size_bytes`, but output-family pressure is no longer the dominant
+reducer gate signal.
 
 TB-266 keeps that compact path explicit in the smallest multi-zone preflight
 as well: the reviewed two-zone handoff still fails closed, but the reducer

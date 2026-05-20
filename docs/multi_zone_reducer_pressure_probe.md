@@ -3,7 +3,7 @@
 Status: scratch-root probe, not a live Balfrin run.
 
 This probe materializes a deterministic multi-zone scratch root and summarizes
-the reducer/merge pressure, reducer-manifest bytes, sidecar counts, and
+the reducer/merge pressure, reducer-manifest bytes, bounded debug fanout, and
 output-family bytes without relying on ignored live artifacts.
 
 Reproduce with:
@@ -16,35 +16,34 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
 
 ## Measured Summary
 
-- Probe root: `/tmp/rust_rockfall/tb218_multi_zone_probe`
+- Probe root: `/tmp/rust_rockfall/multi_zone_reducer_pressure_tb336_probe`
 - Release zones: `12`
 - Scenarios: `12`
 - Trajectory chunks: `12`
 - Reducer workers: `2`
-- Reducer chunks: `4`
+- Reducer chunks: `2`
 - Merge order: `sorted_chunk_id`
 - Merge-order independent: `true`
 - Merge-order deterministic: `true`
-- Reducer wall time: `2.99` s
-- Manifest size: `21312` bytes
-- Root file count: `66`
-- Output file count: `62`
-- Output bytes: `31906`
-- Reducer manifest bytes: `964`
-- Reducer manifest files: `4`
-- Sidecar files: `21`
-- Sidecar bytes: `4123`
+- Reducer wall time: `2.59` s
+- Manifest size: `18274` bytes
+- Root file count: `52`
+- Output file count: `48`
+- Output bytes: `26105`
+- Reducer manifest bytes: `614`
+- Reducer manifest files: `2`
+- Sidecar files: `9`
+- Sidecar bytes: `1702`
 - Primary output files: `36`
 - Primary output bytes: `7586`
-- Output family mix: `trajectory_csv, deposition_csv, impact_events_csv, trajectory_chunk_manifest, reducer_chunk_manifest, trajectory_execution_plan, trajectory_execution_index, trajectory_merge_state, reducer_execution_plan, reducer_execution_index, reducer_merge_state, diagnostics_json, map_package_manifest, pilot_gis_package_manifest`
+- Output family mix: `trajectory_csv, deposition_csv, impact_events_csv, reducer_chunk_manifest, trajectory_execution_plan, trajectory_execution_index, trajectory_merge_state, reducer_execution_plan, reducer_execution_index, reducer_merge_state, diagnostics_json, map_package_manifest, pilot_gis_package_manifest`
 
 ## Output Families
 
 - `trajectory_csv`: `12` files / `4678` bytes
-- `trajectory_chunk_manifest`: `12` files / `2340` bytes
 - `impact_events_csv`: `12` files / `1660` bytes
 - `deposition_csv`: `12` files / `1248` bytes
-- `reducer_chunk_manifest`: `4` files / `964` bytes
+- `reducer_chunk_manifest`: `2` files / `614` bytes
 - `trajectory_execution_index`: `1` file / `422` bytes
 - `reducer_execution_index`: `1` file / `226` bytes
 - `reducer_merge_state`: `1` file / `105` bytes
@@ -59,7 +58,7 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
 
 - `merge_order`: `sorted_chunk_id_deterministic`
 - `manifest_size`: `manifest_pressure`
-- `output_pressure`: `file_family_pressure`
+- `output_pressure`: `output_pressure_bounded`
 - `reducer_runtime`: `reducer_runtime_pressure`
 - `probe_blocker`: `multi_zone_dry_run_blocked`
 
@@ -68,15 +67,16 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
 - Keep `merge_order` at `sorted_chunk_id`.
 - Keep `merge_order_independent` set to `true`.
 - Hold `reducer_worker_count` at `2` until a larger scratch probe says otherwise.
-- Cap `reducer_chunk_count` at `4` for the next probe.
+- Cap `reducer_chunk_count` at `2` for the next probe.
 - Stage simultaneous release zones in batches of at most `8`.
 
 ## Conclusion
 
-Reducer pressure is a blocker for a multi-zone Balfrin dry run at this probe
-shape. The dominant signals are manifest pressure, output-family pressure, and
-reducer-runtime pressure, so TB-183 should keep the reducer constraints above
-in place before attempting a larger dry run.
+Reducer pressure is still a blocker for a multi-zone Balfrin dry run at this
+probe shape. The dominant signals are manifest pressure and reducer-runtime
+pressure, while output-family pressure is now explicitly bounded by the reduced
+debug fanout, so TB-183 should keep the reducer constraints above in place
+before attempting a larger dry run.
 
 ## Regression Gate
 
@@ -107,9 +107,10 @@ shape is otherwise within measured reducer maxima.
 ## TB-245 Current Handoff Projection
 
 The current TB-245 recheck still stays `blocked_budget_reduction_needed`
-rather than `budget_passes_no_reduction_needed`. The full baseline projection
-records `12` release zones, `62` output files, `36432` output bytes, `26057`
-manifest bytes, `21` sidecar files, and `964` reducer-manifest bytes.
+rather than `budget_passes_no_reduction_needed`. The bounded baseline
+projection now records `12` release zones, `48` output files, `26105` output
+bytes, `18274` manifest bytes, `9` sidecar files, and `614` reducer-manifest
+bytes.
 
 TB-246 adds a compact manifest-pruning path that keeps the replay-safe
 primary outputs plus the merge-state files and projection hashes while
@@ -133,8 +134,8 @@ The reviewed two-release-zone probe shape is still fail-closed, but the repair
 path now reports a compact before/after budget envelope instead of only a
 generic manifest-pressure label:
 
-- Before: `62` output files, `21` sidecar files, `964` reducer-manifest bytes,
-  `26057` manifest bytes.
+- Before: `48` output files, `9` sidecar files, `614` reducer-manifest bytes,
+  `18274` manifest bytes.
 - After compact pruning: `39` output files, `2` sidecar files, `0`
   reducer-manifest bytes, `17788` manifest bytes.
 

@@ -24,15 +24,14 @@ SCHEMA_VERSION = "multi_zone_reducer_pressure_probe_v1"
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
 DEFAULT_RELEASE_ZONE_COUNT = 12
 DEFAULT_REDUCER_WORKERS = 2
-DEFAULT_REDUCER_CHUNK_COUNT = 4
+DEFAULT_REDUCER_CHUNK_COUNT = 2
 DEFAULT_TRAJECTORY_ROWS_PER_ZONE = 6
 DEFAULT_IMPACT_ROWS_PER_ZONE = 2
 DEFAULT_DEPOSITION_ROWS_PER_ZONE = 1
-DEFAULT_OUTPUT_FAMILY_MIX = (
+BOUNDED_OUTPUT_FAMILY_MIX = (
     "trajectory_csv",
     "deposition_csv",
     "impact_events_csv",
-    "trajectory_chunk_manifest",
     "reducer_chunk_manifest",
     "trajectory_execution_plan",
     "trajectory_execution_index",
@@ -44,6 +43,7 @@ DEFAULT_OUTPUT_FAMILY_MIX = (
     "map_package_manifest",
     "pilot_gis_package_manifest",
 )
+DEFAULT_OUTPUT_FAMILY_MIX = BOUNDED_OUTPUT_FAMILY_MIX
 VALIDATION_OUTPUT_MODE = "rebuildable_reduced_output"
 REPLAY_CRITICAL_OUTPUT_FAMILIES = (
     "trajectory_csv",

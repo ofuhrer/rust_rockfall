@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-336: Reducer And Manifest Scaling Hardening
-
-Goal: Reduce or bound reducer sidecar, manifest, and merge pressure for multi-zone AOI runs without losing rebuildability.
-
-Capability gap reduced: Multi-zone scale can fail on manifest/sidecar pressure even when trajectory execution is acceptable.
-
-Why this outranks alternatives: TB-309/TB-314 evidence shows manifest and reducer artifacts are central scale gates.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `docs/output_budget_reducer_scaling_gate.md`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `tests/test_output_budget_reducer_gate.py`
-
-Deliverables:
-
-- Hardening change or stricter bounded policy for reducer manifests/sidecars across 2/4/8/12-zone projections.
-- Tests showing rebuild-critical files remain present while debug fanout is bounded.
-- Updated reducer-pressure docs and scale-dashboard inputs if policy changes.
-
-Definition of done:
-
-- Multi-zone reducer pressure is lower or more explicitly bounded without breaking hazard rebuild compatibility.
-
-Boundaries: Output/reducer policy only; no trajectory physics changes, no live Balfrin job, no operational or scale-up claim.
-
 ### TB-337: Large-AOI GIS And COG Packaging Stress Test
 
 Goal: Stress-test GIS package generation, QA-review HTML, manifest size, and COG conversion behavior on a realistically large AOI package shape.

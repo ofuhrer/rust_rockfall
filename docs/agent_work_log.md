@@ -3469,3 +3469,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no physics changes, no output semantics changes, no tuning, no live Balfrin submission, and no operational or scale-up claim.
 - Next task: `TB-336`
+
+### TB-336: Reducer And Manifest Scaling Hardening
+
+- Date: 2026-05-20
+- Commit: `pending`
+- Objective: harden the default multi-zone reducer-pressure profile so rebuild-critical replay artifacts stay present while debug manifest and sidecar fanout is bounded.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/summarize_multi_zone_scaling_ladder.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reduced the default reducer-pressure probe to two reducer chunks and removed `trajectory_chunk_manifest` from the default family mix so the bounded profile keeps the execution plans, indexes, merge-state files, and replay hashes while dropping debug fanout.
+  - Aligned the multi-zone scaling ladder input and the reducer-pressure gate tests with the bounded replay-preserving profile, then verified that the gate stays fixture-backed and fail-closed with only `reducer_chunk_manifest` in the debug family set.
+  - Refreshed the reducer-pressure docs and output-budget gate narrative to describe the new bounded 12-zone scratch projection and the remaining manifest-pressure blocker.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/multi_zone_reducer_pressure_tb336_probe --format json`
+  - `PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate tests.test_multi_zone_scaling_ladder tests.test_output_budget_reducer_gate`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: output/reducer policy only; no trajectory physics changes, no live Balfrin job, no operational or scale-up claim, and no distributed execution claim.
+- Next task: `TB-337`

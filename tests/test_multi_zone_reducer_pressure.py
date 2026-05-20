@@ -35,7 +35,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 probe_root,
                 release_zone_count=12,
                 reducer_worker_count=2,
-                reducer_chunk_count=4,
+                reducer_chunk_count=2,
             )
             first_report = MODULE.build_report(probe_root)
 
@@ -43,19 +43,19 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 probe_root,
                 release_zone_count=12,
                 reducer_worker_count=2,
-                reducer_chunk_count=4,
+                reducer_chunk_count=2,
             )
             second_report = MODULE.build_report(probe_root)
 
             self.assertEqual(first.release_zone_count, 12)
-            self.assertEqual(first.reducer_chunk_count, 4)
+            self.assertEqual(first.reducer_chunk_count, 2)
             self.assertEqual(first.scenario_count, 12)
             self.assertEqual(second.release_zone_count, 12)
             self.assertEqual(first_report, second_report)
             self.assertEqual(first_report["probe_status"], "measured_scratch_root")
             self.assertEqual(first_report["release_zone_count"], 12)
             self.assertEqual(first_report["trajectory_chunk_count"], 12)
-            self.assertEqual(first_report["reducer_chunk_count"], 4)
+            self.assertEqual(first_report["reducer_chunk_count"], 2)
             self.assertEqual(first_report["merge_order"], "sorted_chunk_id")
             self.assertTrue(first_report["merge_order_independent"])
             self.assertTrue(first_report["multi_zone_dry_run_blocked"])
@@ -64,7 +64,10 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertGreater(first_report["manifest_size_bytes"], 0)
             self.assertGreater(first_report["root_file_count"], first_report["release_zone_count"])
             self.assertEqual(first_report["output_family_file_counts"]["trajectory_csv"], 12)
-            self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 4)
+            self.assertNotIn("trajectory_chunk_manifest", first_report["output_family_file_counts"])
+            self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 2)
+            self.assertEqual(first_report["reducer_manifest_file_count"], 2)
+            self.assertEqual(first_report["sidecar_file_count"], 9)
             self.assertGreater(len(first_report["largest_output_families_by_bytes"]), 0)
             self.assertIn("kind", first_report["largest_output_families_by_bytes"][0])
             self.assertEqual(
@@ -75,7 +78,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 first_report["measured_reducer_constraints"]["simultaneous_release_zone_batch_max"],
                 8,
             )
-            self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 4)
+            self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
 
     def test_cli_materialize_root_uses_requested_release_zone_count(self) -> None:

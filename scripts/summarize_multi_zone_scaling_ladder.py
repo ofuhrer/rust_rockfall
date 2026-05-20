@@ -51,7 +51,6 @@ LADDER_PRESSURE_OUTPUT_FAMILY_MIX = (
     "trajectory_csv",
     "deposition_csv",
     "impact_events_csv",
-    "trajectory_chunk_manifest",
     "reducer_chunk_manifest",
     "trajectory_merge_state",
     "reducer_merge_state",
