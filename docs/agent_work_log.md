@@ -3368,3 +3368,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local bounded smoke only; no live Balfrin submission, no Swiss-wide claim, no operational claim, and no annual/physical/risk semantics.
 - Next task: `TB-331`
+
+### TB-331: Four-Zone Balfrin Hazard Probe Package
+
+- Date: 2026-05-20
+- Commit: `c6283d4`
+- Objective: build a reviewed four-zone Balfrin hazard-execution package that a live Balfrin worker can execute or fail-close without inventing package, budget, authorization, or preservation details.
+- Files changed: `docs/task_backlog.md`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a first-class `four_zone_hazard_execution_package` to the multi-release-zone handoff report, including command-plan summary, authorization/audit record, reduced-output settings, expected output budget, preservation instructions, claim boundaries, and reviewed package paths.
+  - Updated the smallest multi-zone authorization preflight to read the explicit four-zone hazard execution package while preserving the older review-only package fallback.
+  - Extended the handoff and authorization-preflight regressions to verify package shape, output-budget acceptance, command-plan linkage, and preservation boundaries.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_authorized_multi_zone_submit -v`
+  - `PYENV_VERSION=system uv run python -m py_compile tests/test_balfrin_smallest_multi_zone_authorization_preflight.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json >/tmp/tb331_handoff.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/tb331_handoff.json --validation-mode budget-thresholds --format json >/tmp/tb331_preflight.json`
+- Result/status: implemented_review_package
+- Boundaries: package/pre-submit only; no live Balfrin submission, no scale-up claim, no operational claim, and no annual/physical/risk semantics.
+- Next task: `TB-332`
