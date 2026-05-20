@@ -1677,23 +1677,42 @@ def build_command_transcript(
     output_root = skeleton_output.get("output_root", "")
     prepared_pilot_report_path = "<prepared_pilot_report_path>"
     prepared_pilot_output_root = output_root or "<prepared_pilot_output_root>"
-    local_command = (
-        "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py "
-        "run-prepared-pilot-local "
-        f"--site-config {site_config} "
-        f"--repo-root {repo_root} "
-        f"--prepared-pilot-report-path {prepared_pilot_report_path} "
-        f"--prepared-pilot-output-root {prepared_pilot_output_root} "
-        "--validation-case-path validation/cases/probabilistic_phase1_smoke.yaml "
-        "--overwrite --format json"
+    local_command = WORKFLOW_VALIDATION.render_shell_command(
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/run_aoi_hazard_workflow.py",
+        "run-prepared-pilot-local",
+        "--site-config",
+        WORKFLOW_VALIDATION.render_shell_arg(site_config),
+        "--repo-root",
+        WORKFLOW_VALIDATION.render_shell_arg(repo_root),
+        "--prepared-pilot-report-path",
+        prepared_pilot_report_path,
+        "--prepared-pilot-output-root",
+        prepared_pilot_output_root,
+        "--validation-case-path",
+        "validation/cases/probabilistic_phase1_smoke.yaml",
+        "--overwrite",
+        "--format",
+        "json",
     )
-    balfrin_command = (
-        "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py "
-        "submit-balfrin "
-        f"--site-config {site_config} "
-        f"--repo-root {repo_root} "
-        f"--prepared-pilot-report-path {prepared_pilot_report_path} "
-        "--format json"
+    balfrin_command = WORKFLOW_VALIDATION.render_shell_command(
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/run_aoi_hazard_workflow.py",
+        "submit-balfrin",
+        "--site-config",
+        WORKFLOW_VALIDATION.render_shell_arg(site_config),
+        "--repo-root",
+        WORKFLOW_VALIDATION.render_shell_arg(repo_root),
+        "--prepared-pilot-report-path",
+        prepared_pilot_report_path,
+        "--format",
+        "json",
     )
     return {
         "schema_version": COMMAND_TRANSCRIPT_SCHEMA_VERSION,
@@ -2298,11 +2317,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.extend(f"  - {item}" for item in skeleton["template_only_command_ids"])
     else:
         lines.append("- template_only_command_ids: none")
-    if skeleton.get("expected_output_roots"):
-        lines.append("- expected_output_roots:")
-        lines.extend(f"  - {item}" for item in skeleton["expected_output_roots"])
-    else:
-        lines.append("- expected_output_roots: none")
+    lines.extend(
+        WORKFLOW_VALIDATION.render_expected_output_path_block(
+            "expected_output_roots",
+            skeleton.get("expected_output_roots", []),
+            repo_root=ROOT,
+        )
+    )
     scenario_handoff = (skeleton.get("case_skeleton", {}) or {}).get("scenario_generation_handoff", {})
     if scenario_handoff:
         lines.append("- scenario_generation_handoff:")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import shlex
 import re
 import sys
 from pathlib import Path
@@ -124,6 +125,45 @@ def resolve_optional_repo_path(root: Path, value: str | Path | None) -> Path | N
     if value in (None, ""):
         return None
     return resolve_repo_path(root, value)
+
+
+def render_repo_relative_path(root: Path, value: str | Path | None) -> str:
+    if value in (None, ""):
+        return ""
+    resolved_root = root.resolve(strict=False)
+    resolved_path = resolve_repo_path(root, value).resolve(strict=False)
+    try:
+        return str(resolved_path.relative_to(resolved_root))
+    except ValueError:
+        return str(resolved_path)
+
+
+def render_shell_arg(value: str | Path | None) -> str:
+    return shlex.quote("" if value is None else str(value))
+
+
+def render_shell_command(*parts: str | Path | None) -> str:
+    return " ".join(str(part) for part in parts if part is not None and str(part) != "")
+
+
+def render_expected_output_path_block(
+    label: str,
+    values: Sequence[str | Path | None],
+    *,
+    repo_root: Path | None = None,
+    none_label: str = "none",
+) -> list[str]:
+    lines = [f"- {label}:"]
+    rendered = [
+        render_repo_relative_path(repo_root, value) if repo_root is not None else str(value)
+        for value in values
+        if value is not None and str(value) != ""
+    ]
+    if rendered:
+        lines.extend(f"  - {item}" for item in rendered)
+    else:
+        lines.append(f"  - {none_label}")
+    return lines
 
 
 def require_paths_exist(

@@ -36,7 +36,15 @@ DEFAULT_RUN_ROOT = Path(
 )
 DEFAULT_RUN_ID = "chant_sura_fluelapass_management_aoi_multi_zone_v1"
 ACCESS_PREFLIGHT_COMMAND = (
-    "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json"
+    WORKFLOW_VALIDATION.render_shell_command(
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/check_balfrin_remote_access_preflight.py",
+        "--format",
+        "json",
+    )
 )
 
 
@@ -305,27 +313,63 @@ def build_command_list(
 ) -> list[dict[str, Any]]:
     command_status = classification if classification != "ready" else "ready"
     future_submit_command = (
-        "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
-        "<management_aoi_prepared_pilot_contract.yaml> "
-        f"--run-root {run_root} --run-id {run_id} --partition postproc --time 00:30:00 "
-        "--nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit "
-        f"--reviewed-handoff-package {artifact_dir / DEFAULT_PACKAGE_JSON.name} "
-        f"--authorization-record {artifact_dir / DEFAULT_AUTHORIZATION_RECORD.name}"
+        WORKFLOW_VALIDATION.render_shell_command(
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            "scripts/submit_balfrin_probe.py",
+            "<management_aoi_prepared_pilot_contract.yaml>",
+            "--run-root",
+            WORKFLOW_VALIDATION.render_shell_arg(run_root),
+            "--run-id",
+            run_id,
+            "--partition",
+            "postproc",
+            "--time",
+            "00:30:00",
+            "--nodes",
+            "1",
+            "--ntasks",
+            "1",
+            "--cpus-per-task",
+            "16",
+            "--authorized-submit",
+            "--reviewed-handoff-package",
+            WORKFLOW_VALIDATION.render_shell_arg(artifact_dir / DEFAULT_PACKAGE_JSON.name),
+            "--authorization-record",
+            WORKFLOW_VALIDATION.render_shell_arg(artifact_dir / DEFAULT_AUTHORIZATION_RECORD.name),
+        )
     )
     return [
         {
             "command_id": "prepared_pilot_compiler",
             "status": command_status,
-            "command": (
-                "PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py "
-                f"--output-root {prepared_pilot_output_root} --format json"
+            "command": WORKFLOW_VALIDATION.render_shell_command(
+                "PYENV_VERSION=system",
+                "uv",
+                "run",
+                "python",
+                "scripts/plan_aoi_to_prepared_pilot_dry_run.py",
+                "--output-root",
+                WORKFLOW_VALIDATION.render_shell_arg(prepared_pilot_output_root),
+                "--format",
+                "json",
             ),
             "writes_only_ignored_outputs": True,
         },
         {
             "command_id": "scenario_pressure_summary",
             "status": command_status,
-            "command": "PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json",
+            "command": WORKFLOW_VALIDATION.render_shell_command(
+                "PYENV_VERSION=system",
+                "uv",
+                "run",
+                "python",
+                "scripts/summarize_management_aoi_scenario_pressure.py",
+                "--format",
+                "json",
+            ),
             "writes_only_ignored_outputs": True,
         },
         {

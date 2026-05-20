@@ -15,7 +15,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import sys
@@ -765,61 +764,57 @@ def build_workflow_command(
         "scripts/run_aoi_hazard_workflow.py",
         command,
         "--site-config",
-        shlex.quote(str(site_config)),
+        WORKFLOW_VALIDATION.render_shell_arg(site_config),
         "--repo-root",
-        shlex.quote(str(repo_root)),
+        WORKFLOW_VALIDATION.render_shell_arg(repo_root),
         "--acquisition-package-path",
-        shlex.quote(str(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)),
+        WORKFLOW_VALIDATION.render_shell_arg(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE),
         "--artifact-root",
-        shlex.quote(str(artifact_root or DEFAULT_ARTIFACT_ROOT)),
+        WORKFLOW_VALIDATION.render_shell_arg(artifact_root or DEFAULT_ARTIFACT_ROOT),
     ]
     if release_polygon is not None:
-        base.extend(["--release-polygon", shlex.quote(str(release_polygon))])
+        base.extend(["--release-polygon", WORKFLOW_VALIDATION.render_shell_arg(release_polygon)])
     if smoke_case_path is not None:
-        base.extend(["--smoke-case-path", shlex.quote(str(smoke_case_path))])
+        base.extend(["--smoke-case-path", WORKFLOW_VALIDATION.render_shell_arg(smoke_case_path)])
     if smoke_output_root is not None:
-        base.extend(["--smoke-output-root", shlex.quote(str(smoke_output_root))])
+        base.extend(["--smoke-output-root", WORKFLOW_VALIDATION.render_shell_arg(smoke_output_root)])
     if workflow_output_root is not None:
-        base.extend(["--workflow-output-root", shlex.quote(str(workflow_output_root))])
+        base.extend(["--workflow-output-root", WORKFLOW_VALIDATION.render_shell_arg(workflow_output_root)])
     base.extend(["--format", "json"])
-    return " ".join(base)
+    return WORKFLOW_VALIDATION.render_shell_command(*base)
 
 
 def build_package_command(input_root: Path, output_root: Path) -> str:
-    return " ".join(
-        [
-            "PYENV_VERSION=system",
-            "uv",
-            "run",
-            "python",
-            "scripts/package_aoi_hazard_map.py",
-            "--input-root",
-            shlex.quote(str(input_root)),
-            "--output-root",
-            shlex.quote(str(output_root)),
-            "--overwrite",
-            "--format",
-            "json",
-        ]
+    return WORKFLOW_VALIDATION.render_shell_command(
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/package_aoi_hazard_map.py",
+        "--input-root",
+        WORKFLOW_VALIDATION.render_shell_arg(input_root),
+        "--output-root",
+        WORKFLOW_VALIDATION.render_shell_arg(output_root),
+        "--overwrite",
+        "--format",
+        "json",
     )
 
 
 def build_qa_review_command(input_root: Path, output_root: Path) -> str:
-    return " ".join(
-        [
-            "PYENV_VERSION=system",
-            "uv",
-            "run",
-            "python",
-            "scripts/generate_aoi_map_qa_review.py",
-            "--input-root",
-            shlex.quote(str(input_root)),
-            "--output-root",
-            shlex.quote(str(output_root)),
-            "--overwrite",
-            "--format",
-            "json",
-        ]
+    return WORKFLOW_VALIDATION.render_shell_command(
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/generate_aoi_map_qa_review.py",
+        "--input-root",
+        WORKFLOW_VALIDATION.render_shell_arg(input_root),
+        "--output-root",
+        WORKFLOW_VALIDATION.render_shell_arg(output_root),
+        "--overwrite",
+        "--format",
+        "json",
     )
 
 
@@ -2023,22 +2018,22 @@ def build_status_next_command(
         "scripts/run_aoi_hazard_workflow.py",
         next_action,
         "--site-config",
-        shlex.quote(str(site_config)),
+        WORKFLOW_VALIDATION.render_shell_arg(site_config),
         "--repo-root",
-        shlex.quote(str(repo_root)),
+        WORKFLOW_VALIDATION.render_shell_arg(repo_root),
         "--acquisition-package-path",
-        shlex.quote(str(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)),
+        WORKFLOW_VALIDATION.render_shell_arg(acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE),
         "--artifact-root",
-        shlex.quote(str(artifact_root or DEFAULT_ARTIFACT_ROOT)),
+        WORKFLOW_VALIDATION.render_shell_arg(artifact_root or DEFAULT_ARTIFACT_ROOT),
     ]
     if release_polygon is not None:
-        base.extend(["--release-polygon", shlex.quote(str(release_polygon))])
+        base.extend(["--release-polygon", WORKFLOW_VALIDATION.render_shell_arg(release_polygon)])
     if smoke_case_path is not None:
-        base.extend(["--smoke-case-path", shlex.quote(str(smoke_case_path))])
+        base.extend(["--smoke-case-path", WORKFLOW_VALIDATION.render_shell_arg(smoke_case_path)])
     if smoke_output_root is not None:
-        base.extend(["--smoke-output-root", shlex.quote(str(smoke_output_root))])
+        base.extend(["--smoke-output-root", WORKFLOW_VALIDATION.render_shell_arg(smoke_output_root)])
     base.extend(["--format", "json"])
-    return " ".join(base)
+    return WORKFLOW_VALIDATION.render_shell_command(*base)
 
 
 def expected_outputs_for_next_action(

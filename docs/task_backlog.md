@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-401: Extract Shared Command And Path Rendering Utilities
-
-Goal: Consolidate repeated command-string, path-normalization, and expected-output rendering logic used by AOI workflow, prepared-pilot, and handoff helpers.
-
-Capability gap reduced: Repeated shell-command and path-rendering logic causes drift in user-facing next commands and Balfrin handoff packages.
-
-Why this outranks alternatives: This is a small maintainability improvement that supports both user-facing clarity and safer orchestration without adding a new layer.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `scripts/lib/workflow_validation.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- Shared utility functions for rendering repo-relative paths, shell commands, and expected-output path blocks.
-- At least two existing helpers migrated to the shared functions.
-- Regression tests showing user-facing next commands and handoff command manifests remain stable.
-
-Definition of done:
-
-- Duplicate command/path rendering is measurably reduced and existing JSON/text outputs stay compatible.
-
-Boundaries: Bounded refactor only; no new wrapper, no status-vocabulary change, no Balfrin submission, and no scientific semantics change.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

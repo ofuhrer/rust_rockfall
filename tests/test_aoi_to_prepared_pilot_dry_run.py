@@ -18,6 +18,7 @@ from scripts.lib import workflow_validation
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
+HANDOFF_SCRIPT_PATH = ROOT / "scripts" / "build_management_aoi_balfrin_handoff.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT = (
     ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability"
@@ -34,6 +35,7 @@ def _load_module(path: Path, name: str):
 
 
 planner = _load_module(SCRIPT_PATH, "plan_aoi_to_prepared_pilot_dry_run")
+handoff = _load_module(HANDOFF_SCRIPT_PATH, "build_management_aoi_balfrin_handoff")
 staging = _load_module(
     STAGING_SCRIPT_PATH,
     "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_aoi_to_prepared_pilot_test",
@@ -250,6 +252,26 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", compiler["run_manifest_path"])
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
         self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
+        self.assertEqual(
+            compiler["command_transcript"]["local_smoke"]["command"],
+            (
+                "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local "
+                f"--site-config {first['preparation_input']['site_config_path']} "
+                f"--repo-root {repo_root} "
+                "--prepared-pilot-report-path <prepared_pilot_report_path> "
+                f"--prepared-pilot-output-root {output_root} "
+                "--validation-case-path validation/cases/probabilistic_phase1_smoke.yaml --overwrite --format json"
+            ),
+        )
+        self.assertEqual(
+            compiler["command_transcript"]["balfrin_review"]["command"],
+            (
+                "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py submit-balfrin "
+                f"--site-config {first['preparation_input']['site_config_path']} "
+                f"--repo-root {repo_root} "
+                "--prepared-pilot-report-path <prepared_pilot_report_path> --format json"
+            ),
+        )
 
     def test_management_candidate_pressure_bundle_preserves_the_named_deferral(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -297,6 +319,65 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 item.get("command_id") == "second_site_release_plan_execution_template"
                 for item in compiler["run_manifest"]["management_aoi_scenario_pressure"]["command_plan_implications"]
             )
+        )
+
+    def test_handoff_command_manifest_uses_the_shared_command_renderer(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            artifact_dir = Path(tmp) / "handoff"
+            prepared_pilot_output_root = (
+                Path(output_tmp)
+                / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            )
+            run_root = (
+                Path(output_tmp)
+                / "scratch/mch/olifu/rust_rockfall/probes/management-aoi/chant_sura_fluelapass_management_aoi_multi_zone_v1"
+            )
+
+            report = handoff.build_report(
+                artifact_dir=artifact_dir,
+                prepared_pilot_output_root=prepared_pilot_output_root,
+                run_root=run_root,
+                run_id="chant_sura_fluelapass_management_aoi_multi_zone_v1",
+                prepared_pilot_report_override={
+                    "workflow_status": "ready_for_balfrin_postproc",
+                    "prepared_pilot_compiler": {"classification": "ready_for_balfrin_postproc"},
+                    "prepared_pilot_input_classification": "real_staged_ready",
+                    "first_blocker": {},
+                    "command_plan": {"blocked_template_commands": []},
+                },
+                scenario_pressure_report_override={
+                    "scenario_pressure_status": "ready",
+                    "blocked_reason": "",
+                    "candidate_evidence": {},
+                    "scenario_generation_pressure": {},
+                },
+            )
+
+        self.assertEqual(
+            report["command_list"][0]["command"],
+            (
+                "PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py "
+                f"--output-root {report['prepared_pilot_output_root']} --format json"
+            ),
+        )
+        self.assertEqual(
+            report["command_list"][1]["command"],
+            "PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json",
+        )
+        self.assertEqual(
+            report["command_list"][2]["command"],
+            "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json",
+        )
+        self.assertEqual(
+            report["command_list"][3]["command"],
+            (
+                "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py "
+                "<management_aoi_prepared_pilot_contract.yaml> "
+                f"--run-root {report['exact_run_root']} --run-id chant_sura_fluelapass_management_aoi_multi_zone_v1 --partition postproc --time 00:30:00 "
+                "--nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit "
+                f"--reviewed-handoff-package {report['artifact_dir']}/{handoff.DEFAULT_PACKAGE_JSON.name} "
+                f"--authorization-record {report['artifact_dir']}/{handoff.DEFAULT_AUTHORIZATION_RECORD.name}"
+            ),
         )
 
     def test_fixture_backed_inputs_classify_as_fixture_backed_and_keep_the_handoff_deterministic(self) -> None:

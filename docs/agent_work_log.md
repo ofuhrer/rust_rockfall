@@ -4900,3 +4900,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: compatibility-shim cleanup only; no workflow rewrite, no Balfrin execution, no generated artifacts, and no scale-up or operational claim upgrade.
 - Next task: `TB-401`
+
+### TB-401: Extract Shared Command And Path Rendering Utilities
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: extract shared command-string, repo-path, and expected-output block rendering helpers for the AOI workflow, prepared-pilot, and Balfrin handoff helpers.
+- Files changed: `docs/agent_work_log.md`, `docs/task_backlog.md`, `scripts/build_management_aoi_balfrin_handoff.py`, `scripts/lib/workflow_validation.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`
+- Implementation summary:
+  - Added shared renderer helpers in `scripts/lib/workflow_validation.py` for repo-relative paths, shell command assembly, shell argument quoting, and expected-output path blocks.
+  - Migrated the AOI front-door next-command builders and the prepared-pilot / Balfrin command-manifest builders onto the shared command renderer.
+  - Swapped the prepared-pilot expected-output text block over to the shared path-block helper while preserving existing text and JSON output shapes.
+  - Added regression coverage for the stable AOI next commands and the Balfrin handoff command list.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_renders_concise_text_and_json_for_ready_report tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_main_renders_compact_text_summary_for_copy_paste tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepare_clean_checkout_reports_product_resolution_as_the_first_blocker`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_deprecation_metadata_points_to_the_canonical_front_door tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_ready_compiler_fixture_emits_manifest_plan_and_hints tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_management_candidate_pressure_bundle_preserves_the_named_deferral tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_handoff_command_manifest_uses_the_shared_command_renderer`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: bounded refactor only; no wrapper addition, no status-vocabulary change, no Balfrin submission, and no scientific semantics change.
+- Next task: `none`
