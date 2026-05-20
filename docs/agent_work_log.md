@@ -4302,3 +4302,24 @@ scan thousands of lines of completed history.
 - Result/status: completed
 - Boundaries: no live download, no hazard execution, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-373`
+
+### TB-373: Acquire Or Stage Real Public Geodata For Management AOI
+
+- Date: 2026-05-20
+- Commit: `f86cbde`
+- Objective: record the current management-AOI public-geodata acquisition state and remove the completed blocker from the active backlog.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the Chant Sura / Fluelapass acquisition decision note to reflect the actual blocker state: the terrain cache row is still fixture-backed, the core metadata rows are staged, `swisstlm3d/metadata.json` is still missing, and the public context bundles remain deferred.
+  - Replaced the stale “everything missing” snapshot with concrete operator actions for the remaining real-public-input work, including the real `swissALTI3D` crop refresh, `swissTLM3D` metadata staging, context promotion from the raw cache, and the missing `swissSURFACE3D` acquisition.
+  - Removed TB-373 from the active backlog so the repo no longer advertises the blocked acquisition task as open.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: blocked
+- Boundaries: no raw swisstopo data commit, no ensemble execution, no operational claim, and no scale-up, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-374`
