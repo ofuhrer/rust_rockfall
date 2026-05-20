@@ -4466,3 +4466,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no live Balfrin submission, no invented candidates or scenario rows, no output-budget acceptance claim for nonexistent outputs, no distributed execution or scale-up claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-381`, but it should not submit unless a later unblock task produces a ready TB-380-equivalent handoff.
+
+### TB-381: Execute Bounded Management AOI Multi-Zone Balfrin Run
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: execute the management-AOI multi-zone Balfrin branch only if the TB-380 handoff is ready, otherwise preserve deterministic fail-closed evidence without submitting a job.
+- Files changed: `scripts/execute_management_aoi_balfrin_run.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_execute_management_aoi_balfrin_run.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a TB-381 execution-state helper that consumes the management-AOI Balfrin handoff classification and records `failed_closed` when the handoff is `blocked_missing_prepared_pilot_inputs`.
+  - Preserved no-submit semantics explicitly: `sbatch_attempted: false`, `scheduler_submission_status: not_attempted`, no job id, no runtime or memory measurement, and validation/hazard/reducer pressure marked `not_evaluated`.
+  - Named the first persistent blocker as `blocked_empty_candidate_set`, with `candidate_cell_count: 0` and `scenario_row_count: 0`, and surfaced the same failed-closed tier in the Balfrin scale readiness matrix.
+  - Materialized the ignored evidence package at `/tmp/rust_rockfall/tb381_management_aoi_balfrin_execution_state/management_aoi_balfrin_execution_state_v1.json`; the helper exited `2` as expected for the fail-closed classification and no Balfrin job was submitted.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_execute_management_aoi_balfrin_run -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_execute_management_aoi_balfrin_run tests.test_management_aoi_balfrin_handoff tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb381_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/execute_management_aoi_balfrin_run.py --artifact-dir /tmp/rust_rockfall/tb381_management_aoi_balfrin_execution_state --handoff-artifact-dir /tmp/rust_rockfall/tb381_management_aoi_balfrin_handoff --prepared-pilot-output-root /tmp/rust_rockfall/tb381_management_aoi_prepared_pilot --balfrin-access-preflight-json /tmp/tb381_balfrin_access_preflight.json --format json --json-output /tmp/tb381_management_aoi_balfrin_execution_state.json` exited `2` as expected for `failed_closed`.
+- Result/status: implemented_blocked_report
+- Boundaries: no live Balfrin submission, no `sbatch`, no invented candidates or scenario rows, no output-budget acceptance claim for nonexistent outputs, no distributed execution or scale-up claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-382`

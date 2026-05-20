@@ -20,6 +20,7 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
+from scripts import execute_management_aoi_balfrin_run as management_aoi_execution  # noqa: E402
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
 from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
@@ -639,6 +640,61 @@ def _two_zone_preserved_row() -> dict[str, Any]:
     }
 
 
+def _management_aoi_failed_closed_row() -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+        report = management_aoi_execution.build_report(
+            artifact_dir=Path(tmpdir) / "management_aoi_execution_state",
+            handoff_artifact_dir=Path(tmpdir) / "management_aoi_handoff",
+            prepared_pilot_output_root=Path(tmpdir) / "management_aoi_prepared_pilot",
+        )
+
+    blocker = dict(report.get("first_persistent_blocker") or {})
+    candidate = dict(report.get("candidate_evidence") or {})
+    scenario = dict(report.get("scenario_generation_pressure") or {})
+    return {
+        "tier_id": "management_aoi_multi_zone_run",
+        "tier_label": "management-AOI multi-zone Balfrin run",
+        "evidence_label": "failed_closed",
+        "measurement_status": "failed_closed_no_submission",
+        "classification": report["execution_status"],
+        "output_budget_status": "not_evaluated",
+        "output_pressure_status": "not_evaluated",
+        "execution_efficiency_status": "not_measured_no_submission",
+        "hazard_execution_status": "failed_closed_no_hazard_execution",
+        "file_count": None,
+        "bytes": None,
+        "validation_output_file_count": None,
+        "validation_output_bytes": None,
+        "hazard_output_file_count": None,
+        "hazard_output_bytes": None,
+        "manifest_bytes": None,
+        "reducer_sidecars": None,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "fail_closed_no_run_root_created",
+        "replayability_status": "blocked_missing_prepared_pilot_inputs",
+        "authorization_status": "not_submitted_handoff_not_ready",
+        "next_evidence_field": "non_empty_management_aoi_candidate_set",
+        "blocker": blocker.get("status"),
+        "summary": (
+            "TB-381 failed closed before sbatch because TB-380 classified the management-AOI handoff as "
+            "blocked_missing_prepared_pilot_inputs; the preserved first blocker is the empty candidate set and "
+            "zero scenario rows."
+        ),
+        "handoff_classification": report.get("handoff_classification"),
+        "first_persistent_blocker": blocker,
+        "candidate_cell_count": candidate.get("candidate_cell_count"),
+        "candidate_area_m2": candidate.get("candidate_area_m2"),
+        "scenario_pressure_status": scenario.get("scenario_pressure_status"),
+        "scenario_row_count": scenario.get("scenario_row_count"),
+        "sbatch_attempted": dict(report.get("no_submit_semantics") or {}).get("sbatch_attempted"),
+        "scheduler_submission_status": dict(report.get("no_submit_semantics") or {}).get(
+            "scheduler_submission_status"
+        ),
+        "source_helper": "scripts/execute_management_aoi_balfrin_run.py",
+    }
+
+
 def _postproc_microbenchmark_row() -> dict[str, Any]:
     return {
         "tier_id": "postproc_microbenchmark",
@@ -767,6 +823,7 @@ def build_report() -> dict[str, Any]:
         _four_zone_review_package_row(),
         _four_zone_hazard_probe_blocked_row(),
         _two_zone_preserved_row(),
+        _management_aoi_failed_closed_row(),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
         _scratch_local_reducer_row(),
@@ -850,6 +907,7 @@ def build_report() -> dict[str, Any]:
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-368 now provides preservation-ready measured two-zone evidence for the canonical two-zone hazard path, "
             "and TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
+            "TB-381 failed closed before sbatch on missing management-AOI prepared-pilot inputs, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
@@ -931,6 +989,7 @@ def build_report() -> dict[str, Any]:
             "scripts/estimate_swiss_wide_execution_envelope.py",
             "docs/balfrin_postproc_microbenchmark_tb305.md",
             "docs/balfrin_two_zone_hazard_run_tb368.md",
+            "scripts/execute_management_aoi_balfrin_run.py",
         ],
     }
 

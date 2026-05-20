@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-381: Execute Bounded Management AOI Multi-Zone Balfrin Run
-
-Goal: Submit and monitor a bounded management-AOI multi-zone hazard run on Balfrin `postproc` if TB-380 reports ready.
-
-Capability gap reduced: Missing measured real-AOI multi-zone Balfrin hazard execution.
-
-Why this outranks alternatives: This is the closest direct evidence for whether a full-scale Balfrin demonstration is feasible or out of reach.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Live management-AOI job id, run root, runtime, memory, validation/hazard output pressure, reducer pressure, and preservation evidence.
-- Fail-closed report if readiness or scheduler gates block submission.
-
-Definition of done:
-
-- The management-AOI multi-zone branch is measured or explicitly failed closed with the first persistent blocker named.
-
-Boundaries: GPT-5.5 worker only; `postproc` only; respect the 6-hour full-partition rediscussion rule; no scale-up or operational claim.
-
 ### TB-382: Stress Large-AOI GIS And COG Packaging From Real Outputs
 
 Goal: Stress-test GIS package manifest generation, raster package completeness, and COG conversion/scope classification against the largest available real-AOI or measured multi-zone outputs.

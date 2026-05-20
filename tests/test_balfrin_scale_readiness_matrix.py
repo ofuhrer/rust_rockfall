@@ -25,13 +25,14 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
         self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
         self.assertIn("TB-368 now provides preservation-ready measured two-zone evidence", report["summary"])
+        self.assertIn("TB-381 failed closed before sbatch", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
             ["single_zone", "target_area", "four_zone_review_package", "two_zone_preserved_hazard_run"],
         )
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
-        self.assertEqual(report["failed_closed_tiers"], [])
+        self.assertEqual(report["failed_closed_tiers"], ["management_aoi_multi_zone_run"])
         self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
         self.assertEqual(report["scratch_local_tiers"], ["local_reducer_ladder"])
@@ -98,6 +99,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 "scratch_local",
                 "projection_only",
                 "blocked_pre_submit",
+                "failed_closed",
             },
         )
         self.assertEqual(tiers["single_zone"]["classification"], "measured")
@@ -190,6 +192,25 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             "measured_preservation_ready",
         )
 
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["classification"], "failed_closed")
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["evidence_label"], "failed_closed")
+        self.assertEqual(
+            tiers["management_aoi_multi_zone_run"]["measurement_status"],
+            "failed_closed_no_submission",
+        )
+        self.assertEqual(
+            tiers["management_aoi_multi_zone_run"]["hazard_execution_status"],
+            "failed_closed_no_hazard_execution",
+        )
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["blocker"], "blocked_empty_candidate_set")
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 0)
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 0)
+        self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])
+        self.assertEqual(
+            tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
+            "non_empty_management_aoi_candidate_set",
+        )
+
         self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")
         self.assertEqual(
             tiers["postproc_microbenchmark"]["evidence_label"],
@@ -230,6 +251,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("single_zone", text)
         self.assertIn("smallest_multi_zone", text)
         self.assertIn("postproc_microbenchmark", text)
+        self.assertIn("management_aoi_multi_zone_run", text)
+        self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
         self.assertIn("next_recommended_action: defer_eight_zone_probe_until_measured_hazard_execution", text)
         self.assertIn("manifest_size_bytes", text)
