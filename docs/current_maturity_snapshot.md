@@ -10,8 +10,8 @@ orchestrator/backlog-refill work when the maturity framing changes materially.
 
 The repository is trying to become an automated, reproducible rockfall
 hazard-map workflow for Switzerland's Alpine terrain using public geodata,
-primarily swisstopo. TB-222 through TB-333 have now completed the latest
-post-review queue: Balfrin next-action and metrics-completion preflights were
+primarily swisstopo. TB-222 through TB-339 have now completed the latest
+post-review and scale-synthesis queue: Balfrin next-action and metrics-completion preflights were
 sharpened; read-only target-area metric and spatial-artifact recovery paths
 were added; multi-zone handoff budgets and authorization gates were refreshed;
 blocked metrics-completion and multi-zone Balfrin attempts were integrated
@@ -23,7 +23,15 @@ refreshed the local 1/2/4/8/12-zone ladder; TB-332 failed closed before
 `sbatch` on the four-zone hazard branch; TB-333 integrated that blocked
 hazard outcome into the scale dashboard and next-run ranking; TB-315 through
 TB-318 built and polished the user-AOI guided review path; and TB-319
-refreshed the authoritative status surfaces after those evidence changes. The
+refreshed the authoritative status surfaces after those evidence changes. TB-338
+then added a measured-evidence Swiss-scale feasibility projection, and TB-339
+packaged the measured, projection-only, failed-closed, fixture-backed, blocked,
+and deferred Balfrin scale-demonstration evidence into one management-facing
+surface. The current architectural answer is: a 10-zone single-AOI workflow is
+feasible under the current single-node/postproc boundary; a 100-zone workflow is
+conditionally feasible as a deferred planning case; regional and Swiss-wide
+execution remain out of reach under current single-node/postproc constraints.
+The
 Chant Sura
 real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
@@ -36,10 +44,11 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. TB-333 is active now, so
-`scripts/print_agent_task_context.py` should continue to report an active
-queue, not `backlog_refill_needed=true`, until the active backlog is
-exhausted. The
+matrix gives workers one compact evidence dashboard. The active backlog was
+exhausted after TB-339 and is being refilled with execution-oriented work around
+real public-geodata acquisition, terrain preprocessing, release-zone/scenario
+automation, measured multi-zone Balfrin hazard execution, and scale-performance
+evidence. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -163,22 +172,22 @@ These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic
 demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
-TB-339 now packages the measured evidence, the projection-only Swiss-scale
+TB-338/TB-339 now package the measured evidence, the projection-only Swiss-scale
 feasibility classification, the failed-closed submit branches, and the
 deferred next authorized step into one management-facing surface without
 upgrading any claim. The readiness matrix points the next runnable milestone
 at hazard-builder optimization, but that remains separate from the next
 authorized step of management review.
-The largest near-term gap has moved from "can the Balfrin demo execute?" and
-"can an AOI dry run be composed?" to "which measured action should now be run
-under the standing Balfrin postproc clearance?" Metrics completion, smallest
-bounded multi-zone measurement, real second-site public-context progress,
-physical-evidence acquisition, and hazard-builder optimization all now have
-sharper blockers or preconditions, but none authorizes a claim upgrade from the
-current demonstration. Standing `postproc` clearance does not relax access,
-readiness, authorization-record/audit, output-budget, preservation, or post-run
-evidence gates, and it does not authorize non-postproc partitions, distributed
-execution, scale-up claims, or scientific/operational claim upgrades.
+The largest near-term gaps have moved from "can the Balfrin demo execute?" and
+"can an AOI dry run be composed?" to "can real arbitrary-AOI public geodata be
+acquired and preprocessed reproducibly?", "can release-zone and scenario
+generation remain deterministic and defensible on real terrain?", and "can a
+small measured multi-zone Balfrin hazard run complete with acceptable reducer,
+manifest, GIS, and output pressure?" Standing `postproc` clearance does not
+relax access, readiness, authorization-record/audit, output-budget,
+preservation, or post-run evidence gates, and it does not authorize
+non-postproc partitions, distributed execution, scale-up claims, or
+scientific/operational claim upgrades.
 
 Post-TB-319, the AOI-to-map and scale-status front doors are stronger but
 still bounded. The

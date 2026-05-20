@@ -58,16 +58,26 @@ public inputs by default, run arbitrary real AOIs end to end, execute
 second-site ensembles, or generate physically annualized intensity-frequency
 products.
 
+TB-338/TB-339 added the current management-facing scale synthesis:
+`docs/swiss_scale_feasibility_projection.md` and
+`docs/balfrin_scale_demonstration_management_package.md`. The current answer is
+that 10-zone single-AOI work is feasible under the present single-node/postproc
+boundary, 100-zone work is conditionally feasible but deferred, and regional or
+Swiss-wide execution is out of reach until public-geodata automation,
+release/scenario generation, multi-zone hazard execution, reducer/manifest
+pressure, and GIS/COG packaging blockers are reduced with measured evidence.
+
 The user-facing AOI bounds-to-review-map walkthrough now lives in
 `docs/public_real_site_geodata_preparation.md`.
 
 Current next-backlog recommendations are deliberately execution- or
-acquisition-oriented: repair/regenerate the failed-closed two-zone submit
-contract before any live multi-zone scale step, stage real public geodata for a
-user AOI through the explicit acquisition driver, pursue optimization only
-from a new measured bottleneck, and explicitly defer physical-frequency,
-risk/exposure/vulnerability, and operational claims until the missing evidence
-exists.
+acquisition-oriented: acquire and preprocess real public geodata for arbitrary
+AOIs, make release-zone and scenario generation defensible on real terrain,
+repair/regenerate failed-closed multi-zone submit contracts before live
+multi-zone scale steps, measure bounded multi-zone Balfrin hazard execution,
+and pursue performance work only from measured bottlenecks. Physical-frequency,
+calibration, risk/exposure/vulnerability, and operational claims remain
+deferred.
 
 The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
 normalized `workflow_status`, `first_blocker`, `next_command`,
@@ -129,6 +139,8 @@ backlog-refill pass before launching implementation workers.
 - `docs/current_maturity_snapshot.md` - current project maturity and capability gaps.
 - `docs/balfrin_probe_slurm_driver.md` - SLURM-first Balfrin execution flow.
 - `docs/balfrin_single_job_execution_sufficiency.md` - measured Balfrin runtime/output evidence.
+- `docs/swiss_scale_feasibility_projection.md` - current measured-evidence Swiss-scale feasibility projection.
+- `docs/balfrin_scale_demonstration_management_package.md` - management-facing Balfrin scale synthesis.
 - `docs/output_budget_reducer_scaling_gate.md` - output/reducer budget and run-root audit contract.
 - `docs/multi_zone_reducer_pressure_probe.md` - multi-zone pressure and local scaling ladder evidence.
 - `docs/decision_log.md` - durable decisions.
