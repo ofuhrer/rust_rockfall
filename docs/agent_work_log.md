@@ -4280,3 +4280,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exactly one live `postproc` job was submitted and completed; no non-`postproc` partition, no distributed execution, no generated artifact commit, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-372`
+
+### TB-372: Select And Freeze Management AOI Acquisition Target
+
+- Date: 2026-05-20
+- Commit: `7a5bf40`
+- Objective: freeze one concrete real AOI for the next public-geodata acquisition/preprocessing demonstration, with explicit bounds, CRS, tile ids, ignored roots, and a read-only dry-run sequence.
+- Files changed: `docs/chant_sura_fluelapass_management_aoi_acquisition_manifest.yaml`, `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/README.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a tracked management AOI acquisition manifest for the Chant Sura / Fluelapass candidate that freezes the LV95/LN02 bounds, the swissALTI3D tile `2793-1180`, the required terrain and deferred public-context products, the ignored roots, and the claim boundary.
+  - Linked the frozen target from the preparation guide and the site fixture README so the chosen AOI is discoverable from the main public-geodata documentation path.
+  - Removed TB-372 from the active backlog after the frozen target manifest was in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python - <<'PY' ... yaml.safe_load(Path('docs/chant_sura_fluelapass_management_aoi_acquisition_manifest.yaml').read_text(...)) ... PY`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: completed
+- Boundaries: no live download, no hazard execution, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-373`
