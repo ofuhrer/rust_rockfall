@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-372: Select And Freeze Management AOI Acquisition Target
-
-Goal: Choose one concrete real AOI for the next public-geodata acquisition/preprocessing demonstration and freeze its bounds, CRS, products, expected tiles, and ignored-root layout.
-
-Capability gap reduced: Real-AOI automation needs one reproducible target rather than abstract AOI examples.
-
-Why this outranks alternatives: Download/preprocess automation cannot be demonstrated convincingly until the target AOI and products are fixed.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `data/datasets.yaml`
-
-Deliverables:
-
-- Tracked AOI acquisition manifest or planning fixture with deterministic bounds, products, tile ids, expected staging roots, and claim boundaries.
-- Dry-run command sequence for the acquisition target.
-
-Definition of done:
-
-- A worker can run one command to see exactly which public products and ignored roots are needed for the selected AOI.
-
-Boundaries: No large raw swisstopo product commits; no live download unless explicitly allowed by the task; no hazard execution.
-
 ### TB-373: Acquire Or Stage Real Public Geodata For Management AOI
 
 Goal: Use the frozen AOI target to acquire or operator-stage the required public terrain/context products into ignored roots with checksums and provenance.

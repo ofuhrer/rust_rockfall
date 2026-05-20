@@ -1,0 +1,132 @@
+schema_version: 1
+manifest_type: management_aoi_acquisition_target_v1
+candidate_site_id: chant_sura_fluelapass_portability_example_v1
+candidate_site_name: Chant Sura / Fluelapass portability example
+management_aoi_status: frozen
+selection_rationale: >-
+  Freeze one concrete real AOI for the next public-geodata acquisition and
+  preprocessing demonstration. The target stays read-only and does not imply
+  any download, hazard execution, or operational claim.
+source_manifest_path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml
+source_acquisition_manifest_path: tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml
+coordinate_reference_system:
+  epsg: 2056
+  horizontal_name: CH1903+ / LV95
+  vertical_datum: LN02
+  coordinate_unit: m
+  height_unit: m
+site_extent_lv95_m:
+  xmin: 2793000.0
+  ymin: 1180200.0
+  xmax: 2793800.0
+  ymax: 1180800.0
+selected_terrain_tile_ids:
+  - 2793-1180
+selected_terrain_tile_records:
+  - tile_id: 2793-1180
+    product_id: swissalti3d_2m
+    source_product: swissALTI3D
+    product_version_or_date: 2019-01-01
+    source_filename: swissalti3d_2019_2793-1180_2_2056_5728.tif
+    source_url: https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2793-1180/swissalti3d_2019_2793-1180_2_2056_5728.tif
+    expected_staging_root: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1
+    expected_staged_path: data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1/swissalti3d_2019_2793-1180_2_2056_5728.tif
+required_products:
+  - category: terrain_crop
+    product: swissALTI3D
+    required: true
+    status: ready_for_planning
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+    tile_ids:
+      - 2793-1180
+    source_reference: docs/swisstopo_data_strategy.md
+  - category: terrain_metadata
+    product: swissALTI3D terrain metadata
+    required: true
+    status: ready_for_planning
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+    source_reference: docs/public_real_site_geodata_preparation.md
+  - category: aoi_tile_catalog
+    product: AOI tile catalog for deterministic swisstopo discovery
+    required: true
+    status: ready_for_planning
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
+    source_reference: scripts/bootstrap_aoi_manifest.py
+  - category: swissimage_context
+    product: SWISSIMAGE
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+    source_reference: docs/swisstopo_data_strategy.md
+  - category: swisstlm3d_context
+    product: swissTLM3D
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    source_reference: docs/swisstopo_data_strategy.md
+  - category: swisstlm3d_metadata
+    product: swissTLM3D metadata
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
+    source_reference: docs/public_real_site_geodata_preparation.md
+  - category: swisssurface3d_context
+    product: swissSURFACE3D
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d
+    source_reference: docs/swisstopo_data_strategy.md
+  - category: swisssurface3d_raster_context
+    product: swissSURFACE3D Raster
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster
+    source_reference: docs/swisstopo_data_strategy.md
+  - category: swissbuildings3d_context
+    product: swissBUILDINGS3D
+    required: true
+    status: deferred_public_context
+    expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+    expected_staging_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d
+    source_reference: docs/swisstopo_data_strategy.md
+ignored_roots:
+  - data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1
+  - data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1
+  - validation/private/chant_sura_fluelapass_portability_example_v1
+  - hazard/results/chant_sura_fluelapass_portability_example_v1
+claim_boundary:
+  current_allowed_products:
+    - unweighted_diagnostic
+    - sampling_weighted_conditional
+    - conditional_intensity_exceedance
+  future_products:
+    - physical_probability
+    - annual_intensity_frequency
+  unsupported_current_claims:
+    - annual_frequency
+    - return_period
+    - physical_probability
+    - risk_map
+    - operational_hazard_map
+    - validated_hazard_map
+  notes:
+    - Freeze the AOI target only; do not imply real public-geodata staging.
+    - The acquisition boundary remains read-only and non-operational.
+dry_run_commands:
+  - step: bootstrap_aoi_manifest
+    command: PYENV_VERSION=system uv run python scripts/bootstrap_aoi_manifest.py --output-root /tmp/aoi_smoke/site --site-id chant_sura_fluelapass_portability_example_v1 --bounds 2793000 1180200 2793800 1180800 --format json
+    purpose: Materialize a scratch AOI package from the frozen bounds.
+  - step: acquisition_planner
+    command: PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json
+    purpose: Show the exact public products, tile ids, and ignored roots for the selected AOI.
+  - step: second_site_preflight
+    command: PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json
+    purpose: Keep the target read-only and fail closed on missing inputs.

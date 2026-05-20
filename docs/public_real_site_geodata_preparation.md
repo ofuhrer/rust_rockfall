@@ -441,6 +441,12 @@ swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, swissBUILDINGS3D, source
 zone, scenario, and ignored output roots, while keeping the candidate blocked
 until the actual staged inputs exist locally.
 
+The management AOI acquisition target is also frozen as
+`docs/chant_sura_fluelapass_management_aoi_acquisition_manifest.yaml`.
+That manifest records the LV95/LN02 bounds, swissALTI3D tile `2793-1180`,
+expected staging roots, ignored roots, claim boundary, and the dry-run
+command sequence for the next public-geodata demonstration.
+
 The second-site preflight and AOI planner also emit a reusable
 `public_geodata_workflow_contract` summary. It names the required AOI
 metadata, CRS/grid assumptions, swisstopo product classes, cache paths,
