@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-350: Large-AOI GIS/COG Manifest Field Repair
-
-Goal: Fix the large-AOI GIS/COG stress no-go caused by missing pilot GIS package manifest fields in packaged AOI roots.
-
-Capability gap reduced: Current Swiss-scale feasibility is blocked partly by GIS/COG package manifest gaps, not only runtime.
-
-Why this outranks alternatives: Even successful hazard execution will not be demonstration-ready if GIS/COG packaging remains fail-closed for large AOI packages.
-
-Inspect first:
-
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `tests/test_large_aoi_gis_cog_stress_test.py`
-
-Deliverables:
-
-- Packaged AOI roots include the required pilot GIS package manifest fields for COG conversion review.
-- Updated stress test classifies the package as ready or identifies the next real blocker after manifest repair.
-
-Definition of done:
-
-- The large-AOI GIS/COG stress path no longer fails solely because required pilot GIS manifest fields are missing.
-
-Boundaries: GIS package readiness only; no operational map claim, no hazard-value change.
-
 ### TB-351: Multi-Zone Submit Contract Regeneration
 
 Goal: Regenerate the smallest live multi-zone Balfrin hazard submit package so reviewed commands, authorization records, writable run roots, and executable manifest schema match exactly.

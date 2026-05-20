@@ -3725,3 +3725,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no simulation, no operational claim, no raw geodata commit, no annual-frequency or physical-probability claim, and no scale-up, distributed-execution, risk, exposure, or vulnerability claim.
 - Next task: `TB-350`
+
+### TB-350: Large-AOI GIS/COG Manifest Field Repair
+- Date: 2026-05-20
+- Commit: local
+- Objective: repair the packaged large-AOI GIS/COG contract so the stress path stops failing closed on missing pilot GIS package manifest fields.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Wrote the packaged pilot GIS manifest into AOI package roots using the input pilot manifest as the contract source, while keeping raster paths aligned to the packaged bundle.
+  - Added the missing map-manifest readiness fields to the AOI package manifest so the GIS/COG audit can read the packaged root without treating it as incomplete.
+  - Expanded the packager regression to assert both package manifests are emitted and carry the required contract fields.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager tests.test_large_aoi_gis_cog_stress_test`
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: GIS package readiness only; no operational map claim, no hazard-value change, no scale-up claim, and no distributed-execution or physical-probability claim.
+- Next task: `TB-351`

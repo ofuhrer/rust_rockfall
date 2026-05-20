@@ -11,6 +11,7 @@ manifest plus text summary with explicit claim boundaries.
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import json
 import shutil
@@ -165,6 +166,7 @@ def package_aoi_hazard_map(
         scenario_table_path,
     )
     package_manifest_path = output_root / "aoi_hazard_map_package_manifest.json"
+    pilot_gis_package_manifest_path = output_root / pilot_manifest_path.name
     summary_path = output_root / "aoi_hazard_map_package_summary.txt"
     layer_inventory = summarize_layer_inventory(
         [str(output.get("layer_name")) for output in raster_outputs if output.get("layer_name")],
@@ -182,8 +184,11 @@ def package_aoi_hazard_map(
         "source_zone_id": map_manifest.get("source_zone_id"),
         "source_zone_metadata_path": str(source_zone_metadata_path),
         "scenario_table_path": str(scenario_table_path),
+        "layer_semantics": list(map_manifest.get("layer_semantics", [])),
+        "operational_status": map_manifest.get("operational_status"),
         "hazard_manifest_paths": [str(path) for path in hazard_manifest_paths],
         "package_manifest_path": str(package_manifest_path),
+        "pilot_gis_package_manifest_path": str(pilot_gis_package_manifest_path),
         "summary_path": str(summary_path),
         "raster_outputs": raster_package["inventory"],
         "diagnostic_hazard_outputs": diagnostic_hazard_outputs_section(raster_package["inventory"]),
@@ -228,6 +233,12 @@ def package_aoi_hazard_map(
     report["summary_sha256"] = sha256_file(summary_path)
     write_package_manifest(package_manifest_path, report)
     report["package_manifest_sha256"] = sha256_file(package_manifest_path)
+    write_pilot_gis_package_manifest(
+        pilot_gis_package_manifest_path,
+        report,
+        map_manifest=map_manifest,
+        pilot_manifest=pilot_manifest,
+    )
     review_report = qa_review.build_review_surface(input_root=output_root, output_root=output_root)
     report["review_surface_status"] = review_report.get("status")
     report["review_surface_paths"] = review_report.get("review_surface_paths") or {}
@@ -240,6 +251,12 @@ def package_aoi_hazard_map(
     report["summary_sha256"] = sha256_file(summary_path)
     write_package_manifest(package_manifest_path, report)
     report["package_manifest_sha256"] = sha256_file(package_manifest_path)
+    write_pilot_gis_package_manifest(
+        pilot_gis_package_manifest_path,
+        report,
+        map_manifest=map_manifest,
+        pilot_manifest=pilot_manifest,
+    )
     return report
 
 
@@ -731,6 +748,8 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "source_zone_id": report["source_zone_id"],
         "source_zone_metadata_path": report["source_zone_metadata_path"],
         "scenario_table_path": report["scenario_table_path"],
+        "layer_semantics": report.get("layer_semantics", []),
+        "operational_status": report.get("operational_status"),
         "hazard_manifest_paths": report["hazard_manifest_paths"],
         "layer_inventory": report["inventory"],
         "raster_outputs": report["raster_outputs"],
@@ -756,6 +775,86 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "summary_path": report["summary_path"],
         "summary_sha256": report["summary_sha256"],
     }
+    write_json(path, manifest)
+
+
+def write_pilot_gis_package_manifest(
+    path: Path,
+    report: dict[str, Any],
+    *,
+    map_manifest: dict[str, Any],
+    pilot_manifest: dict[str, Any],
+) -> None:
+    manifest = copy.deepcopy(pilot_manifest)
+    manifest["hazard_manifest_paths"] = list(report["hazard_manifest_paths"])
+    manifest["raster_outputs"] = list(report["raster_outputs"])
+    manifest["operational_status"] = report.get("operational_status") or manifest.get("operational_status")
+    manifest["limitations"] = list(report.get("limitations") or manifest.get("limitations") or [])
+    manifest.setdefault("visual_qa", {})
+    if not isinstance(manifest["visual_qa"], dict):
+        manifest["visual_qa"] = {}
+    manifest["visual_qa"]["status"] = manifest["visual_qa"].get("status") or "not-run"
+    manifest["visual_qa"].setdefault(
+        "note",
+        "Manual GIS/QGIS inspection has not been run for this generated package.",
+    )
+    manifest["visual_qa"]["accepted_for_operational_use"] = False
+    manifest["visual_qa"].setdefault("reviewed_artifacts", [])
+    manifest["visual_qa"].setdefault("acceptance_scope", "local diagnostic GIS/QGIS review only")
+    manifest["raster_contract"] = {
+        **(manifest.get("raster_contract") or {}),
+        "cloud_optimized": all(bool(entry.get("cloud_optimized")) for entry in report["raster_outputs"]),
+        "csv_ascii_parity_required": True,
+        "geopackage_included": False,
+        "geotiff_required": True,
+        "qgis_project_included": False,
+    }
+    manifest["probability_claim_boundary"] = {
+        **(manifest.get("probability_claim_boundary") or {}),
+        "annualized": False,
+        "current_allowed_product_labels": [
+            "unweighted_diagnostic",
+            "sampling_weighted_conditional",
+            "conditional_intensity_exceedance",
+        ],
+        "future_unsupported_product_labels": [
+            "physical_probability",
+            "annual_intensity_frequency",
+            "return_period",
+            "risk_map",
+            "operational_hazard_map",
+        ],
+    }
+    manifest["manifest_outputs"] = list(manifest.get("manifest_outputs") or [])
+    manifest["parity_outputs"] = list(manifest.get("parity_outputs") or [])
+    manifest["conditional_intensity_exceedance_curve_outputs"] = list(
+        manifest.get("conditional_intensity_exceedance_curve_outputs") or []
+    )
+    manifest["source_zone_context"] = list(manifest.get("source_zone_context") or [])
+    terrain = manifest.get("terrain")
+    if isinstance(terrain, dict):
+        manifest["terrain"] = dict(terrain)
+    terrain_metadata = manifest.get("terrain_metadata")
+    if isinstance(terrain_metadata, dict):
+        manifest["terrain_metadata"] = dict(terrain_metadata)
+    manifest["claim_boundary"] = report["claim_boundary"]
+    manifest["package_manifest_path"] = report["package_manifest_path"]
+    manifest["summary_path"] = report["summary_path"]
+    manifest["review_surface_status"] = report.get("review_surface_status")
+    manifest["review_surface_first_blocker"] = report.get("review_surface_first_blocker")
+    manifest["review_surface_next_recommended_command"] = report.get("review_surface_next_recommended_command")
+    manifest["review_surface_paths"] = report.get("review_surface_paths", {})
+    manifest["package_status"] = report["status"]
+    manifest["map_product_id"] = map_manifest.get("map_product_id")
+    manifest["map_product_version"] = map_manifest.get("map_product_version")
+    manifest["probability_mode"] = map_manifest.get("probability_mode")
+    manifest["normalization_scope"] = map_manifest.get("normalization_scope")
+    manifest["source_zone_id"] = map_manifest.get("source_zone_id")
+    manifest["source_zone_metadata_path"] = report["source_zone_metadata_path"]
+    manifest["scenario_table_path"] = report["scenario_table_path"]
+    manifest["layer_inventory_status"] = report["layer_inventory_status"]
+    manifest["missing_layer_names"] = report["missing_layer_names"]
+    manifest["extra_layer_names"] = report["extra_layer_names"]
     write_json(path, manifest)
 
 
