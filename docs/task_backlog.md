@@ -40,35 +40,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 ## Active Tasks
 
 
-### TB-368: Preserve Trajectory Chunks And Rerun Two-Zone Balfrin Path
-
-Goal: Verify the post-TB-367 trajectory/reducer worker repair preserves `output/trajectory_chunks`, trajectory chunk manifests, and restartability metadata, then rerun the bounded two-zone Balfrin path if all gates pass.
-
-Capability gap reduced: The repaired submit path now uses the right command plan and output root, but measured two-zone evidence is still blocked by missing trajectory chunk/restartability artifacts.
-
-Why this outranks alternatives: Throughput profiling and bottleneck reduction require a preserved measured run root; TB-367 narrowed the blocker to trajectory chunk preservation.
-
-Inspect first:
-
-- `docs/balfrin_two_zone_hazard_run_tb367.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `tests/test_balfrin_probe_driver.py`
-- `tests/test_balfrin_probe_preservation_gate.py`
-
-Deliverables:
-
-- Dry-run proof that the generated command plan includes `--trajectory-workers 2`, `--reducer-workers 2`, and a run-root `output/trajectory_chunks` preservation path.
-- One gated Balfrin `postproc` rerun if the pre-submit/preservation checks pass.
-- Preserved run-root metrics and preservation-gate result, or a fail-closed report naming the remaining non-trajectory-chunk blocker.
-
-Definition of done:
-
-- Either the rerun produces a completed preserved two-zone run root whose preservation gate is ready/accepted, or the repository records a specific blocker that is not the missing `output/trajectory_chunks`/restartability metadata issue from TB-367.
-
-Boundaries: GPT-5.5 worker only for live Balfrin work; `postproc` only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
-
 ### TB-369: Reduce First Measured Two-Zone Output Bottleneck
 
 Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-368.

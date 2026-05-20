@@ -96,11 +96,18 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
         }
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    def _write_authorization_record(self, path: Path, package_path: Path, package_sha256: str) -> None:
+    def _write_authorization_record(
+        self,
+        path: Path,
+        package_path: Path,
+        package_sha256: str,
+        *,
+        authorized_task: str = "TB-211",
+    ) -> None:
         payload = {
             "schema_version": "balfrin_multi_zone_live_authorization_v1",
             "authorization_status": "authorized_for_one_bounded_probe",
-            "authorized_task": "TB-211",
+            "authorized_task": authorized_task,
             "no_rerun_without_renewed_authorization": True,
             "reviewed_handoff_package_path": str(package_path.resolve()),
             "reviewed_handoff_package_sha256": package_sha256,
@@ -216,6 +223,23 @@ class BalfrinAuthorizedMultiZoneSubmitTests(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertEqual(buffer.getvalue().strip(), "submitted_job_id=987654")
             run_mock.assert_called_once()
+
+    def test_authorized_submit_accepts_tb368_authorization_record(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            package_path = tmp / "reviewed_package.json"
+            package_sha256 = self._write_reviewed_package(package_path)
+            auth_path = tmp / "authorization_record.yaml"
+            self._write_authorization_record(auth_path, package_path, package_sha256, authorized_task="TB-368")
+
+            report = submit_driver._validate_authorized_submission(
+                reviewed_handoff_package=package_path,
+                authorization_record=auth_path,
+                run_root=tmp / "run-root",
+            )
+
+        self.assertEqual(report["status"], "authorized")
+        self.assertEqual(report["authorization_record"]["authorized_task"], "TB-368")
 
     def test_authorized_submit_blocks_when_required_inputs_are_missing(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
