@@ -3911,3 +3911,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no hazard-code changes, no output semantic changes, no live Balfrin job, and no promotion of scratch throughput helpers as current measured evidence.
 - Next task: `TB-359`
+
+### TB-359: Refresh Swiss-Scale Projection After Multi-Zone Evidence
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: refresh the Swiss-scale projection and management package so the published recommendation separates measured evidence, projection-only assumptions, failed-closed branches, no-go thresholds, and unknowns.
+- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rewrote the Swiss-scale projection to distinguish measured single-job and four-zone postproc evidence from extrapolated 10-zone and 100-zone planning cases.
+  - Reorganized the management package so measured, projection-only, failed-closed, fixture-backed, deferred, and unavailable evidence classes remain separate.
+  - Removed TB-359 from the active backlog and recorded the closure here instead of adding any new run or Swiss-scale authorization.
+- Checks run:
+  - pending
+- Result/status: implemented_fixture_backed
+- Boundaries: synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics, and no promotion of failed-closed or postproc-only evidence to measured hazard execution.
+- Next task: backlog refill needed

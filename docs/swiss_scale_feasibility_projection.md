@@ -6,107 +6,93 @@ risk, exposure, or vulnerability semantics.
 
 ## Recommendation
 
-- Feasible: 10-zone, single-AOI workflow on the current single-node/postproc
-  boundary.
-- Conditionally feasible: 100-zone workflow only as a deferred planning case;
-  it crosses into multi-job pressure and needs additional manifest/reducer
-  policy work before it becomes a practical target.
-- Out of reach: regional and Switzerland-wide workflows under current
-  single-node/postproc constraints.
+- 10-zone: feasible as a projection-supported planning class on the current
+  single-node/postproc boundary, but not measured hazard execution.
+- 100-zone: conditionally feasible and deferred. It remains a planning case
+  until reducer, manifest, and scheduler pressure are reduced.
+- Regional and Swiss-wide: out of reach under current single-node/postproc
+  constraints and the current authorization boundary.
 
 ## Evidence Basis
 
-Measured evidence used here is limited to existing repository helpers and
-preserved outputs:
+The current projection separates evidence by class instead of folding fail-closed
+branches into measured capability:
 
-- `scripts/estimate_swiss_wide_execution_envelope.py` anchors the execution
-  frontier to measured support of 1 AOI, 10 release zones, 6 trajectories, and
-  60 units per job.
-- `scripts/estimate_large_scale_execution.py` provides the 10-zone output
-  calibration cross-check: 46 files and 15,613,000 estimated bytes for the
-  scalable conditional profile with GeoTIFF export and 2x2 chunking.
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py` classifies the GIS/COG
-  path as blocked because the packaged AOI root is missing the pilot GIS
-  package manifest fields needed for conversion and the standard package
-  remains COG-blocked.
-- `scripts/summarize_balfrin_evidence_bundle.py` now carries TB-352 as the
-  canonical smallest multi-zone fail-closed branch; it is distinct from the
-  measured rows and does not add measured hazard-execution support.
-- The same-scale and Swiss-wide envelope helpers reuse the current measured
-  manifest pressure signal: manifest size is the first bottleneck, with the
-  generator evidence showing 120 scenario rows, 30 candidate release-zone
-  records, and a 147,566-byte manifest versus a 35,911-byte CSV.
+- Measured evidence:
+  - `scripts/estimate_swiss_wide_execution_envelope.py` anchors the projection
+    to measured support of 1 AOI, 10 release zones, 6 trajectories, and 60
+    units per job.
+  - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
+    single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
+    four-zone postproc/reducer package, and the current claim boundaries.
+  - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
+    restartability, GIS scope, uncertainty, and claim boundaries in the measured
+    section while separating projection-only and failed-closed sections.
+- Extrapolated assumptions:
+  - Runtime, storage, file count, and job-count estimates scale from the current
+    measured coefficient set.
+  - Operator effort follows the job-count shape; this is a planning inference,
+    not a measured time study.
+  - Memory remains within the measured single-job band because there is no
+    larger measured memory series.
+- Failed-closed branches:
+  - TB-352 failed closed before scheduler submission, so it remains guardrail
+    evidence rather than measured multi-zone hazard execution.
+  - TB-332/TB-333 failed closed on an authorization checksum mismatch.
+  - TB-321 and TB-309 are also failed-closed submit-contract mismatches, not
+    measured hazard runs.
+- No-go thresholds:
+  - `job_count > 1` crosses the current single-job evidence boundary.
+  - `release_zone_count > 10` or `trajectory_count > 6` exceeds the measured
+    support envelope used by the Swiss-wide helper.
+  - GIS/COG conversion remains blocked until the packaged AOI root has the
+    required manifest fields and raster package metadata.
+  - `scale_up_authorized=false` and `distributed_execution_authorized=false`
+    remain hard boundaries.
+- Unknowns:
+  - There is no measured multi-AOI Balfrin hazard execution in this repository
+    checkout.
+  - The target-area validation and hazard-output ratios remain unavailable in
+    this checkout, so the projection cannot be compared against those preserved
+    outputs here.
+  - The manifest estimate is threshold-based rather than a larger measured byte
+    series.
 
 ## Projection Table
 
-The runtime, storage, and file counts below are the nominal bands returned by
-the Swiss-wide envelope helper. Low and high bands are inherited from the
-current measured coefficients and should be read as projection bounds, not new
-measurements.
+The bands below are read from the helper’s measured coefficients and should be
+treated as projection bounds, not new measurements.
 
-| Case | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Reducer and manifest pressure | GIS/COG status | Operator effort | Recommendation |
+| Case | Evidence class | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Bottleneck summary | GIS/COG status | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10-zone | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest_size remains the first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 1 job, 1 job per AOI | feasible |
-| 100-zone | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 10 jobs, 10 jobs per AOI | conditionally feasible, but deferred |
-| regional | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 10 jobs, 1 job per AOI | out of reach |
-| Swiss-wide | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 26 jobs, 1 job per AOI | out of reach |
+| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest size remains the first bottleneck; no measured hazard execution yet | blocked_missing_inputs | feasible |
+| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest size still first bottleneck | blocked_missing_inputs | conditionally feasible, deferred |
+| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest size still first bottleneck | blocked_missing_inputs | out of reach |
+| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest size still first bottleneck | blocked_missing_inputs | out of reach |
 
 ## Measured Versus Extrapolated
 
 Measured:
 
-- Single-job support is real and bounded at 1 AOI, 10 release zones, and 6
-  trajectories per release zone.
-- The 10-zone output-family cross-check remains small enough to stay within the
-  current single-node boundary, with 46 files and 15.6 MB of estimated output
-  under the scalable conditional profile.
+- Single-job support is bounded at 1 AOI, 10 release zones, and 6 trajectories
+  per release zone.
+- The readiness matrix records TB-312 four-zone postproc/reducer evidence, but
+  that evidence is still postproc-only and does not upgrade hazard execution
+  capability.
 - GIS/COG packaging remains blocked by missing pilot GIS manifest fields and
   raster readiness gaps.
 
 Extrapolated:
 
-- Runtime, storage, and file counts scale linearly from the measured coefficient
-  set.
-- Memory stays in the current single-job band because there is no larger
-  measured memory series.
-- Operator effort is approximated from job count and jobs per AOI. When job
-  count rises above 1, the report treats the case as multi-job pressure rather
-  than a single-job execution target. This is an inference from scheduler
-  shape, not a measured human-time benchmark.
-
-## No-Go Thresholds
-
-- `job_count > 1` is the current practical threshold where reducer-merge and
-  scheduler pressure stop being single-job evidence.
-- `release_zone_count > 10` or `trajectory_count > 6` exceed the measured
-  support boundary used by the Swiss-wide envelope helper.
-- TB-352 failed closed before scheduler submission, so a partial or fail-closed
-  multi-zone branch still does not count as measured support for the 100-zone
-  or Swiss-wide rows.
-- GIS/COG conversion remains a no-go until the packaged AOI root has the
-  required manifest fields and the raster package can be represented with the
-  expected tiling and overview metadata.
-- `scale_up_authorized=false` and `distributed_execution_authorized=false`
-  remain hard boundaries in the current helpers.
-
-## Unknowns
-
-- The current environment does not recover the target-area validation and
-  hazard outputs, so the ratio to those preserved outputs remains unresolved.
-- There is no measured multi-AOI Balfrin run in the repository, so the 100-zone,
-  regional, and Swiss-wide rows are projections only. TB-352 is fail-closed,
-  not measured.
-- The manifest estimate is threshold-based rather than a larger measured byte
-  series; the first bottleneck is known, but there is no bigger manifest
-  measurement to fit.
-- Partial multi-zone evidence would still be insufficient even if it existed in
-  the future; the projection only advances on measured hazard execution, not on
-  incomplete branches.
+- Runtime, storage, file count, and job-count estimates scale linearly from the
+  measured coefficient set.
+- Operator effort is inferred from job count and jobs per AOI, not measured
+  directly.
 
 ## Bottom Line
 
-Current evidence supports a bounded yes for the 10-zone class, a deferred and
-conditional projection for the 100-zone class, and no-go for regional and
-Switzerland-wide execution under the current single-node/postproc boundary.
-The GIS/COG path is separately blocked and does not yet support a Swiss-scale
-packaging claim.
+The current evidence supports a feasible 10-zone planning class, a deferred and
+conditional 100-zone planning class, and no-go for regional and Swiss-wide
+execution under the current single-node/postproc boundary. The key separator is
+still measured hazard execution: the repository has measured single-job and
+four-zone postproc evidence, but not measured multi-zone hazard execution.

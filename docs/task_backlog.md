@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-359: Refresh Swiss-Scale Projection After Multi-Zone Evidence
-
-Goal: Recompute the Swiss-scale feasibility projection and management package after the new acquisition, preprocessing, multi-zone execution, reducer, GIS, and performance evidence lands.
-
-Capability gap reduced: Management needs the feasibility answer to track measured evidence rather than stale projections.
-
-Why this outranks alternatives: This synthesis should happen only after the executable evidence tasks above, not before them.
-
-Inspect first:
-
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Updated projection table and management package that separate measured evidence, extrapolated assumptions, failed-closed branches, no-go thresholds, and unknowns.
-- A recommendation for whether the 10-zone and 100-zone classes remain feasible, conditional, or out of reach.
-
-Definition of done:
-
-- Management can read one current projection and one current management package that reflect the latest measured multi-zone and AOI automation evidence.
-
-Boundaries: Synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
