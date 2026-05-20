@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-358: Bounded Hazard Accumulation Optimization From Measured Bottleneck
-
-Goal: Implement one narrowly scoped hazard-accumulation optimization only if TB-357 identifies a measured bottleneck and a predeclared acceptance threshold.
-
-Capability gap reduced: Scale feasibility depends on improving measured bottlenecks, not speculative refactors.
-
-Why this outranks alternatives: This is the only justified optimization path after a measured bottleneck exists; otherwise it should record a no-retain decision.
-
-Inspect first:
-
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- A retained optimization with before/after benchmark evidence, output equivalence checks, and acceptance-threshold result, or a no-retain report.
-
-Definition of done:
-
-- The optimization is either merged because it clears the measured acceptance floor without output changes, or explicitly rejected with evidence.
-
-Boundaries: No physics changes, no tuning, no output semantic changes, no live Balfrin job.
-
 ### TB-359: Refresh Swiss-Scale Projection After Multi-Zone Evidence
 
 Goal: Recompute the Swiss-scale feasibility projection and management package after the new acquisition, preprocessing, multi-zone execution, reducer, GIS, and performance evidence lands.

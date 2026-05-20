@@ -286,6 +286,15 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
         self.assertIn("defer optimization until a measured current multi-zone hazard-output root is", report_text)
         self.assertIn("acceptance floor for any future optimization", report_text)
 
+    def test_report_records_tb358_no_retain_when_current_target_is_missing(self) -> None:
+        report_text = (ROOT / "docs" / "hazard_throughput_bottleneck_report.md").read_text(encoding="utf-8")
+
+        self.assertIn("TB-358 No-Retain on Missing Measured Current Target", report_text)
+        self.assertIn("no-retain", report_text)
+        self.assertIn("keep `scripts/hazard_accumulation_benchmark.py` as the baseline contract", report_text)
+        self.assertIn("do not change `scripts/build_hazard_layers.py` without a measured candidate", report_text)
+        self.assertIn("do not treat the scratch throughput helper as current measured evidence", report_text)
+
     def test_cli_materialize_root_writes_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             profile_root = Path(tmpdir) / "profile"

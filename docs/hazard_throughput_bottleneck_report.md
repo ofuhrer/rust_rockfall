@@ -521,3 +521,28 @@ Recommendation:
 - once a measured target exists, re-profile the dominant phase and use the
   predeclared 10% accumulation floor as the acceptance threshold for any
   candidate optimization.
+
+## TB-358 No-Retain on Missing Measured Current Target
+
+TB-358 requested a bounded hazard-accumulation optimization only if the task
+had a measured bottleneck and a predeclared acceptance threshold. The
+repository still does not contain a committed current measured multi-zone
+hazard-output root, so there is still no valid before/after candidate to
+benchmark against.
+
+Decision:
+
+- no-retain;
+- keep `scripts/hazard_accumulation_benchmark.py` as the baseline contract,
+  including the existing 10% accumulation floor;
+- do not change `scripts/build_hazard_layers.py` without a measured candidate
+  run;
+- do not treat the scratch throughput helper as current measured evidence.
+
+Result:
+
+- no output-equivalence check was run for a candidate optimization because no
+  candidate was justified;
+- no hazard-layer semantic change was made;
+- the next optimization task should wait for a committed measured current
+  target or remain deferred.
