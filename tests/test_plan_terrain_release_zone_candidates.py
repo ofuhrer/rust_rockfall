@@ -355,6 +355,41 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             {"stable", "sensitive", "unstable"},
         )
 
+    def test_real_chant_sura_fluelapass_inputs_emit_gis_ready_candidate_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_root = Path(tmp) / "candidate_products"
+            report = planner.build_report(
+                repo_root=ROOT,
+                terrain_crop_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                terrain_metadata_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                source_zone_metadata_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml",
+                output_root=output_root,
+            )
+            self.assertEqual(report["candidate_metrics_status"], "ready")
+            self.assertEqual(report["terrain_preprocessing"]["terrain_preprocessing_status"], "ready")
+            self.assertEqual(report["terrain_preprocessing"]["terrain_provenance"]["classification"], "real_staged")
+            self.assertEqual(report["terrain_inputs"]["terrain_preprocessing_status"], "ready")
+            self.assertEqual(report["terrain_inputs"]["terrain_preprocessing_package"]["terrain_provenance"]["classification"], "real_staged")
+            self.assertEqual(report["candidate_summary"]["candidate_cell_count"], 0)
+            self.assertEqual(report["candidate_summary"]["candidate_area_m2"], 0.0)
+            self.assertTrue(report["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"])
+            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertGreater(report["candidate_sweep_measurements"]["output_total_bytes"], 0)
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["manifest"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["polygon"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["csv"]).exists())
+            self.assertIn("candidate_polygons", [entry["overlay_id"] for entry in report["candidate_review_package"]["map_overlays"]])
+            self.assertIn("candidate_mask", [entry["overlay_id"] for entry in report["candidate_review_package"]["map_overlays"]])
+            self.assertEqual(report["candidate_release_zone_products"]["candidate_release_zone_ids"], [])
+            self.assertEqual(report["candidate_review_package"]["candidate_release_zone_ids"], [])
+
     def test_review_apply_edits_candidates_and_validates_provenance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             workdir = Path(tmp)

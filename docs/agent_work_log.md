@@ -4362,3 +4362,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no raw data commit, no hazard execution, no terrain smoothing or tuning, no scale-up claim, and no operational or annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-376`
+
+### TB-376: Generate Real-AOI Release-Zone Candidate Sweep
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: run deterministic release-zone candidate generation against the staged Chant Sura / Fluelapass management-AOI terrain and persist the candidate masks, polygons, statistics, and GIS-ready review bundle in an ignored repo-private output root.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a focused regression that exercises the Chant Sura / Fluelapass real-staged terrain crop, terrain metadata, and source-zone metadata through the candidate helper and asserts the emitted GIS bundle, map overlays, and real-staged terrain provenance.
+  - Ran the candidate sweep on the prepared management AOI terrain root and wrote the ignored outputs under `validation/private/chant_sura_fluelapass_portability_example_v1/release_zone_candidates_v1`.
+  - Recorded the deterministic sweep result: `candidate_metrics_status: ready`, `terrain_preprocessing_status: ready`, `terrain_provenance.classification: real_staged`, `candidate_cell_count: 0`, `candidate_area_m2: 0.0`, `output_file_count: 7`, and a review bundle with candidate polygons and mask overlays ready for GIS review.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --repo-root . --terrain-crop data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc --terrain-metadata data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml --source-zone-metadata data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml --output-root validation/private/chant_sura_fluelapass_portability_example_v1/release_zone_candidates_v1 --output-mode both --format json --json-output /tmp/tb376_candidate_sweep_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no operational release-zone claim, no parameter tuning to force candidate acceptance, no hazard execution, and the zero-candidate result is a deterministic terrain/source-zone outcome rather than an approval signal.
+- Next task: `TB-377`

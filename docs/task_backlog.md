@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-376: Generate Real-AOI Release-Zone Candidate Sweep
-
-Goal: Run deterministic release-zone candidate generation on the prepared management AOI terrain and produce candidate masks, polygons, statistics, and GIS-ready review outputs.
-
-Capability gap reduced: Release zones remain the largest Swiss-wide manual automation gap.
-
-Why this outranks alternatives: The project cannot scale nationally while release zones are curated manually.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Deterministic candidate-zone outputs for the management AOI in ignored roots.
-- Candidate counts, area statistics, heuristic parameters, runtime/output measurements, and review-map pointers.
-
-Definition of done:
-
-- The candidate sweep is reproducible and reviewable, or a concrete terrain/input blocker is recorded.
-
-Boundaries: No operational release-zone claim, no parameter tuning to match desired zones, no hazard execution.
-
 ### TB-377: Measure Real-AOI Release-Zone Stability
 
 Goal: Quantify candidate-zone sensitivity for the management AOI under bounded slope, resolution, smoothing, and AOI-boundary perturbations.
