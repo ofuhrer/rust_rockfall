@@ -4509,7 +4509,7 @@ scan thousands of lines of completed history.
 ### TB-383: Diagnose Management AOI Release-Candidate Blocker
 
 - Date: 2026-05-20
-- Commit: `6115ff4`
+- Commit: `f0ea925`
 - Objective: stop downstream orchestration after repeated blocked handoffs and identify the concrete upstream reason the management AOI produces zero release-zone candidates.
 - Files changed: `scripts/diagnose_release_candidate_zero_result.py`, `tests/test_release_candidate_zero_result_diagnostic.py`, `docs/current_maturity_snapshot.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
