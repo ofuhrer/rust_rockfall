@@ -473,6 +473,7 @@ def build_readiness_matrix(
 ) -> dict[str, Any]:
     clean_checkout_report = preservation_gate.build_report(run_root=DEFAULT_READINESS_MATRIX_CLEAN_CHECKOUT_RUN_ROOT)
     claim_boundaries = dict(package_report.get("claim_boundaries") or post_run_gate.claim_boundaries())
+    multi_zone_bundle_evidence = dict(bundle_report.get("multi_zone_balfrin_evidence") or {})
     multi_zone_pressure = dict(multi_zone_handoff_report.get("multi_zone_pressure") or {})
     follow_up_recommendation = dict(multi_zone_handoff_report.get("follow_up_recommendation") or {})
     next_action = dict(next_live_decision_report.get("recommended_next_action") or {})
@@ -484,8 +485,8 @@ def build_readiness_matrix(
             gate_status=str(follow_up_recommendation.get("authorization_classification") or "blocked_pending_authorization"),
             evidence_status="dry_run",
             summary=(
-                "The current multi-zone evidence is a deterministic dry-run handoff plus measured reducer-pressure evidence; "
-                "it does not yet provide a live full-scale measured execution."
+                "The current multi-zone evidence bundle records TB-352 as failed closed before scheduler submission; "
+                "it remains the canonical deferral signal and does not yet provide a live full-scale measured execution."
             ),
             helper_sources=[
                 "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
@@ -496,6 +497,9 @@ def build_readiness_matrix(
                 "authorization_classification": follow_up_recommendation.get("authorization_classification"),
                 "pressure_status": multi_zone_pressure.get("status"),
                 "multi_zone_dry_run_blocked": multi_zone_handoff_report.get("multi_zone_dry_run_blocked"),
+                "bundle_multi_zone_status": multi_zone_bundle_evidence.get("status"),
+                "bundle_multi_zone_evidence_type": multi_zone_bundle_evidence.get("evidence_type"),
+                "bundle_multi_zone_next_blocker": multi_zone_bundle_evidence.get("next_blocker"),
             },
         ),
         matrix_row(
@@ -994,7 +998,9 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "status": "projection_only",
         "evidence_type": "projection_only",
         "summary": (
-            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary."
+            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
+            "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
+            "TB-352's fail-closed smallest multi-zone branch does not add measured support."
         ),
         "projection_classification": {
             "10_zone": "feasible",
@@ -1007,6 +1013,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "multi_job_pressure_without_measured_distributed_support",
             "scheduler_practicality_requires_authorization",
             "gis_cog_manifest_fields_missing",
+            "no_measured_multi_zone_hazard_execution",
         ],
         "measured_basis": {
             "aoi_count": 1,
@@ -1028,9 +1035,16 @@ def build_failed_closed_section() -> dict[str, Any]:
         "status": "failed_closed",
         "evidence_type": "failed_closed",
         "summary": (
-            "The recent submit branches failed closed before live execution, so they remain guardrail evidence rather than measured scale capability."
+            "The recent submit branches, including the canonical TB-352 smallest multi-zone path, failed closed before live execution, "
+            "so they remain guardrail evidence rather than measured scale capability."
         ),
         "failed_closed_branches": [
+            {
+                "task": "TB-352",
+                "branch": "smallest multi-zone hazard",
+                "failure_point": "scheduler submission blocked by reducer-budget preflight before sbatch",
+                "classification": "failed_closed",
+            },
             {
                 "task": "TB-332/TB-333",
                 "branch": "four-zone hazard submit",

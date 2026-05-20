@@ -35,6 +35,7 @@ EVIDENCE_LABELS = (
     "scratch_local",
     "projection_only",
     "blocked_pre_submit",
+    "partial",
     "failed_closed",
 )
 TB305_POSTPROC_MICROBENCHMARK = {
@@ -730,7 +731,7 @@ def build_report() -> dict[str, Any]:
             "category": "evidence_deferral",
             "status": "recommended_next",
             "reason": (
-                "TB-332 failed closed before hazard execution, so larger work should be deferred until a measured hazard branch "
+                "TB-352 failed closed before scheduler submission, so larger work should be deferred until a measured hazard branch "
                 "or a new bottleneck measurement exists."
             ),
         },
@@ -740,8 +741,8 @@ def build_report() -> dict[str, Any]:
             "category": "optimization",
             "status": "defer_until_hypothesis_measured",
             "reason": (
-                "Optimization should follow a new measured bottleneck; the four-zone postproc evidence and blocked hazard branch "
-                "do not establish an eight-zone hazard execution bottleneck."
+                "Optimization should follow a new measured bottleneck; the four-zone postproc evidence and fail-closed multi-zone "
+                "branch do not establish an eight-zone hazard execution bottleneck."
             ),
         },
         {
@@ -750,8 +751,8 @@ def build_report() -> dict[str, Any]:
             "category": "execution_unblock",
             "status": "ready_for_operator_choice",
             "reason": (
-                "The older two-zone submit-contract repair remains a live blocker, but it is now ranked behind the four-zone "
-                "hazard branch because the new evidence says the larger hazard follow-on should be deferred first."
+                "The older two-zone submit-contract repair remains a live blocker, but it is now ranked behind the latest "
+                "fail-closed multi-zone branch because the new evidence says the larger hazard follow-on should be deferred first."
             ),
         },
         {
@@ -781,8 +782,9 @@ def build_report() -> dict[str, Any]:
         "summary": (
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
-            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
-            "so the four-zone hazard branch stays deferred for any eight-zone follow-on, TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
+            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-352 failed closed before scheduler submission on the canonical smallest multi-zone path, "
+            "so the next measured action remains deferred until a live hazard branch exists, TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
+            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
@@ -795,6 +797,7 @@ def build_report() -> dict[str, Any]:
             "scratch_local": "Local /tmp measurement or generated scratch evidence; useful for bottleneck discovery but not Balfrin evidence.",
             "projection_only": "Planner extrapolation from measured coefficients; not an executed scale tier.",
             "blocked_pre_submit": "A live path stopped before sbatch or live execution and promoted no measured run-root evidence.",
+            "partial": "A live path produced incomplete evidence; it is distinct from measured and failed-closed outcomes.",
             "failed_closed": "A bounded path failed closed before live execution because the reviewed package or manifest contract did not match the executable run contract.",
         },
         "tiers": rows,
@@ -843,7 +846,7 @@ def build_report() -> dict[str, Any]:
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-332 failed closed before hazard execution, so the next safe action is to defer an eight-zone probe until a measured hazard branch exists."
+            "TB-352 failed closed before scheduler submission, so the next safe action is to defer an eight-zone probe until a measured hazard branch exists."
         ),
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_backlog_recommendations": next_backlog_recommendations,

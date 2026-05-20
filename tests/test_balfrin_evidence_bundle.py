@@ -209,19 +209,21 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
         self.assertIn("metrics_remediation:", bundle.render_text_report(report))
 
-    def test_current_multi_zone_evidence_records_tb309_failed_closed_branch(self) -> None:
+    def test_current_multi_zone_evidence_records_tb352_failed_closed_branch(self) -> None:
         report = bundle.build_current_report()
         multi_zone = report["multi_zone_balfrin_evidence"]
 
         self.assertEqual(multi_zone["status"], "failed_closed")
         self.assertEqual(multi_zone["evidence_type"], "failed_closed")
-        self.assertEqual(multi_zone["preflight_status"], "ready_for_authorization_review")
-        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_schema_version")
-        self.assertIn("public_real_site_conditional_pilot_run_v1_schema_mismatch", multi_zone["next_blocker"])
+        self.assertEqual(multi_zone["task_id"], "TB-352")
+        self.assertEqual(multi_zone["preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_size_bytes")
+        self.assertEqual(multi_zone["next_blocker"], "blocked_reducer_budget:manifest_size_bytes")
         self.assertIsNone(multi_zone["slurm_job_id"])
         self.assertFalse(multi_zone["metrics_json_promoted"])
         self.assertFalse(multi_zone["preservation_gate_promoted"])
         self.assertFalse(multi_zone["post_run_collector_promoted"])
+        self.assertIn("failed closed before scheduler submission", multi_zone["summary"])
         self.assertIn("multi_zone_balfrin_evidence:", bundle.render_text_report(report))
 
     def test_multi_zone_evidence_classifier_distinguishes_root_classes(self) -> None:
@@ -262,6 +264,22 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(failed_closed["root_class"], "failed_closed_two_zone_root")
         self.assertEqual(failed_closed["evidence_type"], "failed_closed")
         self.assertEqual(failed_closed["status"], "failed_closed")
+
+    def test_multi_zone_evidence_classifier_keeps_partial_separate_from_measured_and_failed_closed(self) -> None:
+        partial = bundle.build_multi_zone_balfrin_evidence(
+            {
+                "status": "partial",
+                "run_root": "/scratch/rust_rockfall/probes/balfrin-demo/partial_multi_zone",
+                "release_zone_count": 2,
+                "first_bottleneck_label": "partial_multi_zone_evidence",
+            }
+        )
+
+        self.assertEqual(partial["status"], "partial")
+        self.assertEqual(partial["evidence_type"], "partial")
+        self.assertEqual(partial["root_class"], "partial_multi_zone_root")
+        self.assertEqual(partial["next_blocker"], "partial_multi_zone_evidence_incomplete")
+        self.assertIn("remains incomplete", partial["summary"])
 
     def test_metrics_evidence_state_propagates_recovered_run_root_fields(self) -> None:
         summary = self.single_job_summary()

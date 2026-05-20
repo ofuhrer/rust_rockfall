@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-353: Integrate Measured Multi-Zone Hazard Evidence
-
-Goal: Thread the TB-352 measured or fail-closed result through the scale readiness matrix, evidence bundle, management package, and Swiss-scale projection surfaces.
-
-Capability gap reduced: Measured multi-zone evidence must become canonical and not remain an isolated run log.
-
-Why this outranks alternatives: Without integration, future workers and management summaries can misclassify the current scale state.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Updated evidence labels, next-action ranking, management summary, and projection assumptions based on TB-352.
-- Tests preventing failed-closed, measured, and partial states from being conflated.
-
-Definition of done:
-
-- The canonical helper outputs reflect the TB-352 outcome and identify the next measured action or deferral.
-
-Boundaries: Synthesis/integration only; no new Balfrin job, no claim upgrade.
-
 ### TB-354: Four-Zone Hazard Package From Measured Two-Zone Evidence
 
 Goal: Generate a four-zone hazard package only if TB-352 produced measured two-zone evidence and TB-353 integrated it successfully.

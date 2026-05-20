@@ -24,8 +24,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
         self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
-        self.assertIn("TB-332 failed closed before sbatch", report["summary"])
-        self.assertIn("four-zone hazard branch stays deferred", report["summary"])
+        self.assertIn("TB-352 failed closed before scheduler submission", report["summary"])
+        self.assertIn("next measured action remains deferred until a live hazard branch exists", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
@@ -65,11 +65,13 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 "scratch_local",
                 "projection_only",
                 "blocked_pre_submit",
+                "partial",
                 "failed_closed",
             ],
         )
         self.assertIn("measured_on_balfrin_postproc_microbenchmark", report["evidence_label_definitions"])
         self.assertIn("blocked_pre_submit", report["evidence_label_definitions"])
+        self.assertIn("partial", report["evidence_label_definitions"])
         self.assertIn("failed_closed", report["evidence_label_definitions"])
         self.assertIn("smallest_multi_zone", report["latest_output_budget_status"])
         self.assertIn("single_zone", report["latest_execution_efficiency_status"])

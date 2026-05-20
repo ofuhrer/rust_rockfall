@@ -53,6 +53,27 @@ TB267_MULTI_ZONE_BLOCKED_EVIDENCE = {
         "manifest_size_bytes and the authorization record was missing."
     ),
 }
+TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE = {
+    "task_id": "TB-352",
+    "status": "failed_closed",
+    "evidence_type": "failed_closed",
+    "root_class": "failed_closed_two_zone_root",
+    "preflight_status": "blocked_reducer_budget",
+    "authorization_record_status": "reviewed",
+    "first_bottleneck_label": "manifest_size_bytes",
+    "slurm_job_id": None,
+    "metrics_json_promoted": False,
+    "preservation_checked": False,
+    "preservation_gate_promoted": False,
+    "post_run_collector_promoted": False,
+    "release_zone_count": 2,
+    "source_paths": ["docs/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
+    "summary": (
+        "TB-352 failed closed before scheduler submission: the smallest multi-zone hazard path stayed behind the task-specific "
+        "preflight, so it remains separate from measured evidence and does not authorize scale-up."
+    ),
+    "next_blocker": "blocked_reducer_budget:manifest_size_bytes",
+}
 TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE = {
     "status": "failed_closed",
     "evidence_type": "failed_closed",
@@ -71,6 +92,25 @@ TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE = {
         "TB-309 reached ready_for_authorization_review, but the reviewed smallest two-zone submit command failed closed before sbatch because the submit helper expected a public_real_site_conditional_pilot_run_v1 manifest and the reviewed command supplied the target-area wrapper manifest instead."
     ),
     "next_blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+}
+TB352_MULTI_ZONE_PARTIAL_EVIDENCE = {
+    "status": "partial",
+    "evidence_type": "partial",
+    "root_class": "partial_multi_zone_root",
+    "preflight_status": "partial_complete",
+    "authorization_record_status": "partial",
+    "first_bottleneck_label": "partial_multi_zone_evidence",
+    "slurm_job_id": None,
+    "metrics_json_promoted": False,
+    "preservation_checked": False,
+    "preservation_gate_promoted": False,
+    "post_run_collector_promoted": False,
+    "release_zone_count": 2,
+    "source_paths": ["docs/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
+    "summary": (
+        "Partial multi-zone evidence remains incomplete and must not be treated as measured or failed-closed evidence."
+    ),
+    "next_blocker": "partial_multi_zone_evidence_incomplete",
 }
 ALLOWED_METRICS_COMPLETION_SOURCES = {
     "recovered_existing_run_root",
@@ -454,20 +494,44 @@ def build_bundle_report(
 
 def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
     if evidence is None:
-        return dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+        return dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
     if isinstance(evidence, str):
         return classify_multi_zone_balfrin_root({"run_root": evidence, "source_paths": [evidence]})
     if not isinstance(evidence, dict):
-        return dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+        return dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
+    if evidence.get("status") == "partial" or evidence.get("evidence_type") == "partial":
+        payload = dict(TB352_MULTI_ZONE_PARTIAL_EVIDENCE)
+        payload.update(evidence)
+        payload["status"] = "partial"
+        payload["evidence_type"] = "partial"
+        payload["root_class"] = "partial_multi_zone_root"
+        payload["first_bottleneck_label"] = str(payload.get("first_bottleneck_label") or "partial_multi_zone_evidence")
+        payload["next_blocker"] = str(payload.get("next_blocker") or "partial_multi_zone_evidence_incomplete")
+        return payload
     if evidence.get("status") == "failed_closed":
-        payload = dict(TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+        evidence_source_paths = {
+            str(path)
+            for path in evidence.get("source_paths", [])
+            if isinstance(evidence.get("source_paths"), list) and str(path)
+        }
+        use_tb352_template = (
+            evidence.get("task_id") == "TB-352"
+            or evidence.get("preflight_status") == "blocked_reducer_budget"
+            or "manifest_size_bytes" == str(evidence.get("first_bottleneck_label") or "")
+            or "docs/balfrin_smallest_multi_zone_hazard_run_tb352.md" in evidence_source_paths
+        )
+        payload = dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE if use_tb352_template else TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
         payload.update(evidence)
         payload["status"] = "failed_closed"
         payload["evidence_type"] = "failed_closed"
-        payload["root_class"] = "failed_closed_two_zone_root"
-        payload["first_bottleneck_label"] = str(payload.get("first_bottleneck_label") or "manifest_schema_version")
+        payload["root_class"] = str(payload.get("root_class") or "failed_closed_two_zone_root")
+        payload["first_bottleneck_label"] = str(
+            payload.get("first_bottleneck_label")
+            or ("manifest_size_bytes" if use_tb352_template else "manifest_schema_version")
+        )
         payload["next_blocker"] = str(
-            payload.get("next_blocker") or "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch"
+            payload.get("next_blocker")
+            or ("blocked_reducer_budget:manifest_size_bytes" if use_tb352_template else "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch")
         )
         return payload
     if evidence.get("preflight_status") == "blocked_reducer_budget" or evidence.get("status") in {
@@ -498,18 +562,38 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         evidence_type = "fixture_backed"
         root_class = "scratch_reducer_probe"
     else:
+        status_value = str(evidence.get("status") or "")
         measured_flags = (
-            evidence.get("status") == "measured"
+            status_value == "measured"
             and evidence.get("preservation_checked") is True
             and evidence.get("post_run_collector_promoted") is True
             and evidence.get("metrics_json_promoted") is True
         )
-        failed_closed_flags = evidence.get("status") == "failed_closed"
-        status = "measured" if measured_flags else "failed_closed" if failed_closed_flags else "blocked_incomplete"
-        evidence_type = "measured" if measured_flags else "failed_closed" if failed_closed_flags else "blocked"
+        partial_flags = status_value in {"partial", "partial_real"}
+        failed_closed_flags = status_value == "failed_closed"
+        status = (
+            "measured"
+            if measured_flags
+            else "partial"
+            if partial_flags
+            else "failed_closed"
+            if failed_closed_flags
+            else "blocked_incomplete"
+        )
+        evidence_type = (
+            "measured"
+            if measured_flags
+            else "partial"
+            if partial_flags
+            else "failed_closed"
+            if failed_closed_flags
+            else "blocked"
+        )
         root_class = (
             "measured_multi_zone_balfrin_root"
             if measured_flags
+            else "partial_multi_zone_root"
+            if partial_flags
             else "failed_closed_two_zone_root"
             if failed_closed_flags
             else "incomplete_multi_zone_root"
@@ -537,6 +621,8 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
             if status == "fixture_backed"
             else "scratch_root_not_live_balfrin"
             if status == "scratch_root"
+            else "partial_multi_zone_evidence_incomplete"
+            if status == "partial"
             else "failed_closed_submit_package_schema_mismatch"
             if status == "failed_closed"
             else f"incomplete_multi_zone_evidence:{first_bottleneck}"
@@ -544,6 +630,8 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         "summary": (
             f"Measured multi-zone Balfrin evidence is present for {release_zone_count} release zones."
             if status == "measured"
+            else "Partial multi-zone evidence is present but remains incomplete and cannot be treated as measured or failed-closed evidence."
+            if status == "partial"
             else "Multi-zone evidence is not measured Balfrin evidence and cannot move the scaling frontier by itself."
         ),
     }

@@ -29,6 +29,9 @@ preserved outputs:
   path as blocked because the packaged AOI root is missing the pilot GIS
   package manifest fields needed for conversion and the standard package
   remains COG-blocked.
+- `scripts/summarize_balfrin_evidence_bundle.py` now carries TB-352 as the
+  canonical smallest multi-zone fail-closed branch; it is distinct from the
+  measured rows and does not add measured hazard-execution support.
 - The same-scale and Swiss-wide envelope helpers reuse the current measured
   manifest pressure signal: manifest size is the first bottleneck, with the
   generator evidence showing 120 scenario rows, 30 candidate release-zone
@@ -77,6 +80,9 @@ Extrapolated:
   scheduler pressure stop being single-job evidence.
 - `release_zone_count > 10` or `trajectory_count > 6` exceed the measured
   support boundary used by the Swiss-wide envelope helper.
+- TB-352 failed closed before scheduler submission, so a partial or fail-closed
+  multi-zone branch still does not count as measured support for the 100-zone
+  or Swiss-wide rows.
 - GIS/COG conversion remains a no-go until the packaged AOI root has the
   required manifest fields and the raster package can be represented with the
   expected tiling and overview metadata.
@@ -88,10 +94,14 @@ Extrapolated:
 - The current environment does not recover the target-area validation and
   hazard outputs, so the ratio to those preserved outputs remains unresolved.
 - There is no measured multi-AOI Balfrin run in the repository, so the 100-zone,
-  regional, and Swiss-wide rows are projections only.
+  regional, and Swiss-wide rows are projections only. TB-352 is fail-closed,
+  not measured.
 - The manifest estimate is threshold-based rather than a larger measured byte
   series; the first bottleneck is known, but there is no bigger manifest
   measurement to fit.
+- Partial multi-zone evidence would still be insufficient even if it existed in
+  the future; the projection only advances on measured hazard execution, not on
+  incomplete branches.
 
 ## Bottom Line
 
