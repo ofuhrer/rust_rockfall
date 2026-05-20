@@ -39,9 +39,116 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-365: Reduce First Measured Two-Zone Output Bottleneck
+### TB-365: Resolve Two-Zone Output-Profile Preflight Blocker
 
-Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-364.
+Goal: Fix the explicit two-zone handoff/preflight path so it no longer falls through the four-zone review-package output-profile branch.
+
+Capability gap reduced: The current live two-zone run is blocked before `sbatch` by a package classification mismatch, not by measured runtime or simulator failure.
+
+Why this outranks alternatives: No throughput optimization, four-zone run, or Swiss-scale projection update is actionable until the two-zone package can pass the exact pre-submit output-profile gate.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
+- `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
+- `docs/balfrin_two_zone_hazard_run_tb362.md`
+
+Deliverables:
+
+- Generator/preflight fix or narrowly scoped contract repair for explicit `--requested-release-zone-batch-size 2 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2` packages.
+- Regression proving that exact package reports `output_profile_status=ready`, `reducer_budget_status=ready`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
+
+Definition of done:
+
+- The exact explicit two-zone package preflight reports `preflight_status=ready_for_authorization_review` and `ready_for_authorized_submission=true`, or a new concrete non-output-profile blocker is recorded.
+
+Boundaries: No live submission, no `sbatch`, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim.
+
+### TB-366: Execute Smallest Two-Zone Balfrin Hazard Run After Profile Repair
+
+Goal: Submit and monitor the repaired smallest two-zone hazard package on Balfrin `postproc` if TB-365 clears the output-profile preflight blocker.
+
+Capability gap reduced: Missing measured multi-zone Balfrin hazard execution.
+
+Why this outranks alternatives: This is still the decisive measured evidence gap; the previous attempt failed closed before scheduler submission.
+
+Inspect first:
+
+- `docs/orchestration_strategy.md`
+- `docs/balfrin_probe_slurm_driver.md`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Live two-zone `postproc` job id, run root, completion status, stdout/stderr pointers, and preserved artifact inventory if all gates pass.
+- Fail-closed report if any pre-submit or scheduler guard stops the run.
+
+Definition of done:
+
+- Either a completed measured two-zone run is preserved and ready for collection, or a specific persistent blocker is recorded without submitting an unsafe job.
+
+Boundaries: GPT-5.5 worker only; `postproc` partition only; respect the 6-hour full-partition rediscussion rule; no distributed execution or scale-up claim.
+
+### TB-367: Integrate Repaired Two-Zone Balfrin Hazard Evidence
+
+Goal: Collect, classify, and thread the post-TB-365/TB-366 two-zone outcome through the scale matrix, management package, projection, and maturity snapshot.
+
+Capability gap reduced: Prevents the next two-zone outcome from remaining an isolated scratch or fail-closed artifact.
+
+Why this outranks alternatives: Measured evidence only changes feasibility once it is collected, budgeted, classified, and surfaced consistently.
+
+Inspect first:
+
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- Updated measured/failed-closed classification for the repaired two-zone branch.
+- Runtime, memory, validation/hazard bytes, file counts, reducer pressure, GIS status, and claim boundaries reflected in canonical docs/helpers when a run exists.
+
+Definition of done:
+
+- The repaired two-zone branch is deterministically classified as measured, failed-closed, or blocked, and no stale projection surface contradicts that classification.
+
+Boundaries: Collection/synthesis only; no new run, no operational claim, no scale-up authorization.
+
+### TB-368: Measure Repaired Two-Zone Hazard Throughput Bottlenecks
+
+Goal: If TB-366 produces a measured run, profile the two-zone hazard-output path to identify the first actionable throughput, manifest, reducer, or file-count bottleneck.
+
+Capability gap reduced: Performance work currently lacks a measured multi-zone hazard target.
+
+Why this outranks alternatives: Optimization should follow measured bottlenecks, not preemptively target scratch, fixture-backed, postproc-only, or failed-closed evidence.
+
+Inspect first:
+
+- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/hazard_throughput_bottleneck_report.md`
+- `docs/output_budget_reducer_scaling_gate.md`
+
+Deliverables:
+
+- Measured bottleneck profile for the preserved two-zone hazard root, or explicit no-op/deferred status if no measured root exists.
+- Ranked optimization target with evidence labels.
+
+Definition of done:
+
+- The next performance task can point at one measured first bottleneck and one concrete optimization hypothesis, or it explicitly defers because no measured root exists.
+
+Boundaries: No code optimization unless the task finds an unambiguous trivial fix; no new run; no scale-up claim.
+
+### TB-369: Reduce First Measured Two-Zone Output Bottleneck
+
+Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-368.
 
 Capability gap reduced: Converts measured scale friction into lower runtime/output pressure.
 
@@ -66,7 +173,7 @@ Definition of done:
 
 Boundaries: No physics change, no tuning, no lossy deletion of replay-critical outputs, no claim upgrade.
 
-### TB-366: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
+### TB-370: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
 
 Goal: Submit and monitor the smallest four-zone hazard run only after two-zone evidence is measured and output pressure is accepted or reduced.
 
@@ -91,9 +198,9 @@ Definition of done:
 
 - Four-zone hazard execution is measured or explicitly blocked with a non-ambiguous next unblock action.
 
-Boundaries: GPT-5.5 worker only; `postproc` only; requires accepted TB-363/TB-364 evidence; no distributed execution or scale-up claim.
+Boundaries: GPT-5.5 worker only; `postproc` only; requires accepted TB-367/TB-368 evidence; no distributed execution or scale-up claim.
 
-### TB-367: Integrate Four-Zone Hazard Evidence Into Scale Projection
+### TB-371: Integrate Four-Zone Hazard Evidence Into Scale Projection
 
 Goal: Thread measured or failed-closed four-zone hazard evidence into the scale matrix, Swiss-scale projection, and management package.
 
@@ -120,7 +227,7 @@ Definition of done:
 
 Boundaries: Synthesis only; no new run; no operational, annual, physical-probability, or scale-up claim.
 
-### TB-368: Select And Freeze Management AOI Acquisition Target
+### TB-372: Select And Freeze Management AOI Acquisition Target
 
 Goal: Choose one concrete real AOI for the next public-geodata acquisition/preprocessing demonstration and freeze its bounds, CRS, products, expected tiles, and ignored-root layout.
 
@@ -147,7 +254,7 @@ Definition of done:
 
 Boundaries: No large raw swisstopo product commits; no live download unless explicitly allowed by the task; no hazard execution.
 
-### TB-369: Acquire Or Stage Real Public Geodata For Management AOI
+### TB-373: Acquire Or Stage Real Public Geodata For Management AOI
 
 Goal: Use the frozen AOI target to acquire or operator-stage the required public terrain/context products into ignored roots with checksums and provenance.
 
@@ -174,7 +281,7 @@ Definition of done:
 
 Boundaries: Do not commit raw swisstopo data; preserve CRS/datum/provenance; no ensemble execution.
 
-### TB-370: Validate Management AOI Cache Integrity
+### TB-374: Validate Management AOI Cache Integrity
 
 Goal: Verify acquired/staged AOI public-geodata products for checksum stability, required metadata, CRS/datum consistency, tile coverage, and missing-product classification.
 
@@ -200,7 +307,7 @@ Definition of done:
 
 Boundaries: No raw data commits; no terrain mutation beyond read-only inspection; no hazard claim.
 
-### TB-371: Run Real-AOI Terrain Preprocessing Pipeline
+### TB-375: Run Real-AOI Terrain Preprocessing Pipeline
 
 Goal: Convert the management AOI terrain products into deterministic prepared terrain artifacts with provenance, extent, resolution, CRS, and vertical-datum metadata.
 
@@ -226,7 +333,7 @@ Definition of done:
 
 Boundaries: No raw data commits; no hazard execution; no terrain smoothing/tuning beyond existing documented preprocessing policy.
 
-### TB-372: Generate Real-AOI Release-Zone Candidate Sweep
+### TB-376: Generate Real-AOI Release-Zone Candidate Sweep
 
 Goal: Run deterministic release-zone candidate generation on the prepared management AOI terrain and produce candidate masks, polygons, statistics, and GIS-ready review outputs.
 
@@ -252,7 +359,7 @@ Definition of done:
 
 Boundaries: No operational release-zone claim, no parameter tuning to match desired zones, no hazard execution.
 
-### TB-373: Measure Real-AOI Release-Zone Stability
+### TB-377: Measure Real-AOI Release-Zone Stability
 
 Goal: Quantify candidate-zone sensitivity for the management AOI under bounded slope, resolution, smoothing, and AOI-boundary perturbations.
 
@@ -278,7 +385,7 @@ Definition of done:
 
 Boundaries: No operational release-zone claim, no calibration, no hazard execution.
 
-### TB-374: Generate Large Real-AOI Scenario Table From Candidates
+### TB-378: Generate Large Real-AOI Scenario Table From Candidates
 
 Goal: Generate deterministic block/scenario tables from the real-AOI candidate zones and measure scenario cardinality, manifest pressure, and family composition.
 
@@ -304,7 +411,7 @@ Definition of done:
 
 Boundaries: No source-frequency semantics, no annual probability, no physics tuning, no hazard execution.
 
-### TB-375: Compile Management AOI Prepared Pilot
+### TB-379: Compile Management AOI Prepared Pilot
 
 Goal: Compile the management AOI terrain, context, candidate zones, and scenario tables into a prepared-pilot command package without running ensembles.
 
@@ -330,7 +437,7 @@ Definition of done:
 
 Boundaries: No ensemble execution; no operational claim; no raw data commits.
 
-### TB-376: Build Management AOI Multi-Zone Balfrin Handoff
+### TB-380: Build Management AOI Multi-Zone Balfrin Handoff
 
 Goal: Convert the prepared management AOI pilot into a bounded Balfrin multi-zone handoff package with reduced-output mode, output budgets, authorization records, and preservation plan.
 
@@ -357,9 +464,9 @@ Definition of done:
 
 Boundaries: No live submission in this task; `postproc` only for future live work; no distributed execution or scale-up claim.
 
-### TB-377: Execute Bounded Management AOI Multi-Zone Balfrin Run
+### TB-381: Execute Bounded Management AOI Multi-Zone Balfrin Run
 
-Goal: Submit and monitor a bounded management-AOI multi-zone hazard run on Balfrin `postproc` if TB-376 reports ready.
+Goal: Submit and monitor a bounded management-AOI multi-zone hazard run on Balfrin `postproc` if TB-380 reports ready.
 
 Capability gap reduced: Missing measured real-AOI multi-zone Balfrin hazard execution.
 
@@ -384,7 +491,7 @@ Definition of done:
 
 Boundaries: GPT-5.5 worker only; `postproc` only; respect the 6-hour full-partition rediscussion rule; no scale-up or operational claim.
 
-### TB-378: Stress Large-AOI GIS And COG Packaging From Real Outputs
+### TB-382: Stress Large-AOI GIS And COG Packaging From Real Outputs
 
 Goal: Stress-test GIS package manifest generation, raster package completeness, and COG conversion/scope classification against the largest available real-AOI or measured multi-zone outputs.
 
@@ -410,7 +517,7 @@ Definition of done:
 
 Boundaries: No generated raster commits; no operational GIS claim; no new hazard run.
 
-### TB-379: Refresh Management Swiss-Scale Feasibility Decision
+### TB-383: Refresh Management Swiss-Scale Feasibility Decision
 
 Goal: Update the Swiss-scale feasibility projection and management package after the two-zone/four-zone/management-AOI evidence sequence completes.
 
