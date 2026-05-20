@@ -170,6 +170,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_pilot_scaling.py`
 - `scripts/summarize_same_scale_sampling_uncertainty.py`
 - `scripts/summarize_same_scale_stability_frontier.py`
+- `scripts/summarize_management_aoi_scenario_pressure.py`
 - `scripts/summarize_same_scale_uncertainty_envelope.py`
 - `scripts/summarize_spatial_same_scale_uncertainty.py`
 - `scripts/summarize_stopping_behavior.py`

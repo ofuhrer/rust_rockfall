@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-378: Generate Large Real-AOI Scenario Table From Candidates
-
-Goal: Generate deterministic block/scenario tables from the real-AOI candidate zones and measure scenario cardinality, manifest pressure, and family composition.
-
-Capability gap reduced: Scenario generation is still a major manual and scaling uncertainty.
-
-Why this outranks alternatives: Multi-zone execution pressure is driven by candidate and scenario cardinality; it must be measured before submitting larger jobs.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-
-Deliverables:
-
-- Deterministic real-AOI scenario table or blocked report.
-- Scenario counts by candidate family, output bytes, manifest pressure, and command-plan implications.
-
-Definition of done:
-
-- Scenario-generation pressure is quantified for the management AOI and ready for prepared-pilot compilation or explicit deferral.
-
-Boundaries: No source-frequency semantics, no annual probability, no physics tuning, no hazard execution.
-
 ### TB-379: Compile Management AOI Prepared Pilot
 
 Goal: Compile the management AOI terrain, context, candidate zones, and scenario tables into a prepared-pilot command package without running ensembles.

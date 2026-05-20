@@ -4405,3 +4405,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no operational release-zone claim, no calibration, no threshold tuning to force acceptance, no hazard execution, and the zero-candidate result stays preserved instead of being rewritten as a positive scenario-generation signal.
 - Next task: `TB-378`
+
+### TB-378: Generate Large Real-AOI Scenario Table From Candidates
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: quantify scenario-generation pressure for the management AOI using the real-AOI zero-candidate evidence, while preserving the blocked/no-go outcome instead of inventing a positive scenario table.
+- Files changed: `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_management_aoi_scenario_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic management-AOI scenario-pressure helper that reads the TB-377 candidate metrics and review manifests plus the frozen source-scenario policy, then reports the zero-candidate block state, candidate-bundle pressure, zero scenario-table bytes, policy block-family composition, and command-plan implications.
+  - Kept the report fail-closed on the preserved zero-candidate result: `candidate_cell_count: 0`, `candidate_area_m2: 0.0`, `scenario_row_count: 0`, `scenario_table_total_bytes: 0`, and `scenario_pressure_status: blocked_empty_candidate_set`.
+  - Added a focused regression that feeds a synthetic zero-candidate bundle through the new helper and checks the blocked report, candidate-bundle pressure, family composition, and command-plan implications.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json --json-output /tmp/tb378_management_aoi_scenario_pressure.json`
+- Result/status: implemented_blocked_report
+- Boundaries: no source-frequency semantics, no annual probability, no physics tuning, no hazard execution, and no invented candidate set or positive scenario table.
+- Next task: `TB-379`
