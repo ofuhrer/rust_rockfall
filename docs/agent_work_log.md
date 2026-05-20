@@ -4632,3 +4632,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no threshold tuning, no invented terrain, no accepted release-zone claim, no simulation, no Balfrin submission, and no operational or scale-up claim.
 - Next task: TB-389
+
+### TB-389: Run Real-AOI Release-Candidate Sweep After Restaging
+
+- Date: 2026-05-21
+- Commit: `45d25801ab04f03eb11ef5d3d71074a635305c5c`
+- Objective: run deterministic release-zone candidate generation on the restaged management AOI and measure candidate count, area, runtime, output size, and GIS artifact shape.
+- Files changed: `tests/test_plan_terrain_release_zone_candidates.py`, `docs/current_maturity_snapshot.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a regression that restages the management AOI from the local raw swissALTI3D tile, runs `scripts/plan_terrain_release_zone_candidates.py` against the restaged `/tmp` inputs, and checks the emitted candidate bundle shape, file inventory, and deterministic counts.
+  - Updated the maturity snapshot and Swiss-scale projection to note the measured restaged candidate bundle while keeping the candidate-generation claim separate from scenario generation and operational release-zone semantics.
+  - Removed TB-389 from the active backlog after the measured candidate sweep completed successfully.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/stage_management_aoi_restaged_terrain.py --output-root /tmp/rust_rockfall/tb388_management_aoi_restaged --format json --json-output /tmp/tb389_restage.json`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --terrain-crop /tmp/rust_rockfall/tb388_management_aoi_restaged/input/terrain.asc --terrain-metadata /tmp/rust_rockfall/tb388_management_aoi_restaged/input/terrain_metadata.yaml --source-zone-metadata /tmp/rust_rockfall/tb388_management_aoi_restaged/input/source_zone_metadata.yaml --output-root /tmp/rust_rockfall/tb389_management_aoi_candidates --output-mode both --format json --json-output /tmp/tb389_candidate_sweep.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_candidate_zero_result_diagnostic tests.test_plan_terrain_release_zone_candidates -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no threshold tuning, no operational release-zone claim, no physics change, no scenario generation beyond candidate metadata, and no scale-up or distributed-execution claim.
+- Next task: TB-390
