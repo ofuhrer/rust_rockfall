@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-400: Retire Or Deprecate Redundant Workflow Shell Scripts
-
-Goal: Identify redundant or historical top-level workflow scripts and either remove one safely or mark a small set as deprecated with exact replacement commands.
-
-Capability gap reduced: The repository has accumulated many wrappers and status helpers, increasing maintenance cost and user confusion.
-
-Why this outranks alternatives: Reducing script count or clearly marking replacements prevents further workflow-shell growth without a broad rewrite.
-
-Inspect first:
-
-- `docs/script_inventory.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/check_repo_consistency.py`
-
-Deliverables:
-
-- `rg`-backed inventory of candidate redundant scripts.
-- At least one safe removal, or explicit deprecation metadata for the smallest high-confidence set with replacement commands and tests adjusted.
-- Updated script inventory reflecting the reduced or deprecated surface.
-
-Definition of done:
-
-- No active doc, test, command plan, backlog task, or reproduction command references a removed script, and deprecated scripts point to a canonical replacement.
-
-Boundaries: No giant framework rewrite, no deletion of high-risk workflow surfaces, no CLI break without a compatibility shim or documented replacement.
-
 ### TB-401: Extract Shared Command And Path Rendering Utilities
 
 Goal: Consolidate repeated command-string, path-normalization, and expected-output rendering logic used by AOI workflow, prepared-pilot, and handoff helpers.

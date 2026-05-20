@@ -351,7 +351,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             command for command in report["commands"] if command["id"] == "second_site_aoi_to_prepared_pilot_dry_run"
         )
         self.assertTrue(preparation_command["read_only"])
-        self.assertIn("plan_aoi_to_prepared_pilot_dry_run.py", preparation_command["command"])
+        self.assertIn("scripts/run_aoi_hazard_workflow.py prepare", preparation_command["command"])
         self.assertIn(
             "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
             preparation_command["expected_inputs"],

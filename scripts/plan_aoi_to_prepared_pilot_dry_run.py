@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Compose the Chant Sura AOI-to-prepared-pilot dry-run workflow.
+"""Deprecated Chant Sura AOI-to-prepared-pilot dry-run workflow helper.
 
-This is a read-only orchestrator. It chains the AOI acquisition planner, the
-terrain release-zone candidate helper, the pragmatic release-plan helper, and
-the portable command-plan helper into one deterministic workflow report. It
-does not download data, stage public products, or run any ensemble work.
+Canonical replacements:
+
+- ``PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json``
+- ``PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow --site-config <site-config> --format json``
+
+This is a read-only compatibility orchestrator. It chains the AOI acquisition
+planner, the terrain release-zone candidate helper, the pragmatic release-plan
+helper, and the portable command-plan helper into one deterministic workflow
+report. It does not download data, stage public products, or run any ensemble
+work.
 """
 
 from __future__ import annotations
@@ -49,6 +55,11 @@ COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1
 MANAGEMENT_AOI_SCENARIO_PRESSURE_SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS = "blocked_source_zone_footprint_overlap"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS = "blocked_empty_candidate_set"
+DEPRECATED = True
+DEPRECATION_REPLACEMENT_COMMAND = (
+    "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare "
+    "--site-config <site-config> --format json"
+)
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"

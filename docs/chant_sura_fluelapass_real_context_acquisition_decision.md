@@ -66,7 +66,7 @@ The current clean-checkout helpers report:
 - `plan_swisstopo_aoi_acquisition.py -> ready`
 - `check_second_site_public_geodata_preflight.py -> deferred_public_context_inputs`
 - `check_chant_sura_real_context_readiness_gate.py -> blocked_partial_real_inputs`
-- `plan_aoi_to_prepared_pilot_dry_run.py -> blocked_fixture_backed_inputs`
+- `run_aoi_hazard_workflow.py prepare` -> `blocked_fixture_backed_inputs`
 
 ### Product Readiness Matrix
 
@@ -290,7 +290,7 @@ PYENV_VERSION=system uv run python scripts/check_chant_sura_real_context_readine
   --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
   --format json
 
-PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py \
+PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare \
   --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
   --format json
 ```
@@ -330,7 +330,7 @@ Observed current statuses:
 - `plan_swisstopo_aoi_acquisition.py` -> `ready`
 - `check_second_site_public_geodata_preflight.py` -> `deferred_public_context_inputs`
 - `check_chant_sura_real_context_readiness_gate.py` -> `blocked_partial_real_inputs`
-- `plan_aoi_to_prepared_pilot_dry_run.py` -> `blocked_fixture_backed_inputs`
+- `run_aoi_hazard_workflow.py prepare` -> `blocked_fixture_backed_inputs`
 
 ## TB-250 Missing-Input Acquisition Handoff
 

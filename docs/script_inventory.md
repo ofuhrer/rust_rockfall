@@ -18,7 +18,6 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/build_hazard_layers.py`
 - `scripts/generate_pilot_command_plan.py`
 - `scripts/submit_balfrin_probe.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
 - `scripts/check_repo_consistency.py`
 - `scripts/print_agent_task_context.py`
 
@@ -53,7 +52,6 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/inspect_tschamut_public_context_layers.py`
 - `scripts/measure_hazard_context_overlap.py`
 - `scripts/generate_aoi_map_qa_review.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
 - `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
 - `scripts/plan_pragmatic_release_plan.py`
 - `scripts/plan_swisstopo_aoi_acquisition.py`
@@ -183,6 +181,14 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`
 - `scripts/summarize_tschamut_conditional_pilot_closure.py`
 - `scripts/summarize_tschamut_hotspot_provenance.py`
+
+## Deprecated Workflow Surfaces
+
+These helpers remain as compatibility shims only. Prefer the canonical front
+doors or command-plan entries listed above.
+
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+  Replacement: `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json`
 
 ## Validators
 

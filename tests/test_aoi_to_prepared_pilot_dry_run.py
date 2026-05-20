@@ -41,6 +41,13 @@ staging = _load_module(
 
 
 class AoiToPreparedPilotDryRunTests(unittest.TestCase):
+    def test_deprecation_metadata_points_to_the_canonical_front_door(self) -> None:
+        self.assertTrue(planner.DEPRECATED)
+        self.assertEqual(
+            planner.DEPRECATION_REPLACEMENT_COMMAND,
+            "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json",
+        )
+
     def test_staged_aoi_with_release_polygon_emits_preparation_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)

@@ -4875,3 +4875,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation-only consolidation; no workflow semantics, generated artifacts, or claim-boundary changes.
 - Next task: `TB-400`
+
+### TB-400: Retire Or Deprecate Redundant Workflow Shell Scripts
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: deprecate the redundant Chant Sura AOI dry-run planner in favor of the canonical `run_aoi_hazard_workflow.py prepare` front door, and update the live command-plan/docs surface to match.
+- Files changed: `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/decision_log.md`, `docs/public_real_site_geodata_preparation.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `scripts/generate_pilot_command_plan.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_pilot_command_plan.py`
+- Implementation summary:
+  - Marked `scripts/plan_aoi_to_prepared_pilot_dry_run.py` as a deprecated compatibility shim with explicit replacement commands pointing at `scripts/run_aoi_hazard_workflow.py prepare`.
+  - Switched the portable command plan to emit the canonical workflow front door instead of the deprecated dry-run planner.
+  - Moved the planner out of the active script-inventory surfaces and into a deprecated workflow section with the replacement command recorded inline.
+  - Updated the live AOI preparation and acquisition-decision docs to use the canonical front door and removed TB-400 from the active backlog.
+  - Added regression coverage for the deprecation metadata and for the updated command-plan command string.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_pilot_command_plan`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json >/tmp/tb400_command_plan.json && rg -n "run_aoi_hazard_workflow.py prepare|plan_aoi_to_prepared_pilot_dry_run.py" /tmp/tb400_command_plan.json`
+  - `rg -n "plan_aoi_to_prepared_pilot_dry_run\\.py" docs/public_real_site_geodata_preparation.md docs/chant_sura_fluelapass_real_context_acquisition_decision.md docs/script_inventory.md docs/task_backlog.md tests/test_pilot_command_plan.py tests/test_aoi_to_prepared_pilot_dry_run.py scripts/generate_pilot_command_plan.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: compatibility-shim cleanup only; no workflow rewrite, no Balfrin execution, no generated artifacts, and no scale-up or operational claim upgrade.
+- Next task: `TB-401`
