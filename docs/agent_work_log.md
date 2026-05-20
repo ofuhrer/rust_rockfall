@@ -3496,7 +3496,7 @@ scan thousands of lines of completed history.
 ### TB-337: Large-AOI GIS And COG Packaging Stress Test
 
 - Date: 2026-05-20
-- Commit: `pending`
+- Commit: `f82ee6e`
 - Objective: add deterministic large-AOI packaging stress reporting with scratch AOI package generation, QA HTML sizing, manifest/file counts, and ready/COG-blocked/no-go classification.
 - Files changed: `scripts/summarize_large_aoi_gis_cog_stress_test.py`, `tests/test_large_aoi_gis_cog_stress_test.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
