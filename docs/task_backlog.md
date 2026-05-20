@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-371: Repair Four-Zone Handoff Evidence Contract And Rerun Gate
-
-Goal: Repair the four-zone handoff/scale-readiness evidence contract so it consumes the TB-368 preserved two-zone run root, then regenerate the four-zone package and submit exactly one bounded `postproc` job only if the live-submit gate becomes ready.
-
-Capability gap reduced: TB-370 proved the four-zone output budget was accepted, but the live-submit decision still ignored measured two-zone preservation evidence and failed closed with stale TB-362 language.
-
-Why this outranks alternatives: Four-zone execution and Swiss-scale projection both require the handoff helper to distinguish current preserved two-zone evidence from older failed-closed branches.
-
-Inspect first:
-
-- `docs/balfrin_four_zone_hazard_run_tb370.md`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/submit_balfrin_probe.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Contract repair and regression proving the four-zone package consumes TB-368 preservation-ready evidence instead of stale TB-362 failed-closed text.
-- Regenerated four-zone package with explicit ready/defer decision and accepted output budget.
-- One gated four-zone Balfrin `postproc` submission if the repaired live-submit gate is ready, or a fail-closed report naming the remaining non-stale blocker.
-
-Definition of done:
-
-- Either the repaired package submits and produces a measured or preservation-gated four-zone outcome, or the repository records a precise blocker that is not `deferred_missing_measured_two_zone_evidence` caused by stale TB-362 evidence.
-
-Boundaries: GPT-5.5 worker only for live Balfrin work; `postproc` only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
-
 ### TB-372: Select And Freeze Management AOI Acquisition Target
 
 Goal: Choose one concrete real AOI for the next public-geodata acquisition/preprocessing demonstration and freeze its bounds, CRS, products, expected tiles, and ignored-root layout.

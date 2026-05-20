@@ -4240,3 +4240,43 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no TB-370 `sbatch` command was run, no four-zone job id or run root was produced, no generated Balfrin artifact was committed, no non-`postproc` partition was used, no distributed execution or scale-up claim was made, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was introduced.
 - Next task: `TB-371` should first integrate the TB-370 fail-closed blocker and add the smallest unblock: repair the four-zone handoff/scale-readiness evidence contract so TB-368 measured two-zone preservation evidence is consumed by the live-submit decision before any new four-zone submission attempt.
+
+### TB-371: Repair Four-Zone Handoff Evidence Contract And Rerun Gate
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: repair the four-zone handoff/scale-readiness evidence contract so it consumes the TB-368 preserved two-zone run root, then submit exactly one bounded `postproc` job only if the live-submit gate is ready.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `scripts/submit_balfrin_probe.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_four_zone_hazard_run_tb371.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Repaired the handoff evidence gate so the default measured two-zone evidence source is TB-368, with `preservation_gate_status=ready_for_demonstration_evidence`, `metrics_contract_status=complete`, no missing run-root entries, and no missing output families.
+  - Updated the four-zone authorization/preflight path to extract the ready four-zone hazard package shape, accept the TB-371 one-bounded-probe authorization record, and use the four-zone scratch run root.
+  - Refreshed the scale-readiness matrix so the current two-zone tier is `two_zone_preserved_hazard_run` measured on Balfrin, while the older TB-362 failed-closed branch is retained only as superseded context.
+  - Proved the package locally with focused regressions; the four-zone hazard package now reports `ready_for_submit` and consumes TB-368 evidence instead of `deferred_missing_measured_two_zone_evidence`.
+  - Pushed the contract repair to `origin/main`, fast-forwarded the clean Balfrin checkout to `d5723bb49e07b8c54327203ce24d3aa93c8bb38e`, regenerated the package on Balfrin, and reran the live gate.
+  - Confirmed the regenerated package gate reported `preflight_status=ready_for_authorization_review`, `submit_contract_status=ready`, `output_profile_status=ready`, `reducer_budget_status=ready`, `output_budget_acceptance_status=accepted`, and `release_zone_count=4`.
+  - Checked `postproc` capacity before submission; idle CPUs were available, so the six-hour full-partition rediscussion boundary was not reached.
+  - Submitted exactly one bounded `postproc` job: `4344163`. It completed with `State=COMPLETED`, `ExitCode=0:0`, `Elapsed=00:05:10`, `AllocCPUS=16`, and batch `MaxRSS=674528K`.
+  - Collected metrics and ran the preservation gate against `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_v1`; the collector reported `report_status=measured_run_root`, `metrics_contract_status=complete`, `memory_peak_mb=742.5703125`, `hazard_output_file_count=53`, and `hazard_output_bytes=55832438`.
+  - The preservation gate reported `gate_status=ready_for_demonstration_evidence`, `required_run_root_entries_status=complete`, no missing run-root entries, and no missing output families.
+  - Removed TB-371 from the active backlog after recording the measured four-zone outcome.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-371 --format json`
+  - `rg -n "^### TB-371:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb371_after2 --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb371_after2/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb371_after2/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb371_access_preflight.json --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_scale_readiness_matrix`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git status --short --branch && git rev-parse HEAD'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && rm -rf /tmp/rust_rockfall/tb371_four_zone && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb371_four_zone --format json > /tmp/tb371_four_zone_handoff_stdout.json && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb371_four_zone/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb371_four_zone/balfrin_multi_zone_live_authorization_record_v1.yaml --format json > /tmp/tb371_four_zone_preflight.json'`
+  - `ssh balfrin 'sinfo -p postproc -o "%P %a %l %D %t %C"; squeue -h -p postproc -o "%i %u %T %M %l %D %C %j" | head -50'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_v1 --run-id tschamut_public_balfrin_four_zone_hazard_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/tb371_four_zone/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb371_four_zone/balfrin_multi_zone_live_authorization_record_v1.yaml'`
+  - `ssh balfrin 'sacct -j 4344163 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir -P'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_v1 > /tmp/tb371_collect.json && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_v1 --format json > /tmp/tb371_preservation_gate.json'`
+- Result/status: implemented_measured
+- Boundaries: exactly one live `postproc` job was submitted and completed; no non-`postproc` partition, no distributed execution, no generated artifact commit, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-372`
