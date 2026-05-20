@@ -64,7 +64,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["schema_version"], "balfrin_multi_release_zone_demo_package_v1")
-        self.assertEqual(authorization_record["authorized_task"], "TB-351")
+        self.assertEqual(authorization_record["authorized_task"], "TB-371")
         self.assertEqual(authorization_record["authorization_status"], "authorized_for_one_bounded_probe")
         self.assertEqual(authorization_record["reviewed_handoff_package_path"], str(Path(first["package_json_path"]).resolve()))
         self.assertEqual(authorization_record["reviewed_handoff_package_sha256"], package_sha256)
@@ -250,12 +250,12 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["review_readiness_classification"], "ready_for_review")
         self.assertIn("four-zone review package is ready for review", first["review_readiness_reason"])
         hazard_package = first["four_zone_hazard_execution_package"]
-        self.assertEqual(hazard_package["status"], "deferred_missing_measured_two_zone_evidence")
-        self.assertEqual(hazard_package["readiness_classification"], "deferred_missing_measured_two_zone_evidence")
-        self.assertEqual(hazard_package["decision"], "defer")
-        self.assertEqual(hazard_package["decision_status"], "deferred")
-        self.assertFalse(hazard_package["ready_for_submit"])
-        self.assertIn("TB-362 failed closed", hazard_package["readiness_reason"])
+        self.assertEqual(hazard_package["status"], "ready_for_submit")
+        self.assertEqual(hazard_package["readiness_classification"], "ready_for_submit")
+        self.assertEqual(hazard_package["decision"], "ready_for_submit")
+        self.assertEqual(hazard_package["decision_status"], "ready")
+        self.assertTrue(hazard_package["ready_for_submit"])
+        self.assertIn("Measured two-zone evidence is present", hazard_package["readiness_reason"])
         self.assertEqual(hazard_package["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(
             hazard_package["command_plan"]["output_profile_policy"]["classification"],
@@ -271,7 +271,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             hazard_package["authorization_audit_record"]["authorization_submit_command"],
             first["authorization_submit_command"],
         )
-        self.assertEqual(hazard_package["authorization_audit_record"]["status"], "deferred")
+        self.assertEqual(hazard_package["authorization_audit_record"]["status"], "reviewed")
         self.assertEqual(hazard_package["reduced_output_settings"]["conditional_curve_export"], "summary-only")
         self.assertEqual(hazard_package["reduced_output_settings"]["grid_csv_export"], "none")
         self.assertTrue(hazard_package["preservation_instructions"]["checklist"])
@@ -284,12 +284,17 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(hazard_package["expected_output_budget"]["validation"]["status"], "accepted")
         self.assertEqual(hazard_package["expected_output_budget"]["projection"]["status"], "acceptable")
         self.assertEqual(hazard_package["expected_output_budget"]["manifest_pruning_status"], "budget_passes_no_reduction_needed")
-        self.assertEqual(hazard_package["measured_two_zone_evidence"]["status"], "missing")
+        self.assertEqual(hazard_package["measured_two_zone_evidence"]["status"], "measured")
         self.assertEqual(
             hazard_package["measured_two_zone_evidence"]["classification"],
-            "deferred_missing_measured_two_zone_evidence",
+            "measured_two_zone_evidence_present",
         )
-        self.assertFalse(hazard_package["measured_two_zone_evidence"]["measured_on_balfrin"])
+        self.assertTrue(hazard_package["measured_two_zone_evidence"]["measured_on_balfrin"])
+        self.assertEqual(hazard_package["measured_two_zone_evidence"]["source_task"], "TB-368")
+        self.assertEqual(
+            hazard_package["measured_two_zone_evidence"]["preservation_gate_status"],
+            "ready_for_demonstration_evidence",
+        )
         self.assertEqual(
             hazard_package["expected_artifact_roots"],
             {
@@ -381,7 +386,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIn("## Smallest Run Estimates", rendered)
         self.assertIn("Blocked classification: `blocked_pending_authorization`", rendered)
         self.assertIn("## Measured Two-Zone Evidence", rendered)
-        self.assertIn("deferred_missing_measured_two_zone_evidence", rendered)
+        self.assertIn("ready_for_submit", rendered)
         self.assertIn("## Four-Zone Hazard Execution Package", rendered)
         self.assertEqual(package["submission_classification"], "blocked_pending_new_human_authorization")
         self.assertEqual(package["authorization_classification"], "blocked_pending_authorization")

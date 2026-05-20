@@ -121,12 +121,17 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
     )
     review_only = dict(package.get("review_only_four_zone_package") or hazard_package or {})
     follow_up = dict(package.get("follow_up_recommendation") or {})
+    hazard_ready_for_submit = hazard_package.get("ready_for_submit") is True
     minimum = dict(
-        follow_up.get("minimum_measured_multi_zone_run")
-        or package.get("smallest_measured_multi_zone_run")
-        or hazard_package
-        or review_only
-        or {}
+        hazard_package
+        if hazard_ready_for_submit
+        else (
+            follow_up.get("minimum_measured_multi_zone_run")
+            or package.get("smallest_measured_multi_zone_run")
+            or hazard_package
+            or review_only
+            or {}
+        )
     )
     reducer_pressure = dict(
         minimum.get("reducer_pressure")
@@ -148,7 +153,9 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         "trajectory_count_target": minimum.get("trajectory_count_target"),
         "release_cell_count": minimum.get("release_cell_count"),
         "seed_policy": minimum.get("seed_policy", {}),
-        "trajectory_workers": minimum.get("trajectory_workers"),
+        "trajectory_workers": (minimum.get("trajectory_workers") or 2)
+        if hazard_ready_for_submit
+        else minimum.get("trajectory_workers"),
         "reducer_workers": minimum.get("reducer_workers")
         or reducer_pressure.get("requested_reducer_worker_count"),
         "reducer_chunk_count": minimum.get("reducer_chunk_count")
@@ -179,7 +186,12 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
             "manifest_pressure_bytes": review_only.get("expected_manifest_pressure_bytes")
             or minimum.get("estimated_manifest_pressure_bytes"),
         },
-        "preservation_checklist": list(minimum.get("preservation_gate_checklist") or review_only.get("preservation_gate_checklist") or []),
+        "preservation_checklist": list(
+            minimum.get("preservation_gate_checklist")
+            or dict(hazard_package.get("preservation_instructions") or {}).get("checklist")
+            or review_only.get("preservation_checklist")
+            or []
+        ),
         "preservation_instructions": dict(hazard_package.get("preservation_instructions") or {}),
         "output_roots": dict(minimum.get("output_roots") or {}),
         "reviewed_handoff_package_path": minimum.get("reviewed_handoff_package_path"),
@@ -188,6 +200,7 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         or follow_up.get("authorization_review_command")
         or package.get("authorization_review_command"),
         "authorization_submit_command": minimum.get("authorization_submit_command")
+        or dict(hazard_package.get("authorization_audit_record") or {}).get("authorization_submit_command")
         or follow_up.get("authorization_submit_command")
         or package.get("authorization_submit_command"),
     }
@@ -199,10 +212,15 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
         or package.get("review_only_four_zone_package")
         or {}
     )
+    hazard_ready_for_submit = review_only.get("ready_for_submit") is True
     minimum = dict(
-        dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
-        or package.get("smallest_measured_multi_zone_run")
-        or {}
+        review_only
+        if hazard_ready_for_submit
+        else (
+            dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
+            or package.get("smallest_measured_multi_zone_run")
+            or {}
+        )
     )
     constraint = dict(
         minimum.get("reducer_pressure")
@@ -212,7 +230,8 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
     )
     status = str(constraint.get("status") or package.get("package_constraint_status") or "")
     handoff_projection = dict(
-        constraint.get("handoff_output_budget_projection")
+        dict(review_only.get("expected_output_budget") or {}).get("projection")
+        or constraint.get("handoff_output_budget_projection")
         or package.get("handoff_output_budget_projection")
         or review_only.get("constraint_pressure", {}).get("handoff_output_budget_projection")
         or review_only.get("projection")
@@ -221,12 +240,18 @@ def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -
     review_readiness = str(review_only.get("readiness_classification") or package.get("review_readiness_classification") or "")
     budget_recheck = dict(handoff_projection.get("budget_recheck") or {})
     output_budget_acceptance_validation = dict(
-        handoff_projection.get("budget_acceptance_validation")
+        dict(review_only.get("expected_output_budget") or {}).get("validation")
+        or handoff_projection.get("budget_acceptance_validation")
         or package.get("output_budget_acceptance_validation")
         or review_only.get("output_budget_acceptance_validation")
         or {}
     )
-    manifest_pruning = dict(package.get("manifest_pruning") or review_only.get("manifest_pruning") or {})
+    manifest_pruning = dict(
+        dict(review_only.get("expected_output_budget") or {}).get("manifest_pruning")
+        or package.get("manifest_pruning")
+        or review_only.get("manifest_pruning")
+        or {}
+    )
     blocked_reasons: list[str] = []
 
     def add_blocked_reason(reason: Any) -> None:

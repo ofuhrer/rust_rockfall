@@ -1081,8 +1081,10 @@ def _validate_authorized_submission(
         "TB-351: Multi-Zone Submit Contract Regeneration",
         "TB-368",
         "TB-368: Preserve Trajectory Chunks And Rerun Two-Zone Balfrin Path",
+        "TB-371",
+        "TB-371: Repair Four-Zone Handoff Evidence Contract And Rerun Gate",
     }:
-        missing_inputs.append("authorization record does not target TB-211, TB-226, TB-322, TB-351, or TB-368")
+        missing_inputs.append("authorization record does not target TB-211, TB-226, TB-322, TB-351, TB-368, or TB-371")
     if authorization_value != "authorized_for_one_bounded_probe":
         missing_inputs.append(
             f"authorization_status must be authorized_for_one_bounded_probe, got {authorization_value or 'missing'}"

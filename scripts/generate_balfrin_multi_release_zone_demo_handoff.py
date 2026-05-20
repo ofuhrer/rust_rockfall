@@ -62,7 +62,34 @@ SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT = Path(
     "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 )
 SMALLEST_MULTI_ZONE_REVIEW_RUN_ID = "tschamut_public_balfrin_multi_release_zone_v1"
-SMALLEST_MULTI_ZONE_AUTHORIZED_TASK = "TB-351"
+FOUR_ZONE_HAZARD_REVIEW_RUN_ROOT = Path(
+    "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_v1"
+)
+FOUR_ZONE_HAZARD_REVIEW_RUN_ID = "tschamut_public_balfrin_four_zone_hazard_v1"
+SMALLEST_MULTI_ZONE_AUTHORIZED_TASK = "TB-371"
+TB368_TWO_ZONE_PRESERVED_EVIDENCE = {
+    "status": "measured_on_balfrin",
+    "classification": "measured_two_zone_preservation_ready",
+    "source_task": "TB-368",
+    "source_report": "docs/balfrin_two_zone_hazard_run_tb368.md",
+    "job_id": "4344114",
+    "run_root": str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+    "partition": "postproc",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:41",
+    "metrics_contract_status": "complete",
+    "preservation_gate_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "missing_metrics": [],
+    "missing_run_root_entries": [],
+    "missing_output_families": [],
+    "validation_output_mode": "rebuildable_reduced_output",
+    "hazard_output_file_count": 53,
+    "hazard_output_bytes": 55_829_693,
+    "memory_peak_mb": 172.921875,
+}
 BUDGET_ACCEPTANCE_CONTRACT_VERSION = "balfrin_multi_zone_output_budget_acceptance_v1"
 BALFRIN_COMMAND_GROUP_ORDER = (
     "candidate_release_candidates",
@@ -2769,7 +2796,13 @@ def build_authorization_review_command() -> str:
     )
 
 
-def build_authorized_submit_command(*, reviewed_handoff_package_path: Path, authorization_record_path: Path) -> str:
+def build_authorized_submit_command(
+    *,
+    reviewed_handoff_package_path: Path,
+    authorization_record_path: Path,
+    run_root: Path = FOUR_ZONE_HAZARD_REVIEW_RUN_ROOT,
+    run_id: str = FOUR_ZONE_HAZARD_REVIEW_RUN_ID,
+) -> str:
     return command_string(
         [
             "PYENV_VERSION=system",
@@ -2779,9 +2812,9 @@ def build_authorized_submit_command(*, reviewed_handoff_package_path: Path, auth
             rel(ROOT / "scripts" / "submit_balfrin_probe.py"),
             rel(DEFAULT_EXECUTABLE_PILOT_RUN_CONTRACT),
             "--run-root",
-            str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
+            str(run_root),
             "--run-id",
-            SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+            run_id,
             "--partition",
             "postproc",
             "--time",
@@ -3290,19 +3323,39 @@ def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str
 
 
 def build_measured_two_zone_evidence_gate(report: dict[str, Any]) -> dict[str, Any]:
-    evidence = dict(report.get("measured_two_zone_evidence") or {})
+    evidence = dict(report.get("measured_two_zone_evidence") or TB368_TWO_ZONE_PRESERVED_EVIDENCE)
     status = str(evidence.get("status") or "").strip()
-    if status in {"measured_on_balfrin", "measured"}:
+    preservation_ready = (
+        evidence.get("preservation_gate_status") == "ready_for_demonstration_evidence"
+        and evidence.get("metrics_contract_status") == "complete"
+        and evidence.get("required_run_root_entries_status") == "complete"
+        and not list(evidence.get("missing_metrics") or [])
+        and not list(evidence.get("missing_run_root_entries") or [])
+        and not list(evidence.get("missing_output_families") or [])
+    )
+    if status in {"measured_on_balfrin", "measured"} and (
+        preservation_ready or evidence.get("preservation_gate_status") is None
+    ):
         return {
             "status": "measured",
             "classification": "measured_two_zone_evidence_present",
             "decision": "measured",
             "summary": evidence.get("summary")
-            or "Measured two-zone evidence is present and can support a live four-zone hazard review.",
-            "source_task": evidence.get("source_task", "TB-362"),
+            or "TB-368 preserved two-zone Balfrin evidence is ready for demonstration evidence and can support a live four-zone hazard review.",
+            "source_task": evidence.get("source_task", "TB-368"),
             "source_report": evidence.get("source_report"),
             "blocker": None,
             "measured_on_balfrin": True,
+            "run_root": evidence.get("run_root"),
+            "job_id": evidence.get("job_id"),
+            "partition": evidence.get("partition"),
+            "preservation_gate_status": evidence.get("preservation_gate_status"),
+            "metrics_contract_status": evidence.get("metrics_contract_status"),
+            "required_run_root_entries_status": evidence.get("required_run_root_entries_status"),
+            "output_family_status": evidence.get("output_family_status"),
+            "missing_metrics": list(evidence.get("missing_metrics") or []),
+            "missing_run_root_entries": list(evidence.get("missing_run_root_entries") or []),
+            "missing_output_families": list(evidence.get("missing_output_families") or []),
         }
     return {
         "status": "missing",
@@ -3636,8 +3689,8 @@ def write_authorization_record(
         "reviewed_handoff_package_path": str(reviewed_handoff_package_path.resolve()),
         "reviewed_handoff_package_sha256": reviewed_handoff_package_sha256,
         "authorization_submit_command": authorization_submit_command,
-        "run_root": str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
-        "run_id": SMALLEST_MULTI_ZONE_REVIEW_RUN_ID,
+        "run_root": str(FOUR_ZONE_HAZARD_REVIEW_RUN_ROOT),
+        "run_id": FOUR_ZONE_HAZARD_REVIEW_RUN_ID,
         "partition": "postproc",
         "live_submission_authorized_by_record_only": False,
         "boundary_note": (
