@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-391: Compile Real-AOI Prepared Pilot From Generated Inputs
-
-Goal: Compile the real-AOI terrain, candidate zones, scenario table, output-profile settings, and command sequence into one runnable prepared-pilot package.
-
-Capability gap reduced: The AOI-to-run path is still fractured across dry-run helpers and blocked handoff surfaces.
-
-Why this outranks alternatives: A prepared-pilot package is the executable boundary between input automation and any safe Balfrin probe.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_management_aoi_balfrin_handoff.py`
-
-Deliverables:
-
-- Prepared-pilot manifest, command manifest, expected-output inventory, and run-root layout in ignored scratch space.
-- Local safe-step execution or rehearsal for package validation without running the full ensemble.
-- One explicit command sequence for the next smallest Balfrin candidate run if all gates pass.
-
-Definition of done:
-
-- The prepared-pilot compiler reports `ready` for a nonempty real-AOI package, or fails closed on one concrete executable blocker.
-
-Boundaries: No live Balfrin submission, no large ensemble, no operational claim, and no scale-up authorization.
-
 ### TB-392: Repair Multi-Zone Reduced Output Profile Gate
 
 Goal: Remove the current `blocked_output_profile` obstacle for the smallest multi-zone hazard branch by making the handoff use the canonical rebuildable reduced-output mode and bounded GIS settings.
