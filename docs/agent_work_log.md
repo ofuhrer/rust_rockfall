@@ -4505,3 +4505,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no generated raster commits, no operational GIS claim, no new hazard run, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-383`
+
+### TB-383: Diagnose Management AOI Release-Candidate Blocker
+
+- Date: 2026-05-20
+- Commit: `6115ff4`
+- Objective: stop downstream orchestration after repeated blocked handoffs and identify the concrete upstream reason the management AOI produces zero release-zone candidates.
+- Files changed: `scripts/diagnose_release_candidate_zero_result.py`, `tests/test_release_candidate_zero_result_diagnostic.py`, `docs/current_maturity_snapshot.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic zero-result diagnostic that reuses the terrain release-zone candidate planner and decomposes candidate screening into valid interior cells, frozen-footprint exclusions, screenable cells, slope-band counts, bounded sensitivity variants, and first-blocker classification.
+  - Ran the diagnostic on the real-staged Chant Sura / Fluelapass management AOI and identified the first blocker as `no_screenable_cells`: the 4x4 terrain crop has four valid interior cells, and the frozen source-zone footprint masks all four, leaving zero screenable cells before slope-band screening.
+  - Replaced the stale downstream synthesis backlog item with a targeted unblock task focused on AOI extent / crop / source-zone footprint correction before scenario generation or Balfrin execution resumes.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_candidate_zero_result_diagnostic -v`
+  - `PYENV_VERSION=system uv run python scripts/diagnose_release_candidate_zero_result.py --format json --json-output /tmp/release_candidate_zero_diagnostic.json`
+- Result/status: implemented_diagnostic
+- Boundaries: no threshold tuning, no accepted release-zone claim, no scenario generation, no hazard execution, no Balfrin submission, and no operational or scale-up claim.
+- Next task: `TB-384`

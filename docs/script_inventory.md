@@ -115,6 +115,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/assess_validation_calibration_evidence_gaps.py`
 - `scripts/build_terrain_material_diagnostic_matrix.py`
 - `scripts/collect_tschamut_registration_sensitivity.py`
+- `scripts/diagnose_release_candidate_zero_result.py`
 - `scripts/estimate_large_scale_execution.py`
 - `scripts/estimate_swiss_wide_execution_envelope.py`
 - `scripts/preview_aoi_scenario_cost_estimate.py`

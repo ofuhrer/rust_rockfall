@@ -367,7 +367,15 @@ objective are:
    production release zones, tune thresholds, fit block populations, or claim
    field evidence. The remaining automation gap is moving from fixture-backed
    dry-run contracts to a measured, public-context-backed second-site run only
-   after real swisstopo context is staged.
+   after real swisstopo context is staged. The current management-AOI branch is
+   blocked farther upstream than Balfrin execution: the real-staged Chant Sura /
+   Fluelapass terrain crop is only 4x4 cells, its frozen source-zone footprint
+   covers all four valid interior cells, and the zero-result diagnostic reports
+   `no_screenable_cells`. Scenario generation, prepared-pilot compilation, and
+   the management-AOI Balfrin handoff therefore correctly remain blocked until
+   a non-empty candidate package is produced from a larger or better-scoped AOI
+   crop. This is an AOI/crop/footprint-selection blocker, not a Balfrin or COG
+   packaging blocker.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
    contract, deterministic acquisition planning, a public-geodata cache
@@ -560,7 +568,7 @@ objective are:
     prepared-pilot dry-run report emits `blocked_missing_real_core_inputs`
     rather than treating fixture scaffolding as real workflow evidence.
 14. Backlog and worker-context hygiene have improved materially. TB-181 through
-    TB-319 completed the post-TB-179 execution queues: deterministic
+    TB-383 completed the post-TB-179 execution queues: deterministic
     release-candidate stress evidence, multi-zone reducer pressure,
     second-site dry-run realism, shared validator helpers, dependency
     guidance, calibration failure diagnostics, runtime-facing panic-path
@@ -585,9 +593,13 @@ objective are:
     real-evidence overlays, measured target-area metrics completion, measured
     four-zone postproc/reducer evidence, rejected accumulator optimization
     evidence, refreshed local scaling-ladder status, integrated the blocked
-    four-zone hazard branch into the dashboard and next-run surface, and this
-    post-demonstration synthesis. TB-333 remains active, so the backlog stays
-    executable rather than needing a refill-only pass.
+    four-zone hazard branch into the dashboard and next-run surface, real-staged
+    Chant Sura terrain preprocessing, honest zero-candidate propagation through
+    scenario pressure, prepared-pilot, Balfrin handoff, and no-submit execution
+    state helpers, and a GIS/COG stress check showing the largest committed real
+    output is demonstration-readable. The active backlog should now focus on
+    unblocking candidate generation for a management AOI with screenable terrain
+    before resuming downstream Balfrin execution tasks.
 
 ## Backlog Quality Assessment
 

@@ -39,32 +39,32 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-383: Refresh Management Swiss-Scale Feasibility Decision
+### TB-384: Unblock Management AOI Release-Candidate Screening
 
-Goal: Update the Swiss-scale feasibility projection and management package after the two-zone/four-zone/management-AOI evidence sequence completes.
+Goal: Replace the current zero-screenable-cell management AOI candidate blocker with a bounded, real-staged candidate-generation path or a precise deferral.
 
-Capability gap reduced: Management needs a current answer on whether Swiss-scale is feasible, conditional, or out of reach based on measured evidence.
+Capability gap reduced: Multi-zone scenario generation and Balfrin execution cannot proceed while the real AOI terrain crop/footprint leaves no screenable candidate cells.
 
-Why this outranks alternatives: This synthesis is only useful after the execution and automation evidence above has landed.
+Why this outranks alternatives: Downstream Balfrin handoff, execution, and Swiss-scale projection tasks now only restate the same upstream blocker; this task targets the blocker directly.
 
 Inspect first:
 
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/diagnose_release_candidate_zero_result.py`
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`
+- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml`
 
 Deliverables:
 
-- Updated projection table separating measured evidence, extrapolated assumptions, failed-closed branches, no-go thresholds, and unknowns.
-- Recommendation for 10-zone, 100-zone, regional, and Swiss-wide classes.
+- A deterministic diagnostic or preparation update that resolves whether the blocker is AOI extent, terrain crop size, source-zone footprint overlap, slope band, or missing real input.
+- Either a non-empty real-staged candidate package ready for review, or an explicit no-go/deferral record naming the required AOI/crop/source-zone replacement.
 
 Definition of done:
 
-- Management can read one current feasibility package that reflects the latest measured Balfrin and real-AOI automation evidence.
+- Scenario generation remains blocked only if a concrete upstream data/preparation requirement is named; otherwise a non-empty candidate package exists and downstream scenario-generation work can resume.
 
-Boundaries: Synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
+Boundaries: No threshold tuning to force candidates, no field-validation claim, no operational release-zone claim, no scenario generation, no hazard run, and no Balfrin submission.
 
 ## Backlog Protocol
 
