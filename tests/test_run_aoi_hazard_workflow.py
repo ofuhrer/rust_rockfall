@@ -7,6 +7,7 @@ import importlib.util
 import shutil
 import tempfile
 import unittest
+import time
 from pathlib import Path
 from contextlib import redirect_stdout
 from unittest import mock
@@ -38,6 +39,10 @@ planner = _load_module(PLANNER_SCRIPT_PATH, "plan_aoi_to_prepared_pilot_dry_run_
 staging = _load_module(
     STAGING_SCRIPT_PATH,
     "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_front_door_tests",
+)
+freezer = _load_module(
+    ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py",
+    "generate_candidate_source_zone_scenarios_for_front_door_tests",
 )
 
 
@@ -997,6 +1002,59 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("overwrite is disabled", report["first_failure"]["blocked_reason"])
         self.assertEqual(report["output_root"], str(output_root))
 
+    def test_prepared_pilot_local_execution_uses_two_candidate_freezer_inputs_and_reports_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            review_package_path = self._write_two_candidate_review_package(repo_root)
+            freezer_output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/freezer"
+            freezer_report = freezer.build_freezer_report(
+                review_package_path=review_package_path,
+                accepted_candidate_ids=["cand_accept_a", "cand_accept_b"],
+                output_root=freezer_output_root,
+                trajectory_count=24,
+                seed=34014,
+            )
+
+            smoke_case_path = self._write_multi_zone_smoke_case(
+                repo_root=repo_root,
+                source_zone_metadata_path=Path(freezer_report["output_paths"]["source_zone_metadata"]),
+                scenario_table_path=Path(freezer_report["output_paths"]["scenario_table"]),
+            )
+            prepared_report_path = self._write_ready_prepared_pilot_report(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/prepared_local_execution"
+
+            started_at = time.perf_counter()
+            report = workflow.build_report(
+                command="run-prepared-pilot-local",
+                site_config=config_path,
+                repo_root=ROOT,
+                prepared_pilot_report_path=prepared_report_path,
+                prepared_pilot_output_root=output_root,
+                validation_case_path=smoke_case_path,
+                overwrite=True,
+            )
+            runtime_seconds = time.perf_counter() - started_at
+            qa_review_html_exists = Path(report["expected_paths"]["qa_review_html"]).exists()
+
+        self.assertEqual(freezer_report["accepted_candidate_count"], 2)
+        self.assertEqual(freezer_report["release_row_count"], 2)
+        self.assertEqual(freezer_report["scenario_row_count"], 6)
+        self.assertEqual(report["status"], "local_execution_ready")
+        self.assertEqual(report["workflow_steps"][0]["status"], "smoke_completed")
+        self.assertIn(report["workflow_steps"][1]["status"], {"map_package_ready", "cog_blocked"})
+        self.assertTrue(str(report["workflow_steps"][2]["status"]).startswith("review_ready"))
+        self.assertGreater(report["measured_runtime_seconds"], 0.0)
+        self.assertGreater(runtime_seconds, 0.0)
+        self.assertGreater(report["package_file_count"], 0)
+        self.assertGreater(report["package_byte_count"], 0)
+        self.assertIn("generate_aoi_map_qa_review.py", report["qa_review_entrypoint"])
+        self.assertTrue(qa_review_html_exists)
+        self.assertTrue(report["package_report"]["review_surface_status"].startswith("review_ready"))
+        self.assertEqual(report["review_report"]["layer_presence"]["context_layers"]["count"], 0)
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(report["claim_boundaries"]["annual_frequency_claims_allowed"])
+
     def _write_candidate_config(
         self,
         repo_root: Path,
@@ -1212,6 +1270,204 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             ],
         }
         path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        return path
+
+    def _write_two_candidate_review_package(self, repo_root: Path) -> Path:
+        workdir = repo_root / "review_package"
+        workdir.mkdir(parents=True, exist_ok=True)
+        polygon_path = workdir / "review_candidates.geojson"
+        mask_path = workdir / "review_candidates_mask.asc"
+        csv_path = workdir / "review_candidates.csv"
+        manifest_path = workdir / "review_package_emitted.json"
+        features = [
+            self._candidate_feature("cand_accept_a", 2600000.0, 1200000.0, 2.0),
+            self._candidate_feature("cand_rejected", 2600010.0, 1200010.0, 2.0),
+            self._candidate_feature("cand_accept_b", 2600020.0, 1200020.0, 2.0),
+        ]
+        polygon_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "terrain_release_zone_candidate_review_package_v1",
+                    "type": "FeatureCollection",
+                    "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+                    "candidate_site_name": "Chant Sura / Fluelapass portability example",
+                    "source_zone_id": "chant_sura_reviewed_source_zone",
+                    "candidate_generation_label": "heuristic_candidate_generation_only",
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": [
+                        {
+                            "provenance_label": "workflow_generated",
+                            "meaning": "Candidate generated from workflow terrain and context screening only.",
+                        },
+                        {
+                            "provenance_label": "field_supported",
+                            "meaning": "Candidate can only be treated as field-supported once review has explicitly accepted it.",
+                        },
+                        {
+                            "provenance_label": "mixed_provenance",
+                            "meaning": "Candidate combines workflow generation with accepted field support.",
+                        },
+                        {
+                            "provenance_label": "blocked_missing_provenance",
+                            "meaning": "Candidate cannot be treated as evidence because provenance is missing or overclaimed.",
+                        },
+                    ],
+                    "features": features,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        mask_path.write_text("ncols 1\nnrows 1\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1\n", encoding="utf-8")
+        csv_path.write_text("candidate_release_zone_id\n", encoding="utf-8")
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "terrain_release_zone_candidate_review_package_v1",
+                    "review_package_status": "review_applied",
+                    "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+                    "candidate_site_name": "Chant Sura / Fluelapass portability example",
+                    "source_zone_id": "chant_sura_reviewed_source_zone",
+                    "candidate_release_zone_set_status": "review_ready",
+                    "candidate_release_zone_ids": [feature["properties"]["candidate_release_zone_id"] for feature in features],
+                    "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                    "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+                    "provenance_label_legend": [
+                        {
+                            "provenance_label": "workflow_generated",
+                            "meaning": "Candidate generated from workflow terrain and context screening only.",
+                        },
+                        {
+                            "provenance_label": "field_supported",
+                            "meaning": "Candidate can only be treated as field-supported once review has explicitly accepted it.",
+                        },
+                        {
+                            "provenance_label": "mixed_provenance",
+                            "meaning": "Candidate combines workflow generation with accepted field support.",
+                        },
+                        {
+                            "provenance_label": "blocked_missing_provenance",
+                            "meaning": "Candidate cannot be treated as evidence because provenance is missing or overclaimed.",
+                        },
+                    ],
+                    "review_application": {
+                        "validation_status": "validated",
+                        "accepted_candidate_ids": ["cand_accept_a", "cand_accept_b"],
+                    },
+                    "review_summary": {
+                        "review_row_count": len(features),
+                        "candidate_count": len(features),
+                        "review_decision_counts": {"accepted": 0, "rejected": 0, "needs_field_review": len(features)},
+                        "provenance_label_counts": {
+                            "workflow_generated": len(features),
+                            "field_supported": 0,
+                            "mixed_provenance": 0,
+                            "blocked_missing_provenance": 0,
+                        },
+                        "default_review_decision": "needs_field_review",
+                    },
+                    "candidate_review_rows": [feature["properties"] for feature in features],
+                    "candidate_sensitivity_summary": {},
+                    "candidate_footprint_comparison": {},
+                    "frozen_source_zone_footprint": {},
+                    "claim_boundaries": {
+                        "heuristic_workflow_input_only": True,
+                        "validated_release_zone_evidence": False,
+                        "field_validation_claims_allowed": False,
+                        "physical_release_probability_claims_allowed": False,
+                        "scale_up_authorized": False,
+                        "operational_claims_allowed": False,
+                        "notes": [
+                            "candidate review rows remain workflow review inputs until the source zone is frozen",
+                            "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                        ],
+                    },
+                    "outputs": {
+                        "polygon": str(polygon_path),
+                        "mask": str(mask_path),
+                        "csv": str(csv_path),
+                        "manifest": str(manifest_path),
+                    },
+                    "output_root": str(workdir),
+                    "repo_root": str(repo_root),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return manifest_path
+
+    def _candidate_feature(self, candidate_id: str, xmin: float, ymin: float, size: float) -> dict[str, object]:
+        return {
+            "type": "Feature",
+            "id": candidate_id,
+            "properties": {
+                "candidate_release_zone_id": candidate_id,
+                "review_decision": "accepted" if candidate_id != "cand_rejected" else "rejected",
+                "accepted": candidate_id != "cand_rejected",
+                "rejected": candidate_id == "cand_rejected",
+                "needs_field_review": False,
+                "candidate_generation_label": "heuristic_candidate_generation_only",
+                "candidate_sensitivity_label": "heuristic_sensitive_across_bounded_heuristics",
+                "release_cell_count": 1,
+                "release_cell_ids": [f"{candidate_id}__cell_000"],
+                "provenance_label": "workflow_generated",
+                "component_bbox_lv95_m": {
+                    "crs": "EPSG:2056",
+                    "xmin": xmin,
+                    "ymin": ymin,
+                    "xmax": xmin + size,
+                    "ymax": ymin + size,
+                },
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [xmin, ymin],
+                        [xmin + size, ymin],
+                        [xmin + size, ymin + size],
+                        [xmin, ymin + size],
+                        [xmin, ymin],
+                    ]
+                ],
+            },
+        }
+
+    def _write_multi_zone_smoke_case(
+        self,
+        *,
+        repo_root: Path,
+        source_zone_metadata_path: Path,
+        scenario_table_path: Path,
+    ) -> Path:
+        case_path = repo_root / "multi_zone_probabilistic_phase1_smoke.yaml"
+        case = yaml.safe_load((ROOT / "validation/cases/probabilistic_phase1_smoke.yaml").read_text(encoding="utf-8"))
+        case_path.write_text(yaml.safe_dump(case, sort_keys=False), encoding="utf-8")
+        return case_path
+
+    def _write_ready_prepared_pilot_report(self, repo_root: Path) -> Path:
+        path = repo_root / "prepared_pilot_report.yaml"
+        payload = {
+            "schema_version": "aoi_to_prepared_pilot_dry_run_v1",
+            "workflow_status": "ready_for_local_smoke",
+            "prepared_pilot_compiler": {
+                "classification": "ready_for_local_smoke",
+                "execution_hints": {
+                    "local": {"status": "ready_for_local_smoke"},
+                },
+                "first_blocker": {
+                    "step_id": "none",
+                    "blocked_reason": "",
+                    "missing_inputs": [],
+                },
+            },
+        }
+        path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
         return path
 
     def _write_real_public_context_bundles(

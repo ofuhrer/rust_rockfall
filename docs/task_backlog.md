@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-330: User AOI Local Multi-Zone Smoke Demonstration
-
-Goal: Run a bounded local multi-zone smoke demonstration from AOI bounds or a real-staged handoff through reduced validation output, hazard packaging, and QA review.
-
-Capability gap reduced: The AOI-to-map path is currently fixture-backed and mostly single-smoke; it needs a small multi-zone local proof before Balfrin scale runs.
-
-Why this outranks alternatives: Local multi-zone smoke catches workflow and output-profile issues cheaply before consuming Balfrin time.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_aoi_golden_fixture_package.py`
-
-Deliverables:
-
-- Local two-zone or four-zone smoke command/test using reduced outputs and ignored scratch roots.
-- Measured local runtime, file count, bytes, package status, and QA-review entrypoint.
-- Explicit blockers if real-staged inputs are not available.
-
-Definition of done:
-
-- A user-facing command or regression demonstrates AOI-to-review-map behavior for more than one candidate zone locally.
-
-Boundaries: Local bounded smoke only; no live Balfrin submission, no Swiss-wide claim, no operational claim, no annual/physical/risk semantics.
-
 ### TB-331: Four-Zone Balfrin Hazard Probe Package
 
 Goal: Build a reviewed four-zone Balfrin hazard-execution package from the repaired two-zone path and measured cost projections.

@@ -19,6 +19,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -1144,6 +1145,7 @@ def build_prepared_pilot_local_execution_report(
     validation_case_path: Path,
     overwrite: bool,
 ) -> dict[str, Any]:
+    started_at = time.perf_counter()
     if prepared_pilot_report_path is None:
         return build_prepared_pilot_local_execution_failure_report(
             prepared_pilot_report_path=None,
@@ -1417,6 +1419,7 @@ def build_prepared_pilot_local_execution_report(
             "--overwrite",
         ],
     }
+    measured_runtime_seconds = round(time.perf_counter() - started_at, 3)
     return {
         "schema_version": PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION,
         "command": "run-prepared-pilot-local",
@@ -1451,6 +1454,10 @@ def build_prepared_pilot_local_execution_report(
         "first_failure": None,
         "manifest_checksums": manifest_checksums,
         "command_recipes": command_recipes,
+        "measured_runtime_seconds": measured_runtime_seconds,
+        "package_file_count": package_report.get("package_file_count", 0),
+        "package_byte_count": package_report.get("package_byte_count", 0),
+        "qa_review_entrypoint": " ".join(command_recipes["qa_review"]),
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "scale_up_authorized": False,
