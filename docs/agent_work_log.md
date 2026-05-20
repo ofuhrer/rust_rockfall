@@ -4061,3 +4061,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: deferred/no-op report only; no new hazard run, no scratch or failed-closed promotion to measured status, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim.
 - Next task: obtain a measured two-zone hazard run root, then resume performance profiling with TB-365 or a successor bottleneck task.
+
+### TB-365: Resolve Two-Zone Output-Profile Preflight Blocker
+
+- Date: 2026-05-20
+- Commit: `b3ce761`
+- Objective: stop the explicit smallest two-zone Balfrin preflight from inheriting four-zone review-package output-profile and reducer-budget blockers when the requested `2 / 2 / 2` package is already ready.
+- Files changed: `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Removed the four-zone review-package efficiency and output-budget readiness checks from the smallest multi-zone preflight’s reducer-budget and output-profile gates so the explicit two-zone contract is judged on its own measured constraints and output-budget validation.
+  - Added a focused regression that forces the review package into `blocked_efficiency` while keeping the smallest two-zone shape ready, then verified the preflight still reports `ready_for_authorization_review` with `output_profile_status=ready`, `reducer_budget_status=ready`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
+  - Removed TB-365 from the active backlog once the repair and regression were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff`
+  - `PYENV_VERSION=system uv run python - <<'PY' ... PY`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live Balfrin submission, no `sbatch`, no non-`postproc` partition, no distributed execution, no scale-up claim, and no operational or hazard-evidence claim.
+- Next task: `TB-366`
