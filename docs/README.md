@@ -220,6 +220,9 @@ or operational products.
 - `large_scale_execution_probe.md`: projection-only execution estimator.
 - `swiss_scale_feasibility_projection.md`: measured-evidence Swiss-scale
   feasibility projection report.
+- `balfrin_scale_demonstration_management_package.md`: concise management
+  synthesis of measured, projected, failed-closed, fixture-backed, and deferred
+  Balfrin scale-demonstration evidence.
 - `multi_zone_reducer_pressure_probe.md`: scratch-root multi-zone reducer
   pressure probe.
 

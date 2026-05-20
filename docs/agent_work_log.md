@@ -3527,3 +3527,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: projection and synthesis only; no new run, no Swiss-scale authorization, no operational claim, and no annual/physical/risk semantics.
 - Next task: `TB-339`
+
+### TB-339: Balfrin Scale Demonstration Management Package
+
+- Date: 2026-05-20
+- Commit: `pending`
+- Objective: package the measured Balfrin evidence, Swiss-scale projection, failed-closed submit branches, and deferred next-step choice into one management-facing surface without upgrading any claim.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/README.md`, `docs/current_maturity_snapshot.md`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added explicit projection-only and failed-closed sections to the Balfrin management package so the report separates measured evidence, projection-only feasibility, failed-closed branches, and deferred authorization.
+  - Corrected the next-milestone mapping to report hazard-builder optimization instead of the stale metrics-completion placeholder, while keeping the next authorized step at management review.
+  - Refreshed the supporting maturity and sufficiency docs, materialized the management-package markdown surface, and removed TB-339 from the active backlog so the repository now presents one bounded management-facing summary instead of a scattered evidence trail.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_measured
+- Boundaries: management synthesis only; no new Balfrin job, no operational claim, no annual/physical/risk semantics, no scale-up authorization, and no distributed execution claim.
+- Next task: `none`

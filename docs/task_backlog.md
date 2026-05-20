@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-339: Balfrin Scale Demonstration Management Package
-
-Goal: Produce a concise management-facing package that explains current Balfrin feasibility, measured scale evidence, failed-closed branches, next run choice, and Swiss-scale projection.
-
-Capability gap reduced: Technical evidence is now distributed across many helpers and needs one bounded demonstration narrative for decision makers.
-
-Why this outranks alternatives: Management needs a clear projection and next decision after the measured multi-zone and Swiss-scale projection tasks, not another raw technical report.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `tests/test_balfrin_management_demo_package.py`
-
-Deliverables:
-
-- Management package summarizing measured Balfrin evidence, AOI automation maturity, Swiss-scale feasibility classification, top blockers, and recommended next run.
-- Clear separation of measured, projection-only, failed-closed, and deferred evidence.
-- Explicit non-operational and no-physical-frequency boundaries.
-
-Definition of done:
-
-- A non-technical reader can understand whether the current architecture plausibly scales, what evidence supports that answer, and what must be done next.
-
-Boundaries: Management synthesis only after evidence/projection tasks; no claim upgrade, no new Balfrin job, no operational claim, no annual/physical/risk semantics.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

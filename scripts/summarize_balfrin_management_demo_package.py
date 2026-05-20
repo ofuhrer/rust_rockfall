@@ -117,10 +117,20 @@ def build_report(
     required_keys = (
         "runtime_section",
         "replay_section",
+        "target_area_aoi_automation_section",
+        "target_area_release_scenario_section",
+        "target_area_probe_metrics_section",
+        "target_area_canonical_bundle_section",
         "restartability_section",
         "gis_scope_section",
         "uncertainty_section",
         "claim_boundary_section",
+        "scaling_section",
+        "physical_credibility_section",
+        "swiss_wide_extension_section",
+        "swiss_scale_feasibility_projection_section",
+        "failed_closed_section",
+        "next_decision_section",
     )
     if any(key in evidence_override for key in required_keys):
         missing_inputs = [key for key in required_keys if key not in evidence_override]
@@ -134,11 +144,21 @@ def build_report(
         return assemble_package_report(
             runtime_section=dict(evidence_override["runtime_section"]),
             replay_section=dict(evidence_override["replay_section"]),
+            target_area_aoi_automation_section=dict(evidence_override["target_area_aoi_automation_section"]),
+            target_area_release_scenario_section=dict(evidence_override["target_area_release_scenario_section"]),
+            target_area_probe_metrics_section=dict(evidence_override["target_area_probe_metrics_section"]),
+            target_area_canonical_bundle_section=dict(evidence_override["target_area_canonical_bundle_section"]),
             restartability_section=dict(evidence_override["restartability_section"]),
             gis_scope_section=dict(evidence_override["gis_scope_section"]),
             uncertainty_section=dict(evidence_override["uncertainty_section"]),
             claim_boundary_section=dict(evidence_override["claim_boundary_section"]),
             scaling_section=dict(evidence_override["scaling_section"]),
+            physical_credibility_section=dict(evidence_override["physical_credibility_section"]),
+            swiss_wide_extension_section=dict(evidence_override["swiss_wide_extension_section"]),
+            swiss_scale_feasibility_projection_section=dict(
+                evidence_override["swiss_scale_feasibility_projection_section"]
+            ),
+            failed_closed_section=dict(evidence_override["failed_closed_section"]),
             next_decision_section=dict(evidence_override["next_decision_section"]),
             source_artifacts=as_mapping(evidence_override.get("source_artifacts")),
             regeneration_commands=listify(evidence_override.get("regeneration_commands")),
@@ -192,6 +212,8 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
             bundle_report=bundle_report,
             physical_credibility_report=physical_credibility_report,
         ),
+        swiss_scale_feasibility_projection_section=build_swiss_scale_feasibility_projection_section(),
+        failed_closed_section=build_failed_closed_section(),
         next_decision_section=build_next_decision_section(bundle_report, post_run_report),
         source_artifacts=build_source_artifacts(
             bundle_report=bundle_report,
@@ -235,6 +257,8 @@ def assemble_package_report(
     scaling_section: dict[str, Any],
     physical_credibility_section: dict[str, Any],
     swiss_wide_extension_section: dict[str, Any],
+    swiss_scale_feasibility_projection_section: dict[str, Any],
+    failed_closed_section: dict[str, Any],
     next_decision_section: dict[str, Any],
     source_artifacts: dict[str, Any],
     regeneration_commands: list[str],
@@ -279,6 +303,16 @@ def assemble_package_report(
             swiss_wide_extension_section,
             build_section_source_paths(swiss_wide_extension_section),
         ),
+        (
+            "swiss_scale_feasibility_projection_section",
+            swiss_scale_feasibility_projection_section,
+            build_section_source_paths(swiss_scale_feasibility_projection_section),
+        ),
+        (
+            "failed_closed_section",
+            failed_closed_section,
+            build_section_source_paths(failed_closed_section),
+        ),
         ("next_decision_section", next_decision_section, build_section_source_paths(next_decision_section)),
     ]
     section_provenance_profile = []
@@ -308,6 +342,8 @@ def assemble_package_report(
             scaling_section,
             physical_credibility_section,
             swiss_wide_extension_section,
+            swiss_scale_feasibility_projection_section,
+            failed_closed_section,
             next_decision_section,
         ),
         "section_counts": section_provenance_counts(section_provenance_profile),
@@ -332,6 +368,8 @@ def assemble_package_report(
         "scaling_section": scaling_section,
         "physical_credibility_section": physical_credibility_section,
         "swiss_wide_extension_section": swiss_wide_extension_section,
+        "swiss_scale_feasibility_projection_section": swiss_scale_feasibility_projection_section,
+        "failed_closed_section": failed_closed_section,
         "next_decision_section": next_decision_section,
         "claim_boundaries": claim_boundary_section.get("claim_boundaries", post_run_gate.claim_boundaries()),
         "section_provenance_profile": section_provenance_profile,
@@ -363,6 +401,8 @@ def blocked_report(
         "scaling_section",
         "physical_credibility_section",
         "swiss_wide_extension_section",
+        "swiss_scale_feasibility_projection_section",
+        "failed_closed_section",
         "next_decision_section",
     )
     section_provenance_profile = [
@@ -401,6 +441,8 @@ def blocked_report(
         "scaling_section": {"status": "blocked_missing_inputs"},
         "physical_credibility_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "swiss_wide_extension_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "swiss_scale_feasibility_projection_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
+        "failed_closed_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "next_decision_section": {"status": "blocked_missing_inputs"},
         "claim_boundaries": claim_boundaries,
         "section_provenance_profile": section_provenance_profile,
@@ -689,6 +731,7 @@ def build_next_milestone_recommendation(next_live_decision_report: dict[str, Any
         "metrics_completion_rerun": "metrics completion",
         "smallest_bounded_multi_zone_probe": "smallest multi-zone measurement",
         "defer_portability_or_physical_evidence": "real second-site staging",
+        "hazard_builder_accumulation_optimization": "hazard-builder optimization",
     }
     recommendation = recommendation_map.get(action_id, "physical-evidence intake")
     return {
@@ -946,6 +989,80 @@ def build_swiss_wide_extension_section(
     }
 
 
+def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
+    return {
+        "status": "projection_only",
+        "evidence_type": "projection_only",
+        "summary": (
+            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary."
+        ),
+        "projection_classification": {
+            "10_zone": "feasible",
+            "100_zone": "conditionally_feasible_deferred",
+            "regional": "out_of_reach",
+            "swiss_wide": "out_of_reach",
+        },
+        "top_blockers": [
+            "manifest_size_first_bottleneck",
+            "multi_job_pressure_without_measured_distributed_support",
+            "scheduler_practicality_requires_authorization",
+            "gis_cog_manifest_fields_missing",
+        ],
+        "measured_basis": {
+            "aoi_count": 1,
+            "release_zone_count": 10,
+            "trajectory_count": 6,
+            "single_node_postproc_boundary": True,
+        },
+        "source_paths": [
+            "docs/swiss_scale_feasibility_projection.md",
+            "scripts/estimate_swiss_wide_execution_envelope.py",
+            "scripts/summarize_balfrin_scale_readiness_matrix.py",
+            "docs/current_maturity_snapshot.md",
+        ],
+    }
+
+
+def build_failed_closed_section() -> dict[str, Any]:
+    return {
+        "status": "failed_closed",
+        "evidence_type": "failed_closed",
+        "summary": (
+            "The recent submit branches failed closed before live execution, so they remain guardrail evidence rather than measured scale capability."
+        ),
+        "failed_closed_branches": [
+            {
+                "task": "TB-332/TB-333",
+                "branch": "four-zone hazard submit",
+                "failure_point": "authorization checksum mismatch before sbatch",
+                "classification": "failed_closed",
+            },
+            {
+                "task": "TB-321",
+                "branch": "live-shape repair",
+                "failure_point": "reviewed command targeted the four-zone review-only profile and an unwritable /scratch/rust_rockfall path",
+                "classification": "failed_closed",
+            },
+            {
+                "task": "TB-309",
+                "branch": "reviewed two-zone submit package",
+                "failure_point": "target-area wrapper manifest used instead of the executable contract",
+                "classification": "failed_closed",
+            },
+        ],
+        "top_blockers": [
+            "authorization_record_checksum_mismatch",
+            "review_only_profile_mismatch",
+            "submit_contract_manifest_mismatch",
+        ],
+        "source_paths": [
+            "docs/current_maturity_snapshot.md",
+            "docs/multi_zone_reducer_pressure_probe.md",
+            "docs/balfrin_single_job_execution_sufficiency.md",
+        ],
+    }
+
+
 def build_gis_scope_section(bundle_report: dict[str, Any]) -> dict[str, Any]:
     gis_scope_report = dict(bundle_report.get("gis_cog_scope_report") or {})
     gis_report = dict(bundle_report.get("gis_cog_readiness_report") or {})
@@ -1046,6 +1163,7 @@ def build_next_decision_section(bundle_report: dict[str, Any], post_run_report: 
         "summary": "This package is for review and decision-making, not for launching another Balfrin job.",
         "recommended_next_authorized_step": next_authorized_step,
         "recommendation": recommendation,
+        "evidence_type": "deferred",
         "source_paths": [str(post_run_gate.DEFAULT_CONTRACT), "docs/balfrin_single_job_execution_sufficiency.md"],
     }
 
@@ -1168,7 +1286,15 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  summary: {report['package_summary']['summary']}",
         "  section_counts:",
     ]
-    for key in ("measured", "fixture_backed", "unavailable", "blocked_missing_inputs"):
+    for key in (
+        "measured",
+        "fixture_backed",
+        "unavailable",
+        "blocked_missing_inputs",
+        "projection_only",
+        "failed_closed",
+        "deferred",
+    ):
         if key in report["package_summary"]["section_counts"]:
             lines.append(f"    {key}: {report['package_summary']['section_counts'][key]}")
     lines.extend(
@@ -1228,6 +1354,13 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['swiss_wide_extension_section'].get('status', 'unknown')}",
             f"  answer: {report['swiss_wide_extension_section'].get('answer', 'unknown')}",
             f"  no_go_labels: {report['swiss_wide_extension_section'].get('no_go_labels', [])}",
+            "swiss_scale_feasibility_projection_section:",
+            f"  status: {report['swiss_scale_feasibility_projection_section'].get('status', 'unknown')}",
+            f"  projection_classification: {report['swiss_scale_feasibility_projection_section'].get('projection_classification', {})}",
+            f"  top_blockers: {report['swiss_scale_feasibility_projection_section'].get('top_blockers', [])}",
+            "failed_closed_section:",
+            f"  status: {report['failed_closed_section'].get('status', 'unknown')}",
+            f"  failed_closed_branches: {len(report['failed_closed_section'].get('failed_closed_branches', []))}",
             "next_decision_section:",
             f"  status: {report['next_decision_section'].get('status', 'unknown')}",
             f"  recommended_next_authorized_step: {report['next_decision_section'].get('recommended_next_authorized_step', 'unknown')}",
@@ -1293,7 +1426,7 @@ def section_status(section_payload: dict[str, Any]) -> str:
 def classify_evidence_type(section_payload: dict[str, Any], source_paths: list[str]) -> str:
     status = section_status(section_payload)
     evidence_type = str(section_payload.get("evidence_type") or "").strip()
-    if evidence_type in {"measured", "fixture_backed", "unavailable", "blocked"}:
+    if evidence_type in {"measured", "fixture_backed", "unavailable", "blocked", "projection_only", "failed_closed", "deferred"}:
         return evidence_type
     if evidence_type == "blocked_missing_inputs":
         return "blocked"
@@ -1332,6 +1465,8 @@ def summarize_package(
     scaling_section: dict[str, Any],
     physical_credibility_section: dict[str, Any],
     swiss_wide_extension_section: dict[str, Any],
+    swiss_scale_feasibility_projection_section: dict[str, Any],
+    failed_closed_section: dict[str, Any],
     next_decision_section: dict[str, Any],
 ) -> str:
     if package_status == "blocked_missing_inputs":
@@ -1346,26 +1481,43 @@ def summarize_package(
         or "unknown"
     )
     swiss_wide_answer = str(swiss_wide_extension_section.get("answer") or "Swiss-wide extension remains deferred.")
+    projection_summary = str(
+        swiss_scale_feasibility_projection_section.get("summary")
+        or "Swiss-scale feasibility remains projection-only."
+    )
+    failed_closed_summary = str(
+        failed_closed_section.get("summary")
+        or "Failed-closed branches remain separate from measured evidence."
+    )
     scaling_implication = str(scaling_section.get("scaling_implication") or "Scaling stays bounded by the single-job path.")
     next_step = str(next_decision_section.get("recommended_next_authorized_step") or "management review of this package")
     if package_status == "mixed_provenance":
         return (
             "Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; "
             f"replay is fixture-backed, AOI automation is {aoi_status}, release/scenario automation is {release_status}, "
-            f"target-area probe metrics are {probe_status}, and target-area canonical evidence remains measured. "
-            f"{swiss_wide_answer} Physical credibility is {physical_state}. {scaling_implication} The next authorized step is {next_step}."
+            f"target-area probe metrics are {probe_status}, Swiss-scale feasibility is projection-only, and failed-closed branches stay separate. "
+            f"{projection_summary} {failed_closed_summary} {swiss_wide_answer} Physical credibility is {physical_state}. "
+            f"{scaling_implication} The next authorized step is {next_step}."
         )
     if package_status == "fixture_backed":
         return (
             f"All package sections are fixture-backed, so the manifest is replayable but does not represent live measured evidence. {scaling_implication} The next authorized step is {next_step}."
         )
     return (
-        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false. {swiss_wide_answer} {scaling_implication} The next authorized step is {next_step}."
+        f"Runtime, replay, restartability, GIS scope, uncertainty, and claim boundaries are explicit; replay provenance is {replay_status} and operational, annual-frequency, physical-probability, scale-up, and distributed-execution claims remain false. {projection_summary} {failed_closed_summary} {swiss_wide_answer} {scaling_implication} The next authorized step is {next_step}."
     )
 
 
 def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
-    counts = {"measured": 0, "fixture_backed": 0, "unavailable": 0, "blocked_missing_inputs": 0}
+    counts = {
+        "measured": 0,
+        "fixture_backed": 0,
+        "unavailable": 0,
+        "blocked_missing_inputs": 0,
+        "projection_only": 0,
+        "failed_closed": 0,
+        "deferred": 0,
+    }
     for section in profile:
         evidence_type = str(section.get("evidence_type") or "blocked")
         if evidence_type == "measured":
@@ -1374,6 +1526,12 @@ def section_provenance_counts(profile: list[dict[str, Any]]) -> dict[str, int]:
             counts["fixture_backed"] += 1
         elif evidence_type == "unavailable":
             counts["unavailable"] += 1
+        elif evidence_type == "projection_only":
+            counts["projection_only"] += 1
+        elif evidence_type == "failed_closed":
+            counts["failed_closed"] += 1
+        elif evidence_type == "deferred":
+            counts["deferred"] += 1
         else:
             counts["blocked_missing_inputs"] += 1
     return counts
@@ -1433,6 +1591,7 @@ def evidence_sources(source_artifacts: dict[str, Any]) -> list[str]:
         "scripts/summarize_balfrin_post_run_interpretation_gate.py",
         "scripts/summarize_balfrin_single_job_execution.py",
         "scripts/audit_gis_cog_package_readiness.py",
+        "docs/swiss_scale_feasibility_projection.md",
         "docs/balfrin_single_job_execution_sufficiency.md",
         "docs/current_maturity_snapshot.md",
         "docs/target_area_physical_evidence_acquisition_pack.md",

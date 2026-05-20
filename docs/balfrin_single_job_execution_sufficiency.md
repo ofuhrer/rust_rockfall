@@ -270,7 +270,9 @@ remains `missing`.
 
 For a compact management-facing package manifest that keeps runtime, replay,
 AOI automation, release/scenario automation, restartability, GIS scope,
-uncertainty, Swiss-wide extension blockers, and claim boundaries separate, use
+uncertainty, Swiss-wide extension blockers, the projection-only Swiss-scale
+classification, failed-closed submit branches, and claim boundaries separate,
+use
 `scripts/summarize_balfrin_management_demo_package.py`:
 
 ```bash
@@ -286,7 +288,10 @@ be replayed without merging measured evidence with the fixture-backed replay
 section. It also keeps the false operational, annual-frequency, physical-
 probability, scale-up, and distributed-execution boundaries explicit, and it
 includes an explicit management answer about Swiss-wide extensibility with
-the current blockers named rather than inferred.
+the current blockers named rather than inferred. The package also separates
+measured evidence from projection-only feasibility, failed-closed branches,
+and the deferred next authorized step, while the readiness matrix names
+hazard-builder optimization as the next runnable milestone.
 
 For the fail-closed closure package that now distinguishes
 `metrics_complete`, `metrics_unrecoverable_deferred`, and

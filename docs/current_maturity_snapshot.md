@@ -163,6 +163,12 @@ These are the first real Balfrin demonstration evidence records in the
 repository. They are still bounded, non-operational conditional diagnostic
 demonstrations. They do not establish physical credibility, annual frequency,
 risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
+TB-339 now packages the measured evidence, the projection-only Swiss-scale
+feasibility classification, the failed-closed submit branches, and the
+deferred next authorized step into one management-facing surface without
+upgrading any claim. The readiness matrix points the next runnable milestone
+at hazard-builder optimization, but that remains separate from the next
+authorized step of management review.
 The largest near-term gap has moved from "can the Balfrin demo execute?" and
 "can an AOI dry run be composed?" to "which measured action should now be run
 under the standing Balfrin postproc clearance?" Metrics completion, smallest

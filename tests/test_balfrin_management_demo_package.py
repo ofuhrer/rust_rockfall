@@ -30,7 +30,15 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["package_provenance_status"], "mixed_provenance")
         self.assertEqual(
             report["package_summary"]["section_counts"],
-            {"measured": 10, "fixture_backed": 1, "unavailable": 2, "blocked_missing_inputs": 1},
+            {
+                "measured": 9,
+                "fixture_backed": 1,
+                "unavailable": 2,
+                "blocked_missing_inputs": 1,
+                "projection_only": 1,
+                "failed_closed": 1,
+                "deferred": 1,
+            },
         )
         self.assertEqual(report["replay_section"]["status"], "replayable")
         self.assertEqual(report["replay_section"]["run_root_provenance"], "fixture_backed")
@@ -52,6 +60,10 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             report["swiss_wide_extension_section"]["no_go_labels"],
             ["aoi_count_exceeds_measured_support", "total_job_count_exceeds_measured_single_job_support"],
         )
+        self.assertEqual(report["swiss_scale_feasibility_projection_section"]["status"], "projection_only")
+        self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "feasible")
+        self.assertEqual(report["failed_closed_section"]["status"], "failed_closed")
+        self.assertEqual(report["next_decision_section"]["evidence_type"], "deferred")
         self.assertTrue(report["scaling_section"]["single_job_sufficient_for_next_step"])
         self.assertFalse(report["scaling_section"]["scale_up_authorized"])
         self.assertEqual(report["next_decision_section"]["status"], "deferred")
@@ -59,7 +71,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertIn("replay is fixture-backed", report["package_summary"]["summary"])
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
-        self.assertIn("Plausibly extensible in architecture", report["package_summary"]["summary"])
+        self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
+        self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
         self.assertEqual(len(report["regeneration_commands"]), 5)
         self.assertIn("summarize_balfrin_management_demo_package.py", report["regeneration_commands"][-1])
@@ -67,6 +80,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("next_decision_section:", package.render_text_report(report))
         self.assertIn("target_area_aoi_automation_section:", package.render_text_report(report))
         self.assertIn("swiss_wide_extension_section:", package.render_text_report(report))
+        self.assertIn("swiss_scale_feasibility_projection_section:", package.render_text_report(report))
+        self.assertIn("failed_closed_section:", package.render_text_report(report))
 
     def test_readiness_matrix_tracks_required_gates_and_claim_boundaries(self) -> None:
         run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
@@ -77,8 +92,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(matrix["schema_version"], "balfrin_full_scale_readiness_matrix_v1")
         self.assertEqual(matrix["status"], "blocked")
         self.assertEqual(matrix["clean_checkout_probe"]["status"], "blocked_missing_run_root")
-        self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "metrics completion")
-        self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "metrics_completion_rerun")
+        self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "hazard-builder optimization")
+        self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "hazard_builder_accumulation_optimization")
 
         gates = {row["gate"] for row in matrix["rows"]}
         self.assertEqual(
@@ -131,7 +146,15 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["package_status"], "fixture_backed")
         self.assertEqual(
             report["package_summary"]["section_counts"],
-            {"measured": 0, "fixture_backed": 14, "unavailable": 0, "blocked_missing_inputs": 0},
+            {
+                "measured": 0,
+                "fixture_backed": 16,
+                "unavailable": 0,
+                "blocked_missing_inputs": 0,
+                "projection_only": 0,
+                "failed_closed": 0,
+                "deferred": 0,
+            },
         )
         self.assertTrue(all(section["evidence_type"] == "fixture_backed" for section in report["section_provenance_profile"]))
         self.assertIn("fixture-backed", report["package_summary"]["summary"])
@@ -147,7 +170,15 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["package_status"], "blocked_missing_inputs")
         self.assertEqual(
             report["package_summary"]["section_counts"],
-            {"measured": 0, "fixture_backed": 0, "unavailable": 0, "blocked_missing_inputs": 14},
+            {
+                "measured": 0,
+                "fixture_backed": 0,
+                "unavailable": 0,
+                "blocked_missing_inputs": 16,
+                "projection_only": 0,
+                "failed_closed": 0,
+                "deferred": 0,
+            },
         )
         self.assertTrue(all(section["evidence_type"] == "blocked" for section in report["section_provenance_profile"]))
         self.assertEqual(report["missing_inputs"], ["replay_section"])
@@ -194,9 +225,12 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         report["package_summary"]["summary"] = "fixture-backed management package."
         report["package_summary"]["section_counts"] = {
             "measured": 0,
-            "fixture_backed": 14,
+            "fixture_backed": 16,
             "unavailable": 0,
             "blocked_missing_inputs": 0,
+            "projection_only": 0,
+            "failed_closed": 0,
+            "deferred": 0,
         }
         report["section_provenance_profile"] = [
             {**section, "status": "fixture_backed", "evidence_type": "fixture_backed"}
@@ -216,6 +250,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             "scaling_section",
             "physical_credibility_section",
             "swiss_wide_extension_section",
+            "swiss_scale_feasibility_projection_section",
+            "failed_closed_section",
             "next_decision_section",
         ):
             if isinstance(report.get(key), dict):
