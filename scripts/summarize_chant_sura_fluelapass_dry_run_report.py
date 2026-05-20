@@ -726,6 +726,8 @@ def classify_workflow(
 ) -> str:
     if prepared_pilot_input_classification == "missing":
         return "blocked_missing_real_core_inputs"
+    if prepared_pilot_input_classification == "fixture_backed":
+        return "blocked_fixture_backed_inputs"
     if blocked_fixture_backed_inputs:
         return "blocked_fixture_backed_inputs"
     if blocked_partial_real_inputs:

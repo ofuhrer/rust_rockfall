@@ -1136,6 +1136,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
     ) -> None:
         manifest_path = repo_root / f"data/processed/swisstopo/{candidate_site_id}/input/public_geodata_cache_manifest.yaml"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        context_root = repo_root / f"data/processed/swisstopo/{candidate_site_id}/context"
         records = []
         product_ids = [
             "swissimage_context",
@@ -1162,6 +1163,11 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 "license_or_terms_reference": "example terms",
             }
             metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+            product_root = context_root / product_id.replace("_context", "")
+            product_root.mkdir(parents=True, exist_ok=True)
+            (product_root / "payload.bin").write_bytes(payload)
+            if product_id == "swisstlm3d_context":
+                (product_root / "metadata.json").write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
             records.append(
                 {
                     "product_id": product_id,

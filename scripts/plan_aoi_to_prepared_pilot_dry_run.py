@@ -18,6 +18,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 try:
     import yaml  # type: ignore
 except ImportError as exc:  # pragma: no cover - environment setup.
@@ -25,7 +29,6 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 
-ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_to_prepared_pilot_dry_run_v1"
 CASE_SKELETON_SCHEMA_VERSION = "aoi_to_prepared_pilot_case_skeleton_v1"
 COMMAND_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_manifest_v1"
@@ -38,6 +41,9 @@ RUN_MANIFEST_SCHEMA_VERSION = "aoi_to_prepared_pilot_run_manifest_v1"
 EXPECTED_IO_INVENTORY_SCHEMA_VERSION = "aoi_to_prepared_pilot_expected_io_inventory_v1"
 EXECUTION_HINTS_SCHEMA_VERSION = "aoi_to_prepared_pilot_execution_hints_v1"
 FIRST_BLOCKER_SCHEMA_VERSION = "aoi_to_prepared_pilot_first_blocker_v1"
+PREPARED_PILOT_INPUT_READINESS_SCHEMA_VERSION = "aoi_to_prepared_pilot_input_readiness_v1"
+REAL_INPUT_ACQUISITION_HANDOFF_SCHEMA_VERSION = "aoi_to_prepared_pilot_real_input_acquisition_handoff_v1"
+COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -60,6 +66,10 @@ CANDIDATE_GENERATION = _load_module("aoi_to_prepared_pilot_candidate_generation"
 SCENARIO_PLAN = _load_module("aoi_to_prepared_pilot_scenario_plan", "plan_pragmatic_release_plan.py")
 GENERIC_RELEASE_PLAN = _load_module("aoi_to_prepared_pilot_generic_release_plan", "plan_release_plan_dry_run.py")
 COMMAND_PLAN = _load_module("aoi_to_prepared_pilot_command_plan", "generate_pilot_command_plan.py")
+REAL_CONTEXT_READINESS = _load_module(
+    "aoi_to_prepared_pilot_real_context_readiness",
+    "check_chant_sura_real_context_readiness_gate.py",
+)
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -287,6 +297,7 @@ def build_prep_summary(
     release_polygon: dict[str, Any] | None,
     synthetic_config: bool,
     has_site_config: bool,
+    real_context_readiness_report: dict[str, Any],
     acquisition_report: dict[str, Any],
     cache_verification_report: dict[str, Any],
     release_plan_report: dict[str, Any],
@@ -377,6 +388,8 @@ def build_prep_summary(
         ),
         "conditional_only_weighting": generic_release_plan_contract.get("generic_scenario_generation", {}).get("conditional_only_weighting", True),
     }
+    prepared_pilot_real_input_readiness = real_context_readiness_report.get("prepared_pilot_real_input_readiness", {})
+    real_input_acquisition_handoff = real_context_readiness_report.get("real_input_acquisition_handoff", {})
     command_plan_hooks = [
         {
             "command_id": command["id"],
@@ -434,6 +447,8 @@ def build_prep_summary(
         "aoi_tile_discovery": acquisition_report.get("aoi_tile_discovery", {}),
         "candidate_source_zones": candidate_source_zones,
         "scenario_generation_inputs": scenario_generation_inputs,
+        "prepared_pilot_real_input_readiness": prepared_pilot_real_input_readiness,
+        "real_input_acquisition_handoff": real_input_acquisition_handoff,
         "terrain_manifests": terrain_manifests,
         "context_manifests": context_manifests,
         "gis_scope_summary": gis_scope_summary,
@@ -456,6 +471,8 @@ def _patched_repo_root(repo_root: Path) -> Iterator[None]:
     patched_targets = [
         (AOI_ACQUISITION, "ROOT"),
         (AOI_ACQUISITION.PREFLIGHT, "ROOT"),
+        (REAL_CONTEXT_READINESS, "ROOT"),
+        (REAL_CONTEXT_READINESS.PREFLIGHT, "ROOT"),
     ]
     originals: list[tuple[Any, str, Any]] = []
     for module, attr in patched_targets:
@@ -494,7 +511,7 @@ def main(argv: list[str] | None = None) -> int:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+    output = json.dumps(report, indent=2, sort_keys=True, default=str) if args.format == "json" else render_text_report(report)
     print(output)
     compiler_status = report.get("prepared_pilot_compiler", {}).get("classification", report["workflow_status"])
     return 0 if compiler_status != "blocked_missing_inputs" else 2
@@ -513,6 +530,11 @@ def build_report(
 
     with _patched_repo_root(repo_root):
         acquisition_report = AOI_ACQUISITION.build_report(config_path)
+        real_context_readiness_report = REAL_CONTEXT_READINESS.build_report(
+            config_path,
+            repo_root=repo_root,
+            acquisition_package_path=repo_root / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+        )
         cache_verification_report = build_cache_verification_report(
             acquisition_report=acquisition_report,
             repo_root=repo_root,
@@ -541,6 +563,7 @@ def build_report(
         release_polygon=release_polygon,
         synthetic_config=synthetic_config,
         has_site_config=has_site_config,
+        real_context_readiness_report=real_context_readiness_report,
         acquisition_report=acquisition_report,
         cache_verification_report=cache_verification_report,
         release_plan_report=release_plan_report,
@@ -550,42 +573,20 @@ def build_report(
     )
     if isinstance(prep_summary.get("gis_scope_summary"), dict):
         prep_summary["gis_scope_summary"]["status"] = workflow_status
-    source_zone_inputs = prep_summary.get("candidate_source_zones", {}).get("source_zone_inputs") or {}
-    scenario_source_inputs = prep_summary.get("scenario_generation_inputs", {}).get("source_inputs") or {}
-    def resolve_compiler_path(value: Any) -> Path | None:
-        if not isinstance(value, str) or not value:
-            return None
-        path = Path(value)
-        return path if path.is_absolute() else repo_root / path
-
-    compiler_required_paths = dedupe(
-        [
-            *(
-                str(resolved)
-                for row in prep_summary.get("terrain_manifests", [])
-                if row.get("expected_staged_path")
-                for resolved in [resolve_compiler_path(row.get("expected_staged_path"))]
-                if resolved is not None
-            ),
-            *(
-                str(resolved)
-                for key, value in source_zone_inputs.items()
-                for resolved in [resolve_compiler_path(value) if key.endswith("_path") else None]
-                if resolved is not None
-            ),
-            *(
-                str(resolved)
-                for key, value in scenario_source_inputs.items()
-                for resolved in [resolve_compiler_path(value) if key != "same_scale_reference_path" else None]
-                if resolved is not None
-            ),
-        ]
+    prepared_pilot_input_readiness = build_prepared_pilot_input_readiness_report(
+        report_inputs={
+            "repo_root": repo_root,
+            "prep_summary": prep_summary,
+        },
+        real_context_readiness_report=real_context_readiness_report,
     )
-    compiler_missing_inputs = [path for path in compiler_required_paths if not Path(path).exists()]
+    compiler_missing_inputs = list(prepared_pilot_input_readiness.get("blocked_missing_inputs", []))
     if compiler_missing_inputs:
         workflow_status = "blocked_missing_inputs"
         if isinstance(prep_summary.get("gis_scope_summary"), dict):
             prep_summary["gis_scope_summary"]["status"] = workflow_status
+    prep_summary["prepared_pilot_input_readiness"] = prepared_pilot_input_readiness
+    prep_summary["real_input_acquisition_handoff"] = prepared_pilot_input_readiness.get("real_input_acquisition_handoff", {})
     skeleton_output = build_case_skeleton_output(
         report_inputs={
             "config_path": config_path,
@@ -593,6 +594,7 @@ def build_report(
             "release_polygon": release_polygon,
             "synthetic_config": synthetic_config,
             "has_site_config": has_site_config,
+            "repo_root": repo_root,
             "acquisition_report": acquisition_report,
             "release_plan_report": release_plan_report,
             "generic_release_plan_report": generic_release_plan_report,
@@ -602,6 +604,7 @@ def build_report(
             "workflow_status": workflow_status,
             "workflow_steps": steps,
             "compiler_missing_inputs": compiler_missing_inputs,
+            "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
         },
         repo_root=repo_root,
         output_root=skeleton_output_root,
@@ -621,6 +624,10 @@ def build_report(
         "cache_verification": cache_verification_report,
         "terrain_manifests": prep_summary["terrain_manifests"],
         "context_manifests": prep_summary["context_manifests"],
+        "prepared_pilot_real_input_readiness": prep_summary.get("prepared_pilot_real_input_readiness", {}),
+        "real_input_acquisition_handoff": prep_summary.get("real_input_acquisition_handoff", {}),
+        "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
+        "prepared_pilot_input_classification": prepared_pilot_input_readiness.get("input_classification", "blocked_missing_inputs"),
         "gis_scope_summary": prep_summary["gis_scope_summary"],
         "release_scenario_placeholders": prep_summary["release_scenario_placeholders"],
         "candidate_source_zones": prep_summary["candidate_source_zones"],
@@ -1297,6 +1304,147 @@ def build_output_profile_summary(report_inputs: dict[str, Any]) -> dict[str, Any
     }
 
 
+def build_prepared_pilot_input_readiness_report(
+    *,
+    report_inputs: dict[str, Any],
+    real_context_readiness_report: dict[str, Any],
+) -> dict[str, Any]:
+    prep_summary = report_inputs["prep_summary"]
+    repo_root = Path(str(report_inputs.get("repo_root") or ROOT))
+    real_input_readiness = real_context_readiness_report.get("prepared_pilot_real_input_readiness", {})
+    real_input_handoff = real_context_readiness_report.get("real_input_acquisition_handoff", {})
+
+    terrain_missing = missing_expected_paths(prep_summary.get("terrain_manifests", []), repo_root=repo_root)
+    source_zone_missing = missing_expected_paths_from_mapping(
+        prep_summary.get("candidate_source_zones", {}).get("source_zone_inputs", {}),
+        repo_root=repo_root,
+    )
+    scenario_missing = missing_expected_paths_from_mapping(
+        prep_summary.get("scenario_generation_inputs", {}).get("source_inputs", {}),
+        repo_root=repo_root,
+    )
+    context_missing = missing_expected_paths(prep_summary.get("context_manifests", []), repo_root=repo_root)
+
+    blocked_groups = [
+        blocker
+        for blocker in (
+            build_input_blocker("terrain_inputs", "terrain", terrain_missing),
+            build_input_blocker("source_zone_inputs", "source zones", source_zone_missing),
+            build_input_blocker("scenario_inputs", "scenarios", scenario_missing),
+            build_input_blocker("context_inputs", "context", context_missing),
+        )
+        if blocker is not None
+    ]
+    core_classification = str(real_input_readiness.get("input_classification") or "missing")
+    if blocked_groups:
+        input_classification = "blocked_missing_inputs"
+    elif core_classification == "ready_real":
+        input_classification = "real_staged_ready"
+    elif core_classification in {"fixture_backed", "partial_real"}:
+        input_classification = "fixture_backed"
+    else:
+        input_classification = "fixture_backed"
+
+    if input_classification == "blocked_missing_inputs":
+        first_blocker = dict(blocked_groups[0])
+    else:
+        first_blocker = {
+            "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+            "status": input_classification,
+            "step_id": "prepared_pilot_input_readiness",
+            "label": "Prepared-pilot input readiness",
+            "blocked_reason": "",
+            "missing_inputs": [],
+            "blocked_category": "",
+            "first_missing_input": "",
+        }
+
+    blocked_missing_inputs = dedupe(
+        [
+            *terrain_missing,
+            *source_zone_missing,
+            *scenario_missing,
+            *context_missing,
+        ]
+    )
+    return {
+        "schema_version": PREPARED_PILOT_INPUT_READINESS_SCHEMA_VERSION,
+        "input_classification": input_classification,
+        "core_input_classification": core_classification,
+        "prepared_pilot_real_input_readiness": real_input_readiness,
+        "real_input_acquisition_handoff": real_input_handoff,
+        "blocked_missing_inputs": blocked_missing_inputs,
+        "first_blocker": first_blocker,
+        "terrain_blocker": build_input_blocker("terrain_inputs", "terrain", terrain_missing) or {},
+        "source_zone_blocker": build_input_blocker("source_zone_inputs", "source zones", source_zone_missing) or {},
+        "scenario_blocker": build_input_blocker("scenario_inputs", "scenarios", scenario_missing) or {},
+        "context_blocker": build_input_blocker("context_inputs", "context", context_missing) or {},
+        "ready_for_local_smoke": input_classification == "real_staged_ready",
+        "ready_for_balfrin_review": input_classification == "real_staged_ready",
+        "real_staged_real_input_count": real_input_readiness.get("real_staged_real_input_count", 0),
+        "fixture_backed_real_input_count": real_input_readiness.get("fixture_backed_real_input_count", 0),
+        "missing_real_input_count": real_input_readiness.get("missing_real_input_count", 0),
+        "required_real_input_count": real_input_readiness.get("required_real_input_count", 0),
+        "first_missing_real_input_category": real_input_readiness.get("first_missing_real_input_category", ""),
+        "first_missing_real_input_classification": real_input_readiness.get("first_missing_real_input_classification", ""),
+        "first_missing_real_input_path": real_input_readiness.get("first_missing_real_input_path", ""),
+        "first_fixture_backed_real_input_category": real_input_readiness.get("first_fixture_backed_real_input_category", ""),
+        "first_fixture_backed_real_input_classification": real_input_readiness.get("first_fixture_backed_real_input_classification", ""),
+        "first_fixture_backed_real_input_path": real_input_readiness.get("first_fixture_backed_real_input_path", ""),
+    }
+
+
+def missing_expected_paths(rows: list[dict[str, Any]], *, repo_root: Path) -> list[str]:
+    missing: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        path = row.get("expected_staged_path") or row.get("path_or_pattern")
+        if not path:
+            continue
+        resolved = _resolve_expected_path(repo_root, str(path))
+        if not resolved.exists():
+            missing.append(str(resolved))
+    return dedupe(missing)
+
+
+def missing_expected_paths_from_mapping(values: dict[str, Any], *, repo_root: Path) -> list[str]:
+    missing: list[str] = []
+    for key, value in values.items():
+        if not isinstance(value, str) or not value:
+            continue
+        if key == "same_scale_reference_path":
+            continue
+        if not key.endswith("_path"):
+            continue
+        resolved = _resolve_expected_path(repo_root, value)
+        if not resolved.exists():
+            missing.append(str(resolved))
+    return dedupe(missing)
+
+
+def _resolve_expected_path(repo_root: Path, value: str) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return (repo_root / path).resolve()
+
+
+def build_input_blocker(step_id: str, label: str, missing_inputs: list[str]) -> dict[str, Any] | None:
+    if not missing_inputs:
+        return None
+    return {
+        "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+        "status": "blocked_missing_inputs",
+        "step_id": step_id,
+        "label": f"Prepared-pilot {label}",
+        "blocked_reason": f"missing {label}",
+        "missing_inputs": missing_inputs,
+        "blocked_category": label,
+        "first_missing_input": missing_inputs[0],
+    }
+
+
 def build_execution_hints(
     *,
     report_inputs: dict[str, Any],
@@ -1335,21 +1483,104 @@ def build_execution_hints(
     }
 
 
+def build_command_transcript(
+    *,
+    report_inputs: dict[str, Any],
+    skeleton_output: dict[str, Any],
+    prepared_pilot_input_readiness: dict[str, Any],
+) -> dict[str, Any]:
+    prep_summary = report_inputs["prep_summary"]
+    repo_root = Path(str(report_inputs.get("repo_root") or ROOT))
+    site_config = prep_summary.get("site_config_path", "")
+    output_root = skeleton_output.get("output_root", "")
+    prepared_pilot_report_path = "<prepared_pilot_report_path>"
+    prepared_pilot_output_root = output_root or "<prepared_pilot_output_root>"
+    local_command = (
+        "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py "
+        "run-prepared-pilot-local "
+        f"--site-config {site_config} "
+        f"--repo-root {repo_root} "
+        f"--prepared-pilot-report-path {prepared_pilot_report_path} "
+        f"--prepared-pilot-output-root {prepared_pilot_output_root} "
+        "--validation-case-path validation/cases/probabilistic_phase1_smoke.yaml "
+        "--overwrite --format json"
+    )
+    balfrin_command = (
+        "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py "
+        "submit-balfrin "
+        f"--site-config {site_config} "
+        f"--repo-root {repo_root} "
+        f"--prepared-pilot-report-path {prepared_pilot_report_path} "
+        "--format json"
+    )
+    return {
+        "schema_version": COMMAND_TRANSCRIPT_SCHEMA_VERSION,
+        "status": prepared_pilot_input_readiness.get("input_classification", "blocked_missing_inputs"),
+        "prepared_pilot_input_classification": prepared_pilot_input_readiness.get("input_classification", "blocked_missing_inputs"),
+        "local_smoke": {
+            "surface": "local_smoke",
+            "command": local_command,
+            "review_focus": "bounded local smoke and QA review",
+            "expected_output_root": prepared_pilot_output_root,
+        },
+        "balfrin_review": {
+            "surface": "balfrin_review",
+            "command": balfrin_command,
+            "review_focus": "prepare the bundle for Balfrin review without submitting a job",
+            "expected_output_root": prep_summary["output_root_planning"]["prepared_hazard_root"],
+        },
+    }
+
+
+def build_handoff_layout(
+    *,
+    report_inputs: dict[str, Any],
+    skeleton_output: dict[str, Any],
+    prepared_pilot_input_readiness: dict[str, Any],
+) -> dict[str, Any]:
+    prep_summary = report_inputs["prep_summary"]
+    return {
+        "schema_version": "aoi_to_prepared_pilot_handoff_layout_v1",
+        "prepared_validation_root": prep_summary["output_root_planning"]["prepared_validation_root"],
+        "prepared_hazard_root": prep_summary["output_root_planning"]["prepared_hazard_root"],
+        "ignored_output_roots": skeleton_output.get("expected_output_roots", []),
+        "command_plan_ignored_output_roots": prep_summary["output_root_planning"].get("command_plan_ignored_output_roots", []),
+        "command_transcript_path": skeleton_output.get("command_transcript_path", ""),
+        "command_transcript": build_command_transcript(
+            report_inputs=report_inputs,
+            skeleton_output=skeleton_output,
+            prepared_pilot_input_readiness=prepared_pilot_input_readiness,
+        ),
+    }
+
+
 def build_run_manifest(
     *,
     report_inputs: dict[str, Any],
     skeleton_output: dict[str, Any],
     classification: str,
     first_blocker: dict[str, Any],
+    prepared_pilot_input_readiness: dict[str, Any],
 ) -> dict[str, Any]:
     expected_io_inventory = build_expected_io_inventory(report_inputs=report_inputs, skeleton_output=skeleton_output)
     output_profile = build_output_profile_summary(report_inputs)
     execution_hints = build_execution_hints(report_inputs=report_inputs, skeleton_output=skeleton_output, classification=classification)
+    command_transcript = build_command_transcript(
+        report_inputs=report_inputs,
+        skeleton_output=skeleton_output,
+        prepared_pilot_input_readiness=prepared_pilot_input_readiness,
+    )
+    handoff_layout = build_handoff_layout(
+        report_inputs=report_inputs,
+        skeleton_output=skeleton_output,
+        prepared_pilot_input_readiness=prepared_pilot_input_readiness,
+    )
     command_plan_report = report_inputs["command_plan_report"]
     prep_summary = report_inputs["prep_summary"]
     return {
         "schema_version": RUN_MANIFEST_SCHEMA_VERSION,
         "classification": classification,
+        "input_classification": prepared_pilot_input_readiness.get("input_classification", "blocked_missing_inputs"),
         "run_manifest_status": classification,
         "candidate_site_id": report_inputs["acquisition_report"]["candidate_site_id"],
         "candidate_site_name": report_inputs["acquisition_report"]["candidate_site_name"],
@@ -1372,6 +1603,9 @@ def build_run_manifest(
         "expected_io_inventory": expected_io_inventory,
         "output_profile": output_profile,
         "execution_hints": execution_hints,
+        "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
+        "command_transcript": command_transcript,
+        "handoff_layout": handoff_layout,
         "first_blocker": first_blocker,
         "command_manifest_path": skeleton_output.get("command_manifest_path", ""),
         "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
@@ -1387,14 +1621,38 @@ def build_prepared_pilot_compiler_report(
     return {
         "schema_version": COMPILER_SCHEMA_VERSION,
         "classification": run_manifest.get("classification", "blocked_missing_inputs"),
+        "input_classification": run_manifest.get("input_classification", "blocked_missing_inputs"),
         "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
         "first_blocker": run_manifest.get("first_blocker", {}),
+        "prepared_pilot_input_readiness": run_manifest.get("prepared_pilot_input_readiness", {}),
+        "command_transcript": run_manifest.get("command_transcript", {}),
+        "handoff_layout": run_manifest.get("handoff_layout", {}),
         "run_manifest": run_manifest,
         "command_plan": run_manifest["command_plan"],
         "expected_io_inventory": run_manifest["expected_io_inventory"],
         "output_profile": run_manifest["output_profile"],
         "execution_hints": run_manifest["execution_hints"],
     }
+
+
+def render_command_transcript_text(transcript: dict[str, Any]) -> str:
+    lines = [
+        f"schema_version: {transcript.get('schema_version', '')}",
+        f"prepared_pilot_input_classification: {transcript.get('prepared_pilot_input_classification', '')}",
+        "",
+        "local_smoke:",
+        f"- surface: {transcript.get('local_smoke', {}).get('surface', '')}",
+        f"- review_focus: {transcript.get('local_smoke', {}).get('review_focus', '')}",
+        f"- expected_output_root: {transcript.get('local_smoke', {}).get('expected_output_root', '')}",
+        f"- command: {transcript.get('local_smoke', {}).get('command', '')}",
+        "",
+        "balfrin_review:",
+        f"- surface: {transcript.get('balfrin_review', {}).get('surface', '')}",
+        f"- review_focus: {transcript.get('balfrin_review', {}).get('review_focus', '')}",
+        f"- expected_output_root: {transcript.get('balfrin_review', {}).get('expected_output_root', '')}",
+        f"- command: {transcript.get('balfrin_review', {}).get('command', '')}",
+    ]
+    return "\n".join(lines)
 
 
 def render_text_report(report: dict[str, Any]) -> str:
@@ -1693,8 +1951,50 @@ def render_text_report(report: dict[str, Any]) -> str:
     compiler = report.get("prepared_pilot_compiler", {})
     lines.append(f"- schema_version: {compiler.get('schema_version', '')}")
     lines.append(f"- classification: {compiler.get('classification', '')}")
+    lines.append(f"- input_classification: {compiler.get('input_classification', '')}")
     lines.append(f"- run_manifest_path: {compiler.get('run_manifest_path', '')}")
     lines.append(f"- first_blocker: {compiler.get('first_blocker', {})}")
+    lines.append("- prepared_pilot_input_readiness:")
+    for key, value in (compiler.get("prepared_pilot_input_readiness") or {}).items():
+        if key in {"prepared_pilot_real_input_readiness", "real_input_acquisition_handoff"} and isinstance(value, dict):
+            lines.append(f"  - {key}:")
+            for subkey, subvalue in value.items():
+                lines.append(f"    - {subkey}: {subvalue}")
+            continue
+        lines.append(f"  - {key}: {value}")
+    lines.append("- command_transcript:")
+    for key, value in (compiler.get("command_transcript") or {}).items():
+        if isinstance(value, dict):
+            lines.append(f"  - {key}:")
+            for subkey, subvalue in value.items():
+                if isinstance(subvalue, dict):
+                    lines.append(f"    - {subkey}:")
+                    for nested_key, nested_value in subvalue.items():
+                        lines.append(f"      - {nested_key}: {nested_value}")
+                else:
+                    lines.append(f"    - {subkey}: {subvalue}")
+            continue
+        lines.append(f"  - {key}: {value}")
+    lines.append("- handoff_layout:")
+    for key, value in (compiler.get("handoff_layout") or {}).items():
+        if isinstance(value, dict):
+            lines.append(f"  - {key}:")
+            for subkey, subvalue in value.items():
+                if isinstance(subvalue, dict):
+                    lines.append(f"    - {subkey}:")
+                    for nested_key, nested_value in subvalue.items():
+                        lines.append(f"      - {nested_key}: {nested_value}")
+                elif isinstance(subvalue, list):
+                    lines.append(f"    - {subkey}:")
+                    lines.extend(f"      - {item}" for item in subvalue)
+                else:
+                    lines.append(f"    - {subkey}: {subvalue}")
+            continue
+        elif isinstance(value, list):
+            lines.append(f"  - {key}:")
+            lines.extend(f"    - {item}" for item in value)
+            continue
+        lines.append(f"  - {key}: {value}")
     lines.append("- command_plan:")
     for key, value in (compiler.get("command_plan") or {}).items():
         if key == "commands" and isinstance(value, list):
@@ -1789,6 +2089,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append(f"- command_manifest_path: {skeleton.get('command_manifest_path', '')}")
     lines.append(f"- expected_output_roots_path: {skeleton.get('expected_output_roots_path', '')}")
     lines.append(f"- blocked_execution_path: {skeleton.get('blocked_execution_path', '')}")
+    lines.append(f"- command_transcript_path: {skeleton.get('command_transcript_path', '')}")
     if skeleton.get("runnable_command_ids"):
         lines.append("- runnable_command_ids:")
         lines.extend(f"  - {item}" for item in skeleton["runnable_command_ids"])
@@ -1963,13 +2264,24 @@ def build_case_skeleton_output(
         ),
         "blocked_command_ids": report_inputs["command_plan_report"].get("blocked_template_commands", []),
     }
+    prepared_pilot_input_readiness = report_inputs.get("prepared_pilot_input_readiness") or build_prepared_pilot_input_readiness_report(
+        report_inputs=report_inputs,
+        real_context_readiness_report={
+            "prepared_pilot_real_input_readiness": prep_summary.get("prepared_pilot_real_input_readiness", {}),
+            "real_input_acquisition_handoff": prep_summary.get("real_input_acquisition_handoff", {}),
+        },
+    )
     skeleton = {
         **case_skeleton,
         "command_manifest": command_manifest,
         "blocked_execution": blocked_execution_report,
+        "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
     }
     run_manifest_path = str(
         (resolved_output_root / "aoi_to_prepared_pilot_run_manifest.yaml") if resolved_output_root is not None else ""
+    )
+    command_transcript_path = str(
+        (resolved_output_root / "aoi_to_prepared_pilot_command_transcript.txt") if resolved_output_root is not None else ""
     )
     skeleton_output = {
         "status": skeleton_status,
@@ -1990,6 +2302,7 @@ def build_case_skeleton_output(
             (resolved_output_root / "aoi_to_prepared_pilot_blocked_execution.json") if resolved_output_root is not None else ""
         ),
         "run_manifest_path": run_manifest_path,
+        "command_transcript_path": command_transcript_path,
         "expected_inputs_by_step": {step["step_id"]: step["expected_inputs"] for step in report_inputs["workflow_steps"]},
         "generated_output_roots_by_step": {
             step["step_id"]: step["generated_output_roots"] for step in report_inputs["workflow_steps"]
@@ -2015,6 +2328,7 @@ def build_case_skeleton_output(
             "workflow_status": report_inputs["workflow_status"],
             "command_plan_report": report_inputs["command_plan_report"],
         }),
+        prepared_pilot_input_readiness=prepared_pilot_input_readiness,
     )
     return skeleton_output
 
@@ -2029,6 +2343,11 @@ def write_case_skeleton_bundle(skeleton_output: dict[str, Any]) -> None:
     dump_yaml(Path(skeleton_output["case_skeleton_path"]), case_skeleton)
     dump_json(Path(skeleton_output["command_manifest_path"]), skeleton_output["case_skeleton"]["command_manifest"])
     dump_yaml(Path(skeleton_output["run_manifest_path"]), skeleton_output["run_manifest"])
+    if skeleton_output.get("command_transcript_path"):
+        Path(skeleton_output["command_transcript_path"]).write_text(
+            render_command_transcript_text(skeleton_output["run_manifest"]["command_transcript"]),
+            encoding="utf-8",
+        )
     dump_yaml(
         Path(skeleton_output["expected_output_roots_path"]),
         {

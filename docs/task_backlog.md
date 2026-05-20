@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-329: Real-Input AOI Prepared-Pilot Compiler
-
-Goal: Make the AOI-to-prepared-pilot compiler consume verified real-staged input manifests and produce a clean ignored handoff bundle for bounded local or Balfrin review.
-
-Capability gap reduced: The current prepared-pilot path is fixture-backed and must advance to real-staged input readiness before a real AOI demonstration is credible.
-
-Why this outranks alternatives: Prepared-pilot handoff is the bridge between acquisition/preprocessing and executable local or Balfrin workflows.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/verify_public_geodata_cache.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- Real-input-ready classification path for prepared-pilot bundles with explicit blockers for missing terrain, source zones, scenarios, or context.
-- Ignored-root handoff layout and command transcript for local smoke and Balfrin review.
-- Tests separating fixture-backed, real-staged-ready, and blocked-missing-input states.
-
-Definition of done:
-
-- A real-staged AOI can produce a deterministic prepared-pilot handoff or one exact blocker.
-
-Boundaries: Handoff generation only; no live Balfrin submission, no second-site ensemble execution, no physical-frequency semantics, no operational claim.
-
 ### TB-330: User AOI Local Multi-Zone Smoke Demonstration
 
 Goal: Run a bounded local multi-zone smoke demonstration from AOI bounds or a real-staged handoff through reduced validation output, hazard packaging, and QA review.

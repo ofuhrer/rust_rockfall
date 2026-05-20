@@ -200,15 +200,26 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(compiler["schema_version"], "aoi_to_prepared_pilot_compiler_v1")
         self.assertEqual(compiler["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler["input_classification"], "real_staged_ready")
         self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
         self.assertEqual(compiler["execution_hints"]["local"]["status"], "ready_for_local_smoke")
         self.assertEqual(compiler["execution_hints"]["balfrin"]["status"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["input_classification"], "real_staged_ready")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_missing_real_input_path"], "")
+        self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
+        self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
         self.assertIn("second_site_release_plan_execution_template", compiler["run_manifest"]["command_plan"]["blocked_template_commands"])
         self.assertEqual(compiler["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(compiler["output_profile"]["command_profile_policy"]["classification"], "scalable_default")
         self.assertEqual(compiler["output_profile"]["command_profile_validation"]["status"], "ready")
         self.assertEqual(compiler["command_plan"]["output_profile_validation"]["status"], "ready")
+        self.assertTrue(
+            compiler["run_manifest"]["command_transcript"]["local_smoke"]["expected_output_root"].endswith(
+                "aoi_to_prepared_pilot_dry_run"
+            )
+        )
         self.assertEqual(run_manifest["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(run_manifest["input_classification"], "real_staged_ready")
         self.assertEqual(run_manifest["first_blocker"]["step_id"], "prepared_pilot_command_plan")
         self.assertEqual(run_manifest["expected_io_inventory"]["schema_version"], "aoi_to_prepared_pilot_expected_io_inventory_v1")
         self.assertTrue(run_manifest["expected_io_inventory"]["prepared_validation_root"].endswith("validation/private/chant_sura_fluelapass_portability_example_v1"))
@@ -216,8 +227,62 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertTrue(run_manifest["expected_io_inventory"]["command_plan_expected_outputs"])
         self.assertTrue(run_manifest["execution_hints"]["balfrin"]["output_root"].endswith("hazard/results/chant_sura_fluelapass_portability_example_v1"))
         self.assertTrue(run_manifest["execution_hints"]["local"]["output_root"].endswith("aoi_to_prepared_pilot_dry_run"))
+        self.assertEqual(run_manifest["command_transcript"]["prepared_pilot_input_classification"], "real_staged_ready")
+        self.assertIn("run-prepared-pilot-local", run_manifest["command_transcript"]["local_smoke"]["command"])
+        self.assertIn("submit-balfrin", run_manifest["command_transcript"]["balfrin_review"]["command"])
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", compiler["run_manifest_path"])
         self.assertIn("aoi_to_prepared_pilot_run_manifest.yaml", first["case_skeleton_output"]["run_manifest_path"])
+        self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
+
+    def test_fixture_backed_inputs_classify_as_fixture_backed_and_keep_the_handoff_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
+            self._write_real_core_inputs(
+                repo_root,
+                categories={
+                    "terrain_crop",
+                    "terrain_metadata",
+                    "aoi_tile_catalog",
+                    "source_zone_metadata",
+                    "scenario_table",
+                    "source_scenario_policy",
+                },
+            )
+            self._write_acquisition_package(repo_root, classification="fixture_backed")
+            self._write_real_context_cache_manifest(repo_root)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            first = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+            second = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+        compiler = first["prepared_pilot_compiler"]
+        self.assertEqual(first, second)
+        self.assertEqual(compiler["input_classification"], "fixture_backed")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["input_classification"], "fixture_backed")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["blocked_missing_inputs"], [])
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["status"], "fixture_backed")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
+        self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
+        self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
 
     def test_aoi_to_map_regression_fixture_produces_smoke_map_package_and_qa_summary(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -318,8 +383,12 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         compiler = report["prepared_pilot_compiler"]
 
         self.assertEqual(compiler["classification"], "blocked_missing_inputs")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
-        self.assertTrue(any(item.endswith("terrain.asc") for item in compiler["first_blocker"]["missing_inputs"]))
+        self.assertEqual(compiler["input_classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["blocked_category"], "terrain")
+        self.assertTrue(
+            any(item.endswith("terrain.asc") for item in compiler["prepared_pilot_input_readiness"]["first_blocker"]["missing_inputs"])
+        )
 
     def test_missing_reviewed_source_zones_blocks_compiler(self) -> None:
         report = self._compiler_report_with_missing_prepared_input(
@@ -329,16 +398,59 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         compiler = report["prepared_pilot_compiler"]
 
         self.assertEqual(compiler["classification"], "blocked_missing_inputs")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
-        self.assertTrue(any(item.endswith("tschamut_public_source_zone_metadata_v1.yaml") for item in compiler["first_blocker"]["missing_inputs"]))
+        self.assertEqual(compiler["input_classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["blocked_category"], "source zones")
+        self.assertTrue(
+            any(
+                item.endswith("tschamut_public_source_zone_metadata_v1.yaml")
+                for item in compiler["prepared_pilot_input_readiness"]["first_blocker"]["missing_inputs"]
+            )
+        )
 
     def test_missing_scenario_plan_blocks_compiler(self) -> None:
         report = self._compiler_report_with_missing_prepared_input("tschamut_public_scenario_table_v1.csv", under_tschamut=True)
         compiler = report["prepared_pilot_compiler"]
 
         self.assertEqual(compiler["classification"], "blocked_missing_inputs")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_missing_inputs")
-        self.assertTrue(any(item.endswith("tschamut_public_scenario_table_v1.csv") for item in compiler["first_blocker"]["missing_inputs"]))
+        self.assertEqual(compiler["input_classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["status"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["blocked_category"], "scenarios")
+        self.assertTrue(
+            any(
+                item.endswith("tschamut_public_scenario_table_v1.csv")
+                for item in compiler["prepared_pilot_input_readiness"]["first_blocker"]["missing_inputs"]
+            )
+        )
+
+    def test_missing_context_blocks_compiler_with_context_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            shutil.rmtree(
+                repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
+            )
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+
+            report = planner.build_report(
+                config_path,
+                repo_root=repo_root,
+                release_polygon_path=release_polygon_path,
+                skeleton_output_root=output_root,
+            )
+
+        compiler = report["prepared_pilot_compiler"]
+        self.assertEqual(compiler["input_classification"], "blocked_missing_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["context_blocker"]["step_id"], "context_inputs")
+        self.assertEqual(compiler["prepared_pilot_input_readiness"]["context_blocker"]["blocked_category"], "context")
+        self.assertTrue(
+            any(
+                item.endswith("context/swissimage")
+                for item in compiler["prepared_pilot_input_readiness"]["blocked_missing_inputs"]
+            )
+        )
 
     def test_compiler_command_plan_shape_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
@@ -473,6 +585,8 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(first["workflow_status"], "blocked_missing_inputs")
         self.assertEqual(first["preparation_status"], "blocked_missing_inputs")
         self.assertEqual(first["cache_verification"]["cache_verification_status"], "blocked_missing_inputs")
+        self.assertEqual(first["prepared_pilot_input_classification"], "blocked_missing_inputs")
+        self.assertEqual(first["prepared_pilot_input_readiness"]["first_blocker"]["step_id"], "terrain_inputs")
         self.assertTrue(any("terrain_crop" in item for item in first["cache_verification"]["blocked_missing_inputs"]))
         self.assertTrue(any("public_geodata_cache_manifest.yaml" in item for item in first["blocked_missing_inputs"]))
         self.assertEqual(first["preparation_input"]["input_mode"], "missing_inputs")
@@ -631,62 +745,20 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             site_config=config_path,
             fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
         )
-        self._copy_repo_file(
-            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
-            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc",
-        )
-        self._copy_repo_file(
-            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
-            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml",
-        )
-        self._copy_repo_file(
-            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
-            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml",
-        )
-        self._copy_repo_file(
-            ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
-            repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv",
-        )
-        catalog_path = repo_root / "data/processed/swisstopo/tschamut_public_pilot/input/aoi_tile_catalog.yaml"
-        catalog_path.parent.mkdir(parents=True, exist_ok=True)
-        catalog_path.write_text(
-            yaml.safe_dump(
-                {
-                    "schema_version": "swisstopo_aoi_tile_catalog_v1",
-                    "catalog_status": "metadata_only",
-                    "source_product": "swissALTI3D",
-                    "product_id": "swissalti3d_2m",
-                    "crs": "EPSG:2056",
-                    "resolution_m": 2,
-                    "expected_staging_root": "data/raw/swisstopo/tschamut_public_pilot",
-                    "tile_size_m": 1000,
-                    "tiles": [
-                        {
-                            "tile_id": "2696-1167",
-                            "source_product": "swissALTI3D",
-                            "source_filename": "swissalti3d_2019_2696-1167_2_2056_5728.tif",
-                            "source_url": "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_2696-1167/swissalti3d_2019_2696-1167_2_2056_5728.tif",
-                            "product_version": "2019",
-                            "product_date": "2019-01-01",
-                            "license": "swisstopo open data terms",
-                            "extent_lv95_m": {
-                                "xmin": 2696000.0,
-                                "ymin": 1167000.0,
-                                "xmax": 2697000.0,
-                                "ymax": 1168000.0,
-                            },
-                        }
-                    ],
-                },
-                sort_keys=False,
-            ),
-            encoding="utf-8",
-        )
-        self._copy_repo_file(
-            ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
-            repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
-        )
         self._write_verified_cache_manifest(repo_root, "chant_sura_fluelapass_portability_example_v1")
+        self._write_real_core_inputs(
+            repo_root,
+            categories={
+                "terrain_crop",
+                "terrain_metadata",
+                "aoi_tile_catalog",
+                "source_zone_metadata",
+                "scenario_table",
+                "source_scenario_policy",
+            },
+        )
+        self._write_acquisition_package(repo_root, classification="real_staged")
+        self._write_real_context_cache_manifest(repo_root)
 
     def _compiler_report_with_missing_prepared_input(
         self,
@@ -717,6 +789,394 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         path = repo_root / relative_path
         if path.exists():
             path.unlink()
+
+    def _write_acquisition_package(
+        self,
+        repo_root: Path,
+        *,
+        classification: str,
+    ) -> Path:
+        package_source = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
+        package = yaml.safe_load(package_source.read_text(encoding="utf-8"))
+        assert isinstance(package, dict)
+        for row in package.get("required_acquisition_items") or []:
+            if not isinstance(row, dict):
+                continue
+            row["classification"] = classification
+            row["current_status"] = classification
+        package_path = repo_root / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
+        package_path.parent.mkdir(parents=True, exist_ok=True)
+        package_path.write_text(yaml.safe_dump(package, sort_keys=False), encoding="utf-8")
+        return package_path
+
+    def _write_real_context_cache_manifest(
+        self,
+        repo_root: Path,
+        *,
+        candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1",
+        candidate_site_name: str = "Chant Sura / Flüelapass portability example",
+    ) -> None:
+        manifest_path = repo_root / f"data/processed/swisstopo/{candidate_site_id}/input/public_geodata_cache_manifest.yaml"
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        context_root = repo_root / f"data/processed/swisstopo/{candidate_site_id}/context"
+        records = []
+        product_ids = [
+            "swissimage_context",
+            "swisstlm3d_context",
+            "swisssurface3d_context",
+            "swisssurface3d_raster_context",
+            "swissbuildings3d_context",
+        ]
+        for index, product_id in enumerate(product_ids, start=1):
+            staged_path = manifest_path.parent / f"{product_id}.bin"
+            metadata_path = manifest_path.parent / f"{product_id}.yaml"
+            payload = f"expected-{product_id}".encode("utf-8")
+            staged_path.write_bytes(payload)
+            metadata = {
+                "source_product_id": product_id,
+                "source_product_name": product_id.replace("_", " "),
+                "source_url_or_download_record": f"https://example.invalid/{product_id}",
+                "product_version_or_date": "2026-05-17",
+                "tile_id_or_delivery_identifier": f"tile-{index}",
+                "checksum_sha256": hashlib.sha256(payload).hexdigest(),
+                "crs": "EPSG:2056",
+                "resolution_m": 1.0,
+                "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                "license_or_terms_reference": "example terms",
+            }
+            metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+            records.append(
+                {
+                    "product_id": product_id,
+                    "source_product_id": product_id,
+                    "source_product_name": product_id.replace("_", " "),
+                    "source_url_or_download_record": f"https://example.invalid/{product_id}",
+                    "product_version_or_date": "2026-05-17",
+                    "tile_id_or_delivery_identifier": f"tile-{index}",
+                    "checksum_sha256": hashlib.sha256(payload).hexdigest(),
+                    "crs": "EPSG:2056",
+                    "resolution_m": 1.0,
+                    "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                    "license_or_terms_reference": "example terms",
+                    "staged_path": str(staged_path),
+                    "metadata_path": str(metadata_path),
+                }
+            )
+            product_root = context_root / product_id.replace("_context", "")
+            product_root.mkdir(parents=True, exist_ok=True)
+            (product_root / "payload.bin").write_bytes(payload)
+            if product_id == "swisstlm3d_context":
+                (product_root / "metadata.json").write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": 1,
+                            "source_product_id": product_id,
+                            "source_product_name": "swissTLM3D",
+                            "source_url_or_download_record": f"https://example.invalid/{product_id}",
+                            "product_version_or_date": "2026-05-17",
+                            "tile_id_or_delivery_identifier": f"tile-{index}",
+                            "checksum_sha256": hashlib.sha256(payload).hexdigest(),
+                            "crs": "EPSG:2056",
+                            "resolution_m": 1.0,
+                            "crop_extent_lv95_m": {"xmin": 1.0, "ymin": 2.0, "xmax": 3.0, "ymax": 4.0},
+                            "license_or_terms_reference": "example terms",
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
+        manifest = {
+            "schema_version": "public_geodata_cache_verification_manifest_v1",
+            "candidate_site_id": candidate_site_id,
+            "candidate_site_name": candidate_site_name,
+            "products": records,
+        }
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+
+    def _write_real_core_inputs(self, repo_root: Path, *, categories: set[str]) -> None:
+        base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"
+        (base / "input").mkdir(parents=True, exist_ok=True)
+        (repo_root / "validation/policies").mkdir(parents=True, exist_ok=True)
+        if "terrain_crop" in categories:
+            (base / "input/terrain.asc").write_text(
+                "\n".join(
+                    [
+                        "ncols 4",
+                        "nrows 4",
+                        "xllcorner 2793000.0",
+                        "yllcorner 1180200.0",
+                        "cellsize 2.0",
+                        "NODATA_value -9999",
+                        "2475.0 2475.5 2476.0 2476.5",
+                        "2474.0 2474.5 2475.0 2475.5",
+                        "2473.0 2473.5 2474.0 2474.5",
+                        "2472.0 2472.5 2473.0 2473.5",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            tschamut_input = repo_root / "data/processed/swisstopo/tschamut_public_pilot/input"
+            tschamut_input.mkdir(parents=True, exist_ok=True)
+            (tschamut_input / "tschamut_public_swissalti3d_crop.asc").write_text(
+                "\n".join(
+                    [
+                        "ncols 4",
+                        "nrows 4",
+                        "xllcorner 2793000.0",
+                        "yllcorner 1180200.0",
+                        "cellsize 2.0",
+                        "NODATA_value -9999",
+                        "2475.0 2475.5 2476.0 2476.5",
+                        "2474.0 2474.5 2475.0 2475.5",
+                        "2473.0 2473.5 2474.0 2474.5",
+                        "2472.0 2472.5 2473.0 2473.5",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "terrain_metadata" in categories:
+            (base / "input/terrain_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "tile_id": "chant_sura_fluelapass_real_lv95_crop",
+                        "source_dataset": "real_chant_sura_fluelapass_core_input",
+                        "source_product": "swissALTI3D",
+                        "source_url": "https://example.invalid/chant_sura_fluelapass/swissalti3d",
+                        "source_filename": "chant_sura_fluelapass_real_core_input.asc",
+                        "source_file_present": True,
+                        "download_status": "processed_real",
+                        "license": "real staged input for repository tests; classifier-safe content only",
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                            "coordinate_unit": "m",
+                            "height_unit": "m",
+                        },
+                        "raster": {
+                            "format": "ESRI ASCII GRID",
+                            "resolution_m": 2.0,
+                            "width_px": 4,
+                            "height_px": 4,
+                            "nodata": -9999.0,
+                        },
+                        "extent_lv95_m": {
+                            "xmin": 2793000.0,
+                            "ymin": 1180200.0,
+                            "xmax": 2793008.0,
+                            "ymax": 1180208.0,
+                        },
+                        "preprocessing": {
+                            "status": "staged_real",
+                            "crop_extent_lv95_m": {
+                                "xmin": 2793000.0,
+                                "ymin": 1180200.0,
+                                "xmax": 2793008.0,
+                                "ymax": 1180208.0,
+                            },
+                            "resampling_method": "none",
+                            "raw_sha256": None,
+                            "processed_sha256": None,
+                            "tool": "manual test input",
+                            "processed_utc": None,
+                        },
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+            tschamut_input = repo_root / "data/processed/swisstopo/tschamut_public_pilot/input"
+            tschamut_input.mkdir(parents=True, exist_ok=True)
+            (tschamut_input / "tschamut_public_swissalti3d_metadata.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": 1,
+                        "tile_id": "chant_sura_fluelapass_real_lv95_crop",
+                        "source_dataset": "real_chant_sura_fluelapass_core_input",
+                        "coordinate_reference_system": {
+                            "epsg": 2056,
+                            "horizontal_name": "CH1903+ / LV95",
+                            "vertical_datum": "LN02",
+                        },
+                        "raster": {
+                            "format": "ESRI ASCII GRID",
+                            "resolution_m": 2.0,
+                            "width_px": 4,
+                            "height_px": 4,
+                            "nodata": -9999.0,
+                        },
+                        "extent_lv95_m": {
+                            "xmin": 2793000.0,
+                            "ymin": 1180200.0,
+                            "xmax": 2793008.0,
+                            "ymax": 1180208.0,
+                        },
+                        "preprocessing": {
+                            "status": "staged_real",
+                            "crop_extent_lv95_m": {
+                                "xmin": 2793000.0,
+                                "ymin": 1180200.0,
+                                "xmax": 2793008.0,
+                                "ymax": 1180208.0,
+                            },
+                        },
+                        "provenance": {
+                            "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                        },
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "aoi_tile_catalog" in categories:
+            catalog_path = base / "input/aoi_tile_catalog.yaml"
+            catalog_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "swisstopo_aoi_tile_catalog_v1",
+                        "catalog_status": "ready",
+                        "source_product": "swissALTI3D",
+                        "product_id": "swissalti3d_2m",
+                        "crs": "EPSG:2056",
+                        "resolution_m": 2,
+                        "expected_staging_root": "data/raw/swisstopo/tschamut_public_pilot",
+                        "tile_size_m": 1000,
+                        "tiles": [
+                            {
+                                "tile_id": "2793-1180",
+                                "source_product": "swissALTI3D",
+                                "source_url": "https://www.swisstopo.admin.ch/en/height-model-swissalti3d",
+                                "extent_lv95_m": {
+                                    "xmin": 2793000.0,
+                                    "ymin": 1180000.0,
+                                    "xmax": 2794000.0,
+                                    "ymax": 1181000.0,
+                                },
+                            }
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+        if "source_zone_metadata" in categories:
+            chant_sura_base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"
+            (chant_sura_base / "input").mkdir(parents=True, exist_ok=True)
+            tschamut_base = repo_root / "data/processed/swisstopo/tschamut_public_pilot"
+            (tschamut_base / "input").mkdir(parents=True, exist_ok=True)
+            for source_zone_path in (
+                chant_sura_base / "input/source_zone_metadata.yaml",
+                tschamut_base / "input/tschamut_public_source_zone_metadata_v1.yaml",
+            ):
+                source_zone_id = (
+                    "tschamut_public_lps_release_bbox"
+                    if source_zone_path.name == "tschamut_public_source_zone_metadata_v1.yaml"
+                    else "chant_sura_fluelapass_real_zone_001"
+                )
+                source_zone_path.write_text(
+                    yaml.safe_dump(
+                        {
+                            "schema_version": "source_zone_metadata_v1",
+                            "zone_id": source_zone_id,
+                            "source_zone_id": source_zone_id,
+                            "crs_epsg": 2056,
+                            "vertical_datum": "LN02",
+                            "release_sampling_policy": {
+                                "source_zone_id_pattern": "chant_sura_fluelapass_real_*",
+                                "source_zone_geometry": "LV95 polygon",
+                                "release_point_table": "one row per release point",
+                                "block_scenario_table": "CSV table with one row per block / scenario record",
+                                "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+                            },
+                            "coordinate_reference_system": {
+                                "epsg": 2056,
+                                "horizontal_name": "CH1903+ / LV95",
+                                "vertical_datum": "LN02",
+                            },
+                            "geometry": {
+                                "type": "polygon",
+                                "coordinates": [
+                                    [2793001.0, 1180201.0],
+                                    [2793006.0, 1180201.0],
+                                    [2793006.0, 1180206.0],
+                                    [2793001.0, 1180206.0],
+                                ],
+                            },
+                            "release_points": [
+                                {
+                                    "release_point_id": "chant_sura_fluelapass_real_release_001",
+                                    "x": 2793002.0,
+                                    "y": 1180202.0,
+                                    "z_offset_m": 0.05,
+                                    "notes": "real staged test input",
+                                }
+                            ],
+                            "provenance": {
+                                "intended_use": "chant_sura_fluelapass_real_core_input_staging",
+                                "source": "unit test",
+                                "license": "real staged input for repository tests",
+                                "notes": [
+                                    "Real-looking source-zone geometry staged for dry-run coverage.",
+                                    "No classifier-trigger words are present in this file.",
+                                ],
+                            },
+                        },
+                        sort_keys=False,
+                    ),
+                    encoding="utf-8",
+                )
+        if "scenario_table" in categories:
+            chant_sura_base = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1"
+            (chant_sura_base / "input").mkdir(parents=True, exist_ok=True)
+            tschamut_base = repo_root / "data/processed/swisstopo/tschamut_public_pilot"
+            (tschamut_base / "input").mkdir(parents=True, exist_ok=True)
+            scenario_header = (
+                "scenario_id,source_zone_id,release_sampling_policy,model_configuration_id,"
+                "terrain_material_assumption_id,sampling_weight,block_family,relative_weight,"
+                "probability_semantics,release_point_id"
+            )
+            scenario_payload = "\n".join(
+                [
+                    scenario_header,
+                    "chant_sura_fluelapass_real_scenario_001,chant_sura_fluelapass_real_zone_001,deterministic_test_policy,model_config_test,terrain_material_test,1.0,real_block_family,1.0,normalized within a block family; no annual frequency claim,chant_sura_fluelapass_real_release_001",
+                ]
+            ) + "\n"
+            (chant_sura_base / "input/scenario_table.csv").write_text(scenario_payload, encoding="utf-8")
+            (tschamut_base / "input/tschamut_public_scenario_table_v1.csv").write_text(
+                "\n".join(
+                    [
+                        scenario_header,
+                        "tschamut_public_lps_release_bbox_scenario_001,tschamut_public_lps_release_bbox,deterministic_test_policy,model_config_test,terrain_material_test,1.0,real_block_family,1.0,normalized within a block family; no annual frequency claim,tschamut_public_lps_release_001",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        if "source_scenario_policy" in categories:
+            policy_payload = yaml.safe_dump(
+                {
+                    "schema_version": 1,
+                    "policy_id": "chant_sura_fluelapass_real_source_scenario_policy_v1",
+                    "site_id": "chant_sura_fluelapass_portability_example_v1",
+                    "source_zone_id_pattern": "chant_sura_fluelapass_real_*",
+                    "source_zone_geometry": "LV95 polygon",
+                    "release_point_table": "one row per release point",
+                    "block_scenario_table": "CSV table with one row per block / scenario record",
+                    "scenario_probability_semantics": "normalized within a block family; no annual frequency claim",
+                },
+                sort_keys=False,
+            )
+            for policy_path in (
+                repo_root / "validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml",
+                repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
+            ):
+                policy_path.write_text(policy_payload, encoding="utf-8")
 
     def _build_aoi_to_map_smoke_fixture(self, repo_root: Path, output_tmp: str) -> dict[str, object]:
         output_dir = Path(output_tmp) / "smoke" / "hazard"

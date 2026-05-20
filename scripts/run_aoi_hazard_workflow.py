@@ -2332,11 +2332,17 @@ def resolve_first_blocker(
             else str(item)
             for item in step.get("expected_inputs", [])
         ]
+        blocked_reason = str(step.get("blocked_reason", ""))
+        if (
+            aoi_report.get("workflow_classification") == "blocked_fixture_backed_inputs"
+            and blocked_reason == "ready"
+        ):
+            blocked_reason = "deferred_public_context_inputs"
         return {
             "step_id": step.get("step_id", "unknown"),
             "label": step.get("label", step.get("step_id", "unknown")),
             "status": step.get("status", "blocked_missing_inputs"),
-            "blocked_reason": step.get("blocked_reason", ""),
+            "blocked_reason": blocked_reason,
             "missing_input_count": len(missing_inputs),
             "missing_inputs": missing_inputs[:6],
         }

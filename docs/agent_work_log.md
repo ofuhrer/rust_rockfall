@@ -3328,3 +3328,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: projection-only helper and companion report; no new live measurement, no Swiss-scale authorization, no operational claim, and no annual/physical/risk semantics.
 - Next task: `TB-329`
+
+### TB-329: Real-Input AOI Prepared-Pilot Compiler
+
+- Date: 2026-05-20
+- Commit: `ed167bd`
+- Objective: make the AOI-to-prepared-pilot compiler consume verified real-staged inputs, report fixture-backed and blocked states explicitly, and emit a deterministic handoff layout plus local/Balfrin review command transcript.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added prepared-pilot input readiness classification with exact terrain, source-zone, scenario, and context blockers, plus explicit `real_staged_ready`, `fixture_backed`, and `blocked_missing_inputs` surfaces.
+  - Added deterministic handoff layout and command transcript fields to the compiler run manifest, including local smoke and Balfrin review command surfaces.
+  - Extended tests to cover real-staged ready, fixture-backed, missing terrain, missing source-zone, missing scenario, and missing context states without relying on ignored Tschamut artifacts.
+  - Repaired AOI front-door fixture handling so fixture-backed public-context packages remain blocked for real readiness while existing bounded local smoke paths continue to work.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_to_prepared_pilot_dry_run.py scripts/summarize_chant_sura_fluelapass_dry_run_report.py scripts/run_aoi_hazard_workflow.py tests/test_aoi_to_prepared_pilot_dry_run.py tests/test_run_aoi_hazard_workflow.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_run_aoi_hazard_workflow -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: handoff generation and local tests only; no live Balfrin submission, no second-site ensemble execution, no physical-frequency semantics, and no operational claim.
+- Next task: `TB-330`
