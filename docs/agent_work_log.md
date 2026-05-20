@@ -4079,3 +4079,34 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live Balfrin submission, no `sbatch`, no non-`postproc` partition, no distributed execution, no scale-up claim, and no operational or hazard-evidence claim.
 - Next task: `TB-366`
+
+### TB-366: Execute Smallest Two-Zone Balfrin Hazard Run After Profile Repair
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: submit and actively monitor the repaired smallest two-zone Balfrin hazard package on `postproc` if all immediate access, scheduler, authorization, output-profile, output-budget, and preservation gates allowed it.
+- Files changed: `docs/balfrin_two_zone_hazard_run_tb366.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fast-forwarded the clean Balfrin checkout `/users/olifu/work/rust_rockfall` from `8b94c12d6d1fa89a4928e15b243805b19600d31b` to `a00cda3f9e3f5967724f865062d77ebe04dbb079`, then reran the access preflight; it reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, scheduler query available, and `0` dirty checkout paths.
+  - Refreshed the handoff package under `/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1` on Balfrin and reran `preflight_balfrin_smallest_multi_zone_probe_authorization.py`; it reported `ready_for_authorization_review`, `authorization_status=authorized`, `reducer_budget_status=ready`, `output_profile_status=ready`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
+  - Submitted the reviewed command on `postproc` as job `4343898`; the job completed with `State=COMPLETED`, `ExitCode=0:0`, `Elapsed=00:00:36`, batch `MaxRSS=450312K`, and run root `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`.
+  - Collected metrics and ran the preservation gate. The completed job is not measured two-zone evidence because the run root is incomplete, `memory_peak_mb` is missing from the metrics contract, required run-root entries are absent, and the generated command plan still used `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` without the repaired `--conditional-curve-export summary-only` / `--grid-csv-export none` controls.
+  - Recorded the completed job id, stdout/stderr pointers, artifact inventory, metrics, and post-run blocker in `docs/balfrin_two_zone_hazard_run_tb366.md`, then removed TB-366 from the active backlog so TB-367 can integrate the blocked post-run outcome rather than repeat the same submit path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-366 --format json`
+  - `rg -n "^### TB-366:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git fetch origin main && git pull --ff-only origin main && git rev-parse HEAD && git status --short --branch'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb366_balfrin_access_after_ff.json`
+  - `ssh balfrin 'sinfo -h -p postproc -o "%P %a %l %D %t %C"; squeue -h -p postproc -o "%i|%u|%T|%M|%l|%D|%C|%R" | head -50'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json > /tmp/tb366_handoff_refresh.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb366_balfrin_access_after_ff.json --format json > /tmp/tb366_smallest_multi_zone_preflight.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb366_balfrin_access_after_ff.json'`
+  - `ssh balfrin 'sacct -j 4343898 --format=JobID,JobName%24,Partition,State,ExitCode,Elapsed,MaxRSS,AllocCPUS,MaxDiskRead,MaxDiskWrite,WorkDir -P'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --probe-manifest validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --output-json /tmp/tb366_collected_metrics.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --evidence-json /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1/balfrin_probe_summary.json --format json --json-output /tmp/tb366_preservation_gate.json'` (expected exit `2` with `blocked_missing_inputs`)
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git status --short --untracked-files=all'`
+- Result/status: partial_needs_followup
+- Boundaries: one live `postproc` job was submitted and completed, but the result is not promoted to measured two-zone evidence; no non-`postproc` partition, no distributed execution, no generated artifact commit, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-367` must integrate TB-366 as a completed job with blocked post-run preservation/submit-contract evidence, not as measured two-zone hazard capability.
