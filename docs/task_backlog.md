@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-373: Acquire Or Stage Real Public Geodata For Management AOI
-
-Goal: Use the frozen AOI target to acquire or operator-stage the required public terrain/context products into ignored roots with checksums and provenance.
-
-Capability gap reduced: The workflow still depends on fixtures and synthetic staging for many AOI paths.
-
-Why this outranks alternatives: Real public inputs are the first gate for any credible arbitrary-AOI demonstration.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Ignored real-AOI input roots or a blocked acquisition report naming exact missing products and operator actions.
-- Provenance/checksum manifest for all staged products.
-
-Definition of done:
-
-- The AOI input gate reports real staged products, or a concrete non-stale acquisition blocker remains with exact next action.
-
-Boundaries: Do not commit raw swisstopo data; preserve CRS/datum/provenance; no ensemble execution.
-
 ### TB-374: Validate Management AOI Cache Integrity
 
 Goal: Verify acquired/staged AOI public-geodata products for checksum stability, required metadata, CRS/datum consistency, tile coverage, and missing-product classification.

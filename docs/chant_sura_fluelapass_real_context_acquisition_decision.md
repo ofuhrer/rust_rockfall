@@ -51,9 +51,11 @@ expected_cache_roots:
 Current repo-root state:
 
 - `proceed`: none. The Balfrin trigger matrix only reaches `proceed` when measured conditional-diagnostic evidence is present.
-- `defer`: `SWISSIMAGE`, `swissTLM3D`, `swissSURFACE3D`, `swissSURFACE3D Raster`, `swissBUILDINGS3D`.
-- `missing-input`: `terrain_metadata`, `aoi_tile_catalog`, `swisstlm3d_metadata`, `source_zone_metadata`, `scenario_table`, `source_scenario_policy`.
-- `locally-stageable`: `terrain_crop`, the core input bundle, and the public-context directory layout can all be staged without unauthorized downloads, but this pack does not execute those commands.
+- `fixture_backed`: the current terrain crop cache row is still fixture-backed, so it is not real public evidence even though the file is present in the ignored input root.
+- `staged`: `terrain_metadata`, `aoi_tile_catalog`, `source_zone_metadata`, `scenario_table`, and `source_scenario_policy`.
+- `missing`: `swisstlm3d_metadata`.
+- `deferred`: `SWISSIMAGE`, `swissTLM3D`, `swissSURFACE3D`, `swissSURFACE3D Raster`, `swissBUILDINGS3D`.
+- `locally-stageable`: the site-specific context bundle can be promoted from the shared ignored raw cache, but this pack does not execute those commands.
 
 The operator execution plan below is the concrete handoff. It names the exact roots, expected metadata, verifier commands, and stop conditions, while keeping the no-download boundary in force.
 
@@ -251,28 +253,18 @@ separately in
 
 Current helper outputs:
 
-- `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
-- `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `blocked_missing_inputs`
-- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` -> `verified` with `product_count: 0`; this is only a manifest-shape check and does not prove that any products are staged.
+- `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `deferred_public_context_inputs`
+- `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json` -> `deferred_public_context_inputs`
+- `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json` -> `fixture_backed`
 
-Exact missing or deferred products and paths:
+Exact current blockers and operator actions:
 
-- missing AOI tile catalog metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml`
-- missing terrain crop at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`
-- missing terrain metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml`
-- missing source-zone metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml`
-- missing scenario table at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/scenario_table.csv`
-- missing source-scenario policy at `validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml`
-- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage`
-- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d`
-- deferred public context metadata at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json`
-- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d`
-- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d_raster`
-- deferred public context at `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissbuildings3d`
+- replace the fixture-backed terrain crop and terrain metadata with a real crop derived from `data/raw/swisstopo/swissalti3d_2019_2696-1167_2_2056_5728.tif`, then refresh the checksum and provenance sidecar under `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/`
+- stage `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` from the real `data/raw/swisstopo/swisstlm3d/swisstlm3d_2021-04_2056_5728.shp.zip` archive and copy or symlink the archive into `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d`
+- promote the already present real raw cache files into site-specific ignored context roots for `SWISSIMAGE`, `swissSURFACE3D Raster`, and `swissBUILDINGS3D`
+- acquire the missing `swissSURFACE3D` public product from its swisstopo product page and stage it into `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisssurface3d`
 
-The candidate remains blocked until the required catalog, terrain, source-zone,
-scenario, and policy inputs are staged. Public context stays deferred until a
-site-specific workflow explicitly needs it.
+The candidate remains blocked until the real terrain crop is no longer fixture-backed and the missing context sidecar/product rows are staged in ignored roots with checksums and provenance.
 
 ## Exact Commands
 
