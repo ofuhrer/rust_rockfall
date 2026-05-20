@@ -3305,3 +3305,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: conditional scenario generation only; no source-frequency semantics, no physics tuning, no simulation, and no operational claim.
 - Next task: `TB-328`
+
+### TB-328: AOI Scenario Cost Projection Model
+
+- Date: 2026-05-20
+- Commit: `bbdf49c`
+- Objective: add a deterministic AOI cost-projection ladder that converts release-zone and scenario-table cardinality into runtime, storage, and reducer-pressure projections for bounded AOI sizes.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `tests/test_aoi_scenario_preview.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a companion AOI cost-projection report mode to `scripts/preview_aoi_scenario_cost_estimate.py` for the 2, 4, 8, 12, 50, and 100-zone ladder, with deterministic runtime, storage, file-count, and reducer-pressure outputs.
+  - Separated the projection surface into measured, scratch-local, projection-only, and no-go evidence labels by threading the Balfrin scale-readiness matrix into the companion report and keeping the projection assumptions explicit.
+  - Added a focused regression for the new projection ladder plus a CLI smoke path against the checked-in AOI review fixture, then removed TB-328 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_scenario_preview -v`
+  - `PYENV_VERSION=system uv run python scripts/preview_aoi_scenario_cost_estimate.py --review-package tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml --projection-zone-counts 2,4,8,12,50,100 --format json > /tmp/tb328_projection_preview.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/preview_aoi_scenario_cost_estimate.py tests/test_aoi_scenario_preview.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: projection-only helper and companion report; no new live measurement, no Swiss-scale authorization, no operational claim, and no annual/physical/risk semantics.
+- Next task: `TB-329`
