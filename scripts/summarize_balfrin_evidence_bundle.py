@@ -53,6 +53,34 @@ TB267_MULTI_ZONE_BLOCKED_EVIDENCE = {
         "manifest_size_bytes and the authorization record was missing."
     ),
 }
+TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE = {
+    "task_id": "TB-362",
+    "status": "failed_closed",
+    "evidence_type": "failed_closed",
+    "root_class": "failed_closed_two_zone_root",
+    "preflight_status": "blocked_reducer_budget",
+    "authorization_record_status": "authorized",
+    "first_bottleneck_label": "blocked_output_profile",
+    "slurm_job_id": None,
+    "metrics_json_promoted": False,
+    "preservation_checked": False,
+    "preservation_gate_promoted": False,
+    "post_run_collector_promoted": False,
+    "release_zone_count": 2,
+    "reducer_budget_status": "ready",
+    "submit_contract_status": "ready",
+    "output_budget_acceptance_status": "accepted",
+    "output_profile_status": "blocked_output_profile",
+    "ready_for_authorized_submission": False,
+    "run_root": None,
+    "source_paths": ["docs/balfrin_two_zone_hazard_run_tb362.md", "docs/agent_work_log.md"],
+    "summary": (
+        "TB-362 failed closed before sbatch: the explicit two-zone hazard package passed authorization, reducer-budget, "
+        "submit-contract, and output-budget gates, but the remote pre-submit gate returned output_profile_status="
+        "blocked_output_profile with the four-zone review-package branch reason. No live job id or measured two-zone run root exists."
+    ),
+    "next_blocker": "blocked_reducer_budget:blocked_output_profile",
+}
 TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE = {
     "task_id": "TB-352",
     "status": "failed_closed",
@@ -494,11 +522,11 @@ def build_bundle_report(
 
 def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
     if evidence is None:
-        return dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
+        return dict(TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
     if isinstance(evidence, str):
         return classify_multi_zone_balfrin_root({"run_root": evidence, "source_paths": [evidence]})
     if not isinstance(evidence, dict):
-        return dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
+        return dict(TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
     if evidence.get("status") == "partial" or evidence.get("evidence_type") == "partial":
         payload = dict(TB352_MULTI_ZONE_PARTIAL_EVIDENCE)
         payload.update(evidence)
@@ -516,22 +544,39 @@ def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
         }
         use_tb352_template = (
             evidence.get("task_id") == "TB-352"
-            or evidence.get("preflight_status") == "blocked_reducer_budget"
             or "manifest_size_bytes" == str(evidence.get("first_bottleneck_label") or "")
             or "docs/balfrin_smallest_multi_zone_hazard_run_tb352.md" in evidence_source_paths
         )
-        payload = dict(TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE if use_tb352_template else TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE)
+        use_tb362_template = (
+            evidence.get("task_id") == "TB-362"
+            or evidence.get("output_profile_status") == "blocked_output_profile"
+            or "blocked_output_profile" == str(evidence.get("first_bottleneck_label") or "")
+            or "docs/balfrin_two_zone_hazard_run_tb362.md" in evidence_source_paths
+        )
+        payload = dict(
+            TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE
+            if use_tb362_template
+            else TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE
+            if use_tb352_template
+            else TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE
+        )
         payload.update(evidence)
         payload["status"] = "failed_closed"
         payload["evidence_type"] = "failed_closed"
         payload["root_class"] = str(payload.get("root_class") or "failed_closed_two_zone_root")
         payload["first_bottleneck_label"] = str(
             payload.get("first_bottleneck_label")
-            or ("manifest_size_bytes" if use_tb352_template else "manifest_schema_version")
+            or ("blocked_output_profile" if use_tb362_template else "manifest_size_bytes" if use_tb352_template else "manifest_schema_version")
         )
         payload["next_blocker"] = str(
             payload.get("next_blocker")
-            or ("blocked_reducer_budget:manifest_size_bytes" if use_tb352_template else "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch")
+            or (
+                "blocked_reducer_budget:blocked_output_profile"
+                if use_tb362_template
+                else "blocked_reducer_budget:manifest_size_bytes"
+                if use_tb352_template
+                else "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch"
+            )
         )
         return payload
     if evidence.get("preflight_status") == "blocked_reducer_budget" or evidence.get("status") in {

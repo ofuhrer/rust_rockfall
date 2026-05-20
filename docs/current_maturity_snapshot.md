@@ -148,7 +148,15 @@ action is package run-root and live-shape repair rather than evidence
 integration or a live scale step. TB-312 later measured the exact compact
 four-zone post-processing/reducer package on Balfrin `postproc` as efficiency
 evidence only, and TB-314 confirmed the local scratch ladder still first
-blocks at 8 zones on `accumulation_seconds`. TB-315 through TB-318 then moved
+blocks at 8 zones on `accumulation_seconds`. TB-362 then reran the explicit
+two-zone hazard path after the remote checkout was cleaned and fast-forwarded,
+but failed closed before `sbatch`: authorization, reducer-budget,
+submit-contract, and output-budget acceptance were ready/accepted, while the
+remote output-profile gate returned `blocked_output_profile` with a four-zone
+review-package reason. No live job id, runtime, memory, validation output,
+hazard output, GIS package, or measured two-zone run root was produced, so the
+canonical two-zone branch remains failed-closed/blocked rather than measured
+multi-zone hazard evidence. TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA
 surface. The

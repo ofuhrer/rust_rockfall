@@ -24,7 +24,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
         self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
-        self.assertIn("TB-352 failed closed before scheduler submission", report["summary"])
+        self.assertIn("TB-362 failed closed before scheduler submission", report["summary"])
         self.assertIn("next measured action remains deferred until a live hazard branch exists", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
         self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
@@ -50,7 +50,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             [
                 "defer_eight_zone_probe_until_measured_hazard_execution",
                 "optimize_only_from_new_measured_bottleneck",
-                "repair_two_zone_submit_contract_or_regenerate_package",
+                "resolve_two_zone_output_profile_blocker",
                 "stage_real_public_context_for_user_aoi",
                 "defer_physical_frequency_and_operational_claims",
             ],
@@ -172,10 +172,19 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             tiers["four_zone_hazard_probe"]["authorization_record_reviewed_handoff_sha256"],
         )
 
-        self.assertEqual(tiers["two_zone_failed_closed"]["classification"], "failed_closed_submit_contract_mismatch")
+        self.assertEqual(tiers["two_zone_failed_closed"]["classification"], "failed_closed_blocked_output_profile")
         self.assertEqual(tiers["two_zone_failed_closed"]["evidence_label"], "failed_closed")
-        self.assertEqual(tiers["two_zone_failed_closed"]["next_evidence_field"], "submit_manifest_schema")
-        self.assertIn("public_real_site_conditional_pilot_run_v1_schema_mismatch", tiers["two_zone_failed_closed"]["blocker"])
+        self.assertEqual(tiers["two_zone_failed_closed"]["next_evidence_field"], "output_profile_status")
+        self.assertEqual(tiers["two_zone_failed_closed"]["output_profile_status"], "blocked_output_profile")
+        self.assertEqual(tiers["two_zone_failed_closed"]["authorization_status"], "authorized")
+        self.assertEqual(tiers["two_zone_failed_closed"]["reducer_budget_status"], "ready")
+        self.assertEqual(tiers["two_zone_failed_closed"]["submit_contract_status"], "ready")
+        self.assertEqual(tiers["two_zone_failed_closed"]["output_budget_acceptance_status"], "accepted")
+        self.assertIsNone(tiers["two_zone_failed_closed"]["runtime_seconds"])
+        self.assertIsNone(tiers["two_zone_failed_closed"]["memory_peak_mb"])
+        self.assertIsNone(tiers["two_zone_failed_closed"]["validation_output_bytes"])
+        self.assertIsNone(tiers["two_zone_failed_closed"]["hazard_output_bytes"])
+        self.assertIn("blocked_output_profile", tiers["two_zone_failed_closed"]["blocker"])
         self.assertEqual(report["latest_execution_efficiency_status"]["two_zone_failed_closed"], "failed_closed_before_live_execution")
 
         self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")

@@ -485,7 +485,7 @@ def build_readiness_matrix(
             gate_status=str(follow_up_recommendation.get("authorization_classification") or "blocked_pending_authorization"),
             evidence_status="dry_run",
             summary=(
-                "The current multi-zone evidence bundle records TB-352 as failed closed before scheduler submission; "
+                "The current multi-zone evidence bundle records TB-362 as failed closed before scheduler submission; "
                 "it remains the canonical deferral signal and does not yet provide a live full-scale measured execution."
             ),
             helper_sources=[
@@ -997,11 +997,11 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
     return {
         "status": "projection_only",
         "evidence_type": "projection_only",
-        "summary": (
-            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
-            "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-            "TB-352's fail-closed smallest multi-zone branch does not add measured support."
-        ),
+            "summary": (
+                "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
+                "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
+                "TB-362's fail-closed two-zone hazard branch does not add measured support."
+            ),
         "projection_classification": {
             "10_zone": "feasible",
             "100_zone": "conditionally_feasible_deferred",
@@ -1035,10 +1035,22 @@ def build_failed_closed_section() -> dict[str, Any]:
         "status": "failed_closed",
         "evidence_type": "failed_closed",
         "summary": (
-            "The recent submit branches, including the canonical TB-352 smallest multi-zone path, failed closed before live execution, "
+            "The recent submit branches, including the canonical TB-362 two-zone hazard path, failed closed before live execution, "
             "so they remain guardrail evidence rather than measured scale capability."
         ),
         "failed_closed_branches": [
+            {
+                "task": "TB-362",
+                "branch": "two-zone hazard submit",
+                "failure_point": "remote pre-submit blocked with output_profile_status=blocked_output_profile before sbatch",
+                "classification": "failed_closed",
+                "preflight_status": "blocked_reducer_budget",
+                "authorization_status": "authorized",
+                "reducer_budget_status": "ready",
+                "submit_contract_status": "ready",
+                "output_budget_acceptance_status": "accepted",
+                "source_report": "docs/balfrin_two_zone_hazard_run_tb362.md",
+            },
             {
                 "task": "TB-352",
                 "branch": "smallest multi-zone hazard",
@@ -1065,12 +1077,14 @@ def build_failed_closed_section() -> dict[str, Any]:
             },
         ],
         "top_blockers": [
+            "output_profile_status_blocked_output_profile",
             "authorization_record_checksum_mismatch",
             "review_only_profile_mismatch",
             "submit_contract_manifest_mismatch",
         ],
         "source_paths": [
             "docs/current_maturity_snapshot.md",
+            "docs/balfrin_two_zone_hazard_run_tb362.md",
             "docs/multi_zone_reducer_pressure_probe.md",
             "docs/balfrin_single_job_execution_sufficiency.md",
         ],

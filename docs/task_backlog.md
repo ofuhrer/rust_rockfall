@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-363: Integrate Two-Zone Balfrin Hazard Evidence
-
-Goal: Collect, classify, and thread the TB-362 two-zone hazard evidence through the scale matrix, management package, projection, and maturity snapshot.
-
-Capability gap reduced: Prevents live-run evidence from remaining an isolated scratch artifact.
-
-Why this outranks alternatives: Measured evidence only changes the feasibility answer after it is collected, budgeted, classified, and surfaced consistently.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Updated measured/failed-closed classification for the two-zone branch.
-- Runtime, memory, validation/hazard bytes, file counts, reducer pressure, GIS status, and claim boundaries reflected in canonical docs/helpers.
-
-Definition of done:
-
-- The two-zone branch is deterministically classified as measured, failed-closed, or blocked, and no stale projection surface contradicts that classification.
-
-Boundaries: Collection/synthesis only; no new run, no operational claim, no scale-up authorization.
-
 ### TB-364: Measure Two-Zone Hazard Throughput Bottlenecks
 
 Goal: If TB-362 produces a measured run, profile the two-zone hazard-output path to identify the first actionable throughput, manifest, reducer, or file-count bottleneck.

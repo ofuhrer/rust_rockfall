@@ -3299,7 +3299,7 @@ def build_measured_two_zone_evidence_gate(report: dict[str, Any]) -> dict[str, A
             "decision": "measured",
             "summary": evidence.get("summary")
             or "Measured two-zone evidence is present and can support a live four-zone hazard review.",
-            "source_task": evidence.get("source_task", "TB-352"),
+            "source_task": evidence.get("source_task", "TB-362"),
             "source_report": evidence.get("source_report"),
             "blocker": None,
             "measured_on_balfrin": True,
@@ -3310,12 +3310,12 @@ def build_measured_two_zone_evidence_gate(report: dict[str, Any]) -> dict[str, A
         "decision": "defer",
         "summary": (
             evidence.get("summary")
-            or "TB-352 failed closed before scheduler submission, so measured two-zone hazard evidence is unavailable."
+            or "TB-362 failed closed before scheduler submission with output_profile_status=blocked_output_profile, so measured two-zone hazard evidence is unavailable."
         ),
-        "source_task": evidence.get("source_task", "TB-352"),
+        "source_task": evidence.get("source_task", "TB-362"),
         "source_report": evidence.get("source_report"),
         "blocker": evidence.get("blocker")
-        or "TB-352 failed closed before scheduler submission; no measured two-zone hazard evidence is available.",
+        or "TB-362 failed closed before scheduler submission with output_profile_status=blocked_output_profile; no measured two-zone hazard evidence is available.",
         "measured_on_balfrin": False,
     }
 
@@ -3330,7 +3330,7 @@ def classify_four_zone_hazard_execution_decision(
     evidence_status = str(measured_two_zone_evidence.get("status") or "").strip()
     if evidence_status != "measured":
         reason = measured_two_zone_evidence.get("blocker") or measured_two_zone_evidence.get("summary") or (
-            "TB-352 failed closed before scheduler submission, so the four-zone hazard package remains deferred."
+            "TB-362 failed closed before scheduler submission, so the four-zone hazard package remains deferred."
         )
         return {
             "decision": "defer",

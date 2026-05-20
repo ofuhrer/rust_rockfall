@@ -125,8 +125,9 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(measured_multi_zone_row["current_evidence"]["bundle_multi_zone_status"], "failed_closed")
         self.assertEqual(
             measured_multi_zone_row["current_evidence"]["bundle_multi_zone_next_blocker"],
-            "blocked_reducer_budget:manifest_size_bytes",
+            "blocked_reducer_budget:blocked_output_profile",
         )
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["bundle_multi_zone_status"], "failed_closed")
         clean_checkout_row = next(row for row in matrix["rows"] if row["gate"] == "clean_checkout_behavior")
         self.assertEqual(clean_checkout_row["evidence_status"], "blocked")
         self.assertIn("does not exist", clean_checkout_row["current_evidence"]["missing_run_root_reason"])

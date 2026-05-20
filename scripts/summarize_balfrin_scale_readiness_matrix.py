@@ -114,6 +114,23 @@ TB332_FOUR_ZONE_HAZARD_PROBE_GATE = {
     "source_report": "docs/balfrin_four_zone_hazard_probe_tb332.md",
 }
 TB333_FOUR_ZONE_HAZARD_NEXT_ACTION = "defer_eight_zone_probe_until_measured_hazard_execution"
+TB362_TWO_ZONE_HAZARD_FAILED_CLOSED = {
+    "task_id": "TB-362",
+    "remote_head": "8b94c12d6d1fa89a4928e15b243805b19600d31b",
+    "preflight_status": "blocked_reducer_budget",
+    "ready_for_authorized_submission": False,
+    "authorization_status": "authorized",
+    "reducer_budget_status": "ready",
+    "submit_contract_status": "ready",
+    "output_budget_acceptance_status": "accepted",
+    "output_profile_status": "blocked_output_profile",
+    "blocked_reason": "single-job sufficiency or reducer scaling is not yet ready for the four-zone review package",
+    "slurm_job_id": None,
+    "run_root": None,
+    "artifact_count": 7,
+    "artifact_bytes": 1_362_459,
+    "source_report": "docs/balfrin_two_zone_hazard_run_tb362.md",
+}
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -547,27 +564,49 @@ def _four_zone_hazard_probe_blocked_row() -> dict[str, Any]:
 
 
 def _two_zone_failed_closed_row() -> dict[str, Any]:
+    gate = TB362_TWO_ZONE_HAZARD_FAILED_CLOSED
     return {
         "tier_id": "two_zone_failed_closed",
-        "tier_label": "two-zone review result",
+        "tier_label": "two-zone hazard run attempt",
         "evidence_label": "failed_closed",
         "measurement_status": "failed_closed",
-        "classification": "failed_closed_submit_contract_mismatch",
-        "output_budget_status": "failed_closed_before_sbatch",
+        "classification": "failed_closed_blocked_output_profile",
+        "output_budget_status": gate["output_budget_acceptance_status"],
+        "output_pressure_status": gate["output_budget_acceptance_status"],
         "execution_efficiency_status": "failed_closed_before_live_execution",
+        "hazard_execution_status": "failed_closed_pre_submit_no_hazard_execution",
         "file_count": None,
         "bytes": None,
+        "validation_output_file_count": None,
+        "validation_output_bytes": None,
+        "hazard_output_file_count": None,
+        "hazard_output_bytes": None,
         "manifest_bytes": None,
         "reducer_sidecars": None,
         "runtime_seconds": None,
         "memory_peak_mb": None,
         "run_root_preservation_status": "failed_closed_pre_submit",
-        "replayability_status": "submit_contract_schema_mismatch",
-        "authorization_status": "reviewed_but_not_executed",
-        "next_evidence_field": "submit_manifest_schema",
-        "blocker": "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+        "replayability_status": "not_measured",
+        "authorization_status": gate["authorization_status"],
+        "next_evidence_field": "output_profile_status",
+        "blocker": "blocked_reducer_budget:blocked_output_profile",
+        "preflight_status": gate["preflight_status"],
+        "ready_for_authorized_submission": gate["ready_for_authorized_submission"],
+        "reducer_budget_status": gate["reducer_budget_status"],
+        "submit_contract_status": gate["submit_contract_status"],
+        "output_budget_acceptance_status": gate["output_budget_acceptance_status"],
+        "output_profile_status": gate["output_profile_status"],
+        "blocked_reason": gate["blocked_reason"],
+        "slurm_job_id": gate["slurm_job_id"],
+        "run_root": gate["run_root"],
+        "remote_head": gate["remote_head"],
+        "artifact_count": gate["artifact_count"],
+        "artifact_bytes": gate["artifact_bytes"],
+        "source_report": gate["source_report"],
         "summary": (
-            "TB-309 reached authorization review for the reviewed two-zone package, but the submit helper failed closed before sbatch because the manifest schema_version did not match the executable pilot-run contract."
+            "TB-362 failed closed before sbatch: the two-zone hazard package was authorized and passed reducer-budget, "
+            "submit-contract, and output-budget acceptance gates, but the remote output-profile gate blocked on the four-zone "
+            "review-package branch. No live job id, runtime, memory, validation bytes, hazard bytes, or measured run root exists."
         ),
     }
 
@@ -731,7 +770,7 @@ def build_report() -> dict[str, Any]:
             "category": "evidence_deferral",
             "status": "recommended_next",
             "reason": (
-                "TB-352 failed closed before scheduler submission, so larger work should be deferred until a measured hazard branch "
+                "TB-362 failed closed before scheduler submission, so larger work should be deferred until a measured hazard branch "
                 "or a new bottleneck measurement exists."
             ),
         },
@@ -747,12 +786,12 @@ def build_report() -> dict[str, Any]:
         },
         {
             "rank": 3,
-            "action_id": "repair_two_zone_submit_contract_or_regenerate_package",
+            "action_id": "resolve_two_zone_output_profile_blocker",
             "category": "execution_unblock",
             "status": "ready_for_operator_choice",
             "reason": (
-                "The older two-zone submit-contract repair remains a live blocker, but it is now ranked behind the latest "
-                "fail-closed multi-zone branch because the new evidence says the larger hazard follow-on should be deferred first."
+                "The current two-zone branch is blocked at output_profile_status=blocked_output_profile; repair that exact "
+                "pre-submit classification before any new live two-zone attempt."
             ),
         },
         {
@@ -782,7 +821,7 @@ def build_report() -> dict[str, Any]:
         "summary": (
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
-            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-352 failed closed before scheduler submission on the canonical smallest multi-zone path, "
+            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-362 failed closed before scheduler submission on the canonical two-zone hazard path, "
             "so the next measured action remains deferred until a live hazard branch exists, TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
@@ -846,11 +885,11 @@ def build_report() -> dict[str, Any]:
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": (
-            "TB-352 failed closed before scheduler submission, so the next safe action is to defer an eight-zone probe until a measured hazard branch exists."
+            "TB-362 failed closed before scheduler submission, so the next safe action is to defer an eight-zone probe until a measured hazard branch exists."
         ),
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_backlog_recommendations": next_backlog_recommendations,
-        "blocked_reason": "four_zone_hazard_probe.blocked_pre_submit_authorization_record_checksum",
+        "blocked_reason": "two_zone_failed_closed.blocked_output_profile",
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "physical_probability_claims_allowed": False,
@@ -866,6 +905,7 @@ def build_report() -> dict[str, Any]:
             "scripts/summarize_balfrin_next_live_run_decision_gate.py",
             "scripts/estimate_swiss_wide_execution_envelope.py",
             "docs/balfrin_postproc_microbenchmark_tb305.md",
+            "docs/balfrin_two_zone_hazard_run_tb362.md",
         ],
     }
 

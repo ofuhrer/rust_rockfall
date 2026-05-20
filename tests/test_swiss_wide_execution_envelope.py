@@ -164,10 +164,10 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             "allowed_next_probe_blocked_failed_closed",
         )
         self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "failed_closed")
-        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "remote_cleanup_rerun")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "resolve_two_zone_failed_closed_blocker")
         self.assertEqual(
             report["multi_zone_scaling_frontier"]["next_blocker"],
-            "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+            "blocked_reducer_budget:blocked_output_profile",
         )
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)

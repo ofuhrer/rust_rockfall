@@ -255,7 +255,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(hazard_package["decision"], "defer")
         self.assertEqual(hazard_package["decision_status"], "deferred")
         self.assertFalse(hazard_package["ready_for_submit"])
-        self.assertIn("TB-352 failed closed", hazard_package["readiness_reason"])
+        self.assertIn("TB-362 failed closed", hazard_package["readiness_reason"])
         self.assertEqual(hazard_package["command_plan"]["command_plan_status"], "ready")
         self.assertEqual(
             hazard_package["command_plan"]["output_profile_policy"]["classification"],

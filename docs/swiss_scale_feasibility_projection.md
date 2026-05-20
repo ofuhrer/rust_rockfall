@@ -36,6 +36,13 @@ branches into measured capability:
   - Memory remains within the measured single-job band because there is no
     larger measured memory series.
 - Failed-closed branches:
+  - TB-362 failed closed before `sbatch` on the explicit two-zone hazard path:
+    `authorization_status=authorized`, `reducer_budget_status=ready`,
+    `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`,
+    but `output_profile_status=blocked_output_profile` kept the pre-submit
+    gate at `blocked_reducer_budget`. No job id, runtime, memory, validation
+    output, hazard output, GIS package, or measured run root exists for that
+    branch.
   - TB-352 failed closed before scheduler submission, so it remains guardrail
     evidence rather than measured multi-zone hazard execution.
   - TB-332/TB-333 failed closed on an authorization checksum mismatch.
@@ -79,6 +86,9 @@ Measured:
 - The readiness matrix records TB-312 four-zone postproc/reducer evidence, but
   that evidence is still postproc-only and does not upgrade hazard execution
   capability.
+- The readiness matrix records TB-362 as the current two-zone failed-closed
+  branch with no measured runtime, memory, validation bytes, hazard bytes,
+  reducer output, GIS status, or run-root preservation evidence.
 - GIS/COG packaging remains blocked by missing pilot GIS manifest fields and
   raster readiness gaps.
 

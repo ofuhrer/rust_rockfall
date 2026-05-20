@@ -34,8 +34,11 @@ toward a larger Balfrin demonstration?
   boundaries, and the TB-312 four-zone postproc/reducer package.
 - Projection-only: Swiss-scale feasibility estimates for 10-zone, 100-zone,
   regional, and Swiss-wide workflows.
-- Failed-closed: reviewed live-submit branches that stopped before `sbatch`
-  because package, checksum, or manifest contracts did not match.
+- Failed-closed: reviewed live-submit branches that stopped before `sbatch`.
+  The current two-zone branch is TB-362: authorization, reducer-budget,
+  submit-contract, and output-budget gates were ready/accepted, but
+  `output_profile_status=blocked_output_profile` kept the remote pre-submit
+  gate at `blocked_reducer_budget`, so no job id or measured run root exists.
 - Fixture-backed: replay/preservation smoke evidence where no live run root is
   mounted.
 - Deferred: management review and any future Balfrin submission decision.

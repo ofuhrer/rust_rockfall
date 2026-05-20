@@ -69,7 +69,7 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertIn("multi_zone_package:mixed_provenance", multi_zone["exact_evidence_blockers"])
         self.assertIn("output_pressure:no_go", multi_zone["exact_evidence_blockers"])
         self.assertIn(
-            "multi_zone_evidence:failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch",
+            "multi_zone_evidence:blocked_reducer_budget:blocked_output_profile",
             multi_zone["exact_evidence_blockers"],
         )
         self.assertIn("live_multi_zone_measurement_unauthorized", multi_zone["exact_evidence_blockers"])

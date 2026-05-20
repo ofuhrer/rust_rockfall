@@ -737,10 +737,11 @@ def build_multi_zone_scaling_frontier(canonical_bundle_report: dict[str, Any]) -
         )
     elif failed_closed_two_zone:
         frontier_status = "failed_closed"
-        next_branch = "remote_cleanup_rerun"
-        next_blocker = "failed_closed:public_real_site_conditional_pilot_run_v1_schema_mismatch"
+        next_branch = "resolve_two_zone_failed_closed_blocker"
+        next_blocker = str(evidence.get("next_blocker") or "failed_closed:two_zone_pre_submit")
         summary = (
-            "TB-309 reached authorization review for a two-zone package but failed closed before sbatch because the reviewed submit command and executable pilot-run manifest schema did not match."
+            str(evidence.get("summary") or "")
+            or "The current two-zone branch failed closed before sbatch, so it remains guardrail evidence rather than measured multi-zone hazard execution."
         )
     elif status.startswith("blocked"):
         frontier_status = "blocked_incomplete"

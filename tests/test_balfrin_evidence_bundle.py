@@ -209,21 +209,25 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
         self.assertIn("metrics_remediation:", bundle.render_text_report(report))
 
-    def test_current_multi_zone_evidence_records_tb352_failed_closed_branch(self) -> None:
+    def test_current_multi_zone_evidence_records_tb362_failed_closed_branch(self) -> None:
         report = bundle.build_current_report()
         multi_zone = report["multi_zone_balfrin_evidence"]
 
         self.assertEqual(multi_zone["status"], "failed_closed")
         self.assertEqual(multi_zone["evidence_type"], "failed_closed")
-        self.assertEqual(multi_zone["task_id"], "TB-352")
+        self.assertEqual(multi_zone["task_id"], "TB-362")
         self.assertEqual(multi_zone["preflight_status"], "blocked_reducer_budget")
-        self.assertEqual(multi_zone["first_bottleneck_label"], "manifest_size_bytes")
-        self.assertEqual(multi_zone["next_blocker"], "blocked_reducer_budget:manifest_size_bytes")
+        self.assertEqual(multi_zone["authorization_record_status"], "authorized")
+        self.assertEqual(multi_zone["output_profile_status"], "blocked_output_profile")
+        self.assertEqual(multi_zone["first_bottleneck_label"], "blocked_output_profile")
+        self.assertEqual(multi_zone["next_blocker"], "blocked_reducer_budget:blocked_output_profile")
         self.assertIsNone(multi_zone["slurm_job_id"])
+        self.assertIsNone(multi_zone["run_root"])
         self.assertFalse(multi_zone["metrics_json_promoted"])
         self.assertFalse(multi_zone["preservation_gate_promoted"])
         self.assertFalse(multi_zone["post_run_collector_promoted"])
-        self.assertIn("failed closed before scheduler submission", multi_zone["summary"])
+        self.assertIn("failed closed before sbatch", multi_zone["summary"])
+        self.assertIn("No live job id or measured two-zone run root exists", multi_zone["summary"])
         self.assertIn("multi_zone_balfrin_evidence:", bundle.render_text_report(report))
 
     def test_multi_zone_evidence_classifier_distinguishes_root_classes(self) -> None:
