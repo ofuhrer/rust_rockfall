@@ -22,7 +22,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/check_repo_consistency.py`
 - `scripts/print_agent_task_context.py`
 
-## Core Workflow CLIs
+## User-Facing Front Doors
 
 - `scripts/audit_gis_cog_package_readiness.py`
 - `scripts/audit_multisite_source_scenario_contract.py`
@@ -46,7 +46,6 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/generate_balfrin_postproc_microbenchmark_package.py`
 - `scripts/generate_balfrin_target_area_demo_handoff.py`
 - `scripts/generate_balfrin_target_area_scenario_tables.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
 - `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
 - `scripts/generate_pilot_command_plan.py`
 - `scripts/generate_tschamut_block_scenario_tables.py`
@@ -54,16 +53,13 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/inspect_tschamut_public_context_layers.py`
 - `scripts/measure_hazard_context_overlap.py`
 - `scripts/generate_aoi_map_qa_review.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
 - `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
 - `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
 - `scripts/plan_pragmatic_release_plan.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
 - `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
 - `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
 - `scripts/package_aoi_hazard_map.py`
+- `scripts/run_aoi_hazard_workflow.py`
 - `scripts/submit_balfrin_probe.py`
 - `scripts/stage_public_geodata_cache.py`
 - `scripts/stage_management_aoi_restaged_terrain.py`
@@ -87,11 +83,17 @@ the calling CLIs.
 - `scripts/hazard_output_reports.py`
 - `scripts/hazard_output_writers.py`
 
-## Shared Workflow Helpers
+## Internal Workflow Helpers
 
 - `scripts/lib/workflow_validation.py` centralizes narrow validation and
   workflow-shell helpers, including dynamic script loading used by compatibility
   CLIs.
+
+- `scripts/plan_aoi_terrain_preprocessing.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `scripts/plan_release_plan_dry_run.py`
+- `scripts/generate_candidate_source_zone_scenarios.py`
+- `scripts/plan_terrain_release_zone_candidates.py`
 
 ## Dataset, Benchmark, And Calibration Preparation
 
@@ -125,7 +127,6 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/run_dem_terrain_sensitivity.py`
 - `scripts/run_performance_benchmark.py`
 - `scripts/hazard_accumulation_benchmark.py`
-- `scripts/run_aoi_hazard_workflow.py`
 
 ## Evidence Summarizers
 

@@ -56,8 +56,8 @@ review surface that exposes layer inventory, warnings, provenance, observed
 overlay status, and the next recommended command. It does not yet download all
 public inputs by default, run arbitrary real AOIs end to end, execute
 second-site ensembles, or generate physically annualized intensity-frequency
-products. The `scripts/run_aoi_hazard_workflow.py workflow --format text`
-front door now prints `workflow_status`, `first_blocker`, `next_command`,
+products. The canonical quickstart documents the `workflow --format text`
+front door, which prints `workflow_status`, `first_blocker`, `next_command`,
 required inputs, generated outputs, and claim boundaries in one
 copy-pasteable summary.
 
@@ -79,8 +79,10 @@ pressure, hazard-throughput no-op boundaries, and the latest Swiss-scale
 projection refresh. These changes improve automation and evidence separation,
 but they still do not provide measured multi-zone Balfrin hazard execution.
 
-The user-facing AOI bounds-to-review-map walkthrough now lives in
-`docs/public_real_site_geodata_preparation.md`.
+The canonical AOI quickstart lives in
+[`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart).
+Use that path for the command-level bounds-to-review-map walkthrough instead
+of duplicating AOI helper steps in new docs.
 
 Current next-backlog recommendations are deliberately execution- or
 acquisition-oriented: acquire and preprocess real public geodata for arbitrary
@@ -133,6 +135,11 @@ context helper:
 ```bash
 PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-xxx --format json
 ```
+
+Canonical AOI quickstart:
+[`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart)
+for the end-to-end user-facing AOI path, with helper commands kept linked from
+that document.
 
 Local repository Python commands should use `PYENV_VERSION=system uv run python ...`
 so pyenv shims and global packages do not affect results. GitHub Actions may

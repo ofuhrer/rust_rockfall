@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-399: Consolidate User-Facing AOI Documentation
-
-Goal: Collapse duplicated AOI workflow instructions into one short user-facing path and point detailed helper material behind links.
-
-Capability gap reduced: README, onboarding, public-geodata docs, and script inventory currently expose overlapping AOI instructions that make the workflow harder to follow.
-
-Why this outranks alternatives: Documentation cleanup is justified here because it removes duplicated command paths and reduces context injection for future workers and users.
-
-Inspect first:
-
-- `README.md`
-- `docs/onboarding.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `docs/script_inventory.md`
-
-Deliverables:
-
-- One canonical AOI quickstart path linked from README and onboarding.
-- Low-level helper commands moved behind references instead of repeated in multiple user-facing docs.
-- Script inventory labels that distinguish user-facing front doors from internal workflow helpers.
-
-Definition of done:
-
-- `rg` shows one canonical AOI quickstart section, low-level helpers remain discoverable, and no active command path is removed.
-
-Boundaries: No new workflow semantics, no new report, no generated artifacts, no claim-boundary changes.
-
 ### TB-400: Retire Or Deprecate Redundant Workflow Shell Scripts
 
 Goal: Identify redundant or historical top-level workflow scripts and either remove one safely or mark a small set as deprecated with exact replacement commands.

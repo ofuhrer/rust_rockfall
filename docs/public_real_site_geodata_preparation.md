@@ -152,12 +152,13 @@ keeps the run read-only, `--mode local-copy --apply` copies staged local
 inputs into the cache, and `--mode download --download` is the only path that
 authorizes network fetches.
 
-## AOI-To-Map Review Path
+## Canonical AOI Quickstart
 
-The current AOI workflow is no longer only a preparation dry run. It now has a
-clean-checkout-safe path from AOI bounds to a local diagnostic review bundle.
-Run the direct `scripts/*.py` entrypoints from the repository root with
-`PYTHONPATH=$PWD`; that keeps the sibling imports in these helpers visible.
+This is the single command-level AOI walkthrough for the repository. It keeps
+the bounds-to-review-map path clean-checkout-safe and leaves the helper details
+linked here instead of repeating them in other user-facing docs. Run the direct
+`scripts/*.py` entrypoints from the repository root with `PYTHONPATH=$PWD`;
+that keeps the sibling imports in these helpers visible.
 
 For a guided front door that reports the current stage, first blocker, next
 command, generated artifact paths, and claim boundaries in one place, start
@@ -289,33 +290,9 @@ the bounded local execution, packages the map, and writes the QA review
 surface. The covered path is
 `tests/test_run_aoi_hazard_workflow.py::RunAoiHazardWorkflowTests::test_user_defined_aoi_bounds_guided_front_door_prepared_pilot_and_review_bundle`.
 
-The same path can be followed manually with a staged repo root and the guided
-frontend:
-
-```bash
-PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/bootstrap_aoi_manifest.py \
-  --output-root /tmp/aoi_guided/site \
-  --site-id chant_sura_fluelapass_portability_example_v1 \
-  --bounds 2696376 1167384 2696476 1167484 \
-  --format json
-
-PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
-  workflow \
-  --site-config /tmp/aoi_guided/site/aoi_manifest.yaml \
-  --repo-root /tmp/aoi_guided/repo \
-  --workflow-output-root /tmp/aoi_guided/workflow \
-  --format json
-
-PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py \
-  run-prepared-pilot-local \
-  --site-config /tmp/aoi_guided/repo/site_config.yaml \
-  --repo-root . \
-  --prepared-pilot-report-path /tmp/aoi_guided/repo/prepared_pilot_report.yaml \
-  --prepared-pilot-output-root /tmp/aoi_guided/local_execution \
-  --validation-case-path validation/cases/probabilistic_phase1_smoke.yaml \
-  --overwrite \
-  --format json
-```
+The same path can be followed manually by using the canonical quickstart
+above with a staged repo root and the guided front door. The regression keeps
+that flow covered without duplicating the command block here.
 
 The generated package and review bundle stay diagnostic and non-operational:
 `operational_claims_allowed: false`, `annual_frequency_claims_allowed:

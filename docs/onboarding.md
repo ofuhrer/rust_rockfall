@@ -189,19 +189,10 @@ not a Swiss-wide production hazard service. New contributors should assume:
   measured on Balfrin, measured postproc microbenchmark, fixture-backed,
   scratch-local, projection-only, blocked before submission, or failed closed;
   use those labels before proposing larger runs.
-- AOI-to-workflow automation now has an explicit local front door:
-  `scripts/run_aoi_hazard_workflow.py workflow`. It can start from LV95 bounds
-  or a site config, report the current stage, first blocker, next command, and
-  generated paths, and optionally execute safe local smoke/package/review
-  steps. It remains fixture-backed until real public geodata is staged.
-- Public geodata staging now has a mode-gated acquisition helper:
-  `scripts/stage_public_geodata_cache.py` supports dry-run, local-copy/apply,
-  and explicit download-enabled modes. No network fetch or local copy happens
-  unless the caller opts in.
-- The AOI review package now writes an openable static review surface with
-  layer inventory, conditional semantics, warnings, provenance, observed
-  overlay status, first blocker, and next recommended command. It is the
-  primary local diagnostic map artifact, not an operational product.
+- The canonical AOI command-level walkthrough lives in
+  [`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart).
+  It covers the AOI front door, public-geodata staging, and the review bundle
+  without repeating those commands in onboarding.
 - Direct `scripts/*.py` entrypoints need `PYTHONPATH=$PWD` from the repository
   root so their sibling imports resolve. The AOI walkthrough in
   `docs/public_real_site_geodata_preparation.md` uses that prefix explicitly.

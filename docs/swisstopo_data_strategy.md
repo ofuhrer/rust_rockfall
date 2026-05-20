@@ -226,55 +226,20 @@ conditional diagnostic workflow.
 
 ## First Swiss Pilot Workflow
 
+For command-level AOI preparation, follow the canonical quickstart in
+[`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart)
+instead of restating the helper sequence here.
+
+The strategy-level sequence is:
+
 1. Select one small Alpine slope or valley domain with a clearly bounded source
    zone and runout corridor.
-2. Before any staging, run the AOI-to-swisstopo dry-run planner and the guided
-   AOI front door against the candidate site config to list required public
-   products, expected staging paths, first blockers, and unresolved acquisition
-   decisions. Use `scripts/stage_public_geodata_cache.py --mode dry-run` first;
-   use `--mode local-copy --apply` or `--mode download --download` only after
-   the operator has supplied explicit source records and accepted the side
-   effects.
-3. Run the release-zone heuristic dry run against the same site config to
-   separate heuristic requirements from concrete inputs and to document which
-   terrain and public-context prerequisites are still missing before any real
-   release-zone interpretation is claimed.
-4. Obtain the required swissALTI3D 2 m tiles manually or through a documented
-   swisstopo download process. Use 0.5 m only when the pilot question requires
-   it and storage is acceptable.
-5. Record source tile ids, product version/date, CRS, vertical datum, checksum,
-   and license/terms reference.
-6. Crop the tiles to the pilot domain with a small buffer and convert to the
-   internal DEM representation; preserve LV95 coordinates and LN02 heights.
-7. Run the AOI terrain preprocessing helper against staged terrain tiles to
-   record the crop extent, CRS, resolution, nodata policy, source tile ids, and
-   deterministic output roots.
-8. Compute slope/aspect/hillshade for QA and generate deterministic
-   release-zone candidates. Use the bounded sensitivity report to distinguish
-   stable heuristic agreement from heuristic-sensitive regions, and use the
-   measured sweep report to track component-area distributions, output counts,
-   runtime, topography thresholds, and the sensitivity matrix across slope
-   threshold, smoothing, terrain resolution, and AOI boundary perturbations;
-   do not treat either class as validated release-zone evidence.
-9. Generate deterministic release rows and conditional block-scenario rows
-   from candidate source-zone metadata plus a policy template. Keep sampling
-   weights conditional-only and leave annual frequency fields empty.
-10. Emit an AOI case-skeleton/command handoff bundle under ignored roots and
-    inspect which commands are runnable versus template-only before any
-    ensemble is authorized. Treat its scenario-generation handoff and GIS scope
-    summary as planning evidence only; they do not mean hazard layers or COG
-    packages have been produced.
-11. Run deterministic ensembles with explicit scenario ids, global seed,
-    release cell ids, and trajectory ids only after the relevant inputs are
-    staged and the execution boundary is explicitly approved.
-12. Build hazard layers: reach probability, deposition density, maximum kinetic
-   energy, maximum jump height, and significant impact density where impact
-   events are available.
-13. Export development products as CSV/ASCII for inspection; for real pilot
-   exchange, move toward GeoTIFF/COG rasters and GeoPackage/GeoJSON vectors.
-14. Visually compare terrain, release zones, and hazard layers against
-    SWISSIMAGE and hillshade. Treat the result as a research diagnostic unless
-    separately reviewed and validated.
+2. Separate acquisition, terrain preparation, release-zone heuristic review,
+   and conditional hazard execution so each step has its own evidence gate.
+3. Keep low-level helper commands in the canonical AOI quickstart and the
+   script inventory, not repeated in this strategy note.
+4. Treat the resulting hazard layers as diagnostic only until a separate
+   physical-probability layer and validation evidence exist.
 
 ## Second-Site Portability
 

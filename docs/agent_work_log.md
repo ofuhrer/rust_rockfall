@@ -4851,3 +4851,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new front-door script, no hidden blocked states, no Balfrin execution, and no operational claim upgrade.
 - Next task: `TB-399`
+
+### TB-399: Consolidate User-Facing AOI Documentation
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: collapse duplicated AOI workflow instructions into one canonical user-facing quickstart and keep helper commands discoverable through linked references.
+- Files changed: `README.md`, `docs/agent_work_log.md`, `docs/onboarding.md`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/script_inventory.md`
+- Implementation summary:
+  - Promoted `docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart` to the single command-level AOI walkthrough and linked it from README and onboarding.
+  - Trimmed the onboarding, README, and swisstopo strategy text so they point at the canonical quickstart instead of restating the same AOI helper sequence.
+  - Reworked the script inventory labels so the AOI front doors are separated from the internal planning helpers.
+  - Removed TB-399 from the active backlog after the doc updates landed.
+- Checks run:
+  - `rg -n "^## Canonical AOI Quickstart$|^## AOI-To-Map Review Path$" docs/public_real_site_geodata_preparation.md README.md docs/onboarding.md docs/swisstopo_data_strategy.md`
+  - `rg -n "docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart|canonical AOI quickstart" README.md docs/onboarding.md docs/swisstopo_data_strategy.md`
+  - `rg -n "scripts/run_aoi_hazard_workflow.py|scripts/stage_public_geodata_cache.py|scripts/verify_public_geodata_cache.py|scripts/plan_aoi_to_prepared_pilot_dry_run.py|scripts/plan_aoi_terrain_preprocessing.py|scripts/plan_release_zone_heuristic_dry_run.py|scripts/plan_release_plan_dry_run.py|scripts/generate_candidate_source_zone_scenarios.py|scripts/plan_terrain_release_zone_candidates.py" docs/script_inventory.md`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: documentation-only consolidation; no workflow semantics, generated artifacts, or claim-boundary changes.
+- Next task: `TB-400`
