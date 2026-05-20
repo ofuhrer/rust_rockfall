@@ -3977,3 +3977,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: Balfrin read-only/pre-submit only; no `sbatch`, no live submission, no generated artifact commit, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-362` remains blocked until the remote checkout is fast-forwarded and TB-361 gates are rerun to `ready_for_submit`.
+
+### TB-361 Orchestrator Follow-Up: Clear Stale Remote Checkout
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: clear the narrow stale-remote-checkout blocker reported by TB-361 before deciding whether TB-362 can run.
+- Files changed: `docs/balfrin_probe_slurm_driver.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran a safe `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall` on Balfrin after confirming the remote checkout was clean.
+  - Fast-forwarded the remote checkout from `955be7bff75f6ad07b9200367d7d504d4881c633` to `014cf90861aa63cab305f1cd0cc63be7acc4ce76`.
+  - Reran the read-only access and smallest multi-zone pre-submit gates locally against the updated remote checkout; access reported `ready_for_read_only_collection`, checkout hygiene was `pass` with `0` dirty paths, smallest multi-zone preflight reported `ready_for_authorization_review`, authorization was `authorized`, reducer budget `ready`, output profile `ready`, submit contract `ready`, and output-budget acceptance `accepted`.
+- Checks run:
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git status --short --branch && git pull --ff-only origin main && git status --short --branch && git rev-parse HEAD'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb361_rerun_access.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --balfrin-access-preflight-json /tmp/tb361_rerun_access.json --format json > /tmp/tb361_rerun_preflight.json`
+- Result/status: implemented_measured
+- Boundaries: read-only/pre-submit gate repair only; no `sbatch`, no live submission, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-362`

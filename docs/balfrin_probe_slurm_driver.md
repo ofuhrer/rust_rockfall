@@ -358,6 +358,15 @@ comparison found the Balfrin checkout on `main` at
 classification is `blocked_stale_remote_checkout`. No live two-zone job may be
 attempted next until `/users/olifu/work/rust_rockfall` is fast-forwarded and the
 same read-only pre-submit gates are rerun.
+The orchestrator then fast-forwarded the clean Balfrin checkout to
+`014cf90861aa63cab305f1cd0cc63be7acc4ce76` and reran the same read-only gates:
+access remained `ready_for_read_only_collection`, checkout hygiene was `pass`
+with `0` dirty paths, the smallest multi-zone preflight was
+`ready_for_authorization_review`, authorization was `authorized`, reducer budget
+was `ready`, output profile was `ready`, submit contract was `ready`, and output
+budget acceptance was `accepted`. The stale-checkout blocker is therefore
+cleared for the next task; live submission still depends on the task-specific
+TB-362 worker rerunning gates immediately before any `postproc` submission.
 No measured multi-zone result has been promoted.
 
 ## SBATCH defaults and constraints
