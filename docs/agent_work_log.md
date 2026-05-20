@@ -3394,7 +3394,7 @@ scan thousands of lines of completed history.
 ### TB-332: Execute Four-Zone Balfrin Hazard Probe
 
 - Date: 2026-05-20
-- Commit: `fff25d1`
+- Commit: `6b3c945`
 - Objective: submit and monitor the reviewed four-zone Balfrin hazard probe on `postproc` only if TB-331 and all live gates passed.
 - Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_four_zone_hazard_probe_tb332.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
