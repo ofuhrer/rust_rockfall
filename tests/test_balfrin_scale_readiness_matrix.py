@@ -24,10 +24,10 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["matrix_status"], "failed_closed")
         self.assertEqual(report["dashboard_status"], "failed_closed")
         self.assertEqual(report["next_evidence_field"], "repair_two_zone_submit_contract_or_regenerate_package")
-        self.assertIn("TB-314 refreshed the local scratch ladder", report["summary"])
+        self.assertIn("TB-332 failed closed before sbatch", report["summary"])
         self.assertEqual(report["measured_tiers"], ["single_zone", "target_area", "four_zone_review_package"])
-        self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone"])
-        self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone"])
+        self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
+        self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
         self.assertEqual(report["failed_closed_tiers"], ["two_zone_failed_closed"])
         self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
@@ -140,6 +140,27 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["four_zone_review_package"]["run_root_preservation_status"], "ready_for_demonstration_evidence")
         self.assertEqual(tiers["four_zone_review_package"]["review_readiness_status"], "ready_for_review")
         self.assertIn("TB-312 measured", tiers["four_zone_review_package"]["summary"])
+
+        self.assertEqual(tiers["four_zone_hazard_probe"]["classification"], "blocked_pre_submit_authorization_record_checksum")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["evidence_label"], "blocked_pre_submit")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["measurement_status"], "blocked_pre_submit")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["hazard_execution_status"], "blocked_pre_submit_no_hazard_execution")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["preflight_status"], "blocked_missing_authorization")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["authorization_status"], "blocked_missing_inputs")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["balfrin_access_status"], "ready_for_read_only_collection")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["output_budget_status"], "accepted")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["submit_contract_status"], "ready")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["reducer_budget_status"], "ready")
+        self.assertEqual(tiers["four_zone_hazard_probe"]["output_profile_status"], "ready")
+        self.assertIn("checksum does not match", tiers["four_zone_hazard_probe"]["blocker"])
+        self.assertEqual(
+            tiers["four_zone_hazard_probe"]["next_evidence_field"],
+            "authorization_record.reviewed_handoff_package_sha256",
+        )
+        self.assertNotEqual(
+            tiers["four_zone_hazard_probe"]["reviewed_handoff_package_sha256"],
+            tiers["four_zone_hazard_probe"]["authorization_record_reviewed_handoff_sha256"],
+        )
 
         self.assertEqual(tiers["two_zone_failed_closed"]["classification"], "failed_closed_submit_contract_mismatch")
         self.assertEqual(tiers["two_zone_failed_closed"]["evidence_label"], "failed_closed")

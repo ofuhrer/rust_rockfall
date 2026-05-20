@@ -3390,3 +3390,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_review_package
 - Boundaries: package/pre-submit only; no live Balfrin submission, no scale-up claim, no operational claim, and no annual/physical/risk semantics.
 - Next task: `TB-332`
+
+### TB-332: Execute Four-Zone Balfrin Hazard Probe
+
+- Date: 2026-05-20
+- Commit: `fff25d1`
+- Objective: submit and monitor the reviewed four-zone Balfrin hazard probe on `postproc` only if TB-331 and all live gates passed.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_four_zone_hazard_probe_tb332.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the read-only Balfrin access preflight; SSH, remote checkout hygiene, existing run-root visibility, and scheduler query passed, with remote checkout HEAD `20cc865756f1f5afb5c5e19b2a042e94553afd3a`.
+  - Regenerated the TB-331 four-zone handoff package and ran the authorization preflight with the live access report.
+  - Failed closed before `sbatch`: the preflight returned `blocked_missing_authorization` / `blocked_missing_inputs` because the authorization record's reviewed-handoff checksum `8e0a01fd787f941775c51ef7ade12cf18ab370796f6b518be0fd1dd9b5d6e808` did not match the freshly generated reviewed package checksum `5b36191cf79d0f234ef862391b23be85a364a72dc784889fa231c91e21dc950d`.
+  - Added a durable TB-332 fail-closed report and a `four_zone_hazard_probe` blocked-pre-submit row to the scale dashboard, then removed TB-332 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb332_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json > /tmp/tb332_handoff.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb332_balfrin_access_preflight.json --format json > /tmp/tb332_authorization_preflight.json`
+- Result/status: implemented_blocked_report
+- Boundaries: fail-closed before live submission; no `sbatch`, no four-zone hazard run root, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual/physical/risk semantics.
+- Next task: `TB-333`

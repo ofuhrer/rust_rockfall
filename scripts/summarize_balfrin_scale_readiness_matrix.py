@@ -86,6 +86,32 @@ TB312_FOUR_ZONE_POSTPROC_PROBE = {
     "preservation_status": "ready_for_demonstration_evidence",
     "output_budget_status": "accepted",
 }
+TB332_FOUR_ZONE_HAZARD_PROBE_GATE = {
+    "preflight_status": "blocked_missing_authorization",
+    "authorization_status": "blocked_missing_inputs",
+    "blocked_reason": "authorization record reviewed-handoff checksum does not match",
+    "reviewed_handoff_package_sha256": "5b36191cf79d0f234ef862391b23be85a364a72dc784889fa231c91e21dc950d",
+    "authorization_record_sha256": "a92371d0117f39ba5657480090d8173a9cc50808174afa38101c1c80e4291fe4",
+    "authorization_record_reviewed_handoff_sha256": "8e0a01fd787f941775c51ef7ade12cf18ab370796f6b518be0fd1dd9b5d6e808",
+    "balfrin_access_status": "ready_for_read_only_collection",
+    "remote_checkout_hygiene_status": "pass",
+    "remote_head": "20cc865756f1f5afb5c5e19b2a042e94553afd3a",
+    "review_readiness_status": "ready_for_review",
+    "output_budget_status": "accepted",
+    "submit_contract_status": "ready",
+    "reducer_budget_status": "ready",
+    "output_profile_status": "ready",
+    "release_zone_count": 4,
+    "scenario_count": 4,
+    "trajectory_count_target": 2000,
+    "expected_runtime_seconds": 0.997,
+    "expected_storage_bytes": 10635,
+    "expected_manifest_pressure_bytes": 7104,
+    "expected_file_count": 21,
+    "reviewed_handoff_package_path": "/private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json",
+    "authorization_record_path": "/private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml",
+    "source_report": "docs/balfrin_four_zone_hazard_probe_tb332.md",
+}
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -464,6 +490,54 @@ def _four_zone_review_package_row() -> dict[str, Any]:
     }
 
 
+def _four_zone_hazard_probe_blocked_row() -> dict[str, Any]:
+    gate = TB332_FOUR_ZONE_HAZARD_PROBE_GATE
+    return {
+        "tier_id": "four_zone_hazard_probe",
+        "tier_label": "four-zone hazard probe",
+        "evidence_label": "blocked_pre_submit",
+        "measurement_status": "blocked_pre_submit",
+        "classification": "blocked_pre_submit_authorization_record_checksum",
+        "output_budget_status": gate["output_budget_status"],
+        "execution_efficiency_status": "blocked_pre_submit_not_measured",
+        "hazard_execution_status": "blocked_pre_submit_no_hazard_execution",
+        "file_count": gate["expected_file_count"],
+        "bytes": gate["expected_storage_bytes"],
+        "manifest_bytes": gate["expected_manifest_pressure_bytes"],
+        "reducer_sidecars": None,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "blocked_pre_submit",
+        "replayability_status": "not_measured",
+        "authorization_status": gate["authorization_status"],
+        "next_evidence_field": "authorization_record.reviewed_handoff_package_sha256",
+        "blocker": gate["blocked_reason"],
+        "summary": (
+            "TB-332 failed closed before sbatch: the four-zone hazard package, access, submit-contract, reducer-budget, "
+            "and output-profile gates were otherwise ready, but the live authorization record referenced a stale reviewed "
+            "handoff checksum."
+        ),
+        "preflight_status": gate["preflight_status"],
+        "balfrin_access_status": gate["balfrin_access_status"],
+        "remote_checkout_hygiene_status": gate["remote_checkout_hygiene_status"],
+        "remote_head": gate["remote_head"],
+        "review_readiness_status": gate["review_readiness_status"],
+        "submit_contract_status": gate["submit_contract_status"],
+        "reducer_budget_status": gate["reducer_budget_status"],
+        "output_profile_status": gate["output_profile_status"],
+        "release_zone_count": gate["release_zone_count"],
+        "scenario_count": gate["scenario_count"],
+        "trajectory_count_target": gate["trajectory_count_target"],
+        "expected_runtime_seconds": gate["expected_runtime_seconds"],
+        "reviewed_handoff_package_path": gate["reviewed_handoff_package_path"],
+        "reviewed_handoff_package_sha256": gate["reviewed_handoff_package_sha256"],
+        "authorization_record_path": gate["authorization_record_path"],
+        "authorization_record_sha256": gate["authorization_record_sha256"],
+        "authorization_record_reviewed_handoff_sha256": gate["authorization_record_reviewed_handoff_sha256"],
+        "source_report": gate["source_report"],
+    }
+
+
 def _two_zone_failed_closed_row() -> dict[str, Any]:
     return {
         "tier_id": "two_zone_failed_closed",
@@ -616,6 +690,7 @@ def build_report() -> dict[str, Any]:
         _target_area_row(),
         _smallest_multi_zone_row(),
         _four_zone_review_package_row(),
+        _four_zone_hazard_probe_blocked_row(),
         _two_zone_failed_closed_row(),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
@@ -689,7 +764,8 @@ def build_report() -> dict[str, Any]:
         "summary": (
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
-            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
+            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
+            "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),

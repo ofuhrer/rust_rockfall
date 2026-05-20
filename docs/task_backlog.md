@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-332: Execute Four-Zone Balfrin Hazard Probe
-
-Goal: Submit and monitor the reviewed four-zone Balfrin hazard probe on `postproc` if TB-331 and all live gates pass.
-
-Capability gap reduced: The project needs measured multi-zone hazard execution beyond two zones to support scale feasibility projections.
-
-Why this outranks alternatives: Four zones is the smallest next step that can reveal nonlinear runtime, output, reducer, or manifest pressure after two-zone evidence.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-
-Deliverables:
-
-- Live four-zone `postproc` job evidence, or a fail-closed report with exact gate failure.
-- Preserved run root, scheduler status, logs, metrics, output-budget audit, and replay/preservation summary when successful.
-- Boundary note separating measured hazard execution from prior postproc-only evidence.
-
-Definition of done:
-
-- The four-zone branch becomes measured-on-Balfrin hazard evidence or a precise blocked branch in the scale dashboard.
-
-Boundaries: Bounded `postproc` run only under standing clearance with GPT-5.5 routing; no non-postproc partition, distributed execution, scale-up claim, operational claim, or annual/physical/risk semantics.
-
 ### TB-333: Integrate Four-Zone Hazard Evidence
 
 Goal: Integrate the four-zone hazard probe outcome into the scale dashboard, maturity snapshot, reducer-pressure docs, and next-run decision surface.

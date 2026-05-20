@@ -88,6 +88,8 @@ starting context for implementation unless a task explicitly asks for them.
   probe attempt and current pre-scheduler blocker.
 - `balfrin_four_zone_probe_tb312.md`: TB-312 measured four-zone compact
   postproc probe evidence from Balfrin `postproc`.
+- `balfrin_four_zone_hazard_probe_tb332.md`: TB-332 fail-closed four-zone
+  hazard probe gate report before `sbatch`.
 - `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic
   postproc overhead evidence from Balfrin `postproc`.
 - `balfrin_remote_checkout_hygiene_tb304.md`: TB-304 before/after remote
