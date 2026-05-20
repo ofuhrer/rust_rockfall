@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
+import math
+import time
 from pathlib import Path
 from typing import Any
 
 from scripts.hazard_output_writers import sha256_file
+from scripts.hazard_output_writers import write_file_text
 
 
 def output_manifest_entry(
@@ -63,3 +67,91 @@ def geotiff_raster_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]
             }
         )
     return raster_outputs
+
+
+def hazard_map_package_manifest_section(
+    map_package: Any,
+    probability: Any,
+) -> dict[str, Any] | None:
+    if map_package is None:
+        return None
+    scenario_rows = getattr(map_package, "scenario_rows", ())
+    scenario_weights = [getattr(row, "sampling_weight", 0.0) for row in scenario_rows]
+    config = map_package.config
+    return {
+        "schema_version": "map_package_manifest_v1",
+        "map_product_id": config.map_product_id,
+        "probability_mode": config.probability_mode,
+        "normalization_scope": config.normalization_scope,
+        "source_zone_id": map_package.source_zone_id,
+        "source_zone_metadata_path": str(config.source_zone_metadata_path),
+        "scenario_table_path": str(config.scenario_table_path) if config.scenario_table_path else None,
+        "scenario_ids": list(getattr(map_package, "scenario_ids", ())),
+        "total_sampling_weight": math.fsum(scenario_weights) if scenario_weights else None,
+        "total_filtered_weight": probability.total_filtered_weight if probability else None,
+        "annual_frequency_fields_present": False,
+        "operational_status": "research_diagnostic",
+    }
+
+
+def map_package_output_path(map_package: Any, output_dir: Path, prefix: str) -> Path:
+    return map_package.config.map_package_manifest_json or output_dir / f"{prefix}_map_package_manifest.json"
+
+
+def write_map_package_manifest(
+    path: Path,
+    map_package: Any,
+    hazard_manifest_path: Path,
+    layer_semantics: list[dict[str, Any]],
+    raster_outputs: list[dict[str, Any]],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> float:
+    limitations = list(map_package.config.limitations) or [
+        "Research diagnostic; not operational hazard validation.",
+        "No annual frequency model is implemented in Phase 1.",
+        "Physical occurrence probabilities, exposure, vulnerability, and risk are out of scope.",
+    ]
+    manifest = {
+        "schema_version": "map_package_manifest_v1",
+        "map_product_id": map_package.config.map_product_id,
+        "map_product_version": "map_package_v1",
+        "probability_mode": map_package.config.probability_mode,
+        "normalization_scope": map_package.config.normalization_scope,
+        "source_zone_id": map_package.source_zone_id,
+        "source_zone_metadata_path": str(map_package.config.source_zone_metadata_path),
+        "scenario_table_path": str(map_package.config.scenario_table_path)
+        if map_package.config.scenario_table_path
+        else None,
+        "hazard_manifest_paths": [str(hazard_manifest_path)],
+        "raster_outputs": raster_outputs,
+        "layer_semantics": [
+            {
+                "layer_name": semantic["layer_name"],
+                "units": semantic["units"],
+                "conditioned_on": semantic["conditioned_on"],
+                "is_annualized": False,
+                "numerator": semantic["numerator"],
+                "denominator": semantic["denominator"],
+                "weighted": semantic["weighted"],
+            }
+            for semantic in layer_semantics
+        ],
+        "validation_context": list(map_package.config.validation_context),
+        "limitations": limitations,
+        "operational_status": "research_diagnostic",
+    }
+    serialization_started = time.perf_counter()
+    text = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    serialization_seconds = time.perf_counter() - serialization_started
+    write_file_text(
+        path,
+        text,
+        "json",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=0.0,
+    )
+    return serialization_seconds

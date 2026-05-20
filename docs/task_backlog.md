@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-396: Split Hazard Layer Packaging Primitives From Giant Builder
-
-Goal: Move a narrow, tested slice of hazard-layer packaging or manifest-writing logic out of `scripts/build_hazard_layers.py` into an existing or new support module.
-
-Capability gap reduced: `build_hazard_layers.py` is a high-risk 7000-line workflow surface that makes GIS/output changes fragile and expensive.
-
-Why this outranks alternatives: A small extraction improves maintainability around the output surface that will be stressed by every larger AOI and multi-zone run.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_output_manifests.py`
-- `scripts/hazard_output_reports.py`
-- `scripts/hazard_output_writers.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- One cohesive packaging/manifest-writing primitive moved out of the giant builder with focused tests.
-- Existing CLI behavior and output schemas preserved.
-- A short inventory note identifying the next safe extraction seam, if one is obvious from the touched code.
-
-Definition of done:
-
-- The extracted primitive is imported by `build_hazard_layers.py`, relevant hazard-layer tests pass, and no broad rewrite or behavior drift occurs.
-
-Boundaries: No hazard physics change, no output schema break, no new workflow wrapper, no large refactor beyond the selected primitive.
-
 ### TB-397: Audit Clean-Checkout Dependence In Core Workflow Tests
 
 Goal: Identify and fix the highest-risk core workflow tests or helpers that still depend on ignored local artifacts, Balfrin scratch state, or stale `/tmp` roots.

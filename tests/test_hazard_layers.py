@@ -15,6 +15,7 @@ from typing import Any
 from unittest.mock import patch
 
 import scripts.build_hazard_layers as hazard
+import scripts.hazard_output_manifests as hazard_manifests
 import scripts.prepare_tschamut_swissalti3d_pilot as tschamut_pilot
 
 
@@ -785,6 +786,100 @@ class HazardLayerTests(unittest.TestCase):
             self.assertIn("return_period", package["probability_claim_boundary"]["future_unsupported_product_labels"])
             self.assertEqual(package["visual_qa"]["status"], "inconclusive")
             self.assertFalse(package["visual_qa"]["accepted_for_operational_use"])
+
+    def test_map_package_manifest_helpers_write_the_expected_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            map_package = hazard.HazardMapPackageState(
+                config=hazard.HazardMapPackageConfig(
+                    map_product_id="phase1_zone_a_weighted",
+                    probability_mode="sampling_weighted_conditional",
+                    normalization_scope="conditioned_on_filter",
+                    source_zone_metadata_path=work / "source_zone_metadata.yaml",
+                    scenario_table_path=work / "scenario_table.csv",
+                    validation_context=("validation/private",),
+                ),
+                source_zone_id="zone_a",
+                scenario_rows=(
+                    hazard.ScenarioMetadataRow(
+                        scenario_id="scenario_a",
+                        source_zone_id="zone_a",
+                        sampling_weight=1.25,
+                        release_probability=None,
+                        scenario_probability=None,
+                        annual_frequency_per_year=None,
+                        time_horizon_years=None,
+                    ),
+                    hazard.ScenarioMetadataRow(
+                        scenario_id="scenario_b",
+                        source_zone_id="zone_a",
+                        sampling_weight=2.75,
+                        release_probability=None,
+                        scenario_probability=None,
+                        annual_frequency_per_year=None,
+                        time_horizon_years=None,
+                    ),
+                ),
+            )
+
+            section = hazard_manifests.hazard_map_package_manifest_section(map_package, None)
+            self.assertIsNotNone(section)
+            assert section is not None
+            self.assertEqual(section["schema_version"], "map_package_manifest_v1")
+            self.assertEqual(section["map_product_id"], "phase1_zone_a_weighted")
+            self.assertEqual(section["scenario_ids"], ["scenario_a", "scenario_b"])
+            self.assertAlmostEqual(section["total_sampling_weight"], 4.0)
+            self.assertIsNone(section["total_filtered_weight"])
+            self.assertFalse(section["annual_frequency_fields_present"])
+            self.assertEqual(section["operational_status"], "research_diagnostic")
+
+            manifest_path = work / "phase1_zone_a_weighted_map_package_manifest.json"
+            output_file_metadata: dict[Path, dict[str, Any]] = {}
+            output_write_kind_seconds: dict[str, float] = {}
+            output_write_kind_bytes: dict[str, int] = {}
+            duration = hazard_manifests.write_map_package_manifest(
+                manifest_path,
+                map_package,
+                work / "hazard_manifest.json",
+                [
+                    {
+                        "layer_name": "reach_probability",
+                        "units": "dimensionless",
+                        "conditioned_on": ["source_zone_id=zone_a"],
+                        "numerator": "trajectories reaching cell",
+                        "denominator": "supplied trajectory count",
+                        "weighted": True,
+                    }
+                ],
+                [
+                    {
+                        "kind": "hazard_layer",
+                        "format": "geotiff",
+                        "path": str(work / "phase1_zone_a_weighted_reach_probability.tif"),
+                        "sha256": "abc123",
+                        "total_bytes": 17,
+                        "layer_name": "reach_probability",
+                        "cloud_optimized": False,
+                        "annualized": False,
+                        "is_annualized": False,
+                    }
+                ],
+                output_file_metadata,
+                output_write_kind_seconds,
+                output_write_kind_bytes,
+            )
+
+            self.assertGreaterEqual(duration, 0.0)
+            manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(manifest["schema_version"], "map_package_manifest_v1")
+            self.assertEqual(manifest["map_product_version"], "map_package_v1")
+            self.assertEqual(manifest["hazard_manifest_paths"], [str(work / "hazard_manifest.json")])
+            self.assertEqual(manifest["validation_context"], ["validation/private"])
+            self.assertIn("Research diagnostic; not operational hazard validation.", manifest["limitations"])
+            self.assertEqual(output_file_metadata[manifest_path]["total_bytes"], manifest_path.stat().st_size)
+            self.assertIn(manifest_path, output_file_metadata)
+            self.assertGreater(output_write_kind_bytes["json"], 0)
+            self.assertGreaterEqual(output_write_kind_seconds["json"], 0.0)
 
     def test_pilot_gis_package_requires_geotiff_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
