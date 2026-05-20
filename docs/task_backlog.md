@@ -40,33 +40,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 ## Active Tasks
 
 
-### TB-369: Reduce First Measured Two-Zone Output Bottleneck
-
-Goal: Implement one targeted output/reducer/manifest improvement against the first measured bottleneck found by TB-368.
-
-Capability gap reduced: Converts measured scale friction into lower runtime/output pressure.
-
-Why this outranks alternatives: Reducing the first measured bottleneck is higher leverage than broad refactors or additional projection reports.
-
-Inspect first:
-
-- `docs/hazard_throughput_bottleneck_report.md`
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `src/validation/runner.rs`
-- `src/manifest.rs`
-
-Deliverables:
-
-- One focused code or command-plan change that reduces the measured bottleneck while preserving rebuild-compatible reduced outputs.
-- Regression showing unchanged scientific/claim semantics.
-
-Definition of done:
-
-- Focused tests and a before/after measurement or bounded proof show the targeted bottleneck is reduced or the attempted optimization is rejected with evidence.
-
-Boundaries: No physics change, no tuning, no lossy deletion of replay-critical outputs, no claim upgrade.
-
 ### TB-370: Execute Four-Zone Balfrin Hazard Run After Two-Zone Acceptance
 
 Goal: Submit and monitor the smallest four-zone hazard run only after two-zone evidence is measured and output pressure is accepted or reduced.

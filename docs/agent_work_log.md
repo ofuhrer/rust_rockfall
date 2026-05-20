@@ -4185,3 +4185,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exactly one live `postproc` job was submitted and completed; no non-`postproc` partition, no distributed execution, no generated artifact commit, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-369`
+
+### TB-369: Reduce First Measured Two-Zone Output Bottleneck
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: compact the reduced-output validation run manifest without changing replay-critical files, hazard semantics, or scientific claim boundaries.
+- Files changed: `src/manifest.rs`, `src/validation/runner.rs`, `tests/config_io_terrain.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `OutputManifest::compact_for_rebuildable_reduced_output` and applied it when serializing run manifests for `rebuildable_reduced_output` cases.
+  - Made the verbose per-output `row_count` and `skipped_empty_files` fields omit `null` serialization, so reduced manifests carry less manifest pressure without altering output files, hashes, or rebuildability.
+  - Added a regression that runs the same fixture in reduced and full output modes, confirms the reduced manifest serializes smaller, and verifies the compacted reduced trajectory entry omits the verbose per-output fields while the full entry still carries them.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test validation_output_mode_rebuildable_reduced_output -- --nocapture`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no physics change, no tuning, no lossy deletion of replay-critical outputs, no operational claim, no annual-frequency claim, no physical-probability claim, no risk/exposure/vulnerability claim, and no scale-up claim.
+- Next task: `TB-370`

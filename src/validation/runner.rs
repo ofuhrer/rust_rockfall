@@ -30,6 +30,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
         .as_ref()
         .map(|class_map| terrain_class_manifest(case.terrain_classes.as_ref(), class_map))
         .transpose()?;
+    let manifest_outputs_mode = case.outputs.validation_output_mode;
     let observations = match load_observations(case, &mut warnings)? {
         ObservationLoad::Loaded(data) => data,
         ObservationLoad::MissingRequired(path) => {
@@ -60,7 +61,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
                     RunManifestContext {
                         case,
                         report: &report,
-                        outputs: output_entries,
+                        outputs: manifest_outputs_for_mode(&output_entries, manifest_outputs_mode),
                         terrain_source: terrain_source.as_ref(),
                         release_zone: release_zone_manifest.as_ref(),
                         terrain_classes: terrain_class_manifest.as_ref(),
@@ -350,7 +351,7 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
             RunManifestContext {
                 case,
                 report: &report,
-                outputs: output_entries,
+                outputs: manifest_outputs_for_mode(&output_entries, manifest_outputs_mode),
                 terrain_source: terrain_source.as_ref(),
                 release_zone: release_zone_manifest.as_ref(),
                 terrain_classes: terrain_class_manifest.as_ref(),
@@ -365,6 +366,20 @@ pub(super) fn run_case(case: &BenchmarkCase) -> Result<CaseReport, ValidationErr
     }
 
     Ok(report)
+}
+
+fn manifest_outputs_for_mode(
+    outputs: &[OutputManifest],
+    validation_output_mode: Option<ValidationOutputMode>,
+) -> Vec<OutputManifest> {
+    if validation_output_mode == Some(ValidationOutputMode::RebuildableReducedOutput) {
+        outputs
+            .iter()
+            .map(OutputManifest::compact_for_rebuildable_reduced_output)
+            .collect()
+    } else {
+        outputs.to_vec()
+    }
 }
 
 pub(super) fn write_report(

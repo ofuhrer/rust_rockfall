@@ -231,12 +231,32 @@ pub struct OutputManifest {
     pub sha256: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schema_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_count: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skipped_empty_files: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compression: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub row_group_count: Option<usize>,
+}
+
+impl OutputManifest {
+    pub fn compact_for_rebuildable_reduced_output(&self) -> Self {
+        Self {
+            schema_version: self.schema_version.clone(),
+            kind: self.kind.clone(),
+            format: self.format.clone(),
+            path: self.path.clone(),
+            file_count: self.file_count,
+            total_bytes: self.total_bytes,
+            sha256: self.sha256.clone(),
+            row_count: None,
+            skipped_empty_files: None,
+            compression: None,
+            row_group_count: None,
+        }
+    }
 }
 
 fn default_execution_status() -> String {

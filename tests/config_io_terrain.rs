@@ -2140,6 +2140,144 @@ fn validation_output_mode_rebuildable_reduced_output_writes_builder_facing_outpu
 }
 
 #[test]
+fn validation_output_mode_rebuildable_reduced_output_compacts_run_manifest_outputs() {
+    let case_path = Path::new(
+        "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml",
+    );
+    let mut reduced_case = load_case(case_path).unwrap();
+    let mut full_case = reduced_case.clone();
+
+    let reduced_diagnostics = temp_path("validation_output_mode_rebuildable_reduced_compact.json");
+    let reduced_manifest =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_manifest.json");
+    let reduced_trajectory =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_trajectory.csv");
+    let reduced_deposition =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_deposition.csv");
+    let reduced_impact_csv =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_impacts.csv");
+    let reduced_metadata =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_trajectory_metadata.csv");
+    let reduced_impact_json =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_impacts.json");
+    let reduced_ensemble_dir =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_trajectories");
+    let reduced_ensemble_impacts_dir =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_impacts_dir");
+    let reduced_ensemble_impacts_parquet =
+        temp_path("validation_output_mode_rebuildable_reduced_compact_impacts.parquet");
+
+    reduced_case.outputs.diagnostics_json = Some(reduced_diagnostics.clone());
+    reduced_case.outputs.manifest_json = Some(reduced_manifest.clone());
+    reduced_case.outputs.trajectory_csv = Some(reduced_trajectory.clone());
+    reduced_case.outputs.ensemble_deposition_csv = Some(reduced_deposition.clone());
+    reduced_case.outputs.trajectory_metadata_csv = Some(reduced_metadata.clone());
+    reduced_case.outputs.impact_events_csv = Some(reduced_impact_csv.clone());
+    reduced_case.outputs.impact_events_json = Some(reduced_impact_json.clone());
+    reduced_case.outputs.ensemble_trajectories_dir = Some(reduced_ensemble_dir.clone());
+    reduced_case.outputs.ensemble_impact_events_dir = Some(reduced_ensemble_impacts_dir.clone());
+    reduced_case.outputs.ensemble_impact_events_parquet =
+        Some(reduced_ensemble_impacts_parquet.clone());
+
+    full_case.outputs.validation_output_mode = None;
+    let full_diagnostics = temp_path("validation_output_mode_full_compact.json");
+    let full_manifest = temp_path("validation_output_mode_full_compact_manifest.json");
+    let full_trajectory = temp_path("validation_output_mode_full_compact_trajectory.csv");
+    let full_deposition = temp_path("validation_output_mode_full_compact_deposition.csv");
+    let full_impact_csv = temp_path("validation_output_mode_full_compact_impacts.csv");
+    let full_metadata = temp_path("validation_output_mode_full_compact_trajectory_metadata.csv");
+    let full_impact_json = temp_path("validation_output_mode_full_compact_impacts.json");
+    let full_ensemble_dir = temp_path("validation_output_mode_full_compact_trajectories");
+    let full_ensemble_impacts_dir = temp_path("validation_output_mode_full_compact_impacts_dir");
+    let full_ensemble_impacts_parquet =
+        temp_path("validation_output_mode_full_compact_impacts.parquet");
+
+    full_case.outputs.diagnostics_json = Some(full_diagnostics.clone());
+    full_case.outputs.manifest_json = Some(full_manifest.clone());
+    full_case.outputs.trajectory_csv = Some(full_trajectory.clone());
+    full_case.outputs.ensemble_deposition_csv = Some(full_deposition.clone());
+    full_case.outputs.trajectory_metadata_csv = Some(full_metadata.clone());
+    full_case.outputs.impact_events_csv = Some(full_impact_csv.clone());
+    full_case.outputs.impact_events_json = Some(full_impact_json.clone());
+    full_case.outputs.ensemble_trajectories_dir = Some(full_ensemble_dir.clone());
+    full_case.outputs.ensemble_impact_events_dir = Some(full_ensemble_impacts_dir.clone());
+    full_case.outputs.ensemble_impact_events_parquet = Some(full_ensemble_impacts_parquet.clone());
+
+    let reduced_report = run_case(&reduced_case).unwrap();
+    let full_report = run_case(&full_case).unwrap();
+    assert_eq!(reduced_report.status, CaseStatus::Passed);
+    assert_eq!(full_report.status, CaseStatus::Passed);
+
+    let reduced_manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&reduced_manifest).unwrap()).unwrap();
+    let full_manifest_json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&full_manifest).unwrap()).unwrap();
+    let reduced_len = fs::metadata(&reduced_manifest).unwrap().len();
+    let full_len = fs::metadata(&full_manifest).unwrap().len();
+    assert!(
+        reduced_len < full_len,
+        "expected reduced manifest ({reduced_len}) to be smaller than full manifest ({full_len})"
+    );
+
+    let reduced_trajectory_entry = reduced_manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "trajectory")
+        .expect("reduced manifest trajectory entry");
+    let full_trajectory_entry = full_manifest_json["outputs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "trajectory")
+        .expect("full manifest trajectory entry");
+    assert!(reduced_trajectory_entry.get("row_count").is_none());
+    assert!(reduced_trajectory_entry
+        .get("skipped_empty_files")
+        .is_none());
+    assert!(reduced_trajectory_entry.get("compression").is_none());
+    assert!(reduced_trajectory_entry.get("row_group_count").is_none());
+    assert!(full_trajectory_entry.get("row_count").is_some());
+
+    fs::remove_file(reduced_diagnostics).unwrap();
+    fs::remove_file(reduced_manifest).unwrap();
+    fs::remove_file(reduced_trajectory).unwrap();
+    fs::remove_file(reduced_deposition).unwrap();
+    fs::remove_file(reduced_impact_csv).unwrap();
+    fs::remove_file(reduced_metadata).unwrap();
+    let _ = fs::remove_file(reduced_impact_json);
+    let _ = fs::remove_file(reduced_ensemble_impacts_parquet);
+    fs::remove_file(full_diagnostics).unwrap();
+    fs::remove_file(full_manifest).unwrap();
+    fs::remove_file(full_trajectory).unwrap();
+    fs::remove_file(full_deposition).unwrap();
+    fs::remove_file(full_impact_csv).unwrap();
+    fs::remove_file(full_metadata).unwrap();
+    fs::remove_file(full_impact_json).unwrap();
+    fs::remove_file(full_ensemble_impacts_parquet).unwrap();
+    if reduced_ensemble_dir.exists() {
+        for entry in fs::read_dir(&reduced_ensemble_dir).unwrap() {
+            fs::remove_file(entry.unwrap().path()).unwrap();
+        }
+        fs::remove_dir(reduced_ensemble_dir).unwrap();
+    }
+    if reduced_ensemble_impacts_dir.exists() {
+        for entry in fs::read_dir(&reduced_ensemble_impacts_dir).unwrap() {
+            fs::remove_file(entry.unwrap().path()).unwrap();
+        }
+        fs::remove_dir(reduced_ensemble_impacts_dir).unwrap();
+    }
+    for entry in fs::read_dir(&full_ensemble_dir).unwrap() {
+        fs::remove_file(entry.unwrap().path()).unwrap();
+    }
+    for entry in fs::read_dir(&full_ensemble_impacts_dir).unwrap() {
+        fs::remove_file(entry.unwrap().path()).unwrap();
+    }
+    fs::remove_dir(full_ensemble_dir).unwrap();
+    fs::remove_dir(full_ensemble_impacts_dir).unwrap();
+}
+
+#[test]
 fn terrain_class_impact_sidecar_records_per_impact_context() {
     let case_path = temp_path("terrain_class_impact_sidecar_case.yaml");
     let diagnostics = temp_path("terrain_class_impact_sidecar_metrics.json");
