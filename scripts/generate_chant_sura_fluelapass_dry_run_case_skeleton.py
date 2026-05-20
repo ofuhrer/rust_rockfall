@@ -30,7 +30,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 PREFLIGHT_SCRIPT = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
-DEFAULT_OUTPUT_ROOT = Path("/tmp/tb062_chant_sura_fluelapass_case_skeleton")
+DEFAULT_OUTPUT_ROOT = Path("/tmp/chant_sura_fluelapass_case_skeleton")
 SCHEMA_VERSION = "chant_sura_fluelapass_dry_run_case_skeleton_v1"
 CASE_FILENAME = "chant_sura_fluelapass_dry_run_case_skeleton.yaml"
 ALLOWED_IGNORED_ROOT = ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1"

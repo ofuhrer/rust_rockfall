@@ -360,7 +360,11 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertFalse(dry_run_command["blocked_reason"])
         self.assertFalse(dry_run_command["read_only"])
         self.assertFalse(dry_run_command["may_produce_ignored_outputs"])
-        self.assertIn("/tmp/tb062_chant_sura_fluelapass_case_skeleton/chant_sura_fluelapass_dry_run_case_skeleton.yaml", dry_run_command["expected_outputs"])
+        self.assertEqual(
+            dry_run_command["expected_outputs"],
+            [str(MODULE.CASE_SKELETON_OUTPUT_PATH)],
+        )
+        self.assertIn(str(MODULE.CASE_SKELETON_OUTPUT_ROOT), dry_run_command["command"])
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
         self.assertFalse(contract_plan["read_only"])

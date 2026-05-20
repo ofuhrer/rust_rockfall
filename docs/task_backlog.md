@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-397: Audit Clean-Checkout Dependence In Core Workflow Tests
-
-Goal: Identify and fix the highest-risk core workflow tests or helpers that still depend on ignored local artifacts, Balfrin scratch state, or stale `/tmp` roots.
-
-Capability gap reduced: Hidden local-state coupling makes CI and worker execution fragile, and it has repeatedly produced blocked or misleading task outcomes.
-
-Why this outranks alternatives: Clean-checkout reliability is prerequisite infrastructure for safe autonomous workers and credible reproducibility.
-
-Inspect first:
-
-- `scripts/check_repo_consistency.py`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_hazard_layers.py`
-- `scripts/print_agent_task_context.py`
-
-Deliverables:
-
-- A focused clean-checkout audit for core workflow tests, with at least one concrete hidden-state dependency removed or converted to an explicit fixture/skip/block condition.
-- Regression coverage for the corrected behavior.
-- No broad test-suite rewrite.
-
-Definition of done:
-
-- The targeted tests no longer require ignored local artifacts unless explicitly marked as live-artifact checks, and repo consistency/pre-commit pass.
-
-Boundaries: Do not weaken tests by silently skipping real regressions; no generated artifact commits; no CI-only workaround.
-
 ### TB-398: Make AOI Workflow Front Door Self-Explaining
 
 Goal: Improve the existing AOI front-door command so a user can see the current status, first blocker, and next copy-paste command without reading multiple helper reports.

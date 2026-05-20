@@ -65,7 +65,15 @@ REDUCED_PROFILE = load_repo_script_module(
     "derive_hazard_rebuild_reduced_profile.py",
     error_message="unable to load helper module from",
 )
+CHANT_SURA_DRY_RUN_CASE_SKELETON = load_repo_script_module(
+    ROOT,
+    "pilot_command_plan_chant_sura_dry_run_case_skeleton",
+    "generate_chant_sura_fluelapass_dry_run_case_skeleton.py",
+    error_message="unable to load helper module from",
+)
 REDUCED_VALIDATION_CASE = ROOT / "tests/fixtures/rebuildable_reduced_output/tschamut_public_target_gate_rebuildable_reduced_case.yaml"
+CASE_SKELETON_OUTPUT_ROOT = CHANT_SURA_DRY_RUN_CASE_SKELETON.DEFAULT_OUTPUT_ROOT
+CASE_SKELETON_OUTPUT_PATH = CASE_SKELETON_OUTPUT_ROOT / CHANT_SURA_DRY_RUN_CASE_SKELETON.CASE_FILENAME
 VALIDATION_OUTPUT_REPLAY_CRITICAL_CLASSES = [
     "manifest_json",
     "diagnostics_json",
@@ -1183,7 +1191,7 @@ def build_second_site_plan(
                     "--site-config",
                     rel(site_config),
                     "--output-root",
-                    "/tmp/tb062_chant_sura_fluelapass_case_skeleton",
+                    rel(CASE_SKELETON_OUTPUT_ROOT),
                     "--format",
                     "json",
                 ]
@@ -1193,7 +1201,7 @@ def build_second_site_plan(
                 "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
             ],
             expected_outputs=[
-                "/tmp/tb062_chant_sura_fluelapass_case_skeleton/chant_sura_fluelapass_dry_run_case_skeleton.yaml"
+                rel(CASE_SKELETON_OUTPUT_PATH)
             ],
             read_only=False,
             may_produce_ignored_outputs=False,
