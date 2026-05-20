@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-382: Stress Large-AOI GIS And COG Packaging From Real Outputs
-
-Goal: Stress-test GIS package manifest generation, raster package completeness, and COG conversion/scope classification against the largest available real-AOI or measured multi-zone outputs.
-
-Capability gap reduced: Management-facing feasibility needs to know whether GIS packaging breaks before compute does.
-
-Why this outranks alternatives: GIS/COG remains a lower-priority blocker, but it becomes material once real-AOI/multi-zone outputs exist.
-
-Inspect first:
-
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Package runtime, file count, raster count, manifest pressure, COG readiness, and scope-delta classification.
-- Explicit first GIS/COG blocker and whether it affects demonstration readability or only production packaging.
-
-Definition of done:
-
-- GIS/COG feasibility for the largest current real output is classified without overstating operational readiness.
-
-Boundaries: No generated raster commits; no operational GIS claim; no new hazard run.
-
 ### TB-383: Refresh Management Swiss-Scale Feasibility Decision
 
 Goal: Update the Swiss-scale feasibility projection and management package after the two-zone/four-zone/management-AOI evidence sequence completes.

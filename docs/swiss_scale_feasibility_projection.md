@@ -89,8 +89,10 @@ Measured:
 - The readiness matrix records TB-362 as the current two-zone failed-closed
   branch with no measured runtime, memory, validation bytes, hazard bytes,
   reducer output, GIS status, or run-root preservation evidence.
-- GIS/COG packaging remains blocked by missing pilot GIS manifest fields and
-  raster readiness gaps.
+- The largest current real output in this checkout (`target_gate_v1`) packages
+  to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
+  and matches layer inventory parity; that is demonstration evidence only and
+  does not authorize operational GIS claims.
 
 Extrapolated:
 

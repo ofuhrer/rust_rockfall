@@ -88,7 +88,9 @@ def build_report(
     package_runner = package_runner or (
         lambda input_root, output_root: aoi_packager.package_aoi_hazard_map(input_root, output_root, overwrite=True)
     )
-    conversion_runner = conversion_runner or convert_same_scale_package_to_cog
+    conversion_runner = conversion_runner or (
+        lambda input_root, output_root: convert_same_scale_package_to_cog(input_root, output_root, overwrite=True)
+    )
     clock = clock or time.perf_counter
 
     package_generation_started = clock()
@@ -312,6 +314,8 @@ def build_blocked_report(
             "reason": "package generation inputs are incomplete, so scratch conversion was not attempted",
             "measured_driver": "missing_inputs",
             "missing_inputs": missing_inputs,
+            "impact_scope": "demonstration_readability",
+            "affects_demonstration_readability": True,
         },
         "claim_boundaries": claim_boundaries(),
         "source_paths": {
@@ -455,12 +459,16 @@ def identify_first_bottleneck(
             "reason": "package generation did not complete, so the scratch conversion was not attempted",
             "measured_driver": "package_generation",
             "package_generation_status": package_status,
+            "impact_scope": "demonstration_readability",
+            "affects_demonstration_readability": True,
         }
     if standard_status == "blocked_missing_inputs":
         return {
             "name": "blocked_missing_inputs",
             "reason": "standard package inputs are incomplete, so scratch conversion was not attempted",
             "measured_driver": "missing_inputs",
+            "impact_scope": "demonstration_readability",
+            "affects_demonstration_readability": True,
         }
     if blockers:
         converted_note = (
@@ -474,6 +482,8 @@ def identify_first_bottleneck(
             "measured_driver": "standard_package_blockers",
             "standard_root_status": standard_status,
             "converted_root_status": converted_status,
+            "impact_scope": "production_packaging",
+            "affects_demonstration_readability": False,
         }
     if conversion_report.get("status") not in {"cog_package_ready", "cog_package_poc_ready"}:
         return {
@@ -482,6 +492,8 @@ def identify_first_bottleneck(
             "measured_driver": "conversion_runner",
             "standard_root_status": standard_status,
             "converted_root_status": converted_status,
+            "impact_scope": "production_packaging",
+            "affects_demonstration_readability": False,
         }
     if converted_package.get("layer_inventory_status") not in {"parity_match", "no_standard_reference"}:
         return {
@@ -490,13 +502,17 @@ def identify_first_bottleneck(
             "measured_driver": "layer_inventory",
             "standard_root_status": standard_status,
             "converted_root_status": converted_status,
+            "impact_scope": "production_packaging",
+            "affects_demonstration_readability": False,
         }
     return {
-        "name": "standard_root_cog_blocked",
-        "reason": "standard package remains COG-blocked while the scratch conversion is ready",
-        "measured_driver": "standard_package_blockers",
+        "name": "no_blocker",
+        "reason": "the largest current real output is ready for GIS review and COG conversion; no first blocker was observed",
+        "measured_driver": "ready",
         "standard_root_status": standard_status,
         "converted_root_status": converted_status,
+        "impact_scope": "none",
+        "affects_demonstration_readability": False,
     }
 
 
@@ -565,6 +581,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"package_size_classification: {report.get('package_size_classification')}",
         f"standard_package_readiness_status: {report.get('standard_package_readiness_status')}",
         f"converted_package_readiness_status: {report.get('converted_package_readiness_status')}",
+        f"first_gis_packaging_bottleneck_scope: {report.get('first_gis_packaging_bottleneck', {}).get('impact_scope')}",
+        f"first_gis_packaging_bottleneck_affects_demo: {report.get('first_gis_packaging_bottleneck', {}).get('affects_demonstration_readability')}",
         f"package_file_count: {report.get('package_file_count')}",
         f"qa_review_html_size_bytes: {report.get('qa_review_html_size_bytes')}",
         f"package_runtime_seconds: {report.get('package_runtime_seconds')}",

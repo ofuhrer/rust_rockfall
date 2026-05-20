@@ -64,6 +64,8 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         self.assertEqual(report["missing_layer_summary"]["missing_layer_names"], ["jump_height_exceedance_1m"])
         self.assertEqual(report["first_gis_packaging_bottleneck"]["name"], "manifest_cloud_optimized_false")
         self.assertIn("scratch conversion is ready", report["first_gis_packaging_bottleneck"]["reason"])
+        self.assertEqual(report["first_gis_packaging_bottleneck"]["impact_scope"], "production_packaging")
+        self.assertFalse(report["first_gis_packaging_bottleneck"]["affects_demonstration_readability"])
         self.assertEqual(report["standard_package"]["package_runtime"]["total_wall_seconds"], 12.5)
         self.assertEqual(report["converted_package"]["readiness_status"], "cog_package_ready_with_scope_delta")
         self.assertTrue(report["conversion"]["all_declared_geotiffs_cog_ready"])
@@ -123,6 +125,8 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         self.assertEqual(report["package_size_classification"]["status"], "no_go")
         self.assertEqual(report["first_gis_packaging_bottleneck"]["name"], "blocked_missing_inputs")
         self.assertEqual(report["first_gis_packaging_bottleneck"]["missing_inputs"], [str(artifact_root)])
+        self.assertEqual(report["first_gis_packaging_bottleneck"]["impact_scope"], "demonstration_readability")
+        self.assertTrue(report["first_gis_packaging_bottleneck"]["affects_demonstration_readability"])
         self.assertEqual(report["conversion"]["status"], "not_run")
         self.assertEqual(report["layer_parity"]["status"], "blocked_missing_inputs")
         self.assertEqual(report["missing_layer_summary"]["status"], "blocked_missing_inputs")
@@ -130,6 +134,80 @@ class LargeAoiGisCogStressTestTests(unittest.TestCase):
         text = stress.render_text_report(report)
         self.assertIn("blocked_missing_inputs", text)
         self.assertIn(str(artifact_root), text)
+
+    def test_summary_reports_ready_root_without_first_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            artifact_root = work / "ready_target_gate_v1"
+            packaged_root = work / "ready_target_gate_v1_package_stress"
+            converted_root = work / "ready_target_gate_v1_cog_stress_test"
+            self._write_package(artifact_root, artifact_id="validation_large_aoi_target_gate_v1", cloud_optimized=True)
+            clock_values = iter([20.0, 20.5, 21.0, 21.5])
+
+            def fake_package(input_root: Path, output_root: Path):
+                return self._fake_package(input_root, output_root, cloud_optimized=True)
+
+            def fake_conversion(input_root: Path, output_root: Path):
+                if output_root.exists():
+                    for path in sorted(output_root.rglob("*"), reverse=True):
+                        if path.is_file():
+                            path.unlink()
+                        elif path.is_dir():
+                            path.rmdir()
+                output_root.mkdir(parents=True, exist_ok=True)
+                for path in input_root.iterdir():
+                    if path.is_file():
+                        (output_root / path.name).write_bytes(path.read_bytes())
+                map_manifest_path = next(output_root.glob("*_map_package_manifest.json"))
+                pilot_manifest_path = next(output_root.glob("*_pilot_gis_package_manifest.json"))
+                map_manifest = json.loads(map_manifest_path.read_text(encoding="utf-8"))
+                pilot_manifest = json.loads(pilot_manifest_path.read_text(encoding="utf-8"))
+                for entry in map_manifest["raster_outputs"]:
+                    entry["path"] = str(output_root / Path(entry["path"]).name)
+                    entry["cloud_optimized"] = True
+                for entry in pilot_manifest["raster_outputs"]:
+                    entry["path"] = str(output_root / Path(entry["path"]).name)
+                    entry["cloud_optimized"] = True
+                map_manifest["hazard_manifest_paths"] = [str(output_root / Path(path).name) for path in map_manifest["hazard_manifest_paths"]]
+                pilot_manifest["hazard_manifest_paths"] = list(map_manifest["hazard_manifest_paths"])
+                map_manifest["source_zone_metadata_path"] = str(output_root / Path(map_manifest["source_zone_metadata_path"]).name)
+                map_manifest["scenario_table_path"] = str(output_root / Path(map_manifest["scenario_table_path"]).name)
+                pilot_manifest["terrain"]["path"] = str(output_root / Path(pilot_manifest["terrain"]["path"]).name)
+                pilot_manifest["terrain"]["metadata_path"] = str(output_root / Path(pilot_manifest["terrain"]["metadata_path"]).name)
+                pilot_manifest["terrain_metadata"]["path"] = str(output_root / Path(pilot_manifest["terrain_metadata"]["path"]).name)
+                map_manifest_path.write_text(json.dumps(map_manifest, indent=2, sort_keys=True), encoding="utf-8")
+                pilot_manifest_path.write_text(json.dumps(pilot_manifest, indent=2, sort_keys=True), encoding="utf-8")
+                return {
+                    "status": "cog_package_ready",
+                    "input_root": str(input_root),
+                    "output_root": str(output_root),
+                    "package_file_count": len([path for path in output_root.rglob("*") if path.is_file()]),
+                    "package_byte_count": sum(path.stat().st_size for path in output_root.rglob("*") if path.is_file()),
+                    "copied_files": len([path for path in output_root.rglob("*") if path.is_file()]),
+                    "all_declared_geotiffs_cog_ready": True,
+                    "error": None,
+                }
+
+            report = stress.build_report(
+                artifact_root=artifact_root,
+                packaged_package_root=packaged_root,
+                converted_package_root=converted_root,
+                raster_metadata_provider=self._fake_cog_metadata,
+                package_runner=fake_package,
+                conversion_runner=fake_conversion,
+                clock=lambda: next(clock_values),
+            )
+
+        self.assertEqual(report["stress_test_status"], "ready")
+        self.assertEqual(report["package_size_classification"]["status"], "ready")
+        self.assertEqual(report["first_gis_packaging_bottleneck"]["name"], "no_blocker")
+        self.assertEqual(report["first_gis_packaging_bottleneck"]["impact_scope"], "none")
+        self.assertFalse(report["first_gis_packaging_bottleneck"]["affects_demonstration_readability"])
+        self.assertEqual(report["layer_parity"]["status"], "parity_match")
+        self.assertEqual(report["converted_package_readiness_status"], "cog_package_ready")
+        self.assertEqual(report["converted_package"]["readiness_status"], "cog_package_ready")
+        text = stress.render_text_report(report)
+        self.assertIn("first_gis_packaging_bottleneck_scope: none", text)
 
     def _write_package(self, root: Path, *, artifact_id: str, cloud_optimized: bool) -> None:
         root.mkdir(parents=True, exist_ok=True)

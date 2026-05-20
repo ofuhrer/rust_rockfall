@@ -4486,3 +4486,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no live Balfrin submission, no `sbatch`, no invented candidates or scenario rows, no output-budget acceptance claim for nonexistent outputs, no distributed execution or scale-up claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-382`
+
+### TB-382: Stress Large-AOI GIS And COG Packaging From Real Outputs
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: stress-test GIS package manifest generation, raster package completeness, and COG conversion/scope classification against the largest available real output without a new hazard run.
+- Files changed: `scripts/summarize_large_aoi_gis_cog_stress_test.py`, `tests/test_large_aoi_gis_cog_stress_test.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Made the large-AOI stress helper deterministic by forcing overwrite-safe scratch conversion, so the report no longer depends on stale converted output roots.
+  - Added explicit first-blocker impact classification with `impact_scope` and `affects_demonstration_readability` so the JSON/text reports distinguish demonstration-readability issues from production-packaging issues.
+  - Confirmed the largest committed real output in this checkout (`hazard/results/tschamut_public_pilot/target_gate_v1`) packages to a 29-file scratch bundle, converts to a 29-file COG-ready bundle, and preserves raster-layer parity with `package_size_classification: ready`.
+  - Updated the Swiss-scale projection note to state that the largest real output is demonstration-ready while preserving the non-operational boundary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_aoi_gis_cog_stress_test`
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --packaged-package-root /tmp/rust-rockfall-large-aoi-gis-cog-stress-test/package --converted-package-root /tmp/rust-rockfall-large-aoi-gis-cog-stress-test/converted --format json --json-output /tmp/tb382_stress.json --text-output /tmp/tb382_stress.txt`
+  - `git diff --check`
+- Result/status: implemented_measured
+- Boundaries: no generated raster commits, no operational GIS claim, no new hazard run, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-383`
