@@ -4655,3 +4655,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no threshold tuning, no operational release-zone claim, no physics change, no scenario generation beyond candidate metadata, and no scale-up or distributed-execution claim.
 - Next task: TB-390
+
+### TB-390: Generate Scenario Table From Real-AOI Candidates
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: generate a deterministic scenario table from the real-AOI candidate bundle and measure scenario cardinality, runtime, bytes, and file-count pressure.
+- Files changed: `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_management_aoi_scenario_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the management-AOI pressure helper to deterministically accept the 575 real-AOI candidates from TB-389, freeze them into a scratch scenario-table bundle, and report release-zone and scenario-family cardinalities alongside CSV, manifest, total-byte, and file-count measurements.
+  - Added focused regression coverage for the generated-table branch with a synthetic nonempty candidate bundle, then ran the real TB-389 bundle through the updated helper under `/tmp/rust_rockfall/tb390_management_aoi_scenario_pressure` and `/tmp/rust_rockfall/tb390_management_aoi_scenario_table`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_management_aoi_scenario_pressure.py tests/test_management_aoi_scenario_pressure.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --candidate-metrics-manifest /tmp/rust_rockfall/tb389_management_aoi_candidates/tschamut_public_pilot_release_zone_candidates_manifest.json --candidate-review-manifest /tmp/rust_rockfall/tb389_management_aoi_candidates/tschamut_public_pilot_release_zone_candidate_review_manifest.json --output-root /tmp/rust_rockfall/tb390_management_aoi_scenario_pressure --scenario-output-root /tmp/rust_rockfall/tb390_management_aoi_scenario_table --format text`
+- Result/status: implemented_measured
+- Boundaries: no source-frequency semantics, no annual probability, no calibration, no tuning, no hazard execution, and no operational or scale-up claim.
+- Next task: TB-391

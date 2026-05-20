@@ -108,7 +108,7 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertTrue(all(row["row_count"] == 0 for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]))
         self.assertEqual(report["command_plan_implications"][1]["command_id"], "second_site_release_plan_execution_template")
         self.assertEqual(report["command_plan_implications"][1]["status"], "blocked_source_zone_footprint_overlap")
-        self.assertIn("replace the committed 4x4 management-AOI crop", report["command_plan_implications"][1]["implication"])
+        self.assertIn("real-staged AOI crop", report["command_plan_implications"][1]["implication"])
         self.assertEqual(report["claim_boundary"]["annual_frequency_supported"], False)
 
         text = MODULE.render_text_report(report)
@@ -149,6 +149,26 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
                         "review_package_status": "emitted",
                         "candidate_release_zone_set_status": "review_ready",
                         "candidate_release_zone_ids": ["candidate_a", "candidate_b"],
+                        "candidate_review_rows": [
+                            {
+                                "candidate_release_zone_id": "candidate_a",
+                                "review_decision": "needs_field_review",
+                                "accepted": False,
+                                "rejected": False,
+                                "needs_field_review": True,
+                                "provenance_label": "workflow_generated",
+                                "component_bbox_lv95_m": {"crs": "EPSG:2056", "xmin": 2600000.0, "ymin": 1200000.0, "xmax": 2600002.0, "ymax": 1200002.0},
+                            },
+                            {
+                                "candidate_release_zone_id": "candidate_b",
+                                "review_decision": "needs_field_review",
+                                "accepted": False,
+                                "rejected": False,
+                                "needs_field_review": True,
+                                "provenance_label": "workflow_generated",
+                                "component_bbox_lv95_m": {"crs": "EPSG:2056", "xmin": 2600010.0, "ymin": 1200010.0, "xmax": 2600012.0, "ymax": 1200012.0},
+                            },
+                        ],
                         "review_summary": {
                             "candidate_count": 2,
                             "review_row_count": 2,
@@ -170,12 +190,24 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
                 candidate_review_manifest_path=review_path,
                 policy_path=POLICY_PATH,
                 output_root=tmp_root / "scenario_pressure_ready",
+                scenario_output_root=tmp_root / "scenario_table_ready",
             )
 
         self.assertEqual(report["scenario_pressure_status"], "ready")
         self.assertEqual(report["candidate_evidence"]["candidate_cell_count"], 2)
-        self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 2)
-        self.assertTrue(all(row["row_count"] == 2 for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]))
+        self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 6)
+        self.assertEqual(report["scenario_generation_pressure"]["scenario_table_file_count"], 5)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_total_bytes"], 0)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_runtime_seconds"], 0.0)
+        self.assertEqual([row["row_count"] for row in report["scenario_generation_pressure"]["scenario_family_cardinality"]], [2, 2, 2])
+        self.assertEqual([row["row_count"] for row in report["scenario_generation_pressure"]["release_zone_cardinality"]], [3, 3])
+        self.assertTrue(all(row["row_count"] == 6 for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]))
+        self.assertEqual(report["scenario_table_generation"]["accepted_candidate_count"], 2)
+        self.assertEqual(report["scenario_table_generation"]["scenario_row_count"], 6)
+        self.assertEqual(report["scenario_table_generation"]["file_count"], 5)
+        self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
         self.assertEqual(report["command_plan_implications"][1]["status"], "ready")
         self.assertFalse(report["unblock_guidance"]["scenario_generation_should_remain_blocked"])
 
