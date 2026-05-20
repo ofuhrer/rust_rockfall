@@ -219,7 +219,7 @@ or operational products.
   requirements.
 - `large_scale_execution_probe.md`: projection-only execution estimator.
 - `swiss_scale_feasibility_projection.md`: measured-evidence Swiss-scale
-  feasibility projection.
+  feasibility projection report.
 - `multi_zone_reducer_pressure_probe.md`: scratch-root multi-zone reducer
   pressure probe.
 

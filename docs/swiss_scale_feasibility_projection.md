@@ -26,8 +26,9 @@ preserved outputs:
   calibration cross-check: 46 files and 15,613,000 estimated bytes for the
   scalable conditional profile with GeoTIFF export and 2x2 chunking.
 - `scripts/summarize_large_aoi_gis_cog_stress_test.py` classifies the GIS/COG
-  path as blocked because the packaged AOI root is missing required manifest
-  fields and the standard package remains COG-blocked.
+  path as blocked because the packaged AOI root is missing the pilot GIS
+  package manifest fields needed for conversion and the standard package
+  remains COG-blocked.
 - The same-scale and Swiss-wide envelope helpers reuse the current measured
   manifest pressure signal: manifest size is the first bottleneck, with the
   generator evidence showing 120 scenario rows, 30 candidate release-zone
@@ -42,10 +43,10 @@ measurements.
 
 | Case | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Reducer and manifest pressure | GIS/COG status | Operator effort | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10-zone | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest_size remains the first bottleneck | blocked_missing_inputs | 1 job, 1 job per AOI | feasible |
-| 100-zone | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest_size still first bottleneck | blocked_missing_inputs | 10 jobs, 10 jobs per AOI | conditionally feasible, but deferred |
-| regional | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest_size still first bottleneck | blocked_missing_inputs | 10 jobs, 1 job per AOI | out of reach |
-| Swiss-wide | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest_size still first bottleneck | blocked_missing_inputs | 26 jobs, 1 job per AOI | out of reach |
+| 10-zone | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest_size remains the first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 1 job, 1 job per AOI | feasible |
+| 100-zone | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 10 jobs, 10 jobs per AOI | conditionally feasible, but deferred |
+| regional | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 10 jobs, 1 job per AOI | out of reach |
+| Swiss-wide | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest_size still first bottleneck | blocked_missing_inputs (missing pilot GIS package manifest) | 26 jobs, 1 job per AOI | out of reach |
 
 ## Measured Versus Extrapolated
 
@@ -67,7 +68,8 @@ Extrapolated:
   measured memory series.
 - Operator effort is approximated from job count and jobs per AOI. When job
   count rises above 1, the report treats the case as multi-job pressure rather
-  than a single-job execution target.
+  than a single-job execution target. This is an inference from scheduler
+  shape, not a measured human-time benchmark.
 
 ## No-Go Thresholds
 
