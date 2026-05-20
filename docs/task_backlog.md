@@ -39,32 +39,34 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-371: Integrate Four-Zone Hazard Evidence Into Scale Projection
+### TB-371: Repair Four-Zone Handoff Evidence Contract And Rerun Gate
 
-Goal: Thread measured or failed-closed four-zone hazard evidence into the scale matrix, Swiss-scale projection, and management package.
+Goal: Repair the four-zone handoff/scale-readiness evidence contract so it consumes the TB-368 preserved two-zone run root, then regenerate the four-zone package and submit exactly one bounded `postproc` job only if the live-submit gate becomes ready.
 
-Capability gap reduced: Keeps management feasibility statements synchronized with the newest measured scale point.
+Capability gap reduced: TB-370 proved the four-zone output budget was accepted, but the live-submit decision still ignored measured two-zone preservation evidence and failed closed with stale TB-362 language.
 
-Why this outranks alternatives: A second measured scale point materially changes confidence in 10-zone and 100-zone projections.
+Why this outranks alternatives: Four-zone execution and Swiss-scale projection both require the handoff helper to distinguish current preserved two-zone evidence from older failed-closed branches.
 
 Inspect first:
 
+- `docs/balfrin_four_zone_hazard_run_tb370.md`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
 - `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/current_maturity_snapshot.md`
+- `scripts/summarize_balfrin_probe_preservation_gate.py`
+- `scripts/submit_balfrin_probe.py`
+- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
 
 Deliverables:
 
-- Updated 10-zone and 100-zone feasibility classification based on two-/four-zone evidence.
-- Explicit separation of measured, extrapolated, failed-closed, and unknown terms.
+- Contract repair and regression proving the four-zone package consumes TB-368 preservation-ready evidence instead of stale TB-362 failed-closed text.
+- Regenerated four-zone package with explicit ready/defer decision and accepted output budget.
+- One gated four-zone Balfrin `postproc` submission if the repaired live-submit gate is ready, or a fail-closed report naming the remaining non-stale blocker.
 
 Definition of done:
 
-- The management-facing feasibility answer reflects the four-zone branch without overstating scale readiness.
+- Either the repaired package submits and produces a measured or preservation-gated four-zone outcome, or the repository records a precise blocker that is not `deferred_missing_measured_two_zone_evidence` caused by stale TB-362 evidence.
 
-Boundaries: Synthesis only; no new run; no operational, annual, physical-probability, or scale-up claim.
+Boundaries: GPT-5.5 worker only for live Balfrin work; `postproc` only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
 
 ### TB-372: Select And Freeze Management AOI Acquisition Target
 
