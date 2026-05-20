@@ -247,10 +247,12 @@ verification contract, one real-staged swissALTI3D AOI terrain crop for the
 Chant Sura / Fluelapass candidate, deterministic release-zone candidate
 sensitivity reporting, a measured real-terrain
 candidate sweep with runtime/output measurements and multi-zone readiness
-reporting, a measured real-terrain candidate stability report with persistent,
-threshold-sensitive, and rejected candidate classes plus candidate-count
-deltas, deterministic candidate stability ranking with bounded 2/4/8-zone
-probe selection, generic candidate-source-zone scenario generation, a site-level
+reporting, a measured real-terrain candidate stability report with zero
+candidate cells, empty stable/unstable/heuristic-sensitive masks across the
+bounded slope, resolution, smoothing, and AOI-boundary perturbations, and a
+clear not-ready recommendation for scenario generation, deterministic candidate
+stability ranking with bounded 2/4/8-zone probe selection, generic
+candidate-source-zone scenario generation, a site-level
 AOI-to-prepared-pilot dry-run composition, an optional ignored-root
 case-skeleton bundle with scenario-generation and GIS scope summaries, and
 explicit blocked/deferred boundaries for missing public-context products.

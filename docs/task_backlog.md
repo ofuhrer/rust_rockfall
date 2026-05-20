@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-377: Measure Real-AOI Release-Zone Stability
-
-Goal: Quantify candidate-zone sensitivity for the management AOI under bounded slope, resolution, smoothing, and AOI-boundary perturbations.
-
-Capability gap reduced: Defensibility of terrain-driven release-zone generation on real terrain.
-
-Why this outranks alternatives: Candidate zones must be stable enough to support scenario generation before larger Balfrin runs are meaningful.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Stability classes, persistent/unstable candidate masks, and sensitivity summary for the management AOI.
-- Recommendation on whether candidates are ready for scenario generation, need review, or are unstable.
-
-Definition of done:
-
-- Candidate-zone stability is measured and classified without changing physics or tuning thresholds to force acceptance.
-
-Boundaries: No operational release-zone claim, no calibration, no hazard execution.
-
 ### TB-378: Generate Large Real-AOI Scenario Table From Candidates
 
 Goal: Generate deterministic block/scenario tables from the real-AOI candidate zones and measure scenario cardinality, manifest pressure, and family composition.
