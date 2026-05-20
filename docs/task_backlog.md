@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-357: Measured Hazard Accumulation Throughput Profile
-
-Goal: Profile hazard accumulation throughput on the latest measured multi-zone hazard outputs and identify the dominant runtime phase.
-
-Capability gap reduced: Previous optimization attempts were rejected or fixture-backed; any new optimization must start from a measured multi-zone bottleneck.
-
-Why this outranks alternatives: Performance work is only worthwhile if tied to the measured scale path that management cares about.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/hazard_accumulation_benchmark.py`
-- `docs/hazard_throughput_bottleneck_report.md`
-- `tests/test_multi_zone_hazard_throughput_profile.py`
-
-Deliverables:
-
-- Measured throughput profile from current multi-zone hazard artifacts, including dominant phase, wall time, input sizes, and acceptance threshold for any optimization.
-- No-op/defer recommendation if no measured optimization target exists.
-
-Definition of done:
-
-- The repo has a measured, current hazard-accumulation bottleneck report or explicitly defers optimization due to missing measured input.
-
-Boundaries: Profiling only; no physics or hazard-output changes, no new Balfrin job.
-
 ### TB-358: Bounded Hazard Accumulation Optimization From Measured Bottleneck
 
 Goal: Implement one narrowly scoped hazard-accumulation optimization only if TB-357 identifies a measured bottleneck and a predeclared acceptance threshold.

@@ -278,6 +278,14 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertEqual(hazard_layer_signatures(profiled_manifest), hazard_layer_signatures(control_manifest))
             self.assertGreaterEqual(report["runs"]["explicit"]["hazard_manifest"]["performance"]["accumulation_seconds"], 0.0)
 
+    def test_report_documents_defer_when_current_measured_input_is_missing(self) -> None:
+        report_text = (ROOT / "docs" / "hazard_throughput_bottleneck_report.md").read_text(encoding="utf-8")
+
+        self.assertIn("TB-357 No-Op Defer on Missing Measured Current Target", report_text)
+        self.assertIn("current measured hazard-output root: missing", report_text)
+        self.assertIn("defer optimization until a measured current multi-zone hazard-output root is", report_text)
+        self.assertIn("acceptance floor for any future optimization", report_text)
+
     def test_cli_materialize_root_writes_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             profile_root = Path(tmpdir) / "profile"

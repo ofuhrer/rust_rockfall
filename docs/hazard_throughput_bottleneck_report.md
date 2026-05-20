@@ -491,3 +491,33 @@ Recorded outcome:
 
 The repository therefore keeps the measured bottleneck and the acceptance
 floor, but no throughput improvement was promoted for TB-335.
+
+## TB-357 No-Op Defer on Missing Measured Current Target
+
+TB-357 asked for a measured throughput profile on the latest current
+multi-zone hazard outputs. The repository does not contain a committed current
+measured multi-zone hazard-output root for this task. The only multi-zone
+throughput helper in tree remains the deterministic scratch fixture in
+`scripts/summarize_multi_zone_hazard_throughput_profile.py`, which is useful
+for local profiling but does not satisfy the measured-current requirement.
+
+Measured-input boundary:
+
+- current measured hazard-output root: missing;
+- latest repo-local multi-zone throughput evidence: scratch fixture only;
+- current dominant phase on that scratch fixture: `accumulation_seconds`;
+- current scratch-root wall time: `0.07079` s accumulation, `0.230328` s total
+  on the 12-zone representative rung recorded in the helper docs;
+- acceptance floor for any future optimization: keep the existing 10%
+  `accumulation_seconds` improvement threshold from the smallest multi-zone
+  benchmark baseline, but do not apply it until a current measured target is
+  staged.
+
+Recommendation:
+
+- defer optimization until a measured current multi-zone hazard-output root is
+  available;
+- do not promote the scratch fixture as current measured evidence;
+- once a measured target exists, re-profile the dominant phase and use the
+  predeclared 10% accumulation floor as the acceptance threshold for any
+  candidate optimization.

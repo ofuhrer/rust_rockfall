@@ -3871,3 +3871,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only Balfrin analysis only; no `sbatch`, no new job, no remote run-root mutation, no measured two-zone hazard evidence, no four-zone hazard evidence upgrade, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-357`
+
+### TB-357: Measured Hazard Accumulation Throughput Profile
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: close the requested hazard-accumulation profiling task with an explicit measured-input boundary after confirming no committed current multi-zone hazard-output root is available to profile.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a TB-357 defer section to the bottleneck report that states the committed current measured multi-zone hazard-output root is missing, preserves the existing 10% accumulation acceptance floor, and marks the scratch helper as non-current evidence.
+  - Added a focused regression that asserts the report text spells out the missing measured input and the no-op/defer recommendation.
+  - Removed TB-357 from the active backlog and recorded the closure here instead of fabricating a current measured optimization target.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no physics changes, no hazard-output changes, no Balfrin job, no scale-up claim, and no promotion of scratch fixture evidence as current measured multi-zone output.
+- Next task: `TB-358`
