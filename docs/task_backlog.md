@@ -316,6 +316,118 @@ Definition of done:
 
 Boundaries: Do not weaken tests by silently skipping real regressions; no generated artifact commits; no CI-only workaround.
 
+### TB-398: Make AOI Workflow Front Door Self-Explaining
+
+Goal: Improve the existing AOI front-door command so a user can see the current status, first blocker, and next copy-paste command without reading multiple helper reports.
+
+Capability gap reduced: The user-facing AOI path is technically present but still exposes too many underlying scripts and nested reports.
+
+Why this outranks alternatives: This improves usability by simplifying an existing entrypoint instead of adding another wrapper, report, or management surface.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `README.md`
+- `tests/test_run_aoi_hazard_workflow.py`
+
+Deliverables:
+
+- A concise text-mode AOI workflow output that includes `workflow_status`, `first_blocker`, `next_command`, required inputs, generated outputs, and claim boundaries.
+- A stable `--help` or example path for the simplest bounds-to-review dry run.
+- Focused tests proving the user-facing text output stays compact and copy-pasteable.
+
+Definition of done:
+
+- A new user can run one existing front-door command and see the next action without opening nested JSON reports or separate helper docs.
+
+Boundaries: Do not add a new front-door script, do not hide blocked states, do not run Balfrin, and do not introduce operational claims.
+
+### TB-399: Consolidate User-Facing AOI Documentation
+
+Goal: Collapse duplicated AOI workflow instructions into one short user-facing path and point detailed helper material behind links.
+
+Capability gap reduced: README, onboarding, public-geodata docs, and script inventory currently expose overlapping AOI instructions that make the workflow harder to follow.
+
+Why this outranks alternatives: Documentation cleanup is justified here because it removes duplicated command paths and reduces context injection for future workers and users.
+
+Inspect first:
+
+- `README.md`
+- `docs/onboarding.md`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `docs/script_inventory.md`
+
+Deliverables:
+
+- One canonical AOI quickstart path linked from README and onboarding.
+- Low-level helper commands moved behind references instead of repeated in multiple user-facing docs.
+- Script inventory labels that distinguish user-facing front doors from internal workflow helpers.
+
+Definition of done:
+
+- `rg` shows one canonical AOI quickstart section, low-level helpers remain discoverable, and no active command path is removed.
+
+Boundaries: No new workflow semantics, no new report, no generated artifacts, no claim-boundary changes.
+
+### TB-400: Retire Or Deprecate Redundant Workflow Shell Scripts
+
+Goal: Identify redundant or historical top-level workflow scripts and either remove one safely or mark a small set as deprecated with exact replacement commands.
+
+Capability gap reduced: The repository has accumulated many wrappers and status helpers, increasing maintenance cost and user confusion.
+
+Why this outranks alternatives: Reducing script count or clearly marking replacements prevents further workflow-shell growth without a broad rewrite.
+
+Inspect first:
+
+- `docs/script_inventory.md`
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/generate_pilot_command_plan.py`
+- `scripts/check_repo_consistency.py`
+
+Deliverables:
+
+- `rg`-backed inventory of candidate redundant scripts.
+- At least one safe removal, or explicit deprecation metadata for the smallest high-confidence set with replacement commands and tests adjusted.
+- Updated script inventory reflecting the reduced or deprecated surface.
+
+Definition of done:
+
+- No active doc, test, command plan, backlog task, or reproduction command references a removed script, and deprecated scripts point to a canonical replacement.
+
+Boundaries: No giant framework rewrite, no deletion of high-risk workflow surfaces, no CLI break without a compatibility shim or documented replacement.
+
+### TB-401: Extract Shared Command And Path Rendering Utilities
+
+Goal: Consolidate repeated command-string, path-normalization, and expected-output rendering logic used by AOI workflow, prepared-pilot, and handoff helpers.
+
+Capability gap reduced: Repeated shell-command and path-rendering logic causes drift in user-facing next commands and Balfrin handoff packages.
+
+Why this outranks alternatives: This is a small maintainability improvement that supports both user-facing clarity and safer orchestration without adding a new layer.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
+- `scripts/build_management_aoi_balfrin_handoff.py`
+- `scripts/lib/workflow_validation.py`
+- `tests/test_run_aoi_hazard_workflow.py`
+- `tests/test_aoi_to_prepared_pilot_dry_run.py`
+
+Deliverables:
+
+- Shared utility functions for rendering repo-relative paths, shell commands, and expected-output path blocks.
+- At least two existing helpers migrated to the shared functions.
+- Regression tests showing user-facing next commands and handoff command manifests remain stable.
+
+Definition of done:
+
+- Duplicate command/path rendering is measurably reduced and existing JSON/text outputs stay compatible.
+
+Boundaries: Bounded refactor only; no new wrapper, no status-vocabulary change, no Balfrin submission, and no scientific semantics change.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
