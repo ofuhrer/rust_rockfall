@@ -3473,7 +3473,7 @@ scan thousands of lines of completed history.
 ### TB-336: Reducer And Manifest Scaling Hardening
 
 - Date: 2026-05-20
-- Commit: `pending`
+- Commit: `b211c58`
 - Objective: harden the default multi-zone reducer-pressure profile so rebuild-critical replay artifacts stay present while debug manifest and sidecar fanout is bounded.
 - Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/summarize_multi_zone_scaling_ladder.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/output_budget_reducer_scaling_gate.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
