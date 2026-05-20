@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-345: Release-Zone Candidate Stability On Real Terrain
-
-Goal: Measure how release-zone candidates change under bounded slope, smoothing, terrain-resolution, and AOI-boundary perturbations.
-
-Capability gap reduced: Candidate generation is not defensible for scale planning unless its sensitivity to reasonable preprocessing and heuristic choices is measured.
-
-Why this outranks alternatives: Stability evidence should precede large scenario-table stress tests so the scenario space is not built on unstable candidate artifacts.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `tests/test_balfrin_target_area_candidate_stability.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A stability report with persistent, sensitive, and rejected candidate classes plus measured candidate-count deltas.
-- Tests for deterministic perturbation handling and claim-boundary labels.
-
-Definition of done:
-
-- The repo can distinguish robust release-zone candidates from threshold-sensitive candidates for one real AOI.
-
-Boundaries: No acceptance as true release zones, no tuning, no physical credibility or operational claim.
-
 ### TB-346: Release-Zone Candidate Review Package
 
 Goal: Produce a compact GIS/QA package for reviewing real-terrain release-zone candidates and selecting a bounded subset for scenario generation.

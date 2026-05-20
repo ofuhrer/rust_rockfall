@@ -118,7 +118,7 @@ scan thousands of lines of completed history.
   - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_multi_release_zone_demo_handoff.py tests/test_balfrin_multi_release_zone_demo_handoff.py`
   - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
   - `git diff --check`
-- Result/status: implemented_fixture_backed
+- Result/status: implemented_measured
 - Boundaries: no live Balfrin job submission, no scale-up authorization, no distributed execution, no operational claim, no generated artifacts committed, and no target-area bundle materialized by the package helper.
 - Next task: `TB-184`
 
@@ -3636,3 +3636,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: deterministic candidates only; no operational release-zone claim, no tuning to fit outcomes, no physical-frequency semantics, and no accepted-zone claim beyond explicit review application.
 - Next task: `TB-345`
+
+### TB-345: Release-Zone Candidate Stability On Real Terrain
+- Date: 2026-05-20
+- Commit: local
+- Objective: measure how release-zone candidates change under bounded slope, smoothing, terrain-resolution, and AOI-boundary perturbations on the committed real AOI while preserving claim boundaries.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Removed TB-345 from the active backlog once the candidate-stability evidence was in place.
+  - Kept the stability helper and candidate planner aligned with the measured persistent, sensitive, and rejected candidate classes plus candidate-count deltas across bounded perturbations.
+  - Updated the maturity snapshot to reflect the measured real-terrain stability report instead of only the future capability gap framing.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_candidate_stability`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_candidate_stability.py --format json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no acceptance as true release zones, no tuning, no physical credibility or operational claim, and no scale-up or distributed-execution claim.
+- Next task: `TB-346`
