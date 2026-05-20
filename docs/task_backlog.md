@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-328: AOI Scenario Cost Projection Model
-
-Goal: Convert release-zone and scenario-table cardinality into a deterministic runtime, storage, and reducer-pressure projection for bounded AOI sizes.
-
-Capability gap reduced: Management needs Swiss-scale feasibility projections grounded in measured candidate/scenario pressure rather than vague extrapolation.
-
-Why this outranks alternatives: The next Balfrin run sizes should be chosen from projected cost and uncertainty value, not arbitrary zone counts.
-
-Inspect first:
-
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/estimate_large_scale_execution.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/hazard_workflow_scale_review.md`
-- `docs/performance_benchmark_synthetic_scale.md`
-- `tests/test_aoi_scenario_preview.py`
-
-Deliverables:
-
-- Cost projection helper output for 2, 4, 8, 12, 50, and 100-zone AOI shapes.
-- Separation of measured, scratch-local, projection-only, and no-go classifications.
-- Documentation of assumptions and uncertainty in the projection.
-
-Definition of done:
-
-- The scale dashboard or companion report can state which AOI sizes are plausible, blocked, or out of reach under current single-node/postproc constraints.
-
-Boundaries: Projection only unless using already measured inputs; no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics.
-
 ### TB-329: Real-Input AOI Prepared-Pilot Compiler
 
 Goal: Make the AOI-to-prepared-pilot compiler consume verified real-staged input manifests and produce a clean ignored handoff bundle for bounded local or Balfrin review.

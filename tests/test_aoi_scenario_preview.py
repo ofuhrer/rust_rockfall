@@ -4,6 +4,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -182,6 +183,62 @@ class AoiScenarioPreviewTests(unittest.TestCase):
         self.assertEqual(report["execution_target"]["target"], report["largest_selected_zone_report"]["execution_target"]["target"])
         self.assertIn("Largest Selected Zone Count", preview.render_text_report(report))
 
+    def test_projection_zone_counts_generate_companion_cost_ladder(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            package = self._write_review_package(
+                Path(tmp) / "projection_zone_review_package.yaml",
+                self._build_review_package_payload(),
+            )
+
+            with mock.patch.object(
+                preview,
+                "load_balfrin_scale_classification_surface",
+                return_value=self._projection_classification_surface(),
+            ), mock.patch.object(
+                preview.FREEZER,
+                "build_freezer_report",
+                return_value=self._projection_freezer_report(),
+            ), mock.patch.object(
+                preview.LARGE_SCALE,
+                "estimate",
+                side_effect=self._projection_large_scale_estimate,
+            ):
+                report = preview.build_aoi_cost_projection_report(
+                    review_package_paths=[package],
+                    trajectory_count=None,
+                    projection_zone_counts=(2, 4, 8, 12, 50, 100),
+                )
+
+        self.assertEqual(report["schema_version"], preview.COST_PROJECTION_SCHEMA_VERSION)
+        self.assertEqual(report["preview_mode"], "aoi_cost_projection_counts")
+        self.assertEqual(report["projection_status"], "ready")
+        self.assertEqual(report["projection_zone_counts"], [2, 4, 8, 12, 50, 100])
+        self.assertEqual(report["reviewed_candidate_pool_count"], 12)
+        self.assertEqual(report["reference_block_family_count"], 3)
+        self.assertEqual(report["projection_classification_summary"]["measured_tiers"], ["single_zone", "target_area"])
+        self.assertEqual(report["projection_classification_summary"]["scratch_local"], [2, 4, 8, 12])
+        self.assertEqual(report["projection_classification_summary"]["projection_only"], [50])
+        self.assertEqual(report["projection_classification_summary"]["no_go"], [100])
+        self.assertEqual(report["projection_classification_summary"]["plausible"], [2, 4])
+        self.assertEqual(report["projection_classification_summary"]["blocked"], [8, 12, 50])
+        self.assertEqual(report["projection_classification_summary"]["out_of_reach"], [100])
+        self.assertEqual(
+            [row["projection_zone_count"] for row in report["projection_zone_count_reports"]],
+            [2, 4, 8, 12, 50, 100],
+        )
+        self.assertEqual(
+            [row["evidence_label"] for row in report["projection_zone_count_reports"]],
+            ["scratch_local", "scratch_local", "scratch_local", "scratch_local", "projection_only", "no_go"],
+        )
+        self.assertEqual(
+            [row["suitability_classification"] for row in report["projection_zone_count_reports"]],
+            ["plausible", "plausible", "blocked", "blocked", "blocked", "out_of_reach"],
+        )
+        self.assertEqual(report["largest_projection_zone_count"], 100)
+        self.assertEqual(report["largest_projection_zone_report"]["projection_zone_count"], 100)
+        self.assertIn("AOI Cost Projection Preview", preview.render_text_report(report))
+        self.assertIn("Projection Assumptions", preview.render_text_report(report))
+
     def _write_review_package(self, path: Path, payload: dict) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
@@ -219,6 +276,46 @@ class AoiScenarioPreviewTests(unittest.TestCase):
                 for index, candidate_id in enumerate(accepted_ids, start=1)
             ],
         }
+
+    def _projection_classification_surface(self) -> dict:
+        return {
+            "measured_tiers": ["single_zone", "target_area"],
+            "scratch_local_tiers": ["local_reducer_ladder"],
+            "projection_only_tiers": ["projected_larger_aoi"],
+            "no_go_tiers": ["projected_larger_aoi"],
+            "summary": "Measured, scratch-local, projection-only, and no-go evidence remain separated.",
+            "next_recommended_scaling_task": "TB-338",
+            "evidence_label_definitions": {
+                "measured_on_balfrin": "Preserved Balfrin run-root evidence with measured execution or output fields.",
+                "scratch_local": "Local /tmp measurement or generated scratch evidence; useful for bottleneck discovery but not Balfrin evidence.",
+                "projection_only": "Planner extrapolation from measured coefficients; not an executed scale tier.",
+                "no_go": "Planner extrapolation that exceeds measured support.",
+            },
+        }
+
+    def _projection_freezer_report(self) -> dict:
+        return {
+            "accepted_candidate_count": 12,
+            "block_family_ids": [
+                "policy_block_family_v1",
+                "policy_block_family_v2",
+                "policy_block_family_v3",
+            ],
+        }
+
+    def _projection_large_scale_estimate(self, inputs):
+        total_units = inputs.release_zone_count * inputs.trajectory_count * inputs.ensemble_size
+        job_count = max(1, (total_units + 59) // 60)
+        return mock.Mock(
+            trajectory_chunks=max(1, min(2, inputs.release_zone_count)),
+            reducer_chunks=max(1, min(2, total_units)),
+            total_output_file_count=42 + max(1, min(2, inputs.release_zone_count)) + max(1, min(2, total_units)),
+            output_bytes=inputs.release_zone_count * 100,
+            chunk_counts={
+                "trajectory_chunks": max(1, min(2, inputs.release_zone_count)),
+                "reducer_chunks": max(1, min(2, total_units)),
+            },
+        )
 
 
 if __name__ == "__main__":
