@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-355: Execute Four-Zone Balfrin Hazard Run
-
-Goal: Submit and monitor the four-zone Balfrin hazard package if TB-354 reaches ready-for-submit.
-
-Capability gap reduced: The 10-zone feasibility projection needs measured evidence at an intermediate hazard-execution rung.
-
-Why this outranks alternatives: Four-zone measured execution reveals whether runtime/output pressure and reducer/manifest behavior stay inside the projected envelope.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-
-Deliverables:
-
-- Live job id, run root, exit status, wall time, memory, validation/hazard output counts and bytes, preservation evidence, and post-run collector output.
-- Fail-closed report if readiness gates block submission.
-
-Definition of done:
-
-- The four-zone run is measured and preserved, or the task stops before submission with a precise blocker.
-
-Boundaries: GPT-5.5 worker required; `postproc` only; stop and rediscuss if fully occupying `postproc` for more than 6 hours; no operational or scale-up claim.
-
 ### TB-356: Multi-Zone Reducer Merge Profile From Measured Runs
 
 Goal: Profile reducer merge ordering, manifest fanout, sidecar counts, and replay-critical outputs using the measured multi-zone hazard run roots.

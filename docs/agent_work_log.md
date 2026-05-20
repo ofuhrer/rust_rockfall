@@ -3822,3 +3822,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no live submission, no distributed execution, no operational or scale-up claim, and no physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-355`
+
+### TB-355: Execute Four-Zone Balfrin Hazard Run
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: submit and monitor the four-zone Balfrin hazard package only if TB-354 reached `ready_for_submit` and all live Balfrin package-specific gates passed.
+- Files changed: `docs/balfrin_four_zone_hazard_run_tb355.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the Balfrin access preflight and fast-forwarded the remote checkout on `main` from `327690d867fd475e674c76ad8f5f1e9fadc69e01` to `011f3737ef03e70566de0c68fa48eccd455c34c7` before package-specific checks.
+  - Regenerated the four-zone handoff package on Balfrin under `/tmp/tb355_four_zone_handoff` and inspected the TB-354 hazard execution package decision.
+  - Stopped before `sbatch` because the package reported `decision=defer`, `ready_for_submit=false`, and `deferred_missing_measured_two_zone_evidence`: TB-352 failed closed before scheduler submission, so measured two-zone hazard evidence is unavailable.
+  - Preserved a fail-closed report with the preflight status `blocked_reducer_budget`, submit contract `ready`, output-budget acceptance `accepted`, output profile `blocked_output_profile`, and no job id or run root.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-355 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json --json-output /tmp/tb355_four_zone_handoff/package.json --text-output /tmp/tb355_four_zone_handoff/package.txt'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/tb355_four_zone_handoff/package.json --authorization-record /tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb355_balfrin_access_preflight.json --format json'` (expected exit 2 with `blocked_reducer_budget`)
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no `sbatch`, no live four-zone hazard job, no job id, no measured four-zone Balfrin hazard evidence, no non-`postproc` partition, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-356`
