@@ -3618,3 +3618,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no risk/exposure/vulnerability semantics, no operational exclusion claim, no large raw geodata commit, and no scale-up or distributed-execution claim.
 - Next task: `TB-344`
+
+### TB-344: Real-Terrain Release-Zone Candidate Sweep
+- Date: 2026-05-20
+- Commit: local
+- Objective: run deterministic release-zone candidate generation over the committed real-terrain Tschamut AOI package and keep deterministic candidates separate from any later accepted release zones.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit candidate-vs-accepted separation summary to the terrain candidate report and review-apply flow so deterministic candidate polygons stay distinct from accepted release zones until review is explicitly applied.
+  - Added real sweep measurements to the candidate report, including output file count, total bytes, and runtime, and kept the emitted GIS-ready candidate mask/polygon/review bundle under the scratch output root.
+  - Extended the focused regression to normalize the measured runtime when comparing repeated runs and to assert the real-terrain sweep emitted 390 deterministic candidate polygons and seven GIS-ready outputs.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --format json --output-root /tmp/tb344_candidate_sweep`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_zone_heuristic_dry_run -v`
+- Result/status: implemented_measured
+- Boundaries: deterministic candidates only; no operational release-zone claim, no tuning to fit outcomes, no physical-frequency semantics, and no accepted-zone claim beyond explicit review application.
+- Next task: `TB-345`

@@ -21,6 +21,7 @@ import json
 import math
 import sys
 from itertools import combinations
+from time import perf_counter
 from pathlib import Path
 from typing import Any
 
@@ -219,6 +220,17 @@ def build_report(
     candidate_footprint_comparison = build_candidate_footprint_comparison(terrain, terrain_masks)
     provenance = build_provenance(terrain_crop_path, terrain_metadata_path, source_zone_metadata_path, terrain_metadata, source_zone_metadata)
     candidate_review_package = candidate_review_package_stub(repo_root=repo_root)
+    candidate_release_zone_separation_summary = build_candidate_release_zone_separation_summary(
+        candidate_count=0,
+        candidate_review_package=candidate_review_package,
+    )
+    candidate_sweep_measurements = {
+        "runtime_seconds": 0.0,
+        "output_root": None,
+        "output_file_count": 0,
+        "output_total_bytes": 0,
+        "output_paths": {},
+    }
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -254,6 +266,8 @@ def build_report(
         "frozen_source_zone_footprint": frozen_footprint_summary,
         "candidate_footprint_comparison": candidate_footprint_comparison,
         "provenance": provenance,
+        "candidate_release_zone_separation_summary": candidate_release_zone_separation_summary,
+        "candidate_sweep_measurements": candidate_sweep_measurements,
         "claim_boundaries": {
             "heuristic_workflow_input_only": True,
             "validated_release_zone_evidence": False,
@@ -282,6 +296,7 @@ def build_report(
         },
     }
     if output_root is not None:
+        sweep_start = perf_counter()
         candidate_products, candidate_review_package = emit_candidate_products(
             report=report,
             terrain=terrain,
@@ -291,9 +306,20 @@ def build_report(
             output_root=output_root,
             output_mode=output_mode,
         )
+        candidate_sweep_measurements = build_candidate_sweep_measurements(
+            candidate_products=candidate_products,
+            output_root=output_root,
+            repo_root=repo_root,
+            runtime_seconds=perf_counter() - sweep_start,
+        )
         report["candidate_release_zone_set_status"] = "emitted"
         report["candidate_release_zone_products"] = candidate_products
         report["candidate_review_package"] = candidate_review_package
+        report["candidate_release_zone_separation_summary"] = build_candidate_release_zone_separation_summary(
+            candidate_count=candidate_products.get("component_count", 0),
+            candidate_review_package=candidate_review_package,
+        )
+        report["candidate_sweep_measurements"] = candidate_sweep_measurements
     return report
 
 
@@ -495,6 +521,15 @@ def apply_review_decisions_to_package(
         "output_root": display_path(output_root, repo_root),
     }
     reviewed_package["candidate_release_zone_ids"] = [text_value(row.get("candidate_release_zone_id")) for row in applied_rows]
+    reviewed_package["candidate_release_zone_separation_summary"] = build_candidate_release_zone_separation_summary(
+        candidate_count=len(applied_rows),
+        candidate_review_package=reviewed_package,
+        accepted_candidate_ids=accepted_ids,
+        rejected_candidate_ids=rejected_ids,
+        needs_field_review_candidate_ids=needs_field_review_ids,
+        review_application_status="validated",
+        separation_status="review_applied",
+    )
     reviewed_package["review_decision_options"] = list(REVIEW_DECISION_OPTIONS)
     reviewed_package["editable_acceptance_fields"] = ["review_decision", "accepted", "rejected", "needs_field_review"]
     reviewed_package["provenance_label_legend"] = provenance_label_legend()
@@ -666,6 +701,29 @@ def blocked_report(
             "candidate_excludes_frozen_footprint": False,
         },
         "provenance": {},
+        "candidate_release_zone_separation_summary": {
+            "separation_status": "not_emitted",
+            "deterministic_candidate_count": 0,
+            "accepted_release_zone_count": 0,
+            "accepted_release_zone_ids": [],
+            "rejected_candidate_count": 0,
+            "rejected_candidate_ids": [],
+            "needs_field_review_candidate_count": 0,
+            "needs_field_review_candidate_ids": [],
+            "candidate_release_zone_set_status": "not_emitted",
+            "review_package_status": "not_emitted",
+            "review_application_status": "not_applied",
+            "candidate_review_package_status": "not_emitted",
+            "candidate_generation_label": "heuristic_candidate_generation_only",
+            "note": "Deterministic candidate polygons remain separate from accepted release zones until review is explicitly applied.",
+        },
+        "candidate_sweep_measurements": {
+            "runtime_seconds": 0.0,
+            "output_root": None,
+            "output_file_count": 0,
+            "output_total_bytes": 0,
+            "output_paths": {},
+        },
         "claim_boundaries": {
             "heuristic_workflow_input_only": True,
             "validated_release_zone_evidence": False,
@@ -2030,6 +2088,65 @@ def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
     }
 
 
+def build_candidate_release_zone_separation_summary(
+    *,
+    candidate_count: int,
+    candidate_review_package: dict[str, Any],
+    accepted_candidate_ids: list[str] | None = None,
+    rejected_candidate_ids: list[str] | None = None,
+    needs_field_review_candidate_ids: list[str] | None = None,
+    review_application_status: str | None = None,
+    separation_status: str | None = None,
+) -> dict[str, Any]:
+    accepted_candidate_ids = accepted_candidate_ids or list(candidate_review_package.get("accepted_candidate_ids") or [])
+    rejected_candidate_ids = rejected_candidate_ids or list(candidate_review_package.get("rejected_candidate_ids") or [])
+    needs_field_review_candidate_ids = needs_field_review_candidate_ids or list(
+        candidate_review_package.get("needs_field_review_candidate_ids") or []
+    )
+    review_package_status = text_value(candidate_review_package.get("review_package_status")) or "not_emitted"
+    review_application_status = review_application_status or text_value(candidate_review_package.get("review_application_status")) or "not_applied"
+    if separation_status is None:
+        separation_status = "review_applied" if review_application_status == "validated" else "review_ready" if review_package_status == "emitted" else "not_emitted"
+    return {
+        "separation_status": separation_status,
+        "deterministic_candidate_count": candidate_count,
+        "accepted_release_zone_count": len(accepted_candidate_ids),
+        "accepted_release_zone_ids": accepted_candidate_ids,
+        "rejected_candidate_count": len(rejected_candidate_ids),
+        "rejected_candidate_ids": rejected_candidate_ids,
+        "needs_field_review_candidate_count": len(needs_field_review_candidate_ids),
+        "needs_field_review_candidate_ids": needs_field_review_candidate_ids,
+        "candidate_release_zone_set_status": candidate_review_package.get("candidate_release_zone_set_status"),
+        "review_package_status": review_package_status,
+        "review_application_status": review_application_status,
+        "candidate_review_package_status": review_package_status,
+        "candidate_generation_label": candidate_review_package.get("candidate_generation_label", "heuristic_candidate_generation_only"),
+        "note": "Deterministic candidate polygons remain separate from accepted release zones until review is explicitly applied.",
+    }
+
+
+def build_candidate_sweep_measurements(
+    *,
+    candidate_products: dict[str, Any],
+    output_root: Path,
+    repo_root: Path,
+    runtime_seconds: float,
+) -> dict[str, Any]:
+    output_paths = dict(candidate_products.get("outputs") or {})
+    output_files = [
+        path
+        for path in output_root.rglob("*")
+        if path.is_file() and path.name != "candidate_stability_report.json"
+    ]
+    return {
+        "runtime_seconds": round(float(runtime_seconds), 6),
+        "output_root": display_path(output_root, repo_root),
+        "output_file_count": len(output_files),
+        "output_total_bytes": sum(path.stat().st_size for path in output_files),
+        "output_paths": output_paths,
+    }
+
+
 def write_candidate_review_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     columns = [
         "candidate_release_zone_id",
@@ -2526,6 +2643,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("candidate_review_package:")
     lines.extend(render_mapping(report["candidate_review_package"]))
     lines.append("")
+    lines.append("candidate_release_zone_separation_summary:")
+    lines.extend(render_mapping(report["candidate_release_zone_separation_summary"]))
+    lines.append("")
+    lines.append("candidate_sweep_measurements:")
+    lines.extend(render_mapping(report["candidate_sweep_measurements"]))
+    lines.append("")
     lines.append("claim_boundaries:")
     lines.extend(render_mapping(report["claim_boundaries"]))
     lines.append("")
@@ -2545,15 +2668,22 @@ def render_review_apply_text_report(report: dict[str, Any]) -> str:
         f"- Rejected candidate count: `{len(report.get('rejected_candidate_ids', []))}`",
         f"- Needs field review candidate count: `{len(report.get('needs_field_review_candidate_ids', []))}`",
         "",
-        "Validation",
-        f"- validation_status: `{report.get('review_application', {}).get('validation_status', '')}`",
-        f"- unknown_candidate_ids: `{', '.join(validation.get('unknown_candidate_ids', []))}`",
-        f"- unreviewed_accepted_candidate_ids: `{', '.join(validation.get('unreviewed_accepted_candidate_ids', []))}`",
-        f"- mixed_provenance_overclaim_candidate_ids: `{', '.join(validation.get('mixed_provenance_overclaim_candidate_ids', []))}`",
-        f"- accepted_missing_validation_candidate_ids: `{', '.join(validation.get('accepted_missing_validation_candidate_ids', []))}`",
-        "",
-        "Output Paths",
+        "Candidate vs Accepted Summary",
     ]
+    lines.extend(render_mapping(report.get("candidate_release_zone_separation_summary", {})))
+    lines.extend(
+        [
+            "",
+            "Validation",
+            f"- validation_status: `{report.get('review_application', {}).get('validation_status', '')}`",
+            f"- unknown_candidate_ids: `{', '.join(validation.get('unknown_candidate_ids', []))}`",
+            f"- unreviewed_accepted_candidate_ids: `{', '.join(validation.get('unreviewed_accepted_candidate_ids', []))}`",
+            f"- mixed_provenance_overclaim_candidate_ids: `{', '.join(validation.get('mixed_provenance_overclaim_candidate_ids', []))}`",
+            f"- accepted_missing_validation_candidate_ids: `{', '.join(validation.get('accepted_missing_validation_candidate_ids', []))}`",
+            "",
+            "Output Paths",
+        ]
+    )
     for key, value in (report.get("outputs") or {}).items():
         lines.append(f"- {key}: `{value}`")
     return "\n".join(lines)

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -88,7 +90,11 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             first_manifest_text = Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8")
             second = planner.build_report(output_root=output_root, output_mode="both")
 
-            self.assertEqual(first, second)
+            first_sanitized = copy.deepcopy(first)
+            second_sanitized = copy.deepcopy(second)
+            first_sanitized["candidate_sweep_measurements"]["runtime_seconds"] = 0.0
+            second_sanitized["candidate_sweep_measurements"]["runtime_seconds"] = 0.0
+            self.assertEqual(first_sanitized, second_sanitized)
 
             self.assertEqual(first["schema_version"], "terrain_release_zone_candidate_metrics_v1")
             self.assertEqual(first["candidate_metrics_status"], "ready")
@@ -104,6 +110,13 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertGreater(first["candidate_summary"]["candidate_fraction_of_screenable_cells"], 0.0)
             self.assertGreaterEqual(first["candidate_summary"]["candidate_slope_min_deg"], 30.0)
             self.assertLessEqual(first["candidate_summary"]["candidate_slope_max_deg"], 55.0)
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["separation_status"], "review_ready")
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 390)
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 0)
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], [])
+            self.assertEqual(first["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertGreater(first["candidate_sweep_measurements"]["runtime_seconds"], 0.0)
+            self.assertGreater(first["candidate_sweep_measurements"]["output_total_bytes"], 0)
             self.assertEqual(first["candidate_sensitivity_report"]["sensitivity_status"], "ready")
             self.assertEqual(first["candidate_sensitivity_report"]["baseline_variant_id"], "baseline")
             self.assertEqual(first["candidate_sensitivity_report"]["variant_count"], 6)
@@ -241,6 +254,8 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(review_geojson["provenance_label_legend"][0]["provenance_label"], "workflow_generated")
             self.assertEqual(review_geojson["features"][0]["properties"]["review_decision"], "needs_field_review")
             self.assertEqual(review_geojson["features"][0]["properties"]["candidate_sensitivity_label"], "heuristic_sensitive_across_bounded_heuristics")
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["candidate_release_zone_set_status"], "review_ready")
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["candidate_review_package_status"], "emitted")
 
             manifest = json.loads(Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema_version"], "terrain_release_zone_candidate_products_v1")
@@ -260,7 +275,10 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(review_manifest["candidate_review_rows"][0]["review_decision"], "needs_field_review")
 
             text_report = planner.render_text_report(first)
-            self.assertEqual(text_report, planner.render_text_report(second))
+            self.assertEqual(
+                normalize_report_text(text_report),
+                normalize_report_text(planner.render_text_report(second)),
+            )
             self.assertIn("schema_version: terrain_release_zone_candidate_metrics_v1", text_report)
             self.assertIn("candidate_metrics_status: ready", text_report)
             self.assertIn("excluded_area_summary:", text_report)
@@ -353,6 +371,9 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(report["review_application"]["validation_status"], "validated")
         self.assertEqual(report["review_application"]["accepted_candidate_ids"], ["cand_accept"])
         self.assertEqual(report["review_application"]["validation_checks"]["allowed_provenance_labels"], list(planner.PROVENANCE_LABELS))
+        self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_applied")
+        self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 1)
+        self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], ["cand_accept"])
         self.assertEqual(manifest["review_package_status"], "review_applied")
         self.assertEqual(manifest["review_application_status"], "validated")
         self.assertEqual(manifest["review_summary"]["review_decision_counts"]["accepted"], 1)
@@ -361,6 +382,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(geojson["features"][1]["properties"]["review_decision"], "rejected")
         self.assertEqual(geojson["features"][2]["properties"]["review_decision"], "needs_field_review")
         self.assertIn("Candidate Review Apply", planner.render_review_apply_text_report(report))
+        self.assertIn("Candidate vs Accepted Summary", planner.render_review_apply_text_report(report))
 
     def test_review_apply_rejects_unknown_ids_unreviewed_accepts_overclaims_and_empty_acceptance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
@@ -503,6 +525,10 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         config_path = repo_root / "site_config.yaml"
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
+
+
+def normalize_report_text(text: str) -> str:
+    return re.sub(r"(- runtime_seconds: )\d+(?:\.\d+)?", r"\1<measured>", text)
 
 
 if __name__ == "__main__":

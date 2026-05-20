@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-344: Real-Terrain Release-Zone Candidate Sweep
-
-Goal: Run deterministic release-zone candidate generation over a larger real-terrain AOI package rather than a handcrafted single-zone fixture.
-
-Capability gap reduced: Swiss-scale automation is impossible while release zones remain curated or only fixture-backed.
-
-Why this outranks alternatives: This is the first major workflow-automation blocker after real terrain preprocessing; scenario and Balfrin scale tests need many deterministic candidate zones.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Candidate masks/polygons, candidate statistics, topographic heuristic parameters, runtime/output measurements, and GIS-ready review outputs for one real AOI.
-- A report separating deterministic candidates from accepted release zones.
-
-Definition of done:
-
-- The candidate sweep can run from the real AOI terrain package and emit deterministic candidate zones without implying operational correctness.
-
-Boundaries: No tuning to fit outcomes, no operational release-zone claim, no physical-frequency semantics.
-
 ### TB-345: Release-Zone Candidate Stability On Real Terrain
 
 Goal: Measure how release-zone candidates change under bounded slope, smoothing, terrain-resolution, and AOI-boundary perturbations.
