@@ -48,6 +48,26 @@ only another gate recommendation.
 Detailed sources: `../AGENTS.md`, `task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### TB-335 Hazard Throughput No-Op
+
+Decision: do not retain a hazard-builder code change for TB-335 because no
+structural candidate was shown to clear the predeclared 8-zone accumulation
+floor without repeating the previously rejected accumulator-local rewrite
+family.
+
+Current status: active. The throughput bottleneck report records the rejected
+or no-op outcome, while the accumulator implementation stays unchanged and the
+measured acceptance floor remains the comparison contract for any future
+candidate.
+
+Rationale: TB-334 established the measured bottleneck and threshold, but the
+available local rewrite family remained noisy and did not produce a defensible
+throughput gain. Keeping the current implementation unchanged is preferable to
+promoting an unverified micro-optimization.
+
+Detailed sources: `hazard_throughput_bottleneck_report.md`,
+`task_backlog.md`, `agent_work_log.md`.
+
 ### Workflow Status Vocabulary Compatibility
 
 Decision: preserve the downstream status vocabulary emitted by the migrated

@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-335: Implement Measured Hazard Throughput Improvement
-
-Goal: Implement one narrowly scoped performance improvement only if TB-334 identifies a measured bottleneck with a defensible acceptance threshold.
-
-Capability gap reduced: Multi-zone feasibility may depend on reducing the dominant local or Balfrin hazard-build bottleneck.
-
-Why this outranks alternatives: A targeted measured optimization can improve scale feasibility, but only after profiling prevents churn.
-
-Inspect first:
-
-- `docs/hazard_throughput_bottleneck_report.md`
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- One scoped implementation change tied to the measured bottleneck.
-- Before/after runtime or phase timing evidence meeting the predeclared threshold, or a reverted/no-op result if it fails.
-- Tests proving output equivalence and deterministic manifests.
-
-Definition of done:
-
-- The repo either lands a measured throughput improvement or records a rejected optimization without changing behavior.
-
-Boundaries: No physics changes, no output semantics changes, no tuning, no live Balfrin submission unless a later task authorizes measurement, no operational claim.
-
 ### TB-336: Reducer And Manifest Scaling Hardening
 
 Goal: Reduce or bound reducer sidecar, manifest, and merge pressure for multi-zone AOI runs without losing rebuildability.

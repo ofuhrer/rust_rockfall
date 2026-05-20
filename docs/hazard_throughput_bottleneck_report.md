@@ -471,3 +471,23 @@ Recommended next action:
 - Otherwise move to structural accumulator batching/vectorization work or the
   AOI workflow slice, because TB-313 did not produce an accepted optimization
   and the current local accumulator behavior is unchanged.
+
+## TB-335 No-Op Outcome
+
+TB-335 re-evaluated the same accumulation hotspot and did not retain a code
+change. No new rewrite was accepted because the current evidence still points
+to `accumulation_seconds` as the dominant local bottleneck, and the only
+obvious accumulator-local rewrite family has already been rejected as noisy.
+
+Recorded outcome:
+
+- optimization status: rejected/no-op;
+- current implementation: unchanged;
+- threshold outcome: no candidate cleared the predeclared 8-zone floor of
+  `0.079711` s;
+- evidence boundary: deterministic output-parity and manifest tests remain the
+  guardrails for any future candidate, but this task did not introduce a new
+  accepted path.
+
+The repository therefore keeps the measured bottleneck and the acceptance
+floor, but no throughput improvement was promoted for TB-335.
