@@ -38,6 +38,7 @@ SCHEMA_VERSION = "terrain_release_zone_candidate_metrics_v1"
 PRODUCT_SCHEMA_VERSION = "terrain_release_zone_candidate_products_v1"
 REVIEW_PACKAGE_SCHEMA_VERSION = "terrain_release_zone_candidate_review_package_v1"
 REVIEW_APPLICATION_SCHEMA_VERSION = "terrain_release_zone_candidate_review_application_v1"
+SELECTION_MANIFEST_SCHEMA_VERSION = "terrain_release_zone_candidate_selection_manifest_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
@@ -513,6 +514,15 @@ def apply_review_decisions_to_package(
         "review_application": review_application,
         "review_summary": review_summary,
         "candidate_review_rows": applied_rows,
+        "selection_manifest": build_candidate_selection_manifest(
+            review_package=review_package,
+            selected_candidate_ids=accepted_ids,
+            repo_root=repo_root,
+            output_root=output_root,
+            manifest_status="selected_subset_ready",
+            review_package_manifest_sha256=sha256_file(review_package_path),
+            allow_manifest_sha256_from_output=False,
+        ),
         "accepted_candidate_ids": accepted_ids,
         "rejected_candidate_ids": rejected_ids,
         "needs_field_review_candidate_ids": needs_field_review_ids,
@@ -534,7 +544,10 @@ def apply_review_decisions_to_package(
     reviewed_package["editable_acceptance_fields"] = ["review_decision", "accepted", "rejected", "needs_field_review"]
     reviewed_package["provenance_label_legend"] = provenance_label_legend()
     reviewed_package["claim_boundaries"] = review_package.get("claim_boundaries", {})
+    reviewed_package["map_overlays"] = review_package.get("map_overlays", [])
+    reviewed_package["non_operational_warnings"] = review_package.get("non_operational_warnings", candidate_review_non_operational_warnings())
     reviewed_package["candidate_sensitivity_summary"] = review_package.get("candidate_sensitivity_summary", {})
+    reviewed_package["candidate_stability_summary"] = review_package.get("candidate_stability_summary", {})
     reviewed_package["candidate_footprint_comparison"] = review_package.get("candidate_footprint_comparison", {})
     reviewed_package["frozen_source_zone_footprint"] = review_package.get("frozen_source_zone_footprint", {})
     reviewed_package["review_application"]["validated_candidate_count"] = len(accepted_rows)
@@ -625,6 +638,13 @@ def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, An
                         "review_application_source": row.get("review_application_source"),
                         "review_validation_status": row.get("review_validation_status"),
                         "provenance_label": row.get("provenance_label"),
+                        "candidate_stability_label": row.get("candidate_stability_label"),
+                        "candidate_stability_class": row.get("candidate_stability_class"),
+                        "candidate_stability_rank": row.get("candidate_stability_rank"),
+                        "candidate_stability_score": row.get("candidate_stability_score"),
+                        "candidate_minimum_retention_fraction": row.get("candidate_minimum_retention_fraction"),
+                        "candidate_mean_retention_fraction": row.get("candidate_mean_retention_fraction"),
+                        "candidate_variant_presence_fraction": row.get("candidate_variant_presence_fraction"),
                     }
                     features.append(new_feature)
                 geojson["features"] = features
@@ -1816,6 +1836,7 @@ def emit_candidate_products(
         )
         for index, cells in enumerate(components)
     ]
+    enrich_candidate_features_with_stability(component_features, report["candidate_sensitivity_report"])
     component_area_values = [float(feature["properties"]["component_area_m2"]) for feature in component_features]
 
     manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_manifest.json"
@@ -1899,6 +1920,7 @@ def build_candidate_review_package(
 
     review_rows = [build_candidate_review_row(feature) for feature in component_features]
     review_summary = build_candidate_review_summary(review_rows)
+    candidate_stability_summary = build_candidate_stability_summary(report["candidate_sensitivity_report"])
     review_geojson = {
         "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
         "type": "FeatureCollection",
@@ -1927,9 +1949,12 @@ def build_candidate_review_package(
         "provenance_label_legend": provenance_label_legend(),
         "review_summary": review_summary,
         "candidate_review_rows": review_rows,
+        "candidate_stability_summary": candidate_stability_summary,
         "candidate_sensitivity_summary": candidate_review_sensitivity_summary(report["candidate_sensitivity_report"]),
         "candidate_footprint_comparison": report["candidate_footprint_comparison"],
         "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
+        "map_overlays": candidate_review_map_overlays(geojson_path, mask_path, review_summary, repo_root),
+        "non_operational_warnings": candidate_review_non_operational_warnings(),
         "claim_boundaries": report["claim_boundaries"],
         "outputs": {
             "polygon": display_path(geojson_path, repo_root),
@@ -1938,7 +1963,17 @@ def build_candidate_review_package(
             "manifest": display_path(manifest_path, repo_root),
         },
         "output_root": display_path(output_root, repo_root),
+        "repo_root": str(repo_root),
     }
+    review_package["selection_manifest_template"] = build_candidate_selection_manifest(
+        review_package=review_package,
+        selected_candidate_ids=[],
+        repo_root=repo_root,
+        output_root=output_root,
+        manifest_status="template",
+        review_package_manifest_sha256=None,
+        allow_manifest_sha256_from_output=False,
+    )
     manifest_path.write_text(json.dumps(review_package, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return review_package
 
@@ -1971,6 +2006,13 @@ def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
         "rejected": properties["rejected"],
         "needs_field_review": properties["needs_field_review"],
         "provenance_label": properties["provenance_label"],
+        "candidate_stability_label": properties.get("candidate_stability_label"),
+        "candidate_stability_class": properties.get("candidate_stability_class"),
+        "candidate_stability_rank": properties.get("candidate_stability_rank"),
+        "candidate_stability_score": properties.get("candidate_stability_score"),
+        "candidate_minimum_retention_fraction": properties.get("candidate_minimum_retention_fraction"),
+        "candidate_mean_retention_fraction": properties.get("candidate_mean_retention_fraction"),
+        "candidate_variant_presence_fraction": properties.get("candidate_variant_presence_fraction"),
         "candidate_sensitivity_label": properties["candidate_sensitivity_label"],
         "release_cell_count": properties["release_cell_count"],
         "release_cell_ids": ";".join(properties["release_cell_ids"]),
@@ -1986,6 +2028,7 @@ def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
 def build_candidate_review_summary(review_rows: list[dict[str, Any]]) -> dict[str, Any]:
     decision_counts = {decision: 0 for decision in REVIEW_DECISION_OPTIONS}
     provenance_counts = {label: 0 for label in PROVENANCE_LABELS}
+    stability_counts = {"stable": 0, "sensitive": 0, "unstable": 0}
     for row in review_rows:
         review_decision = str(row.get("review_decision") or "")
         if review_decision in decision_counts:
@@ -1993,12 +2036,48 @@ def build_candidate_review_summary(review_rows: list[dict[str, Any]]) -> dict[st
         provenance_label = str(row.get("provenance_label") or "")
         if provenance_label in provenance_counts:
             provenance_counts[provenance_label] += 1
+        stability_label = str(row.get("candidate_stability_label") or row.get("candidate_stability_class") or "")
+        if stability_label in stability_counts:
+            stability_counts[stability_label] += 1
     return {
         "review_row_count": len(review_rows),
         "candidate_count": len(review_rows),
         "review_decision_counts": decision_counts,
         "provenance_label_counts": provenance_counts,
+        "candidate_stability_class_counts": stability_counts,
         "default_review_decision": "needs_field_review",
+    }
+
+
+def build_candidate_stability_summary(candidate_sensitivity_report: dict[str, Any]) -> dict[str, Any]:
+    ranking = [
+        entry
+        for entry in candidate_sensitivity_report.get("candidate_stability_ranking", [])
+        if isinstance(entry, dict)
+    ]
+    class_counts = {"stable": 0, "sensitive": 0, "unstable": 0}
+    stable_ids: list[str] = []
+    sensitive_ids: list[str] = []
+    unstable_ids: list[str] = []
+    for entry in ranking:
+        stability_class = text_value(entry.get("candidate_stability_class"))
+        candidate_id = text_value(entry.get("candidate_release_zone_id"))
+        if stability_class in class_counts:
+            class_counts[stability_class] += 1
+        if stability_class == "stable":
+            stable_ids.append(candidate_id)
+        elif stability_class == "sensitive":
+            sensitive_ids.append(candidate_id)
+        elif stability_class == "unstable":
+            unstable_ids.append(candidate_id)
+    return {
+        "stability_score_method": candidate_sensitivity_report.get("candidate_stability_score_method"),
+        "ranking_count": candidate_sensitivity_report.get("candidate_stability_ranking_count", len(ranking)),
+        "class_counts": class_counts,
+        "stable_candidate_ids": stable_ids,
+        "sensitive_candidate_ids": sensitive_ids,
+        "unstable_candidate_ids": unstable_ids,
+        "bounded_probe_candidate_selection": candidate_sensitivity_report.get("bounded_probe_candidate_selection", {}),
     }
 
 
@@ -2041,6 +2120,196 @@ def provenance_label_legend() -> list[dict[str, str]]:
     ]
 
 
+def candidate_review_map_overlays(
+    geojson_path: Path,
+    mask_path: Path,
+    review_summary: dict[str, Any],
+    repo_root: Path,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "overlay_id": "candidate_polygons",
+            "overlay_kind": "vector",
+            "label": "Candidate polygons",
+            "path": display_path(geojson_path, repo_root),
+            "label_fields": [
+                "candidate_release_zone_id",
+                "candidate_stability_label",
+                "candidate_sensitivity_label",
+                "provenance_label",
+                "review_decision",
+            ],
+            "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+            "traceability": "candidate ids, stability labels, sensitivity labels, and provenance stay attached to each feature",
+        },
+        {
+            "overlay_id": "candidate_mask",
+            "overlay_kind": "raster_mask",
+            "label": "Candidate mask",
+            "path": display_path(mask_path, repo_root),
+            "label_fields": ["candidate_release_zone_id"],
+            "traceability": "the mask preserves the deterministic heuristic footprint that generated the polygons",
+        },
+        {
+            "overlay_id": "candidate_label_inventory",
+            "overlay_kind": "inventory",
+            "label": "Candidate label inventory",
+            "path": None,
+            "label_fields": [
+                "candidate_release_zone_id",
+                "candidate_stability_label",
+                "candidate_sensitivity_label",
+                "review_decision",
+            ],
+            "traceability": "stable, sensitive, and review-state labels are recorded in the manifest inventory",
+            "candidate_count": review_summary.get("candidate_count", 0),
+        },
+    ]
+
+
+def candidate_review_non_operational_warnings() -> list[str]:
+    return [
+        "candidate review is for demonstration only and human selection only",
+        "candidate review does not validate, calibrate, or approve operational hazard products",
+        "selection may be used to choose a bounded scenario-generation subset, but it does not change claim boundaries",
+        "unselected candidates remain traceable and must be preserved in the review package for auditability",
+    ]
+
+
+def build_candidate_selection_manifest(
+    *,
+    review_package: dict[str, Any],
+    selected_candidate_ids: list[str],
+    repo_root: Path,
+    output_root: Path | None,
+    manifest_status: str,
+    review_package_manifest_sha256: str | None,
+    allow_manifest_sha256_from_output: bool,
+) -> dict[str, Any]:
+    review_rows = [row for row in review_package.get("candidate_review_rows", []) if isinstance(row, dict)]
+    rows_by_id = {
+        text_value(row.get("candidate_release_zone_id")): row
+        for row in review_rows
+        if text_value(row.get("candidate_release_zone_id"))
+    }
+    review_order = [text_value(row.get("candidate_release_zone_id")) for row in review_rows]
+    candidate_ids = [candidate_id for candidate_id in review_order if candidate_id]
+    selected_ids = [candidate_id for candidate_id in selected_candidate_ids if candidate_id in rows_by_id]
+    unselected_ids = [candidate_id for candidate_id in candidate_ids if candidate_id not in selected_ids]
+    candidate_selection_rows = [
+        {
+            "candidate_release_zone_id": candidate_id,
+            "review_decision": text_value(rows_by_id[candidate_id].get("review_decision")),
+            "provenance_label": text_value(rows_by_id[candidate_id].get("provenance_label")),
+            "candidate_stability_label": text_value(rows_by_id[candidate_id].get("candidate_stability_label")),
+            "candidate_stability_class": text_value(rows_by_id[candidate_id].get("candidate_stability_class")),
+            "candidate_stability_rank": rows_by_id[candidate_id].get("candidate_stability_rank"),
+            "candidate_sensitivity_label": text_value(rows_by_id[candidate_id].get("candidate_sensitivity_label")),
+            "component_cell_count": rows_by_id[candidate_id].get("component_cell_count"),
+            "component_area_m2": rows_by_id[candidate_id].get("component_area_m2"),
+            "release_cell_count": rows_by_id[candidate_id].get("release_cell_count"),
+            "selection_traceability": "selected" if candidate_id in selected_ids else "unselected",
+        }
+        for candidate_id in candidate_ids
+    ]
+    selected_rows = [dict(rows_by_id[candidate_id]) for candidate_id in selected_ids]
+    unselected_rows = [dict(rows_by_id[candidate_id]) for candidate_id in unselected_ids]
+    review_package_manifest_path = text_value(review_package.get("outputs", {}).get("manifest"))
+    review_package_sha256 = review_package_manifest_sha256
+    if review_package_sha256 is None and allow_manifest_sha256_from_output and review_package_manifest_path:
+        review_package_file = package_path(review_package, review_package_manifest_path)
+        if review_package_file.exists():
+            review_package_sha256 = sha256_file(review_package_file)
+
+    bounded_selection_recommendations = review_package.get("candidate_stability_summary", {}).get(
+        "bounded_probe_candidate_selection",
+        {},
+    )
+    selected_by_size = (
+        bounded_selection_recommendations.get("selection_by_size", {})
+        if isinstance(bounded_selection_recommendations, dict)
+        else {}
+    )
+    warning_text = candidate_review_non_operational_warnings()
+    return {
+        "schema_version": SELECTION_MANIFEST_SCHEMA_VERSION,
+        "selection_manifest_status": manifest_status,
+        "selection_mode": "bounded_subset_for_scenario_generation",
+        "candidate_site_id": review_package.get("candidate_site_id"),
+        "candidate_site_name": review_package.get("candidate_site_name"),
+        "source_zone_id": review_package.get("source_zone_id"),
+        "review_package_status": review_package.get("review_package_status"),
+        "review_application_status": review_package.get("review_application_status", "not_applied"),
+        "review_package_manifest_path": review_package_manifest_path,
+        "review_package_manifest_sha256": review_package_sha256,
+        "output_root": display_path(output_root, repo_root) if output_root is not None else None,
+        "repo_root": str(repo_root),
+        "candidate_release_zone_ids": candidate_ids,
+        "selected_candidate_ids": selected_ids,
+        "unselected_candidate_ids": unselected_ids,
+        "selected_candidate_count": len(selected_ids),
+        "unselected_candidate_count": len(unselected_ids),
+        "candidate_selection_rows": candidate_selection_rows,
+        "selected_candidate_rows": selected_rows,
+        "unselected_candidate_rows": unselected_rows,
+        "selected_candidate_ids_by_size": {
+            size: list(entry.get("candidate_release_zone_ids", []))
+            for size, entry in selected_by_size.items()
+            if isinstance(entry, dict)
+        },
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "provenance_label_legend": review_package.get("provenance_label_legend", provenance_label_legend()),
+        "candidate_stability_summary": review_package.get("candidate_stability_summary", {}),
+        "candidate_sensitivity_summary": review_package.get("candidate_sensitivity_summary", {}),
+        "map_overlays": review_package.get("map_overlays", []),
+        "non_operational_warnings": warning_text,
+        "claim_boundaries": {
+            **dict(review_package.get("claim_boundaries") or {}),
+            "selection_for_demonstration_only": True,
+            "operational_claims_allowed": False,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "notes": list(dict.fromkeys(
+                list((review_package.get("claim_boundaries") or {}).get("notes") or [])
+                + [
+                    "selection is for demonstration only and does not authorize operational approval",
+                    "selected and unselected candidates remain traceable in the review package",
+                ]
+            )),
+        },
+    }
+
+
+def enrich_candidate_features_with_stability(
+    component_features: list[dict[str, Any]],
+    candidate_sensitivity_report: dict[str, Any],
+) -> None:
+    ranking_by_id = {
+        text_value(entry.get("candidate_release_zone_id")): entry
+        for entry in candidate_sensitivity_report.get("candidate_stability_ranking", [])
+        if isinstance(entry, dict) and text_value(entry.get("candidate_release_zone_id"))
+    }
+    for feature in component_features:
+        properties = feature.get("properties") if isinstance(feature.get("properties"), dict) else {}
+        candidate_id = text_value(properties.get("candidate_release_zone_id"))
+        ranking = ranking_by_id.get(candidate_id, {})
+        stability_class = text_value(ranking.get("candidate_stability_class")) or "sensitive"
+        properties.update(
+            {
+                "candidate_stability_class": stability_class,
+                "candidate_stability_label": stability_class,
+                "candidate_stability_rank": ranking.get("stability_rank"),
+                "candidate_stability_score": ranking.get("stability_score"),
+                "candidate_minimum_retention_fraction": ranking.get("minimum_retention_fraction"),
+                "candidate_mean_retention_fraction": ranking.get("mean_retention_fraction"),
+                "candidate_variant_presence_fraction": ranking.get("variant_presence_fraction"),
+            }
+        )
+        feature["properties"] = properties
+
+
 def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
     return {
         "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
@@ -2058,12 +2327,34 @@ def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
             "candidate_count": 0,
             "review_decision_counts": {decision: 0 for decision in REVIEW_DECISION_OPTIONS},
             "provenance_label_counts": {label: 0 for label in PROVENANCE_LABELS},
+            "candidate_stability_class_counts": {"stable": 0, "sensitive": 0, "unstable": 0},
             "default_review_decision": "needs_field_review",
         },
         "candidate_review_rows": [],
+        "candidate_stability_summary": {
+            "stability_score_method": "minimum_retention_fraction_across_bounded_heuristic_variants",
+            "ranking_count": 0,
+            "class_counts": {"stable": 0, "sensitive": 0, "unstable": 0},
+            "stable_candidate_ids": [],
+            "sensitive_candidate_ids": [],
+            "unstable_candidate_ids": [],
+            "bounded_probe_candidate_selection": {
+                "selection_sizes": list(STABILITY_SELECTION_SIZES),
+                "selection_by_size": {
+                    str(size): {
+                        "selection_size": size,
+                        "candidate_release_zone_ids": [],
+                        "candidate_rankings": [],
+                    }
+                    for size in STABILITY_SELECTION_SIZES
+                },
+            },
+        },
         "candidate_sensitivity_summary": {},
         "candidate_footprint_comparison": {},
         "frozen_source_zone_footprint": {},
+        "map_overlays": [],
+        "non_operational_warnings": candidate_review_non_operational_warnings(),
         "claim_boundaries": {
             "heuristic_workflow_input_only": True,
             "validated_release_zone_evidence": False,
@@ -2076,6 +2367,53 @@ def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
                 "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
                 "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
             ],
+        },
+        "selection_manifest_template": {
+            "schema_version": SELECTION_MANIFEST_SCHEMA_VERSION,
+            "selection_manifest_status": "template",
+            "selection_mode": "bounded_subset_for_scenario_generation",
+            "candidate_site_id": "tschamut_public_pilot",
+            "candidate_site_name": "Balfrin / Tschamut AOI",
+            "source_zone_id": None,
+            "review_package_status": "not_emitted",
+            "review_application_status": "not_applied",
+            "review_package_manifest_path": None,
+            "review_package_manifest_sha256": None,
+            "output_root": None,
+            "repo_root": str(repo_root),
+            "candidate_release_zone_ids": [],
+            "selected_candidate_ids": [],
+            "unselected_candidate_ids": [],
+            "selected_candidate_count": 0,
+            "unselected_candidate_count": 0,
+            "candidate_selection_rows": [],
+            "selected_candidate_rows": [],
+            "unselected_candidate_rows": [],
+            "selected_candidate_ids_by_size": {
+                str(size): [] for size in STABILITY_SELECTION_SIZES
+            },
+            "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+            "provenance_label_legend": provenance_label_legend(),
+            "candidate_stability_summary": {},
+            "candidate_sensitivity_summary": {},
+            "map_overlays": [],
+            "non_operational_warnings": candidate_review_non_operational_warnings(),
+            "claim_boundaries": {
+                "heuristic_workflow_input_only": True,
+                "validated_release_zone_evidence": False,
+                "field_validation_claims_allowed": False,
+                "physical_release_probability_claims_allowed": False,
+                "scale_up_authorized": False,
+                "operational_claims_allowed": False,
+                "selection_for_demonstration_only": True,
+                "notes": [
+                    "candidate review rows remain workflow review inputs until the source zone is frozen",
+                    "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                    "selection is for demonstration only and does not authorize operational approval",
+                    "unselected candidates remain traceable in the review package for auditability",
+                    "no annual-frequency, risk, exposure, or vulnerability claim is authorized here",
+                ],
+            },
         },
         "outputs": {
             "polygon": None,
@@ -2156,6 +2494,13 @@ def write_candidate_review_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "rejected",
         "needs_field_review",
         "provenance_label",
+        "candidate_stability_label",
+        "candidate_stability_class",
+        "candidate_stability_rank",
+        "candidate_stability_score",
+        "candidate_minimum_retention_fraction",
+        "candidate_mean_retention_fraction",
+        "candidate_variant_presence_fraction",
         "candidate_sensitivity_label",
         "release_cell_count",
         "release_cell_ids",
@@ -2664,6 +3009,7 @@ def render_review_apply_text_report(report: dict[str, Any]) -> str:
         f"- Schema version: `{report['schema_version']}`",
         f"- Review package status: `{report.get('review_package_status', '')}`",
         f"- Review application status: `{report.get('review_application_status', '')}`",
+        f"- Selection manifest status: `{report.get('selection_manifest', {}).get('selection_manifest_status', '')}`",
         f"- Accepted candidate count: `{len(report.get('accepted_candidate_ids', []))}`",
         f"- Rejected candidate count: `{len(report.get('rejected_candidate_ids', []))}`",
         f"- Needs field review candidate count: `{len(report.get('needs_field_review_candidate_ids', []))}`",
@@ -2680,6 +3026,8 @@ def render_review_apply_text_report(report: dict[str, Any]) -> str:
             f"- unreviewed_accepted_candidate_ids: `{', '.join(validation.get('unreviewed_accepted_candidate_ids', []))}`",
             f"- mixed_provenance_overclaim_candidate_ids: `{', '.join(validation.get('mixed_provenance_overclaim_candidate_ids', []))}`",
             f"- accepted_missing_validation_candidate_ids: `{', '.join(validation.get('accepted_missing_validation_candidate_ids', []))}`",
+            f"- selected_candidate_ids: `{', '.join(report.get('selection_manifest', {}).get('selected_candidate_ids', []))}`",
+            f"- unselected_candidate_ids: `{', '.join(report.get('selection_manifest', {}).get('unselected_candidate_ids', []))}`",
             "",
             "Output Paths",
         ]

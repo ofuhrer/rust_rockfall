@@ -3652,3 +3652,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no acceptance as true release zones, no tuning, no physical credibility or operational claim, and no scale-up or distributed-execution claim.
 - Next task: `TB-346`
+
+### TB-346: Release-Zone Candidate Review Package
+- Date: 2026-05-20
+- Commit: local
+- Objective: add a compact review package for real-terrain release-zone candidates so a reviewer can choose a bounded scenario-generation subset without changing claim boundaries.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the candidate review package with map overlays, stable/sensitive stability labels, explicit candidate ids, a selection-manifest template, and non-operational warnings.
+  - Preserved provenance and traceability through the emitted review rows, applied-review selection manifest, and unselected-candidate audit trail.
+  - Added focused regression coverage for the emitted template and the applied selection path, including selected/unselected traceability and provenance retention.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: human review remains selection for demonstration only, not validation, calibration, or operational approval; no annual-frequency, risk, exposure, vulnerability, or distributed-execution claim.
+- Next task: `TB-347`

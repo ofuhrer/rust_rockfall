@@ -55,6 +55,13 @@ def square_feature(
             "needs_field_review": needs_field_review,
             "candidate_generation_label": "heuristic_candidate_generation_only",
             "candidate_sensitivity_label": "heuristic_sensitive_across_bounded_heuristics",
+            "candidate_stability_label": "sensitive",
+            "candidate_stability_class": "sensitive",
+            "candidate_stability_rank": 1,
+            "candidate_stability_score": 0.75,
+            "candidate_minimum_retention_fraction": 0.75,
+            "candidate_mean_retention_fraction": 0.8,
+            "candidate_variant_presence_fraction": 0.9,
             "release_cell_count": 1,
             "release_cell_ids": [f"{candidate_id}__cell_000"],
             "provenance_label": provenance_label,
@@ -335,6 +342,18 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(report["screening_criteria"]["terrain_crop_extent_lv95_m"]["xmin"], 2793000.0)
         self.assertEqual(report["screening_criteria"]["terrain_resolution_m"], 2.0)
         self.assertEqual(report["terrain_inputs"]["terrain_preprocessing_package"]["output_roots"]["processed_input_root"], report["terrain_preprocessing"]["output_roots"]["processed_input_root"])
+        self.assertEqual(report["candidate_review_package"]["selection_manifest_template"]["selected_candidate_ids"], [])
+        self.assertEqual(
+            report["candidate_review_package"]["selection_manifest_template"]["unselected_candidate_ids"],
+            report["candidate_review_package"]["candidate_release_zone_ids"],
+        )
+        self.assertGreater(len(report["candidate_review_package"]["map_overlays"]), 0)
+        self.assertEqual(report["candidate_review_package"]["map_overlays"][0]["overlay_id"], "candidate_polygons")
+        self.assertIn("demonstration only", " ".join(report["candidate_review_package"]["non_operational_warnings"]))
+        self.assertEqual(
+            set(report["candidate_review_package"]["candidate_stability_summary"]["class_counts"].keys()),
+            {"stable", "sensitive", "unstable"},
+        )
 
     def test_review_apply_edits_candidates_and_validates_provenance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
@@ -374,6 +393,13 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_applied")
         self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 1)
         self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], ["cand_accept"])
+        self.assertEqual(report["selection_manifest"]["selection_manifest_status"], "selected_subset_ready")
+        self.assertEqual(report["selection_manifest"]["selected_candidate_ids"], ["cand_accept"])
+        self.assertEqual(report["selection_manifest"]["unselected_candidate_ids"], ["cand_reject", "cand_hold"])
+        self.assertEqual(report["selection_manifest"]["candidate_selection_rows"][0]["provenance_label"], "workflow_generated")
+        self.assertEqual(report["selection_manifest"]["candidate_selection_rows"][1]["selection_traceability"], "unselected")
+        self.assertIn("demonstration only", " ".join(report["selection_manifest"]["non_operational_warnings"]))
+        self.assertEqual(report["selection_manifest"]["candidate_selection_rows"][0]["candidate_stability_label"], "sensitive")
         self.assertEqual(manifest["review_package_status"], "review_applied")
         self.assertEqual(manifest["review_application_status"], "validated")
         self.assertEqual(manifest["review_summary"]["review_decision_counts"]["accepted"], 1)
@@ -481,12 +507,43 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                         "candidate_count": len(rows),
                         "review_decision_counts": {"accepted": 0, "rejected": 0, "needs_field_review": len(rows)},
                         "provenance_label_counts": {"workflow_generated": len(rows), "field_supported": 0, "mixed_provenance": 0, "blocked_missing_provenance": 0},
+                        "candidate_stability_class_counts": {"stable": 0, "sensitive": len(rows), "unstable": 0},
                         "default_review_decision": "needs_field_review",
                     },
                     "candidate_review_rows": [row["properties"] for row in rows],
+                    "candidate_stability_summary": {
+                        "stability_score_method": "minimum_retention_fraction_across_bounded_heuristic_variants",
+                        "ranking_count": len(rows),
+                        "class_counts": {"stable": 0, "sensitive": len(rows), "unstable": 0},
+                        "stable_candidate_ids": [],
+                        "sensitive_candidate_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                        "unstable_candidate_ids": [],
+                        "bounded_probe_candidate_selection": {
+                            "selection_sizes": [2, 4, 8],
+                            "selection_by_size": {
+                                "2": {
+                                    "selection_size": 2,
+                                    "candidate_release_zone_ids": [row["properties"]["candidate_release_zone_id"] for row in rows[:2]],
+                                    "candidate_rankings": [],
+                                },
+                                "4": {
+                                    "selection_size": 4,
+                                    "candidate_release_zone_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                                    "candidate_rankings": [],
+                                },
+                                "8": {
+                                    "selection_size": 8,
+                                    "candidate_release_zone_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                                    "candidate_rankings": [],
+                                },
+                            },
+                        },
+                    },
                     "candidate_sensitivity_summary": {},
                     "candidate_footprint_comparison": {},
                     "frozen_source_zone_footprint": {},
+                    "map_overlays": [],
+                    "non_operational_warnings": planner.candidate_review_non_operational_warnings(),
                     "claim_boundaries": {
                         "heuristic_workflow_input_only": True,
                         "validated_release_zone_evidence": False,
@@ -497,7 +554,52 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                         "notes": [
                             "candidate review rows remain workflow review inputs until the source zone is frozen",
                             "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                            "selection is for demonstration only and does not authorize operational approval",
                         ],
+                    },
+                    "selection_manifest_template": {
+                        "schema_version": "terrain_release_zone_candidate_selection_manifest_v1",
+                        "selection_manifest_status": "template",
+                        "selection_mode": "bounded_subset_for_scenario_generation",
+                        "candidate_site_id": "test_site",
+                        "candidate_site_name": "Test Site",
+                        "source_zone_id": "test_source_zone",
+                        "review_package_status": "emitted",
+                        "review_application_status": "not_applied",
+                        "review_package_manifest_path": str(manifest_path),
+                        "review_package_manifest_sha256": None,
+                        "output_root": str(workdir),
+                        "repo_root": str(workdir),
+                        "candidate_release_zone_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                        "selected_candidate_ids": [],
+                        "unselected_candidate_ids": [row["properties"]["candidate_release_zone_id"] for row in rows],
+                        "selected_candidate_count": 0,
+                        "unselected_candidate_count": len(rows),
+                        "candidate_selection_rows": [],
+                        "selected_candidate_rows": [],
+                        "unselected_candidate_rows": [],
+                        "selected_candidate_ids_by_size": {"2": [], "4": [], "8": []},
+                        "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                        "provenance_label_legend": planner.provenance_label_legend(),
+                        "candidate_stability_summary": {},
+                        "candidate_sensitivity_summary": {},
+                        "map_overlays": [],
+                        "non_operational_warnings": planner.candidate_review_non_operational_warnings(),
+                        "claim_boundaries": {
+                            "heuristic_workflow_input_only": True,
+                            "validated_release_zone_evidence": False,
+                            "field_validation_claims_allowed": False,
+                            "physical_release_probability_claims_allowed": False,
+                            "scale_up_authorized": False,
+                            "operational_claims_allowed": False,
+                            "selection_for_demonstration_only": True,
+                            "notes": [
+                                "candidate review rows remain workflow review inputs until the source zone is frozen",
+                                "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                                "selection is for demonstration only and does not authorize operational approval",
+                                "unselected candidates remain traceable in the review package for auditability",
+                            ],
+                        },
                     },
                     "outputs": {
                         "polygon": str(geojson_path),

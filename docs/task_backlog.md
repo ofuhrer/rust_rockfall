@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-346: Release-Zone Candidate Review Package
-
-Goal: Produce a compact GIS/QA package for reviewing real-terrain release-zone candidates and selecting a bounded subset for scenario generation.
-
-Capability gap reduced: Candidate sweeps need a reproducible human-review surface before they feed scenario generation or Balfrin execution.
-
-Why this outranks alternatives: Without a review package, scenario generation either uses every candidate blindly or reintroduces undocumented manual selection.
-
-Inspect first:
-
-- `scripts/generate_aoi_map_qa_review.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Candidate review package with map overlays, stable/sensitive labels, candidate ids, selection manifest template, and explicit non-operational warnings.
-- Tests ensuring selected candidates preserve provenance and unselected candidates remain traceable.
-
-Definition of done:
-
-- A reviewer can select a bounded candidate subset reproducibly without editing hidden state or changing claim boundaries.
-
-Boundaries: Human review is selection for demonstration only, not validation, calibration, or operational approval.
-
 ### TB-347: Large Deterministic Scenario Table From Candidate Zones
 
 Goal: Generate a large deterministic scenario table from the reviewed candidate-zone subset using existing conditional block/scenario semantics.

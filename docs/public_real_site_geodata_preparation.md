@@ -267,6 +267,13 @@ steps for you.
    stay blocked, and the package still does not imply calibration, physical
    probability, annual frequency, risk, or operational readiness.
 
+The terrain candidate planner uses the same review-first pattern for bounded
+release-zone selection. `scripts/plan_terrain_release_zone_candidates.py`
+emits a review package with candidate ids, stable/sensitive labels, map
+overlays, a selection-manifest template, and explicit non-operational warnings
+so a reviewer can choose a bounded scenario-generation subset without editing
+hidden state or changing claim boundaries.
+
 ### User-Defined AOI Demonstration
 
 The repository also carries a clean-checkout regression that starts from
