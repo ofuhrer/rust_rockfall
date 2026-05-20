@@ -4447,3 +4447,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no ensemble execution, no operational claim, no invented candidate rows, no raw data commits, and the zero-candidate management-AOI blocker stays preserved end-to-end.
 - Next task: `TB-380`
+
+### TB-380: Build Management AOI Multi-Zone Balfrin Handoff
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: build a bounded Balfrin handoff package for the prepared management AOI while preserving the zero-candidate prepared-pilot blocker.
+- Files changed: `scripts/build_management_aoi_balfrin_handoff.py`, `tests/test_management_aoi_balfrin_handoff.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a management-AOI Balfrin handoff helper that composes the prepared-pilot compiler state, management-AOI scenario-pressure evidence, exact future `postproc` run root, reduced-output settings, command list, budget checks, authorization audit, and preservation plan into a scratch package.
+  - Classified the current handoff as `blocked_missing_prepared_pilot_inputs`, with `candidate_cell_count: 0`, `scenario_row_count: 0`, nonrunnable future submit command, and read-only Balfrin access status preserved from `/tmp/tb380_balfrin_access_preflight.json`.
+  - Materialized the ignored package at `/tmp/rust_rockfall/tb380_management_aoi_balfrin_handoff/management_aoi_balfrin_handoff_v1.json`; the report states that a live management-AOI `postproc` run cannot be attempted until a non-empty candidate set and scenario table exist.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_balfrin_handoff tests.test_management_aoi_scenario_pressure -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_management_aoi_balfrin_handoff.py tests/test_management_aoi_balfrin_handoff.py`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb380_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/build_management_aoi_balfrin_handoff.py --artifact-dir /tmp/rust_rockfall/tb380_management_aoi_balfrin_handoff --prepared-pilot-output-root /tmp/rust_rockfall/tb380_management_aoi_prepared_pilot --balfrin-access-preflight-json /tmp/tb380_balfrin_access_preflight.json --format json --json-output /tmp/tb380_management_aoi_balfrin_handoff.json > /tmp/tb380_management_aoi_balfrin_handoff.stdout.json` exited `2` as expected for the blocked classification.
+- Result/status: implemented_blocked_report
+- Boundaries: no live Balfrin submission, no invented candidates or scenario rows, no output-budget acceptance claim for nonexistent outputs, no distributed execution or scale-up claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-381`, but it should not submit unless a later unblock task produces a ready TB-380-equivalent handoff.

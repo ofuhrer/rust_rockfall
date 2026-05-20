@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-380: Build Management AOI Multi-Zone Balfrin Handoff
-
-Goal: Convert the prepared management AOI pilot into a bounded Balfrin multi-zone handoff package with reduced-output mode, output budgets, authorization records, and preservation plan.
-
-Capability gap reduced: Real-AOI prepared pilots need an HPC handoff path before execution feasibility can be tested.
-
-Why this outranks alternatives: This is the bridge from local AOI automation to measured Balfrin scale evidence.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `docs/balfrin_probe_slurm_driver.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Bounded handoff package for the management AOI with exact run root, command list, budget checks, and authorization audit.
-- Classification as ready, blocked by budget, blocked by authorization, or blocked by missing prepared-pilot inputs.
-
-Definition of done:
-
-- A GPT-5.5 worker has enough package evidence to decide whether a live management-AOI postproc run can be attempted.
-
-Boundaries: No live submission in this task; `postproc` only for future live work; no distributed execution or scale-up claim.
-
 ### TB-381: Execute Bounded Management AOI Multi-Zone Balfrin Run
 
 Goal: Submit and monitor a bounded management-AOI multi-zone hazard run on Balfrin `postproc` if TB-380 reports ready.
