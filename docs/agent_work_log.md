@@ -3891,3 +3891,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no physics changes, no hazard-output changes, no Balfrin job, no scale-up claim, and no promotion of scratch fixture evidence as current measured multi-zone output.
 - Next task: `TB-358`
+
+### TB-358: Bounded Hazard Accumulation Optimization From Measured Bottleneck
+
+- Date: 2026-05-20
+- Commit: `e9c8809`
+- Objective: close the requested hazard-accumulation optimization gate with a no-retain decision because no committed current measured multi-zone hazard-output root exists to justify a candidate change.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a TB-358 no-retain section to the bottleneck report that records the missing committed measured target and keeps the existing 10% accumulation floor as contract-only benchmark evidence.
+  - Added a focused regression that asserts the report documents the no-retain decision and the boundary on `scripts/build_hazard_layers.py`.
+  - Removed TB-358 from the active backlog after confirming there was no valid before/after optimization candidate to evaluate.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile tests.test_hazard_accumulation_benchmark -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no hazard-code changes, no output semantic changes, no live Balfrin job, and no promotion of scratch throughput helpers as current measured evidence.
+- Next task: `TB-359`
