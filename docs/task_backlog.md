@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-343: AOI Context Preprocessing And Exclusion Masks
-
-Goal: Prepare deterministic context layers and exclusion masks from staged public AOI inputs for later release-zone and hazard-map packaging.
-
-Capability gap reduced: Current AOI preprocessing is terrain-centric; release-zone heuristics and GIS products need reproducible context masks beyond fixtures.
-
-Why this outranks alternatives: Context masks are needed before terrain-driven candidate generation can be reviewed as defensible rather than purely slope-based.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/measure_hazard_context_overlap.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A context preprocessing report for roads/buildings/water/forest or available public products, with missing-product handling and mask provenance.
-- Tests proving missing optional context remains a warning while missing required context fails closed.
-
-Definition of done:
-
-- AOI terrain and context preprocessing produce aligned, provenance-bearing masks that downstream release-zone and GIS helpers can consume.
-
-Boundaries: No risk/exposure/vulnerability semantics, no operational exclusion claim, no large raw geodata commit.
-
 ### TB-344: Real-Terrain Release-Zone Candidate Sweep
 
 Goal: Run deterministic release-zone candidate generation over a larger real-terrain AOI package rather than a handcrafted single-zone fixture.

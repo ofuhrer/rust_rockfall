@@ -185,6 +185,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue((prepared_root / "input" / "terrain_preprocessing_manifest.json").exists())
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
+            self.assertTrue((prepared_root / "qa" / "context_preprocessing_summary.json").exists())
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
             self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
             self.assertEqual(report["context_provenance"]["classification"], "real_staged")
@@ -192,6 +193,25 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertEqual(report["context_availability_summary"]["context_readiness_status"], "ready")
             self.assertEqual(report["context_availability_summary"]["ready_context_count"], 6)
             self.assertEqual(report["context_availability_summary"]["missing_context_count"], 0)
+            self.assertCountEqual(
+                report["context_availability_summary"]["optional_missing_context_categories"],
+                ["barrier_inventory", "release_observation_evidence"],
+            )
+            self.assertGreater(report["context_availability_summary"]["context_warning_count"], 0)
+            self.assertEqual(report["context_preprocessing_report"]["context_preprocessing_status"], "ready_with_optional_warnings")
+            self.assertCountEqual(
+                report["context_preprocessing_report"]["missing_optional_context_categories"],
+                ["barrier_inventory", "release_observation_evidence"],
+            )
+            self.assertIn("barrier_inventory", " ".join(report["context_preprocessing_report"]["context_warnings"]))
+            self.assertIn("release_observation_evidence", " ".join(report["context_preprocessing_report"]["context_warnings"]))
+            self.assertGreater(report["context_preprocessing_report"]["context_mask_count"], 0)
+            roads_mask = next(
+                entry for entry in report["context_preprocessing_report"]["context_mask_inventory"] if entry["category"] == "swisstlm3d_context"
+            )
+            self.assertEqual(roads_mask["mask_role"], "transport_and_hydrography_context_mask")
+            self.assertIn("roads_or_transport", roads_mask["mask_targets"])
+            self.assertEqual(roads_mask["mask_provenance"]["context_provenance_classification"], "real_staged")
             self.assertEqual(report["context_availability_summary"]["context_provenance_classification"], "real_staged")
             self.assertEqual(report["terrain_qa_summary"]["summary_status"], "ready")
             self.assertGreater(report["terrain_qa_summary"]["slope_stats_deg"]["count"], 0)
@@ -223,9 +243,13 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue(report["prepared_input_written"])
             self.assertGreater(report["context_availability_summary"]["missing_context_count"], 0)
             self.assertIn("swissbuildings3d", " ".join(report["context_availability_summary"]["missing_context_categories"]))
+            self.assertEqual(report["context_preprocessing_report"]["context_preprocessing_status"], "blocked_missing_context")
+            self.assertIn("swissbuildings3d_context", " ".join(report["context_preprocessing_report"]["blocked_reason"].split()))
+            self.assertIn("swissbuildings3d_context", " ".join(report["context_preprocessing_report"]["missing_required_context_categories"]))
             self.assertEqual(report["context_provenance"]["classification"], "missing")
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
+            self.assertTrue((prepared_root / "qa" / "context_preprocessing_summary.json").exists())
 
     def test_prepared_input_builder_blocks_on_missing_terrain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

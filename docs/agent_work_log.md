@@ -3602,3 +3602,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no release-zone acceptance claim, no simulation, no raw geodata commit, and no operational semantics.
 - Next task: `TB-343`
+
+### TB-343: AOI Context Preprocessing And Exclusion Masks
+- Date: 2026-05-20
+- Commit: local
+- Objective: add deterministic AOI context preprocessing summaries and provenance-bearing mask inventories for staged public inputs while preserving fail-closed handling for missing required context.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a prepared-input context preprocessing report that records per-product mask roles, mask targets, provenance, warnings for missing optional context, and fail-closed status for missing required context.
+  - Threaded the context report into the AOI workflow terrain step without expanding the workflow gate beyond the existing terrain-based front door, so direct prepared-input checks can consume the new mask provenance while the guided workflow remains stable.
+  - Extended the terrain-preprocessing tests to cover aligned context mask provenance, optional-context warnings, and required-context fail-closed behavior.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow`
+- Result/status: implemented_fixture_backed
+- Boundaries: no risk/exposure/vulnerability semantics, no operational exclusion claim, no large raw geodata commit, and no scale-up or distributed-execution claim.
+- Next task: `TB-344`

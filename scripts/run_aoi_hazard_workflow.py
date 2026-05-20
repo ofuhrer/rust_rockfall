@@ -2584,19 +2584,36 @@ def build_terrain_step(*, repo_root: Path, site_config: Path, paths: dict[str, P
         terrain_metadata_path=terrain_metadata,
         aoi_tile_catalog_path=aoi_tile_catalog,
     )
+    prepared_input_report = TERRAIN_PREP.build_prepared_input_report(
+        repo_root=repo_root,
+        site_config=site_config,
+        terrain_crop_path=terrain_crop,
+        terrain_metadata_path=terrain_metadata,
+        aoi_tile_catalog_path=aoi_tile_catalog,
+    )
+    context_summary = prepared_input_report.get("context_availability_summary", {})
+    required_context_paths = [
+        str(entry.get("expected_staged_path"))
+        for entry in context_summary.get("context_entries", [])
+        if isinstance(entry, dict) and bool(entry.get("required")) and entry.get("expected_staged_path")
+    ]
     status = str(report.get("terrain_preprocessing_status") or "blocked_missing_inputs")
+    blocked_reason = str(report.get("blocked_reason") or "terrain preparation is not ready")
     expected_input_paths = [str(terrain_crop), str(terrain_metadata)]
     if aoi_tile_catalog:
         expected_input_paths.append(str(aoi_tile_catalog))
+    expected_input_paths.extend(required_context_paths)
     return {
         "step_id": "terrain_preparation",
         "label": "Terrain preparation",
         "status": "ready" if status == "ready" else status,
-        "blocked_reason": "" if status == "ready" else str(report.get("blocked_reason") or "terrain preparation is not ready"),
+        "blocked_reason": blocked_reason,
         "expected_input_path": str(terrain_crop),
         "expected_input_paths": expected_input_paths,
         "command": command,
         "report": report,
+        "prepared_input_report": prepared_input_report,
+        "context_preprocessing_report": prepared_input_report.get("context_preprocessing_report", {}),
     }
 
 
