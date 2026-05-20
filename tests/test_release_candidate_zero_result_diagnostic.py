@@ -28,6 +28,51 @@ diagnostic = load_module()
 
 
 class ReleaseCandidateZeroResultDiagnosticTests(unittest.TestCase):
+    def test_real_committed_inputs_report_source_zone_footprint_overlap_deferral(self) -> None:
+        terrain_path = (
+            ROOT
+            / "data"
+            / "processed"
+            / "swisstopo"
+            / "chant_sura_fluelapass_portability_example_v1"
+            / "input"
+            / "terrain.asc"
+        )
+        metadata_path = (
+            ROOT
+            / "data"
+            / "processed"
+            / "swisstopo"
+            / "chant_sura_fluelapass_portability_example_v1"
+            / "input"
+            / "terrain_metadata.yaml"
+        )
+        source_path = (
+            ROOT
+            / "data"
+            / "processed"
+            / "swisstopo"
+            / "chant_sura_fluelapass_portability_example_v1"
+            / "input"
+            / "source_zone_metadata.yaml"
+        )
+
+        report = diagnostic.build_report(
+            repo_root=ROOT,
+            terrain_crop_path=terrain_path,
+            terrain_metadata_path=metadata_path,
+            source_zone_metadata_path=source_path,
+        )
+
+        self.assertEqual(report["diagnostic_status"], "zero_candidates_diagnosed")
+        self.assertEqual(report["deferral_record"]["blocker_type"], "source_zone_footprint_overlap")
+        self.assertEqual(report["deferral_record"]["slope_band_status"], "not_reached")
+        self.assertIn("larger real-staged AOI crop", report["deferral_record"]["required_upstream_replacement"])
+        self.assertIn("source-zone footprint", report["deferral_record"]["required_upstream_replacement"])
+        self.assertEqual(report["deferral_record"]["downstream_boundary"]["scenario_generation_should_remain_blocked"], True)
+        self.assertEqual(report["terrain_screening_decomposition"]["screenable_cell_count"], 0)
+        self.assertEqual(report["terrain_screening_decomposition"]["valid_interior_cell_count"], 4)
+
     def test_flat_screenable_terrain_names_below_band_blocker(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             root = Path(tmp)

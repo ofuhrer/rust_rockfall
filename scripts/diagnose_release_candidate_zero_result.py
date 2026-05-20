@@ -127,6 +127,13 @@ def build_report(
 
     candidate_count = int(candidate_mask.sum())
     first_blocker = classify_first_blocker(terrain_masks, screening, candidate_count)
+    deferral_record = build_deferral_record(
+        terrain=terrain,
+        terrain_masks=terrain_masks,
+        screening=screening,
+        first_blocker=first_blocker,
+        planner_report=planner_report,
+    )
     sensitivity = planner_report.get("candidate_sensitivity_report", {})
     variant_counts = [
         {
@@ -174,7 +181,8 @@ def build_report(
             "variant_counts": variant_counts,
         },
         "first_blocker": first_blocker,
-        "unblock_guidance": build_unblock_guidance(first_blocker, max_variant_count),
+        "deferral_record": deferral_record,
+    "unblock_guidance": build_unblock_guidance(first_blocker, max_variant_count, deferral_record),
         "claim_boundaries": {
             "diagnostic_only": True,
             "threshold_tuning_performed": False,
@@ -349,14 +357,18 @@ def classify_first_blocker(terrain_masks: dict[str, np.ndarray], screening: dict
     }
 
 
-def build_unblock_guidance(first_blocker: dict[str, Any], max_variant_count: int) -> dict[str, Any]:
+def build_unblock_guidance(
+    first_blocker: dict[str, Any],
+    max_variant_count: int,
+    deferral_record: dict[str, Any],
+) -> dict[str, Any]:
     blocker_id = first_blocker.get("blocker_id")
     if blocker_id == "all_screenable_slopes_below_candidate_band":
         action = "inspect whether the management AOI crop is too flat/small for the current deterministic slope band before considering a separate heuristic-review task"
     elif blocker_id == "all_screenable_slopes_above_candidate_band":
         action = "inspect whether the current upper slope cap excludes the whole AOI before considering a separate heuristic-review task"
     elif blocker_id == "no_screenable_cells":
-        action = "inspect AOI extent, nodata, and frozen-footprint overlap before scenario-generation work"
+        action = deferral_record.get("required_upstream_replacement") or "inspect AOI extent, nodata, and frozen-footprint overlap before scenario-generation work"
     elif max_variant_count == 0:
         action = "do not continue scenario generation or Balfrin execution until a non-empty candidate package exists"
     else:
@@ -369,8 +381,177 @@ def build_unblock_guidance(first_blocker: dict[str, Any], max_variant_count: int
     }
 
 
+def build_deferral_record(
+    *,
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    screening: dict[str, Any],
+    first_blocker: dict[str, Any],
+    planner_report: dict[str, Any],
+) -> dict[str, Any]:
+    valid_interior_count = int(terrain_masks["valid_interior_mask"].sum())
+    screenable_count = int(terrain_masks["screenable_mask"].sum())
+    footprint_count = int(terrain_masks["footprint_mask"].sum())
+    footprint_overlap_with_valid_interior = int((terrain_masks["valid_interior_mask"] & terrain_masks["footprint_mask"]).sum())
+    slope_values = terrain_masks["slope_deg"][terrain_masks["screenable_mask"]]
+    slope_values = slope_values[np.isfinite(slope_values)]
+    blocker_type = resolve_blocker_type(
+        first_blocker=first_blocker,
+        terrain=terrain,
+        valid_interior_count=valid_interior_count,
+        screenable_count=screenable_count,
+        footprint_overlap_with_valid_interior=footprint_overlap_with_valid_interior,
+        slope_values=slope_values,
+        screening=screening,
+    )
+    required_upstream_replacement = resolve_required_upstream_replacement(
+        blocker_type=blocker_type,
+        terrain=terrain,
+        valid_interior_count=valid_interior_count,
+        screenable_count=screenable_count,
+        footprint_overlap_with_valid_interior=footprint_overlap_with_valid_interior,
+        screening=screening,
+    )
+    return {
+        "status": "deferred",
+        "blocker_type": blocker_type,
+        "first_blocker_id": first_blocker.get("blocker_id"),
+        "missing_real_input": blocker_type == "missing_real_input",
+        "terrain_crop_size": {
+            "nrows": int(terrain["nrows"]),
+            "ncols": int(terrain["ncols"]),
+            "cellsize_m": float(terrain["cellsize"]),
+        },
+        "screening_evidence": {
+            "valid_cell_count": int(terrain["valid_mask"].sum()),
+            "valid_interior_cell_count": valid_interior_count,
+            "screenable_cell_count": screenable_count,
+            "frozen_source_zone_footprint_cell_count": footprint_count,
+            "frozen_source_zone_footprint_overlap_with_valid_interior_cell_count": footprint_overlap_with_valid_interior,
+            "slope_screening_reached": screenable_count > 0,
+            "candidate_band_cell_count": int(terrain_masks["candidate_mask"].sum()),
+        },
+        "slope_band_status": "not_reached" if screenable_count == 0 else ("no_candidates" if int(terrain_masks["candidate_mask"].sum()) == 0 else "has_candidates"),
+        "required_upstream_replacement": required_upstream_replacement,
+        "blocking_summary": build_blocking_summary(
+            blocker_type=blocker_type,
+            terrain=terrain,
+            valid_interior_count=valid_interior_count,
+            screenable_count=screenable_count,
+            footprint_overlap_with_valid_interior=footprint_overlap_with_valid_interior,
+            slope_values=slope_values,
+            screening=screening,
+        ),
+        "slope_band_evidence": {
+            "candidate_slope_min_deg": screening.get("candidate_slope_min_deg"),
+            "candidate_slope_max_deg": screening.get("candidate_slope_max_deg"),
+            "screenable_slope_min_deg": float(np.min(slope_values)) if slope_values.size else None,
+            "screenable_slope_max_deg": float(np.max(slope_values)) if slope_values.size else None,
+        },
+        "downstream_boundary": {
+            "scenario_generation_should_remain_blocked": True,
+            "balfrin_multi_zone_run_should_remain_blocked": True,
+        },
+        "planner_candidate_metrics_status": planner_report.get("candidate_metrics_status"),
+    }
+
+
+def resolve_blocker_type(
+    *,
+    first_blocker: dict[str, Any],
+    terrain: dict[str, Any],
+    valid_interior_count: int,
+    screenable_count: int,
+    footprint_overlap_with_valid_interior: int,
+    slope_values: np.ndarray,
+    screening: dict[str, Any],
+) -> str:
+    if first_blocker.get("blocker_id") == "missing_inputs":
+        return "missing_real_input"
+    if valid_interior_count == 0:
+        return "terrain_crop_size_or_aoi_extent"
+    if screenable_count == 0:
+        if footprint_overlap_with_valid_interior == valid_interior_count:
+            return "source_zone_footprint_overlap"
+        return "terrain_crop_size_or_aoi_extent"
+    if slope_values.size == 0:
+        return "slope_band"
+    min_slope = float(screening.get("candidate_slope_min_deg", PLANNER.MIN_CANDIDATE_SLOPE_DEG))
+    max_slope = float(screening.get("candidate_slope_max_deg", PLANNER.MAX_CANDIDATE_SLOPE_DEG))
+    slope_max = float(np.max(slope_values))
+    slope_min = float(np.min(slope_values))
+    if slope_max < min_slope or slope_min > max_slope:
+        return "slope_band"
+    return "combined_mask_interaction"
+
+
+def resolve_required_upstream_replacement(
+    *,
+    blocker_type: str,
+    terrain: dict[str, Any],
+    valid_interior_count: int,
+    screenable_count: int,
+    footprint_overlap_with_valid_interior: int,
+    screening: dict[str, Any],
+) -> str:
+    if blocker_type == "missing_real_input":
+        return "stage the missing real terrain crop, terrain metadata, and source-zone metadata inputs before rerunning the release-candidate diagnostic"
+    if blocker_type == "terrain_crop_size_or_aoi_extent":
+        return (
+            "replace the committed management-AOI crop with a larger real-staged AOI crop that leaves at least one full 3x3 interior cell "
+            "outside nodata and outside the frozen source-zone footprint"
+        )
+    if blocker_type == "source_zone_footprint_overlap":
+        return (
+            "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so "
+            "at least one valid interior cell remains outside the frozen footprint"
+        )
+    if blocker_type == "slope_band":
+        return (
+            "stage a real AOI crop whose screenable interior cells intersect the current deterministic slope band before any scenario-generation work"
+        )
+    return (
+        "stage a larger real AOI crop or a different source-zone footprint that leaves screenable interior cells outside the frozen footprint; "
+        "the current inputs still collapse before deterministic candidate selection"
+    )
+
+
+def build_blocking_summary(
+    *,
+    blocker_type: str,
+    terrain: dict[str, Any],
+    valid_interior_count: int,
+    screenable_count: int,
+    footprint_overlap_with_valid_interior: int,
+    slope_values: np.ndarray,
+    screening: dict[str, Any],
+) -> str:
+    crop_shape = f'{terrain["nrows"]}x{terrain["ncols"]}'
+    if blocker_type == "missing_real_input":
+        return "required real inputs are missing"
+    if blocker_type == "terrain_crop_size_or_aoi_extent":
+        return (
+            f"the {crop_shape} crop is too small to sustain screenable interior cells once nodata and the frozen footprint are applied "
+            f"({valid_interior_count} valid interior cells, {screenable_count} screenable cells)"
+        )
+    if blocker_type == "source_zone_footprint_overlap":
+        return (
+            f"the {crop_shape} crop yields {valid_interior_count} valid interior cells, but all {footprint_overlap_with_valid_interior} of them "
+            "fall inside the frozen source-zone footprint before slope screening"
+        )
+    if blocker_type == "slope_band":
+        screenable_min = float(np.min(slope_values)) if slope_values.size else None
+        screenable_max = float(np.max(slope_values)) if slope_values.size else None
+        return (
+            f"screenable cells exist but slope screening removes them all before candidate selection "
+            f"({screenable_min} to {screenable_max} degrees against {screening.get('candidate_slope_min_deg')} to {screening.get('candidate_slope_max_deg')} degrees)"
+        )
+    return "screenable cells remain after the frozen-footprint mask, but no cell satisfies all deterministic masks simultaneously"
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     blocker = report.get("first_blocker", {})
+    deferral = report.get("deferral_record", {})
     decomposition = report.get("terrain_screening_decomposition", {})
     sensitivity = report.get("candidate_sensitivity_summary", {})
     lines = [
@@ -379,12 +560,20 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_cell_count: `{report.get('candidate_cell_count', 0)}`",
         f"first_blocker: `{blocker.get('blocker_id')}`",
         f"first_blocker_reason: {blocker.get('reason')}",
+        f"blocker_type: `{deferral.get('blocker_type')}`",
+        f"required_upstream_replacement: {deferral.get('required_upstream_replacement')}",
         "",
         "terrain_screening_decomposition:",
         f"- screenable_cell_count: `{decomposition.get('screenable_cell_count')}`",
         f"- slope_below_candidate_band_cell_count: `{decomposition.get('slope_below_candidate_band_cell_count')}`",
         f"- slope_above_candidate_band_cell_count: `{decomposition.get('slope_above_candidate_band_cell_count')}`",
         f"- candidate_band_cell_count: `{decomposition.get('candidate_band_cell_count')}`",
+        "",
+        "deferral_record:",
+        f"- blocking_summary: {deferral.get('blocking_summary')}",
+        f"- slope_band_status: `{deferral.get('slope_band_status')}`",
+        f"- scenario_generation_should_remain_blocked: `{deferral.get('downstream_boundary', {}).get('scenario_generation_should_remain_blocked')}`",
+        f"- balfrin_multi_zone_run_should_remain_blocked: `{deferral.get('downstream_boundary', {}).get('balfrin_multi_zone_run_should_remain_blocked')}`",
         "",
         "sensitivity:",
         f"- baseline_candidate_cell_count: `{sensitivity.get('baseline_candidate_cell_count')}`",

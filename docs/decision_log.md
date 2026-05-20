@@ -48,6 +48,27 @@ only another gate recommendation.
 Detailed sources: `../AGENTS.md`, `task_backlog.md`,
 `real_case_intensity_frequency_implementation_roadmap.md`.
 
+### Management AOI Candidate Screening Deferral
+
+Decision: keep the management-AOI release-candidate workflow blocked until the
+committed 4x4 terrain crop is replaced with a larger real-staged AOI crop and
+the frozen source-zone footprint is re-staged so at least one valid interior
+cell survives outside that footprint.
+
+Current status: active. The TB-384 diagnostic on the committed real inputs
+shows four valid interior cells, zero screenable cells, and full overlap
+between the frozen source-zone footprint and those interior cells before slope
+screening is even reached. This is a preparation / input-extent blocker, not a
+slope-threshold problem, and it does not authorize scenario generation,
+Balfrin execution, or any operational claim.
+
+Rationale: the deterministic diagnostic now names the concrete upstream
+replacement required for the management AOI to resume screening. That keeps the
+blocker fail-closed without inventing candidates or tuning thresholds.
+
+Detailed sources: `scripts/diagnose_release_candidate_zero_result.py`,
+`docs/task_backlog.md`, `docs/agent_work_log.md`.
+
 ### TB-335 Hazard Throughput No-Op
 
 Decision: do not retain a hazard-builder code change for TB-335 because no

@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-384: Unblock Management AOI Release-Candidate Screening
-
-Goal: Replace the current zero-screenable-cell management AOI candidate blocker with a bounded, real-staged candidate-generation path or a precise deferral.
-
-Capability gap reduced: Multi-zone scenario generation and Balfrin execution cannot proceed while the real AOI terrain crop/footprint leaves no screenable candidate cells.
-
-Why this outranks alternatives: Downstream Balfrin handoff, execution, and Swiss-scale projection tasks now only restate the same upstream blocker; this task targets the blocker directly.
-
-Inspect first:
-
-- `scripts/diagnose_release_candidate_zero_result.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc`
-- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml`
-
-Deliverables:
-
-- A deterministic diagnostic or preparation update that resolves whether the blocker is AOI extent, terrain crop size, source-zone footprint overlap, slope band, or missing real input.
-- Either a non-empty real-staged candidate package ready for review, or an explicit no-go/deferral record naming the required AOI/crop/source-zone replacement.
-
-Definition of done:
-
-- Scenario generation remains blocked only if a concrete upstream data/preparation requirement is named; otherwise a non-empty candidate package exists and downstream scenario-generation work can resume.
-
-Boundaries: No threshold tuning to force candidates, no field-validation claim, no operational release-zone claim, no scenario generation, no hazard run, and no Balfrin submission.
-
 ### TB-385: Rebuild Management AOI Scenario And Prepared-Pilot Chain
 
 Goal: Re-run the management-AOI scenario-pressure and prepared-pilot chain after TB-384 resolves or defers the candidate-screening blocker.
