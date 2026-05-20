@@ -3332,7 +3332,7 @@ scan thousands of lines of completed history.
 ### TB-329: Real-Input AOI Prepared-Pilot Compiler
 
 - Date: 2026-05-20
-- Commit: `ed167bd`
+- Commit: `74e0dfd`
 - Objective: make the AOI-to-prepared-pilot compiler consume verified real-staged inputs, report fixture-backed and blocked states explicitly, and emit a deterministic handoff layout plus local/Balfrin review command transcript.
 - Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `scripts/summarize_chant_sura_fluelapass_dry_run_report.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
