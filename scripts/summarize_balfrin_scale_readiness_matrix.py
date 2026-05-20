@@ -154,6 +154,24 @@ TB368_TWO_ZONE_HAZARD_PRESERVED = {
     "missing_output_families": [],
     "source_report": "docs/balfrin_two_zone_hazard_run_tb368.md",
 }
+TB393_MANAGEMENT_AOI_NO_SUBMIT = {
+    "task_id": "TB-393",
+    "balfrin_access_preflight_status": "ready_for_read_only_collection",
+    "remote_checkout_hygiene_status": "pass",
+    "remote_head": "453882cab7ba2254689f4b5e3e18191f6b59b2a1",
+    "execution_status": "failed_closed",
+    "handoff_classification": "blocked_source_zone_footprint_overlap",
+    "scheduler_submission_status": "not_attempted",
+    "sbatch_attempted": False,
+    "run_id": "chant_sura_fluelapass_management_aoi_multi_zone_v1",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/management-aoi/chant_sura_fluelapass_management_aoi_multi_zone_v1",
+    "unblock_action": (
+        "restage the management AOI from the local raw swissALTI3D tile as a larger real-staged AOI crop with "
+        "`PYENV_VERSION=system uv run python scripts/stage_management_aoi_restaged_terrain.py --output-root "
+        "/tmp/rust_rockfall/tb388_management_aoi_restaged` and re-stage the source-zone footprint sidecar so at "
+        "least one valid interior cell remains outside the frozen footprint"
+    ),
+}
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
 SMALLEST_MULTI_ZONE_COMPACT_OUTPUT_BYTES = 23_772
@@ -677,9 +695,25 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
         "next_evidence_field": "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",
         "blocker": blocker.get("status"),
         "summary": (
-            "The management-AOI Balfrin decision failed closed before sbatch because the current prepared-pilot "
-            "chain is blocked by source-zone footprint overlap; no live postproc job was submitted."
+            "TB-393 reran the Balfrin access preflight successfully, then the management-AOI Balfrin decision "
+            "failed closed before sbatch because the current prepared-pilot chain is blocked by source-zone "
+            "footprint overlap; no live postproc job was submitted."
         ),
+        "latest_no_submit_task": TB393_MANAGEMENT_AOI_NO_SUBMIT["task_id"],
+        "latest_balfrin_access_preflight_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
+            "balfrin_access_preflight_status"
+        ],
+        "latest_remote_checkout_hygiene_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
+            "remote_checkout_hygiene_status"
+        ],
+        "latest_remote_head": TB393_MANAGEMENT_AOI_NO_SUBMIT["remote_head"],
+        "latest_scheduler_submission_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
+            "scheduler_submission_status"
+        ],
+        "latest_no_submit_run_id": TB393_MANAGEMENT_AOI_NO_SUBMIT["run_id"],
+        "latest_no_submit_run_root": TB393_MANAGEMENT_AOI_NO_SUBMIT["run_root"],
+        "first_persistent_unblock_action": blocker.get("blocked_reason")
+        or TB393_MANAGEMENT_AOI_NO_SUBMIT["unblock_action"],
         "handoff_classification": report.get("handoff_classification"),
         "first_persistent_blocker": blocker,
         "candidate_cell_count": candidate.get("candidate_cell_count"),

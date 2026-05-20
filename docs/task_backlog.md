@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-393: Execute Smallest Real-AOI Multi-Zone Balfrin Probe
-
-Goal: Submit and monitor the smallest real-AOI multi-zone Balfrin `postproc` hazard probe only after the prepared-pilot and reduced-output gates are ready.
-
-Capability gap reduced: The repository still lacks measured multi-zone Balfrin hazard execution; projections and postproc microbenchmarks are not enough.
-
-Why this outranks alternatives: This is the decisive evidence gap for management’s Swiss-scale feasibility question.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-
-Deliverables:
-
-- If gates pass: measured job id, run root, runtime, memory, validation/hazard bytes, file counts, reducer metrics, preservation status, and failure/recovery notes.
-- If gates fail: a fail-closed no-submit record naming the first persistent blocker and preserving exact next unblock action.
-- Updated scale-readiness matrix row distinguishing measured execution from blocked or fixture-backed evidence.
-
-Definition of done:
-
-- The smallest real-AOI multi-zone branch is either measured on Balfrin `postproc` or blocked before `sbatch` by one current, non-stale gate with no ambiguous status.
-
-Boundaries: GPT-5.5 worker required; `postproc` only; no non-postproc, MPI, GPU, distributed execution, scale-up authorization, operational claim, or physical-probability semantics.
-
 ### TB-394: Measure Compact Multi-Zone Reducer And Manifest Pressure
 
 Goal: Measure how compact replay-preserving manifests and reduced output families change multi-zone reducer pressure relative to the current full scratch probe.

@@ -206,6 +206,16 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 0)
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 0)
         self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_no_submit_task"], "TB-393")
+        self.assertEqual(
+            tiers["management_aoi_multi_zone_run"]["latest_balfrin_access_preflight_status"],
+            "ready_for_read_only_collection",
+        )
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_scheduler_submission_status"], "not_attempted")
+        self.assertIn(
+            "stage_management_aoi_restaged_terrain.py",
+            tiers["management_aoi_multi_zone_run"]["first_persistent_unblock_action"],
+        )
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
             "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",

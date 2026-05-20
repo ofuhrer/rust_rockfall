@@ -237,6 +237,15 @@ front-door/documentation consolidation. This backlog intentionally favors
 executable capability, measured pressure reduction, and script-surface
 simplification over additional blocked/deferred reports.
 
+Post-TB-393, the smallest real-AOI multi-zone Balfrin `postproc` probe was
+checked against the live gates and failed closed before `sbatch`. Balfrin SSH,
+remote checkout hygiene, run-root visibility, and scheduler query were all
+reachable, but `scripts/execute_management_aoi_balfrin_run.py` still reported
+`blocked_source_zone_footprint_overlap` with zero current scenario rows and
+`sbatch_attempted=false`. The next unblock action remains the recorded
+management-AOI restage/source-zone-footprint repair; this is not measured
+multi-zone Balfrin hazard execution.
+
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
 toward larger release-zone ensembles and eventually many Swiss AOIs. True

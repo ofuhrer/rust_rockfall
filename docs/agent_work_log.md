@@ -4708,3 +4708,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live submission, no scale-up claim, no operational claim, no annual-frequency claim, and no generated artifacts committed.
 - Next task: TB-393
+
+### TB-393: Execute Smallest Real-AOI Multi-Zone Balfrin Probe
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: submit and monitor the smallest real-AOI multi-zone Balfrin `postproc` hazard probe only if the prepared-pilot, reduced-output, access, and no-submit gates were all ready.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the required Balfrin remote-access preflight; SSH, remote clone, remote checkout hygiene, target run-root visibility, and scheduler query all passed, with remote checkout head `453882cab7ba2254689f4b5e3e18191f6b59b2a1`.
+  - Ran `scripts/execute_management_aoi_balfrin_run.py` with that preflight report and it failed closed before `sbatch`: `execution_status=failed_closed`, `handoff_classification=blocked_source_zone_footprint_overlap`, `scenario_row_count=0`, `job_id=None`, `runtime_seconds=None`, `memory_peak_mb=None`, validation/hazard output pressure `not_evaluated`, reducer pressure `not_evaluated`, and preservation status `fail_closed_no_run_root_created`.
+  - Updated the scale-readiness management-AOI row to carry the TB-393 no-submit evidence and exact next unblock action while preserving the distinction from measured Balfrin hazard execution, then removed TB-393 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-393 --format json`
+  - `rg -n "^### TB-393:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb393_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/execute_management_aoi_balfrin_run.py --balfrin-access-preflight-json /tmp/tb393_preflight.json --format json --json-output /tmp/tb393_management_aoi_execution_state.json --text-output /tmp/tb393_management_aoi_execution_state.txt` exited `2` as expected for `failed_closed`.
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_execute_management_aoi_balfrin_run -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb393_scale_matrix.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no `sbatch`, no Balfrin run root created, no non-`postproc` partition, no MPI/GPU/distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability semantics.
+- Next task: TB-394
