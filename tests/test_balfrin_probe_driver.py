@@ -613,6 +613,8 @@ class BalfrinProbeDriverTests(unittest.TestCase):
             self.assertEqual(hazard_command[hazard_command.index("--prefix") + 1], "validation_balfrin_probe")
             self.assertEqual(hazard_command[hazard_command.index("--conditional-curve-export") + 1], "summary-only")
             self.assertEqual(hazard_command[hazard_command.index("--grid-csv-export") + 1], "none")
+            self.assertEqual(hazard_command[hazard_command.index("--trajectory-workers") + 1], "2")
+            self.assertEqual(hazard_command[hazard_command.index("--reducer-workers") + 1], "2")
             self.assertEqual(
                 hazard_command[hazard_command.index("--map-package-manifest-json") + 1],
                 f"{output_root}/validation_balfrin_probe_map_package_manifest.json",

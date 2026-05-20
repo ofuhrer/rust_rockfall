@@ -493,6 +493,8 @@ def _build_preserved_command_plan(command_plan: dict[str, Any], *, run_root: Pat
         _set_command_option(tokens, "--prefix", PRESERVED_PROBE_PREFIX)
         _set_command_option(tokens, "--conditional-curve-export", "summary-only")
         _set_command_option(tokens, "--grid-csv-export", "none")
+        _set_command_option(tokens, "--trajectory-workers", "2")
+        _set_command_option(tokens, "--reducer-workers", "2")
         _set_command_option(
             tokens,
             "--map-package-manifest-json",
@@ -515,6 +517,8 @@ def _build_preserved_command_plan(command_plan: dict[str, Any], *, run_root: Pat
         "reducer_chunks_dir": str(output_root / "chunks"),
         "conditional_curve_export": "summary-only",
         "grid_csv_export": "none",
+        "trajectory_workers": 2,
+        "reducer_workers": 2,
     }
     return preserved
 
