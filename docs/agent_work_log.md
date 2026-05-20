@@ -4759,3 +4759,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: scratch/local probe only, no live Balfrin submission, no deletion of replay-critical metadata, no operational claim, no scale-up claim, and no annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution semantics.
 - Next task: TB-395
+
+### TB-395
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: Consolidate duplicated prepared-pilot state assembly across the AOI dry-run planner, AOI hazard workflow runner, and management-AOI handoff helper.
+- Files changed: `scripts/lib/workflow_validation.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `scripts/build_management_aoi_balfrin_handoff.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added shared prepared-pilot state helpers in `scripts/lib/workflow_validation.py` for summary extraction, command-manifest assembly, and local-execution path assembly.
+  - Reused the shared helpers in the AOI dry-run planner, hazard workflow runner, and management-AOI handoff builder so the repeated blocker/status/expected-output plumbing now comes from one place.
+  - Kept the public report schemas stable while removing the stale duplicated assembly code paths.
+  - Extended regression coverage for the ready compiler path, the blocked scenario-pressure path, and the prepared-pilot local execution ready/failure branches.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_ready_compiler_fixture_emits_manifest_plan_and_hints tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_management_candidate_pressure_bundle_preserves_the_named_deferral tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_fixture_backed_inputs_classify_as_fixture_backed_and_keep_the_handoff_deterministic tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_over_budget_command_plan_blocks_compiler tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_writes_validation_hazard_package_and_review tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_local_execution_blocks_overwrite_and_reports_first_failure`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: bounded refactor only, no workflow rewrite, no public status rename, no scientific-semantics change, no new wrapper/gate/report vocabulary, and no Balfrin operational or scale-up claim.
+- Next task: TB-396

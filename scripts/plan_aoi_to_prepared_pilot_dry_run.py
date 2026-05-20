@@ -29,6 +29,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
 from scripts.lib import command_plan_output_profile_validator as OUTPUT_PROFILE_VALIDATOR
+from scripts.lib import workflow_validation as WORKFLOW_VALIDATION
 
 SCHEMA_VERSION = "aoi_to_prepared_pilot_dry_run_v1"
 CASE_SKELETON_SCHEMA_VERSION = "aoi_to_prepared_pilot_case_skeleton_v1"
@@ -1731,6 +1732,7 @@ def build_run_manifest(
     classification: str,
     first_blocker: dict[str, Any],
     prepared_pilot_input_readiness: dict[str, Any],
+    blocked_execution_status: str,
 ) -> dict[str, Any]:
     expected_io_inventory = build_expected_io_inventory(report_inputs=report_inputs, skeleton_output=skeleton_output)
     output_profile = build_output_profile_summary(report_inputs)
@@ -1745,8 +1747,8 @@ def build_run_manifest(
         skeleton_output=skeleton_output,
         prepared_pilot_input_readiness=prepared_pilot_input_readiness,
     )
-    command_plan_report = report_inputs["command_plan_report"]
     prep_summary = report_inputs["prep_summary"]
+    command_plan_report = report_inputs["command_plan_report"]
     return {
         "schema_version": RUN_MANIFEST_SCHEMA_VERSION,
         "classification": classification,
@@ -1759,16 +1761,13 @@ def build_run_manifest(
         "prepared_validation_root": prep_summary["output_root_planning"]["prepared_validation_root"],
         "prepared_hazard_root": prep_summary["output_root_planning"]["prepared_hazard_root"],
         "command_plan": {
-            "schema_version": command_plan_report.get("schema_version", ""),
-            "command_plan_status": command_plan_report.get("command_plan_status", ""),
-            "blocked_template_commands": list(command_plan_report.get("blocked_template_commands", [])),
+            **WORKFLOW_VALIDATION.build_prepared_pilot_command_manifest(
+                command_plan_report,
+                blocked_execution_status=blocked_execution_status,
+            ),
             "command_group_ids": list(command_plan_report.get("command_group_ids", [])),
             "command_group_keys": list(command_plan_report.get("command_group_keys", [])),
-            "command_ids": list(command_plan_report.get("command_ids", [])),
-            "commands": command_plan_report.get("commands", []),
-            "ignored_output_paths": list(command_plan_report.get("ignored_output_paths", [])),
             "output_profile_policy": command_plan_report.get("output_profile_policy", {}),
-            "output_profile_validation": command_plan_report.get("output_profile_validation", {}),
         },
         "expected_io_inventory": expected_io_inventory,
         "output_profile": output_profile,
@@ -1788,21 +1787,21 @@ def build_prepared_pilot_compiler_report(
     *,
     skeleton_output: dict[str, Any],
 ) -> dict[str, Any]:
-    run_manifest = skeleton_output.get("run_manifest", {})
+    state = WORKFLOW_VALIDATION.summarize_prepared_pilot_state(skeleton_output.get("run_manifest", {}))
     return {
         "schema_version": COMPILER_SCHEMA_VERSION,
-        "classification": run_manifest.get("classification", "blocked_missing_inputs"),
-        "input_classification": run_manifest.get("input_classification", "blocked_missing_inputs"),
+        "classification": state["classification"],
+        "input_classification": state["input_classification"],
         "run_manifest_path": skeleton_output.get("run_manifest_path", ""),
-        "first_blocker": run_manifest.get("first_blocker", {}),
-        "prepared_pilot_input_readiness": run_manifest.get("prepared_pilot_input_readiness", {}),
-        "command_transcript": run_manifest.get("command_transcript", {}),
-        "handoff_layout": run_manifest.get("handoff_layout", {}),
-        "run_manifest": run_manifest,
-        "command_plan": run_manifest["command_plan"],
-        "expected_io_inventory": run_manifest["expected_io_inventory"],
-        "output_profile": run_manifest["output_profile"],
-        "execution_hints": run_manifest["execution_hints"],
+        "first_blocker": state["first_blocker"],
+        "prepared_pilot_input_readiness": state["prepared_pilot_input_readiness"],
+        "command_transcript": state["command_transcript"],
+        "handoff_layout": state["handoff_layout"],
+        "run_manifest": state["run_manifest"],
+        "command_plan": state["command_plan"],
+        "expected_io_inventory": state["expected_io_inventory"],
+        "output_profile": state["output_profile"],
+        "execution_hints": state["execution_hints"],
     }
 
 
@@ -2540,6 +2539,7 @@ def build_case_skeleton_output(
             "management_aoi_scenario_pressure": report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}),
         }),
         prepared_pilot_input_readiness=prepared_pilot_input_readiness,
+        blocked_execution_status=blocked_execution,
     )
     return skeleton_output
 

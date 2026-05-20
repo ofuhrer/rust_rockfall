@@ -191,6 +191,132 @@ def build_blocked_report(
     return report
 
 
+def summarize_prepared_pilot_state(report: Mapping[str, Any]) -> dict[str, Any]:
+    source: Mapping[str, Any]
+    prepared_pilot_compiler = report.get("prepared_pilot_compiler") if isinstance(report, Mapping) else None
+    if isinstance(prepared_pilot_compiler, Mapping):
+        source = prepared_pilot_compiler
+    else:
+        source = report
+    run_manifest = source.get("run_manifest") if isinstance(source.get("run_manifest"), Mapping) else source
+    first_blocker = source.get("first_blocker") if isinstance(source.get("first_blocker"), Mapping) else {}
+    if not first_blocker and isinstance(run_manifest, Mapping):
+        run_manifest_first_blocker = run_manifest.get("first_blocker")
+        if isinstance(run_manifest_first_blocker, Mapping):
+            first_blocker = run_manifest_first_blocker
+    prepared_pilot_input_readiness = source.get("prepared_pilot_input_readiness")
+    if not isinstance(prepared_pilot_input_readiness, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_readiness = run_manifest.get("prepared_pilot_input_readiness")
+        if isinstance(run_manifest_readiness, Mapping):
+            prepared_pilot_input_readiness = run_manifest_readiness
+    command_transcript = source.get("command_transcript")
+    if not isinstance(command_transcript, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_transcript = run_manifest.get("command_transcript")
+        if isinstance(run_manifest_transcript, Mapping):
+            command_transcript = run_manifest_transcript
+    handoff_layout = source.get("handoff_layout")
+    if not isinstance(handoff_layout, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_handoff_layout = run_manifest.get("handoff_layout")
+        if isinstance(run_manifest_handoff_layout, Mapping):
+            handoff_layout = run_manifest_handoff_layout
+    command_plan = source.get("command_plan")
+    if not isinstance(command_plan, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_command_plan = run_manifest.get("command_plan")
+        if isinstance(run_manifest_command_plan, Mapping):
+            command_plan = run_manifest_command_plan
+    expected_io_inventory = source.get("expected_io_inventory")
+    if not isinstance(expected_io_inventory, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_expected_io_inventory = run_manifest.get("expected_io_inventory")
+        if isinstance(run_manifest_expected_io_inventory, Mapping):
+            expected_io_inventory = run_manifest_expected_io_inventory
+    output_profile = source.get("output_profile")
+    if not isinstance(output_profile, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_output_profile = run_manifest.get("output_profile")
+        if isinstance(run_manifest_output_profile, Mapping):
+            output_profile = run_manifest_output_profile
+    execution_hints = source.get("execution_hints")
+    if not isinstance(execution_hints, Mapping) and isinstance(run_manifest, Mapping):
+        run_manifest_execution_hints = run_manifest.get("execution_hints")
+        if isinstance(run_manifest_execution_hints, Mapping):
+            execution_hints = run_manifest_execution_hints
+
+    classification = str(
+        source.get("classification")
+        or run_manifest.get("classification")
+        or report.get("workflow_status")
+        or "blocked_missing_inputs"
+    )
+    input_classification = str(
+        source.get("input_classification")
+        or run_manifest.get("input_classification")
+        or report.get("prepared_pilot_input_classification")
+        or "blocked_missing_inputs"
+    )
+    return {
+        "classification": classification,
+        "input_classification": input_classification,
+        "status": classification,
+        "first_blocker": dict(first_blocker),
+        "prepared_pilot_input_readiness": dict(prepared_pilot_input_readiness or {}),
+        "command_transcript": dict(command_transcript or {}),
+        "handoff_layout": dict(handoff_layout or {}),
+        "command_plan": dict(command_plan or {}),
+        "expected_io_inventory": dict(expected_io_inventory or {}),
+        "output_profile": dict(output_profile or {}),
+        "execution_hints": dict(execution_hints or {}),
+        "run_manifest": dict(run_manifest or {}),
+    }
+
+
+def build_prepared_pilot_command_manifest(
+    command_plan_report: Mapping[str, Any],
+    *,
+    blocked_execution_status: str,
+) -> dict[str, Any]:
+    return {
+        "schema_version": str(command_plan_report.get("schema_version") or ""),
+        "command_plan_status": str(command_plan_report.get("command_plan_status") or "blocked_missing_inputs"),
+        "blocked_execution_status": blocked_execution_status,
+        "blocked_template_commands": list(command_plan_report.get("blocked_template_commands", [])),
+        "command_groups": list(command_plan_report.get("command_groups", [])),
+        "commands": list(command_plan_report.get("commands", [])),
+        "command_ids": list(command_plan_report.get("command_ids", [])),
+        "command_descriptions": dict(command_plan_report.get("command_descriptions", {})),
+        "ignored_output_paths": list(command_plan_report.get("ignored_output_paths", [])),
+        "output_profile_validation": dict(command_plan_report.get("output_profile_validation", {})),
+    }
+
+
+def build_prepared_pilot_local_execution_paths(
+    *,
+    prepared_pilot_report_path: Path | None,
+    prepared_pilot_output_root: Path | None,
+    validation_case_path: Path,
+) -> dict[str, Any]:
+    resolved_output_root = prepared_pilot_output_root
+    validation_output_root = str((resolved_output_root / "validation" / "results") if resolved_output_root is not None else "")
+    hazard_output_root = str((resolved_output_root / "hazard" / "results") if resolved_output_root is not None else "")
+    package_output_root = str((resolved_output_root / "package") if resolved_output_root is not None else "")
+    review_output_root = str((resolved_output_root / "review") if resolved_output_root is not None else "")
+    output_root = str(resolved_output_root) if resolved_output_root is not None else ""
+    expected_paths = {
+        "prepared_pilot_report_path": str(prepared_pilot_report_path) if prepared_pilot_report_path is not None else "",
+        "validation_case_path": str(validation_case_path),
+        "validation_output_root": validation_output_root,
+        "hazard_output_root": hazard_output_root,
+        "package_output_root": package_output_root,
+        "review_output_root": review_output_root,
+    }
+    return {
+        "output_root": output_root,
+        "validation_output_root": validation_output_root,
+        "hazard_output_root": hazard_output_root,
+        "package_output_root": package_output_root,
+        "review_output_root": review_output_root,
+        "expected_paths": expected_paths,
+    }
+
+
 def normalize_text(value: Any) -> str:
     text = str(value).strip().replace("\\", "/")
     return CONTROL_CHARS_RE.sub("", text)

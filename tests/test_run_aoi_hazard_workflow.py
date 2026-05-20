@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from unittest import mock
 
 import yaml
+from scripts.lib import workflow_validation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1049,6 +1050,16 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             self.assertEqual(report["status"], "local_execution_ready")
             self.assertEqual(report["prepared_pilot_classification"], "ready_for_balfrin_postproc")
             self.assertEqual(report["first_failure"], None)
+            prepared_state = workflow_validation.summarize_prepared_pilot_state(prepared_report)
+            self.assertEqual(prepared_state["classification"], "ready_for_balfrin_postproc")
+            self.assertEqual(prepared_state["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+            path_state = workflow_validation.build_prepared_pilot_local_execution_paths(
+                prepared_pilot_report_path=prepared_report_path,
+                prepared_pilot_output_root=output_root,
+                validation_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+            )
+            self.assertEqual(report["output_root"], path_state["output_root"])
+            self.assertEqual(report["expected_paths"]["prepared_pilot_report_path"], path_state["expected_paths"]["prepared_pilot_report_path"])
             self.assertTrue(Path(report["validation_output_root"]).exists())
             self.assertTrue(Path(report["hazard_output_root"]).exists())
             self.assertTrue(Path(report["package_output_root"]).exists())
@@ -1094,6 +1105,12 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertTrue(report["first_failure"]["blocked_reason"])
         self.assertIn("overwrite is disabled", report["first_failure"]["blocked_reason"])
         self.assertEqual(report["output_root"], str(output_root))
+        path_state = workflow_validation.build_prepared_pilot_local_execution_paths(
+            prepared_pilot_report_path=prepared_report_path,
+            prepared_pilot_output_root=output_root,
+            validation_case_path=ROOT / "validation/cases/probabilistic_phase1_smoke.yaml",
+        )
+        self.assertEqual(report["expected_paths"], path_state["expected_paths"])
 
     def test_prepared_pilot_local_execution_uses_two_candidate_freezer_inputs_and_reports_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:

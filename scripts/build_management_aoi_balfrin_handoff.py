@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from scripts.lib import workflow_validation as WORKFLOW_VALIDATION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,6 +120,7 @@ def build_report(
         repo_root=ROOT,
         skeleton_output_root=prepared_pilot_output_root,
     )
+    prepared_pilot_state = WORKFLOW_VALIDATION.summarize_prepared_pilot_state(prepared_pilot_report)
     scenario_pressure_report = scenario_pressure_report_override or dict(
         prepared_pilot_report.get("management_aoi_scenario_pressure") or {}
     )
@@ -126,7 +128,7 @@ def build_report(
         scenario_pressure_report = SCENARIO_PRESSURE.build_report(output_root=artifact_dir / "scenario_pressure")
 
     classification = classify_handoff(prepared_pilot_report, scenario_pressure_report)
-    blocked_reason = build_blocked_reason(prepared_pilot_report, scenario_pressure_report, classification)
+    blocked_reason = build_blocked_reason(prepared_pilot_state, scenario_pressure_report, classification)
     budget_checks = build_budget_checks(classification, scenario_pressure_report)
     command_list = build_command_list(
         artifact_dir=artifact_dir,
@@ -147,7 +149,6 @@ def build_report(
 
     candidate_evidence = dict(scenario_pressure_report.get("candidate_evidence") or {})
     scenario_generation_pressure = dict(scenario_pressure_report.get("scenario_generation_pressure") or {})
-    prepared_compiler = dict(prepared_pilot_report.get("prepared_pilot_compiler") or {})
     report = {
         "schema_version": SCHEMA_VERSION,
         "handoff_status": classification,
@@ -165,9 +166,9 @@ def build_report(
         "partition": "postproc",
         "live_submission_permitted_by_this_task": False,
         "prepared_pilot_summary": {
-            "workflow_status": prepared_pilot_report.get("workflow_status"),
-            "prepared_pilot_compiler_classification": prepared_compiler.get("classification"),
-            "prepared_pilot_input_classification": prepared_pilot_report.get("prepared_pilot_input_classification"),
+            "workflow_status": prepared_pilot_state["classification"],
+            "prepared_pilot_compiler_classification": prepared_pilot_state["classification"],
+            "prepared_pilot_input_classification": prepared_pilot_state["input_classification"],
             "case_skeleton_status": dict(prepared_pilot_report.get("case_skeleton_output") or {}).get("status"),
             "case_skeleton_path": dict(prepared_pilot_report.get("case_skeleton_output") or {}).get("case_skeleton_path"),
             "blocked_execution_status": dict(prepared_pilot_report.get("case_skeleton_output") or {}).get(
@@ -258,8 +259,7 @@ def build_blocked_reason(
     scenario_reason = str(scenario_pressure_report.get("blocked_reason") or "").strip()
     if scenario_reason:
         return scenario_reason
-    compiler = dict(prepared_pilot_report.get("prepared_pilot_compiler") or {})
-    first_blocker = dict(compiler.get("first_blocker") or {})
+    first_blocker = dict(prepared_pilot_report.get("first_blocker") or {})
     return str(first_blocker.get("blocked_reason") or first_blocker.get("status") or classification)
 
 

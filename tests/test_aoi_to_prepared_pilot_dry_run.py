@@ -13,6 +13,7 @@ from unittest import mock
 import yaml
 import scripts.build_hazard_layers as hazard
 from scripts.audit_gis_cog_package_readiness import build_gis_cog_readiness_report
+from scripts.lib import workflow_validation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -217,6 +218,11 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(compiler["output_profile"]["command_profile_policy"]["classification"], "scalable_default")
         self.assertEqual(compiler["output_profile"]["command_profile_validation"]["status"], "ready")
         self.assertEqual(compiler["command_plan"]["output_profile_validation"]["status"], "ready")
+        compiler_state = workflow_validation.summarize_prepared_pilot_state(compiler["run_manifest"])
+        self.assertEqual(compiler_state["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler_state["input_classification"], "real_staged_ready")
+        self.assertEqual(compiler_state["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(compiler_state["command_plan"]["command_plan_status"], "ready")
         self.assertTrue(
             compiler["run_manifest"]["command_transcript"]["local_smoke"]["expected_output_root"].endswith(
                 "aoi_to_prepared_pilot_dry_run"
@@ -332,6 +338,10 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self.assertEqual(compiler["prepared_pilot_input_readiness"]["blocked_missing_inputs"], [])
         self.assertEqual(compiler["prepared_pilot_input_readiness"]["first_blocker"]["status"], "fixture_backed")
         self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        compiler_state = workflow_validation.summarize_prepared_pilot_state(compiler["run_manifest"])
+        self.assertEqual(compiler_state["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler_state["input_classification"], "fixture_backed")
+        self.assertEqual(compiler_state["first_blocker"]["step_id"], "prepared_pilot_command_plan")
         self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
         self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
         self.assertTrue(first["case_skeleton_output"]["command_transcript_path"].endswith("aoi_to_prepared_pilot_command_transcript.txt"))
@@ -527,6 +537,9 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             "source-zone footprint",
             compiler["first_blocker"]["blocked_reason"],
         )
+        compiler_state = workflow_validation.summarize_prepared_pilot_state(compiler["run_manifest"])
+        self.assertEqual(compiler_state["classification"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(compiler_state["first_blocker"]["step_id"], "release_plan_dry_run")
         self.assertIn("run-prepared-pilot-local", compiler["command_transcript"]["local_smoke"]["command"])
         self.assertIn("submit-balfrin", compiler["command_transcript"]["balfrin_review"]["command"])
         self.assertIn("blocked_source_zone_footprint_overlap", planner.render_text_report(report))

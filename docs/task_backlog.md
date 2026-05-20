@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-395: Consolidate AOI Prepared-Pilot State Assembly
-
-Goal: Extract duplicated AOI prepared-pilot status, blocker, expected-output, and command-manifest assembly from the large AOI workflow scripts into a small shared helper.
-
-Capability gap reduced: Workflow-shell complexity is growing faster than executable capability, especially around `plan_aoi_to_prepared_pilot_dry_run.py` and `run_aoi_hazard_workflow.py`.
-
-Why this outranks alternatives: Consolidating repeated mechanics reduces future blocker drift without adding another wrapper or status vocabulary.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `scripts/lib/workflow_validation.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- Shared helper functions for prepared-pilot state assembly reused by at least two existing CLIs.
-- No CLI output schema changes except removal of stale duplicated wording.
-- Regression coverage proving current ready and blocked branches stay compatible.
-
-Definition of done:
-
-- Lines of duplicated blocker/status assembly are reduced, tests pass, and no new wrapper/report/gate is introduced.
-
-Boundaries: Bounded refactor only; do not rewrite the AOI workflow, rename public statuses, or change scientific semantics.
-
 ### TB-396: Split Hazard Layer Packaging Primitives From Giant Builder
 
 Goal: Move a narrow, tested slice of hazard-layer packaging or manifest-writing logic out of `scripts/build_hazard_layers.py` into an existing or new support module.
