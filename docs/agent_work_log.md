@@ -4323,3 +4323,24 @@ scan thousands of lines of completed history.
 - Result/status: blocked
 - Boundaries: no raw swisstopo data commit, no ensemble execution, no operational claim, and no scale-up, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-374`
+
+### TB-374: Validate Management AOI Cache Integrity
+
+- Date: 2026-05-20
+- Commit: `local`
+- Objective: make the management-AOI cache verifier fail closed on fixture-backed, partial, missing, and metadata-mismatched cache states while preserving a deterministic integrity report for the current repository state.
+- Files changed: `scripts/verify_public_geodata_cache.py`, `tests/test_public_geodata_cache_verifier.py`, `docs/public_real_site_geodata_preparation.md`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `cache_integrity_status` to the cache-verification report and changed the CLI exit code so only `ready` cache audits succeed.
+  - Extended the verifier coverage so ready, missing, partial, metadata-mismatched, and fixture-backed cache states are all asserted deterministically, including the real management-AOI cache manifest in this repository.
+  - Updated the preparation guidance and real-context decision note so they describe the cache audit boundary rather than treating a file-level checksum pass as readiness evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier -v`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json >/tmp/tb374_cache_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_blocked_report
+- Boundaries: no raw swisstopo data commit, no terrain mutation beyond read-only inspection, no hazard claim, and no operational or scale-up claim.
+- Next task: `TB-375`

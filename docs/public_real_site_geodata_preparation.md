@@ -144,6 +144,9 @@ mismatch, or unsupported products.
 for `ready`, `partial`, `fixture_backed`, `missing`, and
 `metadata_mismatch` cache states, which keeps tiny fixture-backed inputs from
 being treated as real public-context evidence in the AOI workflow.
+Its CLI exits `0` only when that audit summary is `ready`; the other audit
+states remain blocked even if the file-level checksum and metadata checks
+individually pass.
 The same helper now serves as the explicit acquisition driver: `--mode dry-run`
 keeps the run read-only, `--mode local-copy --apply` copies staged local
 inputs into the cache, and `--mode download --download` is the only path that

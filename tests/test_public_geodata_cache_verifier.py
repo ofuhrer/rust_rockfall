@@ -119,11 +119,81 @@ class PublicGeodataCacheVerifierTests(unittest.TestCase):
             )
 
         report = json.loads(stdout.getvalue())
-        self.assertEqual(exit_code, 0)
+        self.assertEqual(exit_code, 2)
         self.assertEqual(report["verification_status"], "verified")
         self.assertEqual(report["cache_audit_status"], "fixture_backed")
+        self.assertEqual(report["cache_integrity_status"], "fixture_backed")
         self.assertEqual(report["products"][0]["provenance_classification"], "fixture_backed")
         self.assertEqual(report["products"][0]["actual"]["metadata"]["product_version_or_date"], "2019-01-01")
+
+    def test_main_exit_code_tracks_cache_integrity_status(self) -> None:
+        scenarios = [
+            {
+                "name": "ready",
+                "manifest_kwargs": {"checksum_source": b"ready-cache"},
+                "expected_exit_code": 0,
+                "expected_integrity_status": "ready",
+                "expected_audit_status": "ready",
+                "expected_verification_status": "verified",
+            },
+            {
+                "name": "missing",
+                "manifest_kwargs": {"create_files": False},
+                "expected_exit_code": 2,
+                "expected_integrity_status": "missing",
+                "expected_audit_status": "missing",
+                "expected_verification_status": "missing",
+            },
+            {
+                "name": "partial",
+                "manifest_kwargs": {"checksum_source": b"expected-bytes", "staged_bytes": b"actual-bytes"},
+                "expected_exit_code": 2,
+                "expected_integrity_status": "partial",
+                "expected_audit_status": "partial",
+                "expected_verification_status": "checksum_mismatch",
+            },
+            {
+                "name": "metadata_mismatch",
+                "manifest_kwargs": {"metadata_overrides": {"resolution_m": 1.0}},
+                "expected_exit_code": 2,
+                "expected_integrity_status": "metadata_mismatch",
+                "expected_audit_status": "metadata_mismatch",
+                "expected_verification_status": "metadata_mismatch",
+            },
+            {
+                "name": "fixture_backed",
+                "manifest_kwargs": {
+                    "checksum_source": b"fixture-backed-cache",
+                    "product_overrides": {
+                        "source_product_id": "swissalti3d_fixture_terrain_crop",
+                        "provenance_classification": "fixture_backed",
+                    },
+                    "metadata_overrides": {
+                        "source_product_id": "swissalti3d_fixture_terrain_crop",
+                        "provenance_classification": "fixture_backed",
+                    },
+                },
+                "expected_exit_code": 2,
+                "expected_integrity_status": "fixture_backed",
+                "expected_audit_status": "fixture_backed",
+                "expected_verification_status": "verified",
+            },
+        ]
+
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario["name"]):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    manifest_path = self._write_cache_manifest(root, **scenario["manifest_kwargs"])
+                    stdout = io.StringIO()
+                    with contextlib.redirect_stdout(stdout):
+                        exit_code = verifier.main(["--cache-manifest", str(manifest_path), "--format", "json"])
+                    report = json.loads(stdout.getvalue())
+
+                self.assertEqual(exit_code, scenario["expected_exit_code"])
+                self.assertEqual(report["cache_integrity_status"], scenario["expected_integrity_status"])
+                self.assertEqual(report["cache_audit_status"], scenario["expected_audit_status"])
+                self.assertEqual(report["verification_status"], scenario["expected_verification_status"])
 
     def _write_cache_manifest(
         self,

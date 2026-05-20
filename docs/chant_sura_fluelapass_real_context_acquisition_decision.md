@@ -136,7 +136,8 @@ operator response is a no-download fallback, not a retry loop.
   tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml
   --format json`
 - Report interpretation: the plan is still metadata-only until the required
-  local roots exist and the cache verifier can return `verified`
+  local roots exist and the cache verifier can report `cache_audit_status:
+  ready`
 
 ## Required Products
 

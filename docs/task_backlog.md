@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-374: Validate Management AOI Cache Integrity
-
-Goal: Verify acquired/staged AOI public-geodata products for checksum stability, required metadata, CRS/datum consistency, tile coverage, and missing-product classification.
-
-Capability gap reduced: Prevents downstream preprocessing from silently accepting partial or mismatched real public inputs.
-
-Why this outranks alternatives: Cache integrity must be trusted before terrain preprocessing or release-zone generation can be interpreted.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Deterministic cache-integrity report for the management AOI.
-- Focused tests for missing, partial, metadata-mismatched, and ready cache states.
-
-Definition of done:
-
-- The AOI cache reports either ready real products or exact product-level blockers without relying on fixture-backed evidence.
-
-Boundaries: No raw data commits; no terrain mutation beyond read-only inspection; no hazard claim.
-
 ### TB-375: Run Real-AOI Terrain Preprocessing Pipeline
 
 Goal: Convert the management AOI terrain products into deterministic prepared terrain artifacts with provenance, extent, resolution, CRS, and vertical-datum metadata.

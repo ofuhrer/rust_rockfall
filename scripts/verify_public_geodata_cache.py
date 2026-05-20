@@ -35,6 +35,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = PREFLIGHT.verify_public_geodata_cache(args.cache_manifest)
+    report = dict(report)
+    report["cache_integrity_status"] = str(
+        report.get("cache_audit_status") or report.get("cache_audit_classification") or report.get("verification_status") or "missing"
+    )
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -42,7 +46,7 @@ def main(argv: list[str] | None = None) -> int:
 
     output = json.dumps(PREFLIGHT.json_safe(report), indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
     print(output)
-    return 0 if report["verification_status"] == "verified" else 2
+    return 0 if report["cache_integrity_status"] == "ready" else 2
 
 
 def render_text_report(report: dict[str, object]) -> str:
@@ -50,6 +54,7 @@ def render_text_report(report: dict[str, object]) -> str:
         f"schema_version: {report['schema_version']}",
         f"verification_status: {report['verification_status']}",
         f"cache_audit_status: {report.get('cache_audit_status', '')}",
+        f"cache_integrity_status: {report.get('cache_integrity_status', '')}",
         f"cache_manifest_path: {report['cache_manifest_path']}",
         f"product_count: {report['product_count']}",
         "verification_fields:",
