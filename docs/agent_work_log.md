@@ -4344,3 +4344,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no raw swisstopo data commit, no terrain mutation beyond read-only inspection, no hazard claim, and no operational or scale-up claim.
 - Next task: `TB-375`
+
+### TB-375: Run Real-AOI Terrain Preprocessing Pipeline
+
+- Date: 2026-05-20
+- Commit: `22d3a84`
+- Objective: verify the staged Chant Sura / Fluelapass real-AOI terrain crop, materialize the ignored prepared terrain root, and record provenance plus runtime evidence for downstream release-zone planning.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran `scripts/plan_aoi_terrain_preprocessing.py` against the staged real-AOI crop, terrain metadata, and AOI tile catalog under `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input/input`.
+  - Confirmed `terrain_preprocessing_status: ready`, `terrain_provenance.classification: fixture_backed`, one source tile (`2793-1180`), zero nodata fraction, 16 terrain cells, and no metadata or tile-id mismatches.
+  - Captured the prepared-input wrapper separately and observed `prepared_input_status: partial_context` because the optional public context bundles are still missing; that did not change the terrain-ready result.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --repo-root . --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --terrain-crop data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc --terrain-metadata data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml --aoi-tile-catalog data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml --output-root data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input/input --format json --json-output /tmp/tb375_terrain_ready_report.json`
+  - `real 0.12` from `/tmp/tb375_terrain_ready_time.txt`
+- Result/status: implemented_measured
+- Boundaries: no raw data commit, no hazard execution, no terrain smoothing or tuning, no scale-up claim, and no operational or annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-376`
