@@ -339,11 +339,83 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(json_code, 0)
         self.assertIn("workflow_status: ready", text_output)
         self.assertIn("next_command: PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py submit-balfrin --format json", text_output)
+        self.assertIn("required_inputs:", text_output)
+        self.assertIn("generated_outputs:", text_output)
+        self.assertIn("claim_boundaries:", text_output)
         self.assertNotIn("delegate_statuses", text_output)
+        self.assertLessEqual(len(text_output.splitlines()), 15)
         parsed = json.loads(json_output)
         self.assertEqual(parsed["workflow_status"], "ready")
         self.assertEqual(parsed["next_action"], "submit-balfrin")
         self.assertEqual(parsed["expected_outputs"], ["submission request", "submission summary"])
+
+    def test_workflow_main_renders_compact_text_summary_for_copy_paste(self) -> None:
+        workflow_report = {
+            "schema_version": workflow.WORKFLOW_SCHEMA_VERSION,
+            "command": "workflow",
+            "status": "blocked_missing_inputs",
+            "current_stage": "status",
+            "next_action": "prepare",
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --format json",
+            "first_blocker": {
+                "step_id": "tiny_bounded_ensemble_handoff",
+                "label": "AOI guided workflow",
+                "status": "blocked_missing_inputs",
+                "blocked_reason": "read-only front door only",
+                "missing_inputs": [
+                    "/tmp/aoi_smoke/site/aoi_manifest.yaml",
+                    "/tmp/aoi_workflow/bootstrap",
+                ],
+            },
+            "command_sequence": [
+                "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py status --format json",
+                "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --format json",
+            ],
+            "generated_artifact_paths": {
+                "bootstrap_output_root": "/tmp/aoi_workflow/bootstrap",
+                "workflow_output_root": "/tmp/aoi_workflow",
+            },
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "candidate_site_id": "guided_fixture",
+            "candidate_site_name": "Guided Fixture",
+        }
+
+        with mock.patch.object(workflow, "build_workflow_report", return_value=workflow_report):
+            code, text_output = self._run_main(
+                [
+                    "workflow",
+                    "--site-config",
+                    str(ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"),
+                    "--workflow-output-root",
+                    "/tmp/aoi_workflow",
+                    "--format",
+                    "text",
+                ]
+            )
+
+        self.assertEqual(code, 2)
+        self.assertIn("workflow_status: blocked_missing_inputs", text_output)
+        self.assertIn("next_command: PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --format json", text_output)
+        self.assertIn("first_blocker:", text_output)
+        self.assertIn("required_inputs:", text_output)
+        self.assertIn("generated_outputs:", text_output)
+        self.assertIn("workflow_output_root=/tmp/aoi_workflow", text_output)
+        self.assertNotIn("command_sequence:", text_output)
+        self.assertLessEqual(len(text_output.splitlines()), 16)
+
+    def test_help_includes_the_simple_bounds_to_review_example(self) -> None:
+        help_text = workflow.build_parser().format_help()
+
+        self.assertIn("Simplest bounds-to-review dry run:", help_text)
+        self.assertIn("scripts/run_aoi_hazard_workflow.py workflow", help_text)
+        self.assertIn("--workflow-output-root /tmp/aoi_workflow", help_text)
+        self.assertIn("--format text", help_text)
 
     def test_fixture_backed_status_aggregation_surfaces_expected_paths_and_claim_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as scratch:

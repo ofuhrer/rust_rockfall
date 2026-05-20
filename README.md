@@ -56,7 +56,10 @@ review surface that exposes layer inventory, warnings, provenance, observed
 overlay status, and the next recommended command. It does not yet download all
 public inputs by default, run arbitrary real AOIs end to end, execute
 second-site ensembles, or generate physically annualized intensity-frequency
-products.
+products. The `scripts/run_aoi_hazard_workflow.py workflow --format text`
+front door now prints `workflow_status`, `first_blocker`, `next_command`,
+required inputs, generated outputs, and claim boundaries in one
+copy-pasteable summary.
 
 TB-338/TB-359 added and refreshed the current management-facing scale synthesis:
 `docs/swiss_scale_feasibility_projection.md` and

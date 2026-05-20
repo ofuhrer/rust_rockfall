@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-398: Make AOI Workflow Front Door Self-Explaining
-
-Goal: Improve the existing AOI front-door command so a user can see the current status, first blocker, and next copy-paste command without reading multiple helper reports.
-
-Capability gap reduced: The user-facing AOI path is technically present but still exposes too many underlying scripts and nested reports.
-
-Why this outranks alternatives: This improves usability by simplifying an existing entrypoint instead of adding another wrapper, report, or management surface.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `README.md`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A concise text-mode AOI workflow output that includes `workflow_status`, `first_blocker`, `next_command`, required inputs, generated outputs, and claim boundaries.
-- A stable `--help` or example path for the simplest bounds-to-review dry run.
-- Focused tests proving the user-facing text output stays compact and copy-pasteable.
-
-Definition of done:
-
-- A new user can run one existing front-door command and see the next action without opening nested JSON reports or separate helper docs.
-
-Boundaries: Do not add a new front-door script, do not hide blocked states, do not run Balfrin, and do not introduce operational claims.
-
 ### TB-399: Consolidate User-Facing AOI Documentation
 
 Goal: Collapse duplicated AOI workflow instructions into one short user-facing path and point detailed helper material behind links.

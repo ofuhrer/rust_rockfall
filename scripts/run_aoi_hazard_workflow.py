@@ -64,6 +64,15 @@ STATUS_EXIT_CODES = {
     STATUS_INVALID_INPUT: 64,
     STATUS_INTERNAL_ERROR: 70,
 }
+HELP_EXAMPLE = """Examples:
+  Simplest bounds-to-review dry run:
+    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
+      --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
+      --workflow-output-root /tmp/aoi_workflow \
+      --format text
+
+  See docs/public_real_site_geodata_preparation.md for the full bootstrap-to-review path.
+"""
 
 
 def _load_module(module_name: str, filename: str):
@@ -154,7 +163,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=HELP_EXAMPLE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("command", nargs="?", choices=SUPPORTED_COMMANDS, default="status")
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
@@ -2104,6 +2117,50 @@ def status_exit_code(report: dict[str, Any]) -> int:
     return STATUS_EXIT_CODES.get(str(report.get("workflow_status") or STATUS_BLOCKED), 2)
 
 
+def format_inline_list(items: list[str] | tuple[str, ...] | None, *, limit: int = 6) -> str:
+    values = [str(item) for item in items or [] if str(item)]
+    if not values:
+        return "none"
+    shown = values[:limit]
+    summary = ", ".join(shown)
+    if len(values) > limit:
+        summary += f", ... (+{len(values) - limit} more)"
+    return summary
+
+
+def format_inline_blocker(blocker: dict[str, Any] | None) -> str:
+    if not blocker:
+        return "none"
+    parts = [
+        f"step_id={blocker.get('step_id', '')}",
+        f"status={blocker.get('status', '')}",
+        f"blocked_reason={blocker.get('blocked_reason', '')}",
+    ]
+    label = str(blocker.get("label") or "")
+    if label:
+        parts.append(f"label={label}")
+    missing_inputs = [str(item) for item in blocker.get("missing_inputs", []) or [] if str(item)]
+    expected_inputs = [str(item) for item in blocker.get("expected_inputs", []) or [] if str(item)]
+    section_inputs = missing_inputs or expected_inputs
+    if section_inputs:
+        parts.append(f"missing_inputs={format_inline_list(section_inputs, limit=4)}")
+    return ", ".join(parts)
+
+
+def format_inline_mapping(mapping: dict[str, Any] | None) -> str:
+    if not mapping:
+        return "none"
+    parts: list[str] = []
+    for key, value in sorted(mapping.items()):
+        if isinstance(value, list):
+            parts.append(f"{key}=[{format_inline_list(value)}]")
+        elif isinstance(value, dict):
+            parts.append(f"{key}={{...}}")
+        else:
+            parts.append(f"{key}={value}")
+    return "; ".join(parts)
+
+
 def render_status_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
@@ -2111,69 +2168,31 @@ def render_status_text_report(report: dict[str, Any]) -> str:
         f"workflow_status: {report['workflow_status']}",
         f"next_action: {report['next_action']}",
         f"next_command: {report['next_command']}",
-        "first_blocker:",
+        f"first_blocker: {format_inline_blocker(report.get('first_blocker'))}",
+        f"required_inputs: {format_inline_list(report.get('expected_inputs', []))}",
+        f"generated_outputs: {format_inline_list(report.get('expected_outputs', []))}",
+        f"claim_boundaries: {format_inline_mapping(report.get('claim_boundaries'))}",
     ]
-    blocker = report.get("first_blocker")
-    if isinstance(blocker, dict):
-        lines.append(f"- step_id: {blocker.get('step_id', '')}")
-        lines.append(f"- label: {blocker.get('label', '')}")
-        lines.append(f"- status: {blocker.get('status', '')}")
-        lines.append(f"- blocked_reason: {blocker.get('blocked_reason', '')}")
-    else:
-        lines.append("- none")
-    lines.append("expected_inputs:")
-    lines.extend(f"- {item}" for item in report.get("expected_inputs", []) or [])
-    if not report.get("expected_inputs"):
-        lines.append("- none")
-    lines.append("expected_outputs:")
-    lines.extend(f"- {item}" for item in report.get("expected_outputs", []) or [])
-    if not report.get("expected_outputs"):
-        lines.append("- none")
-    lines.append("claim_boundaries:")
-    for key, value in sorted(report.get("claim_boundaries", {}).items()):
-        if key == "notes" and isinstance(value, list):
-            lines.append(f"- {key}:")
-            lines.extend(f"  - {item}" for item in value)
-        else:
-            lines.append(f"- {key}: {value}")
     return "\n".join(lines)
 
 
 def render_workflow_text_report(report: dict[str, Any]) -> str:
+    blocker = report.get("first_blocker") if isinstance(report.get("first_blocker"), dict) else None
+    required_inputs = []
+    if isinstance(blocker, dict):
+        required_inputs = [str(item) for item in blocker.get("missing_inputs", []) or [] if str(item)]
     lines = [
         f"schema_version: {report['schema_version']}",
         f"command: {report['command']}",
-        f"status: {report['status']}",
+        f"workflow_status: {report['status']}",
         f"current_stage: {report['current_stage']}",
         f"next_action: {report['next_action']}",
         f"next_command: {report['next_command']}",
-        f"candidate_site_id: {report.get('candidate_site_id', '')}",
-        f"candidate_site_name: {report.get('candidate_site_name', '')}",
-        "first_blocker:",
+        f"first_blocker: {format_inline_blocker(blocker)}",
+        f"required_inputs: {format_inline_list(required_inputs)}",
+        f"generated_outputs: {format_inline_mapping(report.get('generated_artifact_paths'))}",
+        f"claim_boundaries: {format_inline_mapping(report.get('claim_boundaries'))}",
     ]
-    blocker = report.get("first_blocker")
-    if isinstance(blocker, dict) and blocker:
-        lines.append(f"- step_id: {blocker.get('step_id', '')}")
-        lines.append(f"- label: {blocker.get('label', '')}")
-        lines.append(f"- status: {blocker.get('status', '')}")
-        lines.append(f"- blocked_reason: {blocker.get('blocked_reason', '')}")
-    else:
-        lines.append("- none")
-    lines.append("command_sequence:")
-    if report.get("command_sequence"):
-        lines.extend(f"- {item}" for item in report.get("command_sequence", []))
-    else:
-        lines.append("- none")
-    lines.append("generated_artifact_paths:")
-    for key, value in sorted(report.get("generated_artifact_paths", {}).items()):
-        lines.append(f"- {key}: {value}")
-    lines.append("claim_boundaries:")
-    for key, value in sorted(report.get("claim_boundaries", {}).items()):
-        if key == "notes" and isinstance(value, list):
-            lines.append(f"- {key}:")
-            lines.extend(f"  - {item}" for item in value)
-        else:
-            lines.append(f"- {key}: {value}")
     return "\n".join(lines)
 
 
