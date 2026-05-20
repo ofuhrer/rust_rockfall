@@ -3703,3 +3703,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live Balfrin run, no distributed execution, no scale-up authorization, and no operational or risk/probability claims.
 - Next task: `TB-349`
+
+### TB-349: Real AOI-To-Prepared-Pilot Compiler
+- Date: 2026-05-20
+- Commit: local
+- Objective: compile the real AOI front door into a deterministic prepared-pilot bundle and command plan while keeping the run read-only and fail-closed on missing inputs or output-profile budget issues.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the prepared-pilot compiler to classify an over-budget command-plan state explicitly, surface that state in the workflow steps, and fail closed with a precise first blocker.
+  - Wired the front-door `prepare` command to call the compiler helper directly, optionally materialize the prepared-pilot bundle into an ignored output root, and serialize the nested compiler report safely as JSON.
+  - Added focused regressions for ready, missing-terrain, missing-context, over-budget, and bundle-materialization paths so the compiler path stays deterministic.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_aoi_hazard_workflow.py scripts/plan_aoi_to_prepared_pilot_dry_run.py tests/test_aoi_to_prepared_pilot_dry_run.py tests/test_run_aoi_hazard_workflow.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run tests.test_run_aoi_hazard_workflow`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --prepared-pilot-output-root /tmp/tb349_prepare_bundle --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no simulation, no operational claim, no raw geodata commit, no annual-frequency or physical-probability claim, and no scale-up, distributed-execution, risk, exposure, or vulnerability claim.
+- Next task: `TB-350`

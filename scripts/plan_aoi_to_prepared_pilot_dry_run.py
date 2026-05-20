@@ -28,6 +28,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
 from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+from scripts.lib import command_plan_output_profile_validator as OUTPUT_PROFILE_VALIDATOR
 
 SCHEMA_VERSION = "aoi_to_prepared_pilot_dry_run_v1"
 CASE_SKELETON_SCHEMA_VERSION = "aoi_to_prepared_pilot_case_skeleton_v1"
@@ -514,7 +515,7 @@ def main(argv: list[str] | None = None) -> int:
     output = json.dumps(report, indent=2, sort_keys=True, default=str) if args.format == "json" else render_text_report(report)
     print(output)
     compiler_status = report.get("prepared_pilot_compiler", {}).get("classification", report["workflow_status"])
-    return 0 if compiler_status != "blocked_missing_inputs" else 2
+    return 0 if not str(compiler_status).startswith("blocked") else 2
 
 
 def build_report(
@@ -583,6 +584,18 @@ def build_report(
     compiler_missing_inputs = list(prepared_pilot_input_readiness.get("blocked_missing_inputs", []))
     if compiler_missing_inputs:
         workflow_status = "blocked_missing_inputs"
+        if isinstance(prep_summary.get("gis_scope_summary"), dict):
+            prep_summary["gis_scope_summary"]["status"] = workflow_status
+    compiler_status = classify_prepared_pilot_compiler(
+        {
+            "workflow_status": workflow_status,
+            "command_plan_report": command_plan_report,
+            "compiler_missing_inputs": compiler_missing_inputs,
+            "workflow_steps": steps,
+        }
+    )
+    if workflow_status != "blocked_missing_inputs" and compiler_status == "blocked_over_budget":
+        workflow_status = "blocked_over_budget"
         if isinstance(prep_summary.get("gis_scope_summary"), dict):
             prep_summary["gis_scope_summary"]["status"] = workflow_status
     prep_summary["prepared_pilot_input_readiness"] = prepared_pilot_input_readiness
@@ -797,6 +810,13 @@ def build_steps(
         f"validation/private/{candidate_site_id}",
         f"hazard/results/{candidate_site_id}",
     ]
+    command_plan_status = command_plan_step_status(command_plan_report)
+    command_plan_blockers = list(command_plan_report.get("blocked_template_commands", []))
+    if command_plan_status == "blocked_over_budget":
+        output_profile_validation = command_plan_report.get("output_profile_validation", {})
+        command_plan_blockers = [
+            str(output_profile_validation.get("summary") or "command-plan output profile exceeds the scalable budget")
+        ]
 
     steps: list[dict[str, Any]] = [
         {
@@ -871,16 +891,16 @@ def build_steps(
         {
             "step_id": "prepared_pilot_command_plan",
             "label": "Prepared-pilot command-plan helper",
-            "status": command_plan_step_status(command_plan_report),
+            "status": command_plan_status,
             "blocked_reason": command_plan_blocked_reason(command_plan_report),
             "expected_inputs": command_plan_expected_inputs(command_plan_report),
             "generated_output_roots": [],
             "ignored_output_roots": command_plan_report["ignored_output_paths"],
             "blockers": build_step_blockers(
                 "prepared_pilot_command_plan",
-                command_plan_step_status(command_plan_report),
+                command_plan_status,
                 command_plan_report["ignored_output_paths"],
-                command_plan_report.get("blocked_template_commands", []),
+                command_plan_blockers,
             ),
         },
     ]
@@ -1150,12 +1170,17 @@ def expected_inputs_from_scenario_generation(report: dict[str, Any]) -> list[str
 
 
 def command_plan_step_status(report: dict[str, Any]) -> str:
+    if command_plan_over_budget({"command_plan_report": report}):
+        return "blocked_over_budget"
     if report.get("blocked_template_commands"):
         return "deferred_public_context_inputs"
     return report.get("second_site_portability_status", "ready")
 
 
 def command_plan_blocked_reason(report: dict[str, Any]) -> str:
+    if command_plan_over_budget({"command_plan_report": report}):
+        output_profile_validation = report.get("output_profile_validation", {})
+        return str(output_profile_validation.get("summary") or "command-plan output profile exceeds the scalable budget")
     if report.get("blocked_template_commands"):
         return f"blocked_template_commands: {', '.join(report['blocked_template_commands'])}"
     return ""
@@ -1191,6 +1216,8 @@ def dedupe(items: list[str]) -> list[str]:
 def classify_prepared_pilot_compiler(report: dict[str, Any]) -> str:
     if report.get("workflow_status") == "blocked_missing_inputs":
         return "blocked_missing_inputs"
+    if command_plan_over_budget(report):
+        return "blocked_over_budget"
     if report.get("command_plan_report", {}).get("blocked_template_commands"):
         return "ready_for_balfrin_postproc"
     return "ready_for_local_smoke"
@@ -1208,6 +1235,22 @@ def first_compiler_blocker(report: dict[str, Any]) -> dict[str, Any]:
             "missing_inputs": compiler_missing_inputs,
             "command_plan_blocked_commands": [],
             "first_missing_input": compiler_missing_inputs[0],
+        }
+
+    if command_plan_over_budget(report):
+        output_profile_validation = report.get("command_plan_report", {}).get("output_profile_validation", {})
+        blocked_command_ids = list(output_profile_validation.get("blocked_command_ids", []))
+        blocked_reason = str(output_profile_validation.get("summary") or "command-plan output profile exceeds the scalable budget")
+        first_missing_input = blocked_command_ids[0] if blocked_command_ids else blocked_reason
+        return {
+            "schema_version": FIRST_BLOCKER_SCHEMA_VERSION,
+            "status": "blocked_over_budget",
+            "step_id": "prepared_pilot_command_plan",
+            "label": "Prepared-pilot command plan",
+            "blocked_reason": blocked_reason,
+            "missing_inputs": blocked_command_ids or [blocked_reason],
+            "command_plan_blocked_commands": blocked_command_ids,
+            "first_missing_input": first_missing_input,
         }
 
     for step in report.get("workflow_steps", []):
@@ -1236,6 +1279,18 @@ def first_compiler_blocker(report: dict[str, Any]) -> dict[str, Any]:
         "command_plan_blocked_commands": [],
         "first_missing_input": "",
     }
+
+
+def command_plan_over_budget(report: dict[str, Any]) -> bool:
+    command_plan_report = report.get("command_plan_report", {})
+    output_profile_validation = command_plan_report.get("output_profile_validation", {})
+    validation_status = str(output_profile_validation.get("status") or "")
+    if validation_status and validation_status not in {OUTPUT_PROFILE_VALIDATOR.STATUS_READY, OUTPUT_PROFILE_VALIDATOR.STATUS_FIXTURE_SAFE}:
+        return True
+    command_plan_status = str(command_plan_report.get("command_plan_status") or "")
+    if command_plan_status and command_plan_status != "ready":
+        return True
+    return False
 
 
 def flatten_command_field(commands: list[dict[str, Any]], field: str) -> list[str]:
@@ -2125,6 +2180,15 @@ def command_execution_class(command: dict[str, Any]) -> str:
 def blocked_execution_status(command_plan_report: dict[str, Any], workflow_status: str | None = None) -> str:
     if workflow_status == "blocked_missing_inputs":
         return "blocked_missing_inputs"
+    command_plan_status = str(command_plan_report.get("command_plan_status") or "")
+    output_profile_validation_status = str(command_plan_report.get("output_profile_validation", {}).get("status") or "")
+    if command_plan_status and command_plan_status != "ready":
+        return "blocked_over_budget"
+    if output_profile_validation_status and output_profile_validation_status not in {
+        OUTPUT_PROFILE_VALIDATOR.STATUS_READY,
+        OUTPUT_PROFILE_VALIDATOR.STATUS_FIXTURE_SAFE,
+    }:
+        return "blocked_over_budget"
     return "blocked_template_only" if command_plan_report.get("blocked_template_commands") else "ready"
 
 
@@ -2175,7 +2239,16 @@ def build_case_skeleton_output(
         for command in prep_summary["command_plan_hooks"]
         if command["execution_class"] == "template_only"
     ]
-    skeleton_status = "blocked_missing_inputs" if report_inputs["workflow_status"] == "blocked_missing_inputs" else "ready"
+    if report_inputs["workflow_status"] in {"blocked_missing_inputs", "blocked_over_budget"}:
+        skeleton_status = str(report_inputs["workflow_status"])
+    else:
+        skeleton_status = "ready"
+    if report_inputs["workflow_status"] == "blocked_missing_inputs":
+        blocked_reason = "workflow blocked_missing_inputs; required inputs are missing"
+    elif report_inputs["workflow_status"] == "blocked_over_budget":
+        blocked_reason = "workflow blocked_over_budget; command-plan output profile exceeds the scalable budget"
+    else:
+        blocked_reason = "dry-run only; ensemble execution is not authorized"
     case_skeleton = {
         "schema_version": CASE_SKELETON_SCHEMA_VERSION,
         "case_skeleton_status": skeleton_status,
@@ -2187,9 +2260,7 @@ def build_case_skeleton_output(
         "release_polygon": prep_summary["release_polygon"],
         "gis_scope_summary": prep_summary.get("gis_scope_summary", {}),
         "blocked_reason": (
-            "workflow blocked_missing_inputs; required inputs are missing"
-            if report_inputs["workflow_status"] == "blocked_missing_inputs"
-            else "dry-run only; ensemble execution is not authorized"
+            blocked_reason
         ),
         "command_sequence": [
             {
@@ -2251,11 +2322,7 @@ def build_case_skeleton_output(
         "schema_version": BLOCKED_EXECUTION_SCHEMA_VERSION,
         "case_skeleton_status": skeleton_status,
         "blocked_execution_status": blocked_execution,
-        "blocked_reason": (
-            "workflow blocked_missing_inputs; required inputs are missing"
-            if report_inputs["workflow_status"] == "blocked_missing_inputs"
-            else "dry-run only; ensemble execution is not authorized"
-        ),
+        "blocked_reason": blocked_reason,
         "missing_input_paths": dedupe(
             [
                 *(str(item) for item in report_inputs["prep_summary"].get("blocked_missing_inputs", []) if item),

@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-349: Real AOI-To-Prepared-Pilot Compiler
-
-Goal: Compile an audited real AOI package into terrain manifests, context manifests, reviewed candidate-zone subset, scenario table, command plan, and ignored output-root layout.
-
-Capability gap reduced: The workflow still consists of several separate helper calls; a user needs one reproducible compiler path from AOI inputs to a prepared pilot.
-
-Why this outranks alternatives: This is the first true Swiss workflow compiler milestone and is required before repeatable multi-AOI demonstrations.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- One command that assembles the prepared-pilot manifest and command plan from audited real AOI inputs without running simulation.
-- Tests covering ready, missing-terrain, missing-context, and over-budget scenario states.
-
-Definition of done:
-
-- A real AOI can be compiled into a prepared-pilot package or blocked with a precise first blocker and next command.
-
-Boundaries: No simulation, no operational claim, no raw geodata commit.
-
 ### TB-350: Large-AOI GIS/COG Manifest Field Repair
 
 Goal: Fix the large-AOI GIS/COG stress no-go caused by missing pilot GIS package manifest fields in packaged AOI roots.

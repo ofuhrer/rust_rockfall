@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 import scripts.build_hazard_layers as hazard
@@ -451,6 +452,54 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
                 for item in compiler["prepared_pilot_input_readiness"]["blocked_missing_inputs"]
             )
         )
+
+    def test_over_budget_command_plan_blocks_compiler(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_compiler_inputs(repo_root, config_path)
+            release_polygon_path = self._write_release_polygon(repo_root)
+            output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            blocked_command_plan = {
+                "schema_version": "portable_pilot_command_plan_v1",
+                "command_plan_status": "blocked_unscalable_output_profile",
+                "blocked_template_commands": [],
+                "ignored_output_paths": [],
+                "commands": [],
+                "command_ids": [],
+                "command_group_ids": [],
+                "command_group_keys": [],
+                "command_groups": [],
+                "command_descriptions": {},
+                "output_profile_policy": {
+                    "schema_version": "command_plan_output_profile_policy_v1",
+                    "classification": "blocked_unscalable_default",
+                },
+                "output_profile_validation": {
+                    "schema_version": "command_plan_output_profile_validation_v1",
+                    "status": "blocked_unscalable_output_profile",
+                    "summary": "command-plan output profile exceeds the scalable budget",
+                    "blocked_command_ids": [],
+                },
+            }
+
+            with mock.patch.object(planner.COMMAND_PLAN, "build_report", return_value=blocked_command_plan):
+                report = planner.build_report(
+                    config_path,
+                    repo_root=repo_root,
+                    release_polygon_path=release_polygon_path,
+                    skeleton_output_root=output_root,
+                )
+
+        compiler = report["prepared_pilot_compiler"]
+        self.assertEqual(report["workflow_status"], "blocked_over_budget")
+        self.assertEqual(report["case_skeleton_output"]["blocked_execution_status"], "blocked_over_budget")
+        self.assertEqual(compiler["classification"], "blocked_over_budget")
+        self.assertEqual(compiler["first_blocker"]["status"], "blocked_over_budget")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertIn("budget", compiler["first_blocker"]["blocked_reason"])
+        self.assertEqual(compiler["command_plan"]["command_plan_status"], "blocked_unscalable_output_profile")
+        self.assertEqual(compiler["run_manifest"]["command_plan"]["command_plan_status"], "blocked_unscalable_output_profile")
 
     def test_compiler_command_plan_shape_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:

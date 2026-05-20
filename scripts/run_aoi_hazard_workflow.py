@@ -23,12 +23,14 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import yaml
 
 from scripts.hazard_output_writers import sha256_file
 
-
-ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_hazard_workflow_front_door_v1"
 PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION = "aoi_prepared_pilot_local_execution_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
@@ -84,6 +86,10 @@ COMMAND_PLAN = _load_module("aoi_hazard_front_door_command_plan", "generate_pilo
 GIS_COG = _load_module("aoi_hazard_front_door_gis_cog", "audit_gis_cog_package_readiness.py")
 PACKAGE_AOI = _load_module("aoi_hazard_front_door_package_aoi", "package_aoi_hazard_map.py")
 QA_REVIEW = _load_module("aoi_hazard_front_door_qa_review", "generate_aoi_map_qa_review.py")
+PREPARED_PILOT_COMPILER = _load_module(
+    "aoi_hazard_front_door_prepared_pilot_compiler",
+    "plan_aoi_to_prepared_pilot_dry_run.py",
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -134,11 +140,11 @@ def main(argv: list[str] | None = None) -> int:
             validation_case_path=args.validation_case_path,
             overwrite=args.overwrite,
         )
-        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_text_report(report)
+        output = json.dumps(report, indent=2, sort_keys=True, default=str) if args.format == "json" else render_text_report(report)
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
     print(output)
     if args.command == "status":
@@ -191,6 +197,7 @@ def build_report(
         return build_prepare_report(
             site_config=site_config,
             repo_root=repo_root,
+            prepared_pilot_output_root=prepared_pilot_output_root,
         )
     if command == "run-local-smoke":
         return build_local_smoke_report(
@@ -1002,7 +1009,12 @@ def build_status_report(
     )
 
 
-def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any]:
+def build_prepare_report(
+    *,
+    site_config: Path,
+    repo_root: Path,
+    prepared_pilot_output_root: Path | None = None,
+) -> dict[str, Any]:
     with patched_preflight_root(repo_root):
         config = PREFLIGHT.load_site_config(site_config) if site_config.exists() else {}
         candidate_site_id = PREFLIGHT.text_value(config.get("candidate_site_id")) or "unspecified_second_site"
@@ -1020,6 +1032,11 @@ def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any
             candidate_site_id=candidate_site_id,
             release_candidate_report=release_candidate_report,
             paths=paths,
+        )
+        prepared_pilot_report = PREPARED_PILOT_COMPILER.build_report(
+            site_config,
+            repo_root=repo_root,
+            skeleton_output_root=prepared_pilot_output_root,
         )
 
     workflow_steps = [
@@ -1056,6 +1073,7 @@ def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any
         "next_command": next_step.get("command", ""),
         "next_step": next_step.get("step_id", ""),
         "first_blocker": first_blocker,
+        "prepared_pilot_output_root": str(prepared_pilot_output_root) if prepared_pilot_output_root is not None else "",
         "expected_input_path": first_blocker.get("expected_input_path", "") if first_blocker is not None else release_candidate_report.get("expected_input_path", ""),
         "expected_paths": expected_paths,
         "workflow_steps": workflow_steps,
@@ -1087,9 +1105,12 @@ def build_prepare_report(*, site_config: Path, repo_root: Path) -> dict[str, Any
             "terrain_schema_version": terrain_report.get("schema_version", ""),
             "release_candidate_schema_version": release_candidate_report.get("schema_version", ""),
             "scenario_freeze_schema_version": scenario_freeze_report.get("schema_version", ""),
+            "prepared_pilot_compiler_schema_version": prepared_pilot_report.get("schema_version", ""),
         },
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
+        "prepared_pilot_compiler_report": prepared_pilot_report,
+        "prepared_pilot_compiler": prepared_pilot_report.get("prepared_pilot_compiler", {}),
     }
     return report
 

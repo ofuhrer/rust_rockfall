@@ -242,6 +242,36 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(report["workflow_summary"]["blocked_step_count"], 0)
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
+    def test_prepare_command_materializes_prepared_pilot_bundle_when_output_root_is_provided(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            self._stage_ready_prepared_pilot_inputs(repo_root, config_path)
+            self._write_real_context_cache_manifest(repo_root)
+            output_root = (
+                Path(output_tmp)
+                / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
+            )
+
+            report = workflow.build_report(
+                command="prepare",
+                site_config=config_path,
+                repo_root=repo_root,
+                prepared_pilot_output_root=output_root,
+            )
+
+            self.assertEqual(report["status"], "ready_for_planning")
+            self.assertIn("prepared_pilot_compiler", report)
+            self.assertIn("prepared_pilot_compiler_report", report)
+            self.assertEqual(report["prepared_pilot_compiler"]["classification"], "ready_for_balfrin_postproc")
+            self.assertEqual(report["prepared_pilot_compiler_report"]["case_skeleton_output"]["write_status"], "written")
+            self.assertTrue(
+                Path(report["prepared_pilot_compiler_report"]["case_skeleton_output"]["run_manifest_path"]).exists()
+            )
+            self.assertTrue(
+                Path(report["prepared_pilot_compiler_report"]["case_skeleton_output"]["case_skeleton_path"]).exists()
+            )
+
     def test_status_main_renders_concise_text_and_json_for_ready_report(self) -> None:
         ready_report = {
             "schema_version": workflow.SCHEMA_VERSION,
