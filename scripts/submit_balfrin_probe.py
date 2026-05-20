@@ -39,6 +39,7 @@ PACKAGE_EXECUTION_STATUS = "deferred_pending_authorization"
 SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_scheduler_submission_report_v1"
 SUBMISSION_REPORT_BASENAME = "balfrin_submission_report"
 AUTHORIZED_SUBMISSION_REPORT_SCHEMA_VERSION = "balfrin_authorized_submission_report_v1"
+PRESERVED_PROBE_PREFIX = "validation_balfrin_probe"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -448,12 +449,86 @@ def _collect_reduced_output_settings(command_plan: dict[str, Any]) -> dict[str, 
     return settings
 
 
+def _set_command_option(tokens: list[str], option: str, value: str) -> None:
+    for idx, token in enumerate(tokens):
+        if token == option:
+            if idx + 1 < len(tokens):
+                tokens[idx + 1] = value
+                return
+            tokens.append(value)
+            return
+        if token.startswith(f"{option}="):
+            tokens[idx] = f"{option}={value}"
+            return
+    tokens.extend([option, value])
+
+
+def _ensure_command_flag(tokens: list[str], flag: str) -> None:
+    if flag not in tokens:
+        tokens.append(flag)
+
+
+def _build_preserved_command_plan(command_plan: dict[str, Any], *, run_root: Path) -> dict[str, Any]:
+    """Bind the executable hazard stage to the preserved run-root layout.
+
+    The reviewed multi-zone submit package is generated before scheduler
+    submission. The sbatch script must execute that exact package contract
+    instead of regenerating the legacy gate manifest at runtime.
+    """
+
+    preserved = json.loads(json.dumps(command_plan))
+    output_root = (run_root / "output").resolve()
+    commands = preserved.get("commands")
+    if not isinstance(commands, list):
+        return preserved
+
+    for entry in commands:
+        if not isinstance(entry, dict) or entry.get("name") != "build_conditional_hazard_layers":
+            continue
+        raw_command = entry.get("command")
+        if not isinstance(raw_command, list):
+            continue
+        tokens = [str(token) for token in raw_command]
+        _set_command_option(tokens, "--output-dir", output_root.as_posix())
+        _set_command_option(tokens, "--prefix", PRESERVED_PROBE_PREFIX)
+        _set_command_option(tokens, "--conditional-curve-export", "summary-only")
+        _set_command_option(tokens, "--grid-csv-export", "none")
+        _set_command_option(
+            tokens,
+            "--map-package-manifest-json",
+            (output_root / f"{PRESERVED_PROBE_PREFIX}_map_package_manifest.json").as_posix(),
+        )
+        _set_command_option(
+            tokens,
+            "--pilot-gis-package-manifest-json",
+            (output_root / f"{PRESERVED_PROBE_PREFIX}_pilot_gis_package_manifest.json").as_posix(),
+        )
+        _ensure_command_flag(tokens, "--no-plots")
+        entry["command"] = tokens
+
+    preserved["run_root_output_contract"] = {
+        "status": "preserved_run_root_layout",
+        "output_root": str(output_root),
+        "hazard_manifest_path": str(output_root / f"{PRESERVED_PROBE_PREFIX}_manifest.json"),
+        "scaling_summary_path": str(output_root / f"{PRESERVED_PROBE_PREFIX}_scaling_summary.json"),
+        "trajectory_chunks_dir": str(output_root / "trajectory_chunks"),
+        "reducer_chunks_dir": str(output_root / "chunks"),
+        "conditional_curve_export": "summary-only",
+        "grid_csv_export": "none",
+    }
+    return preserved
+
+
 def _build_expected_outputs(run_root: Path) -> list[str]:
     return [
         str(run_root / "command_plan.json"),
         str(run_root / "probe.sbatch"),
         str(run_root / f"{PACKAGE_BASENAME}.json"),
         str(run_root / f"{PACKAGE_BASENAME}.md"),
+        str(run_root / "balfrin_probe_metrics.json"),
+        str(run_root / "output"),
+        str(run_root / "output" / f"{PRESERVED_PROBE_PREFIX}_manifest.json"),
+        str(run_root / "output" / f"{PRESERVED_PROBE_PREFIX}_scaling_summary.json"),
         str(run_root / "logs"),
     ]
 
@@ -1062,7 +1137,9 @@ def _build_python_executor() -> str:
     return """
 import json
 import os
+import resource
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -1077,6 +1154,7 @@ commands = plan.get("commands", [])
 full_start = time.perf_counter()
 hazard_start = None
 hazard_end = None
+hazard_output_root = None
 
 for entry in commands:
     if not isinstance(entry, dict):
@@ -1096,6 +1174,11 @@ for entry in commands:
 
     if name == "build_conditional_hazard_layers":
         hazard_start = time.perf_counter()
+        for idx, token in enumerate(args):
+            if token == "--output-dir" and idx + 1 < len(args):
+                candidate = Path(args[idx + 1])
+                hazard_output_root = candidate if candidate.is_absolute() else (Path(cwd) / candidate).resolve()
+                break
 
     completed = subprocess.run(args, cwd=cwd, env=env, check=False)
     if completed.returncode != 0:
@@ -1114,6 +1197,35 @@ else:
         f"{hazard_end - hazard_start}\\n",
         encoding="utf-8",
     )
+
+usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+rss_factor = 1024 * 1024 if sys.platform == "darwin" else 1024
+memory_peak_mb = float(usage.ru_maxrss) / rss_factor if usage.ru_maxrss else None
+(run_root / "balfrin_probe_metrics.json").write_text(
+    json.dumps({"memory_peak_mb": memory_peak_mb}, indent=2, sort_keys=True) + "\\n",
+    encoding="utf-8",
+)
+
+if hazard_output_root is not None:
+    scaling_summary_path = hazard_output_root / "validation_balfrin_probe_scaling_summary.json"
+    if not scaling_summary_path.exists():
+        phase_timing_path = hazard_output_root / "validation_balfrin_probe_phase_timing.json"
+        performance = {}
+        if phase_timing_path.exists():
+            try:
+                phase = json.loads(phase_timing_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                phase = {}
+            if isinstance(phase, dict):
+                performance = {
+                    "phase_seconds": phase.get("phase_seconds", {}),
+                    "output_profile": phase.get("output_profile", {}),
+                    "output": phase.get("output", {}),
+                }
+        scaling_summary_path.write_text(
+            json.dumps({"performance": performance}, indent=2, sort_keys=True) + "\\n",
+            encoding="utf-8",
+        )
 """
 
 
@@ -1152,6 +1264,7 @@ def _build_sbatch_script(
         f"PROBE_MANIFEST={probe_manifest.as_posix()}",
         'COMMAND_PLAN_PATH="${RUN_ROOT}/command_plan.json"',
         'SUMMARY_PATH="${RUN_ROOT}/balfrin_probe_summary.json"',
+        'PROBE_METRICS_PATH="${RUN_ROOT}/balfrin_probe_metrics.json"',
         'FULL_TIME_PATH="${RUN_ROOT}/balfrin_probe_full_time.txt"',
         'HAZARD_TIME_PATH="${RUN_ROOT}/balfrin_hazard_stage_time.txt"',
         'RUN_CONTEXT_PATH="${RUN_ROOT}/balfrin_probe_context.txt"',
@@ -1168,6 +1281,7 @@ def _build_sbatch_script(
         'export PROBE_MANIFEST',
         'export COMMAND_PLAN_PATH',
         'export SUMMARY_PATH',
+        'export PROBE_METRICS_PATH',
         'export FULL_TIME_PATH',
         'export HAZARD_TIME_PATH',
         'export RUN_CONTEXT_PATH',
@@ -1191,14 +1305,16 @@ def _build_sbatch_script(
         '} > "${RUN_CONTEXT_PATH}"',
         "",
         "cd \"${REPO_ROOT}\"",
-        f'UV_CACHE_DIR="$UV_CACHE_DIR" python3 "${{REPO_ROOT}}/scripts/validate_public_real_site_conditional_pilot_run.py" "${{PROBE_MANIFEST}}" --print-command-plan --format json > "${{COMMAND_PLAN_PATH}}"',
+        'test -s "${COMMAND_PLAN_PATH}"',
         "",
         "python3 - <<'PY'",
         _build_python_executor().strip("\n"),
         "PY",
         "",
         f'python3 "${{REPO_ROOT}}/scripts/collect_balfrin_probe_metrics.py" --run-root "${{RUN_ROOT}}" --probe-manifest "${{PROBE_MANIFEST}}" --output-json "${{SUMMARY_PATH}}"',
+        'cp "${SUMMARY_PATH}" "${PROBE_METRICS_PATH}"',
         'echo "summary_path=${SUMMARY_PATH}"',
+        'echo "probe_metrics_path=${PROBE_METRICS_PATH}"',
         'echo "full_time_path=${FULL_TIME_PATH}"',
         'echo "hazard_time_path=${HAZARD_TIME_PATH}"',
         "",
@@ -1277,6 +1393,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.local_command_plan:
         print(json.dumps(command_plan, indent=2))
         return 0
+
+    command_plan = _build_preserved_command_plan(command_plan, run_root=run_root)
 
     if args.dry_run:
         script = _build_sbatch_script(

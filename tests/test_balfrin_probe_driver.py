@@ -218,6 +218,9 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertIn('export UV_CACHE_DIR="${UV_CACHE_DIR:-$SCRATCH/.cache/uv}"', script)
         self.assertIn('export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRATCH/rust_rockfall/target}"', script)
         self.assertIn('export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"', script)
+        self.assertIn('test -s "${COMMAND_PLAN_PATH}"', script)
+        self.assertIn("balfrin_probe_metrics.json", script)
+        self.assertNotIn("validate_public_real_site_conditional_pilot_run.py", script)
         self.assertNotIn("--account", script)
         self.assertNotIn("s83opr", script)
         self.assertNotIn("gpu", script.lower())
@@ -525,6 +528,98 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 self.assertIn("balfrin_probe_full_time.txt", markdown)
                 self.assertIn("Metrics collection command", markdown)
                 self.assertIn("run_root=", buf.getvalue())
+
+    def test_generate_only_preserves_two_zone_run_root_contract(self) -> None:
+        command_plan = {
+            "run_id": "tschamut_public_conditional_gate_v1",
+            "commands": [
+                {
+                    "name": "build_conditional_hazard_layers",
+                    "cwd": str(ROOT),
+                    "command": [
+                        "uv",
+                        "run",
+                        "python",
+                        "scripts/build_hazard_layers.py",
+                        "--case",
+                        "validation/private/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_case.yaml",
+                        "--output-dir",
+                        "hazard/results/tschamut_public_pilot/gate_v1",
+                        "--map-package-manifest-json",
+                        "hazard/results/tschamut_public_pilot/gate_v1/legacy_map_package_manifest.json",
+                        "--pilot-gis-package-manifest-json",
+                        "hazard/results/tschamut_public_pilot/gate_v1/legacy_pilot_gis_package_manifest.json",
+                    ],
+                }
+            ],
+        }
+        fake_package = {
+            "schema_version": "balfrin_submission_package_v1",
+            "package_mode": "generate-only",
+            "execution_status": "deferred_pending_authorization",
+            "launch_authorized": False,
+            "probe_manifest": "validation/pilot_runs/probe.yaml",
+            "expected_run_root": "/tmp/balfrin/probe-fixed",
+            "run_root": "/tmp/balfrin/probe-fixed",
+            "run_id": "probe_fixed",
+            "repository": {"repo_root": str(ROOT), "branch": "main", "commit": "abc123"},
+            "slurm": {"partition": "postproc", "time": "00:30:00", "nodes": 1, "ntasks": 1, "cpus_per_task": 16},
+            "scratch_paths": {"scratch_root": "/scratch", "uv_cache_dir": "/scratch/.cache/uv", "cargo_target_dir": "/scratch/rust_rockfall/target"},
+            "input_checks": {"status": "ready", "blocking_checks": [], "checks": []},
+            "command_plan_path": "/tmp/balfrin/probe-fixed/command_plan.json",
+            "sbatch_script_path": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "command_script_path": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "command_script": "/tmp/balfrin/probe-fixed/probe.sbatch",
+            "generated_output_roots": ["/tmp/balfrin/probe-fixed"],
+            "ignored_output_roots": [],
+            "recommended_next_probe": {"frontier_status": "measured_existing_artifacts", "recommendation_class": "defer", "recommendation_reason": "test", "minimum_useful_ensemble_recommendation": {}},
+            "reduced_output_settings": {},
+            "metrics_collection_command": "PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /tmp/balfrin/probe-fixed",
+            "stop_resume_notes": [],
+            "ignored_artifacts": [],
+            "operator_sequence": {},
+            "expected_outputs": [],
+            "collection_instructions": [],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            manifest = Path(tmpdir) / "manifest.yaml"
+            self._write_manifest(manifest)
+            run_root = Path(tmpdir) / "run-root"
+
+            with patch.object(submit_driver, "_read_command_plan", return_value=(command_plan, "probe_fixed")), patch.object(
+                submit_driver,
+                "_build_submission_package_report",
+                return_value=fake_package,
+            ), patch.object(submit_driver.subprocess, "run") as run_mock:
+                submit_driver.main(
+                    [
+                        str(manifest),
+                        "--generate-only",
+                        "--run-root",
+                        str(run_root),
+                        "--run-id",
+                        "probe_fixed",
+                        "--partition",
+                        "postproc",
+                    ]
+                )
+
+            run_mock.assert_not_called()
+            generated_plan = json.loads((run_root / "command_plan.json").read_text(encoding="utf-8"))
+            hazard_command = generated_plan["commands"][0]["command"]
+            output_root = (run_root / "output").resolve().as_posix()
+            self.assertEqual(generated_plan["run_root_output_contract"]["output_root"], output_root)
+            self.assertEqual(hazard_command[hazard_command.index("--output-dir") + 1], output_root)
+            self.assertEqual(hazard_command[hazard_command.index("--prefix") + 1], "validation_balfrin_probe")
+            self.assertEqual(hazard_command[hazard_command.index("--conditional-curve-export") + 1], "summary-only")
+            self.assertEqual(hazard_command[hazard_command.index("--grid-csv-export") + 1], "none")
+            self.assertEqual(
+                hazard_command[hazard_command.index("--map-package-manifest-json") + 1],
+                f"{output_root}/validation_balfrin_probe_map_package_manifest.json",
+            )
+            sbatch_text = (run_root / "probe.sbatch").read_text(encoding="utf-8")
+            self.assertIn('test -s "${COMMAND_PLAN_PATH}"', sbatch_text)
+            self.assertNotIn("validate_public_real_site_conditional_pilot_run.py", sbatch_text)
 
     def test_submit_reports_structured_failure_when_sbatch_is_missing(self) -> None:
         fake_plan = ({"run_id": "probe_fixed", "commands": []}, "probe_fixed")
