@@ -225,17 +225,17 @@ as accepted physical validation. This is a usability and evidence-separation
 improvement, not a physical-credibility or operational upgrade.
 
 Post-TB-387, the active execution queue has been refilled around the current
-highest-leverage path: clear the management-AOI `source_zone_footprint_overlap`
-blocker, rerun real-AOI release-candidate and scenario generation, compile a
-prepared-pilot package, repair the multi-zone reduced-output gate, and only
-then attempt the smallest measured multi-zone Balfrin `postproc` probe. The
-same queue also now includes complexity-reduction work: compact multi-zone
-manifest-pressure measurement, prepared-pilot state consolidation, extraction
-of a small hazard-layer packaging primitive from the giant builder, clean
-checkout dependency cleanup, and user-facing AOI front-door/documentation
-consolidation. This backlog intentionally favors executable capability,
-measured pressure reduction, and script-surface simplification over additional
-blocked/deferred reports.
+highest-leverage path: TB-389 measured a nonempty restaged management-AOI
+release-candidate sweep, and the next queue items are to turn that bundle into
+scenario generation, compile a prepared-pilot package, repair the multi-zone
+reduced-output gate, and only then attempt the smallest measured multi-zone
+Balfrin `postproc` probe. The same queue also now includes complexity-reduction
+work: compact multi-zone manifest-pressure measurement, prepared-pilot state
+consolidation, extraction of a small hazard-layer packaging primitive from the
+giant builder, clean checkout dependency cleanup, and user-facing AOI
+front-door/documentation consolidation. This backlog intentionally favors
+executable capability, measured pressure reduction, and script-surface
+simplification over additional blocked/deferred reports.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -611,8 +611,8 @@ objective are:
     scenario pressure, prepared-pilot, Balfrin handoff, and no-submit execution
     state helpers, and a GIS/COG stress check showing the largest committed real
     output is demonstration-readable. The active backlog should now focus on
-    unblocking candidate generation for a management AOI with screenable terrain
-    before resuming downstream Balfrin execution tasks.
+    turning the restaged management-AOI candidate bundle into deterministic
+    scenario generation before resuming downstream Balfrin execution tasks.
 
 ## Backlog Quality Assessment
 

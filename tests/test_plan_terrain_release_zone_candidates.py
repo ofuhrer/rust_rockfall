@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import re
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,6 +15,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
+RESTAGE_SCRIPT_PATH = ROOT / "scripts" / "stage_management_aoi_restaged_terrain.py"
 
 
 def load_module(path: Path, name: str):
@@ -27,6 +29,7 @@ def load_module(path: Path, name: str):
 
 planner = load_module(SCRIPT_PATH, "plan_terrain_release_zone_candidates")
 staging = load_module(STAGING_SCRIPT_PATH, "prepare_chant_sura_fluelapass_minimal_preflight_inputs_for_terrain_candidate_test")
+restager = load_module(RESTAGE_SCRIPT_PATH, "stage_management_aoi_restaged_terrain_for_candidate_tests")
 
 
 def square_feature(
@@ -389,6 +392,76 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertIn("candidate_mask", [entry["overlay_id"] for entry in report["candidate_review_package"]["map_overlays"]])
             self.assertEqual(report["candidate_release_zone_products"]["candidate_release_zone_ids"], [])
             self.assertEqual(report["candidate_review_package"]["candidate_release_zone_ids"], [])
+
+    def test_restaged_management_aoi_inputs_emit_nonempty_candidate_bundle(self) -> None:
+        if shutil.which("gdal_translate") is None or shutil.which("gdalinfo") is None:
+            self.skipTest("gdal_translate and gdalinfo are required for the real-data restage test")
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            restaged_root = workdir / "restaged_management_aoi"
+            restage_report = restager.stage_management_aoi_restaged_inputs(
+                repo_root=ROOT,
+                output_root=restaged_root,
+                raw_terrain_path=ROOT
+                / "data"
+                / "raw"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "swissalti3d_2019_2793-1180_2_2056_5728.tif",
+                source_zone_metadata_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "source_zone_metadata.yaml",
+                aoi_tile_catalog_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "aoi_tile_catalog.yaml",
+                terrain_metadata_template_path=ROOT
+                / "data"
+                / "processed"
+                / "swisstopo"
+                / "chant_sura_fluelapass_portability_example_v1"
+                / "input"
+                / "terrain_metadata.yaml",
+            )
+            report = planner.build_report(
+                repo_root=ROOT,
+                terrain_crop_path=Path(restage_report["terrain_crop_path"]),
+                terrain_metadata_path=Path(restage_report["terrain_metadata_path"]),
+                source_zone_metadata_path=Path(restage_report["source_zone_metadata_path"]),
+                output_root=workdir / "candidate_products",
+                output_mode="both",
+            )
+
+            self.assertEqual(restage_report["restage_status"], "ready")
+            self.assertEqual(restage_report["diagnostic"]["diagnostic_status"], "candidates_present")
+            self.assertEqual(restage_report["first_blocker"]["blocker_id"], "none")
+            self.assertEqual(report["candidate_metrics_status"], "ready")
+            self.assertEqual(report["candidate_release_zone_set_status"], "emitted")
+            self.assertEqual(report["candidate_summary"]["candidate_cell_count"], 88836)
+            self.assertEqual(report["candidate_summary"]["candidate_area_m2"], 355344.0)
+            self.assertEqual(report["candidate_release_zone_products"]["component_count"], 575)
+            self.assertEqual(report["candidate_release_zone_products"]["polygon_feature_count"], 575)
+            self.assertTrue(report["candidate_release_zone_products"]["candidate_excludes_frozen_footprint"])
+            self.assertEqual(report["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 575)
+            self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_ready")
+            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertGreater(report["candidate_sweep_measurements"]["runtime_seconds"], 0.0)
+            self.assertGreater(report["candidate_sweep_measurements"]["output_total_bytes"], 0)
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["manifest"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["polygon"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["csv"]).exists())
 
     def test_review_apply_edits_candidates_and_validates_provenance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

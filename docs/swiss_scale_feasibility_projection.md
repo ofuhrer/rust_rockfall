@@ -34,6 +34,11 @@ branches into measured capability:
   - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
     restartability, GIS scope, uncertainty, and claim boundaries in the measured
     section while separating projection-only and failed-closed sections.
+  - TB-389 measured a nonempty restaged management-AOI candidate bundle with
+    `scripts/stage_management_aoi_restaged_terrain.py` followed by
+    `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
+    candidate-generation only and does not upgrade Swiss-wide scale or
+    operational claim boundaries.
 - Extrapolated assumptions:
   - Runtime, storage, file count, and job-count estimates scale from the current
     measured coefficient set.
@@ -68,9 +73,11 @@ branches into measured capability:
   - `scale_up_authorized=false` and `distributed_execution_authorized=false`
     remain hard boundaries.
 - Unknowns:
-  - The current management-AOI branch remains blocked by
-    `source_zone_footprint_overlap`, so the next candidate-screening or
-    prepared-pilot decision is still upstream of any new Swiss-scale step.
+  - The committed tiny management-AOI crop remains blocked by
+    `source_zone_footprint_overlap`, but TB-389 showed that the restaged
+    management-AOI terrain can produce a nonempty deterministic candidate
+    bundle. Candidate generation still remains separate from scenario
+    generation and prepared-pilot packaging.
   - There is no measured multi-AOI Balfrin hazard execution in this repository
     checkout.
   - The target-area validation and hazard-output ratios remain unavailable in
@@ -104,6 +111,10 @@ Measured:
   the current management-AOI failed-closed branch blocked by
   `source_zone_footprint_overlap`; neither upgrades hazard execution
   capability.
+- TB-389 adds a measured real-AOI candidate bundle on the restaged management
+  terrain, which is useful for downstream scenario pressure work but remains a
+  heuristic candidate-generation result rather than validated release-zone
+  evidence.
 - The largest current real output in this checkout (`target_gate_v1`) packages
   to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
   and matches layer inventory parity; that is demonstration evidence only and

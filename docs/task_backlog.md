@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-389: Run Real-AOI Release-Candidate Sweep After Restaging
-
-Goal: Run deterministic release-zone candidate generation on the restaged management AOI and measure candidate count, area, runtime, output size, and GIS artifact shape.
-
-Capability gap reduced: Release-zone automation is still the largest Swiss-wide workflow gap, and the latest real-AOI branch has not produced candidate zones.
-
-Why this outranks alternatives: A measured nonempty candidate sweep is the first executable signal that arbitrary-AOI automation can move beyond wrappers and blocked reports.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/diagnose_release_candidate_zero_result.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Deterministic candidate mask/polygon outputs in ignored scratch space.
-- Candidate statistics: cell count, area, slope-band counts, polygon count, runtime, bytes, file count, and first-blocker status.
-- Updated docs or helper text only where needed to point to the measured candidate-sweep command.
-
-Definition of done:
-
-- The management AOI has either a nonempty, reproducible candidate bundle suitable for scenario generation, or a measured terrain-quality blocker that is not `source_zone_footprint_overlap`.
-
-Boundaries: No threshold tuning to force candidates, no operational release-zone claim, no physics change, no scenario generation beyond candidate metadata.
-
 ### TB-390: Generate Scenario Table From Real-AOI Candidates
 
 Goal: Generate a deterministic scenario table from the real-AOI candidate bundle and measure scenario cardinality and manifest pressure.
