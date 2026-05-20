@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-356: Multi-Zone Reducer Merge Profile From Measured Runs
-
-Goal: Profile reducer merge ordering, manifest fanout, sidecar counts, and replay-critical outputs using the measured multi-zone hazard run roots.
-
-Capability gap reduced: Reducer pressure is currently partly scratch-local; measured run roots are needed to validate or revise the scaling assumptions.
-
-Why this outranks alternatives: Reducer/manifest pressure is a primary blocker in Swiss-scale projection and must be measured before larger AOI claims.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- Measured reducer/manifest profile from two-zone and, if available, four-zone run roots.
-- Updated thresholds or explicit deferral where measured roots lack required artifacts.
-
-Definition of done:
-
-- The reducer-pressure report distinguishes measured run-root evidence from scratch-local projections and updates the first bottleneck if needed.
-
-Boundaries: Read-only analysis; no new Balfrin job, no distributed execution, no output semantics change.
-
 ### TB-357: Measured Hazard Accumulation Throughput Profile
 
 Goal: Profile hazard accumulation throughput on the latest measured multi-zone hazard outputs and identify the dominant runtime phase.

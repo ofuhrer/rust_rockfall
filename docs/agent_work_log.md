@@ -3848,3 +3848,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no `sbatch`, no live four-zone hazard job, no job id, no measured four-zone Balfrin hazard evidence, no non-`postproc` partition, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-356`
+
+### TB-356: Multi-Zone Reducer Merge Profile From Measured Runs
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: profile reducer merge ordering, manifest fanout, sidecar counts, and replay-critical outputs from measured multi-zone Balfrin run roots without submitting jobs or mutating run roots.
+- Files changed: `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran the Balfrin access preflight and fast-forwarded the remote checkout on `main` from `011f3737ef03e70566de0c68fa48eccd455c34c7` to `955be7b089c32f3991642799c418785ff24e9f60` before read-only collection.
+  - Audited the intended two-zone run-root path and recorded the precise deferral: the path is absent, so replay-critical families and replay hashes are missing and no TB-352/TB-355 fail-closed evidence is promoted as measured two-zone evidence.
+  - Audited the measured TB-312 four-zone Balfrin `postproc` run root and recorded deterministic `sorted_chunk_id` reducer merge ordering, `2` reducer chunks, `25` output files, `12220` manifest bytes, `10` sidecars, `2` reducer-manifest files, retained replay-critical families, and accepted four-zone review-only output budget status.
+  - Left thresholds unchanged because the measured four-zone `postproc` root is within the existing four-zone review-only budget; the first measured budget bottleneck is `none`, while scratch-local reducer/ladder pressure remains separate.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-356 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `git pull --ff-only origin main`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/audit_balfrin_run_root_output_budget.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z --budget-profile-id next_larger_four_zone_review_only_probe --format json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/audit_balfrin_run_root_output_budget.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --budget-profile-id smallest_live_two_zone_probe --format json'` (expected exit 2 with `blocked_missing_run_root`)
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --probe-root /scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z --format json'`
+- Result/status: implemented_measured
+- Boundaries: read-only Balfrin analysis only; no `sbatch`, no new job, no remote run-root mutation, no measured two-zone hazard evidence, no four-zone hazard evidence upgrade, no scale-up or distributed-execution claim, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-357`

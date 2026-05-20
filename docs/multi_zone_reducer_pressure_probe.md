@@ -349,3 +349,70 @@ measured hazard branch exists. The local scratch ladder still first blocks at
 8 zones on `accumulation_seconds`, but that local breakpoint is separate from
 the blocked Balfrin hazard branch and should not be read as live hazard
 execution evidence.
+
+## TB-356 Measured Run-Root Reducer/Merge Profile
+
+TB-356 reran the Balfrin access preflight and fast-forwarded the Balfrin clone
+at `/users/olifu/work/rust_rockfall` from
+`011f3737ef03e70566de0c68fa48eccd455c34c7` to
+`955be7b089c32f3991642799c418785ff24e9f60` before read-only collection. No
+jobs were submitted, no `sbatch` command was run, and no remote run root was
+mutated.
+
+Two-zone measured hazard evidence remains deferred. The intended smallest
+multi-zone run root
+`/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`
+is absent on Balfrin. The read-only output-budget audit reports
+`blocked_missing_run_root` with `0` output files, `0` manifest bytes,
+`0` sidecars, `0` reducer chunks, missing replay-critical families
+`trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state`, and missing replay hashes
+`probe_manifest_sha256`, `command_plan_sha256`, and
+`output_manifest_sha256`. This preserves the TB-352/TB-355 fail-closed boundary
+and does not promote either branch as measured two-zone hazard evidence.
+
+The available measured multi-zone reducer evidence is still the TB-312
+four-zone Balfrin `postproc` run root:
+`/scratch/mch/olifu/rust_rockfall/probes/tb312_four_zone_postproc_probe_v1/tb312_20260519T224500Z`.
+The reducer-pressure summary over that run root reports `4` release zones,
+`4` scenarios, `4` trajectory chunks, `2` reducer workers, and `2` reducer
+chunks. Reducer merge ordering is `sorted_chunk_id`,
+`merge_order_independent=true`, and `merge_order_deterministic=true`; the
+measured reducer wall time in the pressure manifest is `1.63` seconds.
+
+The run-root output-budget audit with
+`next_larger_four_zone_review_only_probe` reports `compliant` and
+`output budget accepted`: `25` output files, `15107` output bytes,
+`12220` manifest bytes across `10` manifest files, `10` sidecars,
+`6590` sidecar bytes, `2` reducer manifest files, `128` reducer-manifest bytes,
+and `2` reducer chunks. The measured output-family counts are:
+
+| Family | Files | Bytes |
+| --- | ---: | ---: |
+| `trajectory_csv` | `4` | `1548` |
+| `deposition_csv` | `4` | `416` |
+| `impact_events_csv` | `4` | `552` |
+| `trajectory_chunk_manifest` | `4` | `268` |
+| `reducer_chunk_manifest` | `2` | `128` |
+| `trajectory_merge_state` | `1` | `108` |
+| `reducer_merge_state` | `1` | `105` |
+| `map_package_manifest` | `1` | `86` |
+| `pilot_gis_package_manifest` | `1` | `92` |
+
+Replay-critical outputs are retained for the measured four-zone postproc root:
+`trajectory_csv`, `deposition_csv`, `impact_events_csv`,
+`trajectory_merge_state`, and `reducer_merge_state`. The replay hashes are also
+present: `probe_manifest_sha256`
+`6eccf5362b7a6752c2ffd4711b386f9e0fbf975f841cafff31f7bf1eb46f68f3`,
+`command_plan_sha256`
+`5ea6cb093cc6f47e2a7c5284b9f9f4b2df8705d5663f3e0a545a9f71b03346ac`, and
+`output_manifest_sha256`
+`ba02b8dd51c585d8109eb4c29cfa7c6fc7d460ff247807ee8fe10bd7522e5854`.
+
+No threshold change is made from TB-356. The measured four-zone `postproc`
+run-root profile is within the existing four-zone review-only output-budget
+thresholds, so its first measured budget bottleneck is `none`. The scratch-local
+ladder and reducer-pressure helper remain separate: their pressure labels still
+flag manifest/reducer pressure for planning, and the first local blocked rung
+remains `8` zones. A measured two-zone hazard run root is still required before
+four-zone hazard submission evidence or larger AOI claims can be upgraded.
