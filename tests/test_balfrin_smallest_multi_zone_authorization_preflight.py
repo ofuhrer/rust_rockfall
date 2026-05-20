@@ -434,6 +434,57 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
         self.assertIn("Replay-critical contract families", text_report)
         self.assertIn("Submit contract status", text_report)
 
+    def test_generated_handoff_uses_executable_smallest_submit_contract(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
+            MODULE.handoff.build_report(
+                artifact_dir=artifact_dir,
+                pressure_probe_root=artifact_dir / "pressure_probe",
+            )
+            package = artifact_dir / "balfrin_multi_release_zone_demo_package_v1.json"
+            auth = artifact_dir / "balfrin_multi_zone_live_authorization_record_v1.yaml"
+
+            report = MODULE.build_report(
+                reviewed_handoff_package=package,
+                authorization_record=auth,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="fixture",
+            )
+
+        submit_contract = report["submit_contract_requirement"]
+        run_shape = report["smallest_multi_zone_run_shape"]
+        command = submit_contract["command"]
+
+        self.assertEqual(report["preflight_status"], "ready_for_authorization_review")
+        self.assertEqual(report["submit_contract_status"], "ready")
+        self.assertEqual(report["reducer_budget_status"], "ready")
+        self.assertEqual(report["output_profile_status"], "ready")
+        self.assertTrue(
+            submit_contract["probe_manifest_path"].endswith(
+                "validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml"
+            )
+        )
+        self.assertNotIn("validation/pilot_runs/tschamut_public_balfrin_target_area_demo_v1.yaml", command)
+        self.assertNotIn("--run-root /scratch/rust_rockfall", command)
+        self.assertEqual(
+            submit_contract["run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+        )
+        self.assertEqual(submit_contract["run_root_writability_status"], "reviewed_balfrin_scratch_root")
+        self.assertEqual(run_shape["release_zone_count"], 2)
+        self.assertEqual(run_shape["scenario_count"], 2)
+        self.assertEqual(run_shape["output_profile"]["conditional_curve_export"], "summary-only")
+        self.assertEqual(run_shape["output_profile"]["grid_csv_export"], "none")
+        self.assertEqual(run_shape["output_profile"]["classification"], "scalable_default")
+        self.assertEqual(
+            report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
+            "smallest_live_two_zone_probe",
+        )
+        self.assertNotEqual(
+            report["reducer_budget_requirement"]["output_budget_acceptance_threshold_profile_id"],
+            "next_larger_four_zone_review_only_probe",
+        )
+
     def test_missing_authorization_record_blocks_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             tmp = Path(tmpdir)

@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-360: Repair Smallest Multi-Zone Submit Contract
-
-Goal: Regenerate the smallest live multi-zone submit package so it targets the executable pilot-run contract, the correct writable Balfrin run root, and the intended live-shape profile.
-
-Capability gap reduced: The next measured scale step is blocked by submit-package mismatches rather than by simulator evidence.
-
-Why this outranks alternatives: A measured two-zone hazard run cannot happen until the failed-closed TB-309/TB-321/TB-352 contract drift is removed.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- Regenerated two-zone submit package or generator fix that uses the executable contract, writable run root, reduced-output mode, and current authorization/audit shape.
-- Focused regression that fails if the handoff points at a wrapper manifest, review-only profile, or unwritable `/scratch/rust_rockfall` path.
-
-Definition of done:
-
-- The local submit-package preflight advances past manifest/profile/run-root mismatch and either becomes ready for gated live submission or names only a real measured resource blocker.
-
-Boundaries: No live submission, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim.
-
 ### TB-361: Verify Two-Zone Balfrin Pre-Submit Gate On Remote Checkout
 
 Goal: Run the repaired two-zone package through Balfrin access, checkout hygiene, authorization, output-budget, and preservation preflights without submitting a job.

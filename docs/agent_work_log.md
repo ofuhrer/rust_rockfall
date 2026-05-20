@@ -3927,3 +3927,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: synthesis only; no new run, no Swiss-scale authorization, no operational claim, no annual/physical/risk semantics, and no promotion of failed-closed or postproc-only evidence to measured hazard execution.
 - Next task: backlog refill needed
+
+### TB-360: Repair Smallest Multi-Zone Submit Contract
+
+- Date: 2026-05-20
+- Commit: local
+- Objective: regenerate and locally preflight the smallest two-zone multi-zone submit package so the submit contract targets the executable pilot-run manifest, the reviewed Balfrin account scratch root, and the smallest live two-zone output profile.
+- Files changed: `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Regenerated the local handoff package under `/tmp/tb360_handoff` and verified the canonical reviewed package advances to `ready_for_authorization_review` when supplied with the read-only Balfrin access preflight.
+  - Confirmed the submit contract uses `validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml`, run root `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`, reduced-output settings, and `smallest_live_two_zone_probe`.
+  - Added a regression that runs the real generator output through the smallest authorization preflight and fails if it falls back to the target-area wrapper manifest, the four-zone review-only profile, or `/scratch/rust_rockfall`.
+  - Removed TB-360 from the active backlog after the local submit-package preflight passed the manifest/profile/run-root gates.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb360_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/tb360_handoff --format json --json-output /tmp/tb360_handoff/package.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/tb360_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/tb360_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb360_access_preflight.json --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no `sbatch`, no live submission, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-361`
