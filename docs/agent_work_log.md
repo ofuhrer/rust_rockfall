@@ -4019,3 +4019,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: pre-submit fail-closed report only; no `sbatch`, no live job id, no measured two-zone Balfrin hazard run, no generated artifact commit, no non-`postproc` partition, no distributed execution, no scale-up claim, no operational claim, and no annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-363` must classify TB-362 as failed-closed/blocked rather than measured unless a later task resolves the output-profile blocker and obtains a real two-zone run.
+
+### TB-363: Integrate Two-Zone Balfrin Hazard Evidence
+
+- Date: 2026-05-20
+- Commit: `c8ff2d5`
+- Objective: classify and thread the TB-362 two-zone hazard outcome through the canonical scale matrix, management package, Swiss-scale projection, and maturity snapshot.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, focused Balfrin/projection tests, `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Made TB-362 the current canonical two-zone failed-closed evidence branch with `output_profile_status=blocked_output_profile`, no SLURM job id, no run root, and no measured runtime, memory, validation, hazard, or GIS output metrics.
+  - Updated the scale matrix, management package readiness matrix, Swiss-wide envelope frontier, closure package expectations, and four-zone handoff gate so they defer larger work until measured two-zone hazard evidence exists.
+  - Updated projection and maturity docs to state that TB-362 is guardrail evidence only, then removed TB-363 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_management_demo_package tests.test_swiss_wide_execution_envelope tests.test_balfrin_demonstration_closure_package tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb363_scale_matrix.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/tb363_management_package --format json > /tmp/tb363_management_package.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json > /tmp/tb363_swiss_envelope.json || test $? -eq 2`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: synthesis only; no `sbatch`, no live job id, no measured two-zone promotion, no generated artifact commit, no scale-up or distributed-execution authorization, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-364`
