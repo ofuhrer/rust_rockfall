@@ -3431,3 +3431,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: evidence integration only; no new Balfrin job, no claim upgrade, no annual/physical/risk semantics, and no conversion of blocked hazard execution into measured evidence.
 - Next task: `TB-334`
+
+### TB-334: Hazard Accumulation Profiling At Multi-Zone Scale
+
+- Date: 2026-05-20
+- Commit: `a018e32`
+- Objective: profile hazard accumulation, raster writing, reducer merge, and manifest generation using the largest available measured/local multi-zone artifacts.
+- Files changed: `docs/hazard_throughput_bottleneck_report.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a TB-334 section to the hazard-throughput bottleneck report that records the 2/4/8/12-zone scratch-local phase profile, the dominant `accumulation_seconds` bottleneck, and a 10% acceptance floor derived from the blocked 8-zone rung.
+  - Called out the 12-zone reducer-pressure probe as a separate manifest/output-pressure signal and kept the Balfrin four-zone postproc evidence separated from hazard-execution evidence.
+  - Removed TB-334 from the active backlog so the next performance task has an explicit measured target, or is clearly deferred.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_scaling_ladder -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: profiling and documentation only; no physics changes, no new Balfrin job, no operational claim, and no scale-up claim.
+- Next task: `TB-335`
