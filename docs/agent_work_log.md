@@ -4544,3 +4544,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no threshold tuning, no candidate or scenario generation, no hazard run, no Balfrin submission, no operational claim, and no scale-up claim.
 - Next task: `TB-385`
+
+### TB-385: Rebuild Management AOI Scenario And Prepared-Pilot Chain
+
+- Date: 2026-05-20
+- Commit: `82e3f70`
+- Objective: rebuild the management-AOI scenario-pressure and prepared-pilot chain so the downstream report surface preserves TB-384's explicit `source_zone_footprint_overlap` deferral instead of regressing to a stale zero-candidate label.
+- Files changed: `scripts/summarize_management_aoi_scenario_pressure.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `scripts/build_management_aoi_balfrin_handoff.py`, `scripts/execute_management_aoi_balfrin_run.py`, `tests/test_management_aoi_scenario_pressure.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`, `tests/test_management_aoi_balfrin_handoff.py`, `tests/test_execute_management_aoi_balfrin_run.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the management-AOI scenario-pressure helper to surface the committed `source_zone_footprint_overlap` deferral from the real diagnostic inputs, while also keeping a ready branch for non-empty candidate bundles.
+  - Threaded the named deferral through the prepared-pilot compiler, front-door workflow, Balfrin handoff, and execution-state helpers so the first downstream blocker now reports the current upstream requirement instead of the stale empty-candidate wording.
+  - Added regression coverage for the real deferral branch, a non-empty candidate-package branch, and the downstream handoff / execution blockers that consume the updated prepared-pilot state.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure tests.test_aoi_to_prepared_pilot_dry_run tests.test_run_aoi_hazard_workflow tests.test_management_aoi_balfrin_handoff tests.test_execute_management_aoi_balfrin_run tests.test_balfrin_scale_readiness_matrix`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_blocked_report
+- Boundaries: no invented candidates, no source-frequency semantics, no annual probability, no hazard execution, no Balfrin submission, and no operational or scale-up claim.
+- Next task: `TB-386`
