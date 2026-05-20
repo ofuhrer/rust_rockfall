@@ -230,6 +230,37 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(review_package["promotion_status"], "blocked_pending_later_task")
         self.assertEqual(first["review_readiness_classification"], "ready_for_review")
         self.assertIn("four-zone review package is ready for review", first["review_readiness_reason"])
+        hazard_package = first["four_zone_hazard_execution_package"]
+        self.assertEqual(hazard_package["status"], "ready_for_review")
+        self.assertEqual(hazard_package["readiness_classification"], "ready_for_review")
+        self.assertIn("compact manifests", hazard_package["readiness_reason"])
+        self.assertEqual(hazard_package["command_plan"]["command_plan_status"], "ready")
+        self.assertEqual(
+            hazard_package["command_plan"]["output_profile_policy"]["classification"],
+            "blocked_unscalable_default",
+        )
+        self.assertGreater(hazard_package["command_plan"]["command_count"], 0)
+        self.assertIn("multi_zone_reducer_pressure_summary", hazard_package["command_plan"]["command_ids"])
+        self.assertEqual(
+            hazard_package["authorization_audit_record"]["authorization_review_command"],
+            first["authorization_review_command"],
+        )
+        self.assertEqual(
+            hazard_package["authorization_audit_record"]["authorization_submit_command"],
+            first["authorization_submit_command"],
+        )
+        self.assertEqual(hazard_package["reduced_output_settings"]["conditional_curve_export"], "summary-only")
+        self.assertEqual(hazard_package["reduced_output_settings"]["grid_csv_export"], "none")
+        self.assertTrue(hazard_package["preservation_instructions"]["checklist"])
+        self.assertIn(first["package_json_path"], hazard_package["preservation_instructions"]["do_not_commit_paths"])
+        self.assertEqual(
+            hazard_package["expected_output_budget"]["threshold_profile_id"],
+            "next_larger_four_zone_review_only_probe",
+        )
+        self.assertEqual(hazard_package["expected_output_budget"]["status"], "accepted")
+        self.assertEqual(hazard_package["expected_output_budget"]["validation"]["status"], "accepted")
+        self.assertEqual(hazard_package["expected_output_budget"]["projection"]["status"], "acceptable")
+        self.assertEqual(hazard_package["expected_output_budget"]["manifest_pruning_status"], "budget_passes_no_reduction_needed")
         self.assertEqual(first["uncertainty_post_processing"]["status"], "planned")
         self.assertEqual(first["uncertainty_post_processing"]["post_run_interpretation_gate_status"], "not_run")
         smallest_run = first["follow_up_recommendation"]["minimum_measured_multi_zone_run"]

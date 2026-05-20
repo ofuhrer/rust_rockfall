@@ -815,6 +815,7 @@ def build_report(
         ],
         "blocked_reason": "live execution requires new human authorization; this helper only materializes a dry-run package",
     }
+    report["four_zone_hazard_execution_package"] = build_four_zone_hazard_execution_package(report)
 
     write_package_files(report)
     return report
@@ -2918,6 +2919,97 @@ def build_four_zone_review_package(
     }
 
 
+def build_four_zone_hazard_execution_package(report: dict[str, Any]) -> dict[str, Any]:
+    review_package = dict(report.get("review_only_four_zone_package") or {})
+    follow_up = dict(report.get("follow_up_recommendation") or {})
+    minimum_run = dict(follow_up.get("minimum_measured_multi_zone_run") or {})
+    command_plan = dict(report.get("command_plan") or {})
+    command_plan_summary = {
+        "schema_version": command_plan.get("schema_version"),
+        "command_plan_status": command_plan.get("command_plan_status"),
+        "command_plan_source": command_plan.get("command_plan_source"),
+        "command_plan_source_command": command_plan.get("command_plan_source_command"),
+        "command_count": len(command_plan.get("commands") or []),
+        "command_ids": list(command_plan.get("command_ids") or []),
+        "blocked_template_commands": list(command_plan.get("blocked_template_commands") or []),
+        "output_profile_policy": dict(command_plan.get("output_profile_policy") or {}),
+    }
+    output_budget_validation = dict(review_package.get("output_budget_acceptance_validation") or {})
+    output_budget_thresholds = dict(review_package.get("output_budget_acceptance_thresholds") or {})
+    output_budget_projection = dict(review_package.get("projection") or {})
+    preservation_checklist = list(minimum_run.get("preservation_gate_checklist") or review_package.get("preservation_gate_checklist") or [])
+    expected_output_budget = {
+        "status": review_package.get("output_budget_acceptance_status"),
+        "threshold_profile_id": review_package.get("output_budget_acceptance_threshold_profile_id"),
+        "summary": output_budget_validation.get("summary"),
+        "projection_status": output_budget_projection.get("status"),
+        "projection_mode": output_budget_projection.get("projection_mode"),
+        "budget_recheck_status": review_package.get("budget_recheck_status"),
+        "budget_recheck_reason": review_package.get("budget_recheck_reason"),
+        "expected_file_count": review_package.get("expected_file_count"),
+        "expected_manifest_pressure_bytes": review_package.get("expected_manifest_pressure_bytes"),
+        "thresholds": output_budget_thresholds,
+        "validation": output_budget_validation,
+        "projection": output_budget_projection,
+        "manifest_pruning_status": review_package.get("manifest_pruning_status"),
+        "manifest_pruning_summary": review_package.get("manifest_pruning_summary"),
+        "manifest_pruning": dict(review_package.get("manifest_pruning") or {}),
+    }
+    preservation_instructions = {
+        "status": review_package.get("readiness_classification"),
+        "checklist": preservation_checklist,
+        "ignored_output_roots": list(report.get("ignored_output_roots") or []),
+        "do_not_commit_paths": [
+            report.get("command_plan_path"),
+            report.get("sbatch_script_path"),
+            report.get("package_json_path"),
+            report.get("package_md_path"),
+        ],
+        "notes": [
+            "Keep generated scratch roots under /tmp or validation/private only.",
+            "Do not commit live Balfrin outputs, scratch-root artifacts, or generated package files.",
+        ],
+    }
+    authorization_audit_record = {
+        "status": "reviewed",
+        "reviewed_handoff_package_path": report.get("package_json_path"),
+        "authorization_record_path": minimum_run.get("authorization_record_path"),
+        "authorization_review_command": report.get("authorization_review_command"),
+        "authorization_submit_command": report.get("authorization_submit_command"),
+        "reviewed_handoff_package_sha256": None,
+        "live_execution_requires_new_human_authorization": report.get(
+            "live_execution_requires_new_human_authorization", True
+        ),
+        "boundary_note": "This audit record only preserves the reviewed-package paths and later-submit command; it does not authorize execution.",
+    }
+    reduced_output_settings = dict(review_package.get("reduced_output_defaults") or {})
+    reduced_output_settings["output_profile_policy"] = dict(review_package.get("output_profile_policy") or {})
+    return {
+        "status": review_package.get("readiness_classification"),
+        "readiness_classification": review_package.get("readiness_classification"),
+        "readiness_reason": review_package.get("readiness_reason"),
+        "review_readiness_classification": report.get("review_readiness_classification"),
+        "review_readiness_reason": report.get("review_readiness_reason"),
+        "release_zone_count": review_package.get("release_zone_count"),
+        "scenario_count": review_package.get("scenario_count"),
+        "trajectory_count_target": review_package.get("trajectory_count_target"),
+        "command_plan": command_plan_summary,
+        "authorization_audit_record": authorization_audit_record,
+        "reduced_output_settings": reduced_output_settings,
+        "expected_output_budget": expected_output_budget,
+        "preservation_instructions": preservation_instructions,
+        "expected_runtime_seconds": review_package.get("expected_runtime_seconds"),
+        "expected_storage_bytes": review_package.get("expected_storage_bytes"),
+        "output_budget_acceptance_threshold_profile_id": review_package.get(
+            "output_budget_acceptance_threshold_profile_id"
+        ),
+        "output_budget_acceptance_status": review_package.get("output_budget_acceptance_status"),
+        "reviewed_handoff_package_path": report.get("package_json_path"),
+        "authorization_record_path": minimum_run.get("authorization_record_path"),
+        "claim_boundaries": dict(review_package.get("claim_boundaries") or {}),
+    }
+
+
 def claim_boundaries(
     target_area_contract: dict[str, Any],
 ) -> dict[str, Any]:
@@ -3251,6 +3343,20 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Manifest pruning status: `{review_package.get('manifest_pruning_status')}`",
         f"- Replay-critical families: `{review_package.get('replay_critical_families', [])}`",
         f"- Promotion status: `{review_package.get('promotion_status')}`",
+        "",
+        "## Four-Zone Hazard Execution Package",
+        "",
+        f"- Package status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('status')}`",
+        f"- Readiness classification: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('readiness_classification')}`",
+        f"- Readiness reason: {dict(report.get('four_zone_hazard_execution_package') or {}).get('readiness_reason')}",
+        f"- Command plan status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_plan_status')}`",
+        f"- Command count: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_count')}`",
+        f"- Command ids: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('command_plan', {}).get('command_ids', [])}`",
+        f"- Authorization audit record: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('authorization_audit_record', {})}`",
+        f"- Reduced-output settings: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('reduced_output_settings', {})}`",
+        f"- Expected output budget status: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('expected_output_budget', {}).get('status')}`",
+        f"- Expected output budget profile: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('expected_output_budget', {}).get('threshold_profile_id')}`",
+        f"- Preservation instructions: `{dict(report.get('four_zone_hazard_execution_package') or {}).get('preservation_instructions', {})}`",
         "",
         "## Manifest Pruning",
         "",

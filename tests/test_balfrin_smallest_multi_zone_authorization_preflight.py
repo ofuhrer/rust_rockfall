@@ -281,6 +281,85 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
                 }
             },
         }
+        payload["four_zone_hazard_execution_package"] = {
+            "status": "ready_for_review" if budget_acceptance_status == "accepted" and reducer_status != "blocked" else "blocked_output_budget",
+            "readiness_classification": "ready_for_review"
+            if budget_acceptance_status == "accepted" and reducer_status != "blocked"
+            else "blocked_output_budget",
+            "readiness_reason": "four-zone review package is ready for review with compact manifests, reduced-output defaults, objective budget validation, and replay-critical families retained",
+            "command_plan": {
+                "schema_version": "balfrin_multi_release_zone_demo_command_plan_v1",
+                "command_plan_status": "mixed_provenance",
+                "command_plan_source": "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
+                "command_plan_source_command": "PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --format json",
+                "command_count": 6,
+                "command_ids": [
+                    "candidate_stability_sweep",
+                    "target_area_handoff_bundle",
+                    "multi_zone_reducer_pressure_summary",
+                    "scientific_delta_report",
+                    "authorization_review_command",
+                    "package_materialization",
+                ],
+                "blocked_template_commands": [],
+                "output_profile_policy": {"classification": "blocked_unscalable_default"},
+            },
+            "authorization_audit_record": {
+                "status": "reviewed",
+                "reviewed_handoff_package_path": str(path.resolve()),
+                "authorization_record_path": str(authorization_record_path.resolve()),
+                "authorization_review_command": MODULE.handoff.build_authorized_submit_command(
+                    reviewed_handoff_package_path=path,
+                    authorization_record_path=authorization_record_path,
+                ),
+                "authorization_submit_command": authorization_submit_command,
+                "reviewed_handoff_package_sha256": None,
+                "live_execution_requires_new_human_authorization": True,
+            },
+            "reduced_output_settings": {
+                "conditional_curve_export": "summary-only",
+                "grid_csv_export": "none",
+                "no_plots": True,
+                "output_profile_policy": {"classification": "scalable_default"},
+            },
+            "expected_output_budget": {
+                "status": budget_acceptance_status,
+                "threshold_profile_id": "next_larger_four_zone_review_only_probe",
+                "summary": budget_acceptance_validation["summary"],
+                "thresholds": {
+                    "schema_version": "balfrin_multi_zone_output_budget_acceptance_v1",
+                    "profiles": {"next_larger_four_zone_review_only_probe": {"max_manifest_size_bytes": 14000}},
+                },
+                "validation": budget_acceptance_validation,
+                "projection": {
+                    "status": "acceptable",
+                    "projection_mode": "compact",
+                    "manifest_size_bytes": 17788,
+                    "output_file_count": 39,
+                    "sidecar_file_count": 2,
+                },
+                "manifest_pruning_status": compact_handoff_budget_status or "budget_passes_no_reduction_needed",
+                "manifest_pruning_summary": (
+                    "current handoff projection stays within the current budget thresholds"
+                    if compact_handoff_budget_status is None
+                    else "handoff output-budget projection blocked at manifest_size_bytes"
+                ),
+                "manifest_pruning": manifest_pruning or {},
+            },
+            "preservation_instructions": {
+                "status": "ready_for_review" if budget_acceptance_status == "accepted" else "blocked_output_budget",
+                "checklist": [
+                    "Review the package JSON and Markdown together before any later authorization request.",
+                    "Do not submit a live Balfrin job unless the conversation explicitly authorizes execution later.",
+                ],
+                "ignored_output_roots": [str(path.parent / "scratch"), str(path.parent / "logs")],
+                "do_not_commit_paths": [str(path), str(authorization_record_path)],
+                "notes": [
+                    "Keep generated scratch roots under /tmp or validation/private only.",
+                    "Do not commit live Balfrin outputs, scratch-root artifacts, or generated package files.",
+                ],
+            },
+        }
         if manifest_pruning is not None:
             payload["manifest_pruning"] = manifest_pruning
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -342,6 +421,13 @@ class BalfrinSmallestMultiZoneAuthorizationPreflightTests(unittest.TestCase):
             "scalable_default",
         )
         self.assertGreaterEqual(len(report["smallest_multi_zone_run_shape"]["preservation_checklist"]), 2)
+        self.assertEqual(report["smallest_multi_zone_run_shape"]["hazard_package"]["status"], "ready_for_review")
+        self.assertGreater(report["smallest_multi_zone_run_shape"]["hazard_package"]["command_plan"]["command_count"], 0)
+        self.assertEqual(
+            report["smallest_multi_zone_run_shape"]["hazard_package"]["expected_output_budget"]["status"],
+            "accepted",
+        )
+        self.assertTrue(report["smallest_multi_zone_run_shape"]["hazard_package"]["preservation_instructions"]["checklist"])
         text_report = MODULE.render_text_report(report)
         self.assertIn("Before manifest bytes", text_report)
         self.assertIn("Exact blocking fields", text_report)

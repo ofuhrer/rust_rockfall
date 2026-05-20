@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-331: Four-Zone Balfrin Hazard Probe Package
-
-Goal: Build a reviewed four-zone Balfrin hazard-execution package from the repaired two-zone path and measured cost projections.
-
-Capability gap reduced: The repo has measured four-zone post-processing evidence but not a four-zone hazard execution package that can pass submit gates.
-
-Why this outranks alternatives: A four-zone hazard package is the next credible step after a measured two-zone run and before larger AOI projections.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `docs/balfrin_four_zone_probe_tb312.md`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Four-zone hazard-execution package with command plan, authorization/audit record, reduced-output settings, expected output budget, and preservation instructions.
-- Pre-submit report classifying the package as ready or blocked with exact reason.
-- Tests for package shape and output-budget compliance.
-
-Definition of done:
-
-- A GPT-5.5 Balfrin worker can execute or fail-close the four-zone hazard probe from a reviewed package without inventing missing details.
-
-Boundaries: Package/pre-submit only; no live Balfrin submission, no scale-up claim, no operational claim, no annual/physical/risk semantics.
-
 ### TB-332: Execute Four-Zone Balfrin Hazard Probe
 
 Goal: Submit and monitor the reviewed four-zone Balfrin hazard probe on `postproc` if TB-331 and all live gates pass.

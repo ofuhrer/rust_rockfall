@@ -112,11 +112,17 @@ def _missing_access_report() -> dict[str, Any]:
 
 
 def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
-    review_only = dict(package.get("review_only_four_zone_package") or {})
+    hazard_package = dict(
+        package.get("four_zone_hazard_execution_package")
+        or package.get("review_only_four_zone_package")
+        or {}
+    )
+    review_only = dict(package.get("review_only_four_zone_package") or hazard_package or {})
     follow_up = dict(package.get("follow_up_recommendation") or {})
     minimum = dict(
         follow_up.get("minimum_measured_multi_zone_run")
         or package.get("smallest_measured_multi_zone_run")
+        or hazard_package
         or review_only
         or {}
     )
@@ -128,10 +134,12 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
     )
     output_profile_policy = dict(
         minimum.get("output_profile_policy")
+        or hazard_package.get("reduced_output_settings", {}).get("output_profile_policy")
         or review_only.get("output_profile_policy")
         or {}
     )
     return {
+        "hazard_package": hazard_package,
         "review_package": review_only,
         "release_zone_count": minimum.get("release_zone_count"),
         "scenario_count": minimum.get("scenario_count"),
@@ -151,9 +159,11 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
         "promotion_reason": review_only.get("promotion_reason"),
         "output_profile": {
             "output_mode": minimum.get("output_mode"),
-            "conditional_curve_export": review_only.get("reduced_output_defaults", {}).get("conditional_curve_export")
+            "conditional_curve_export": hazard_package.get("reduced_output_settings", {}).get("conditional_curve_export")
+            or review_only.get("reduced_output_defaults", {}).get("conditional_curve_export")
             or minimum.get("conditional_curve_export"),
-            "grid_csv_export": review_only.get("reduced_output_defaults", {}).get("grid_csv_export")
+            "grid_csv_export": hazard_package.get("reduced_output_settings", {}).get("grid_csv_export")
+            or review_only.get("reduced_output_defaults", {}).get("grid_csv_export")
             or minimum.get("grid_csv_export"),
             "export_geotiff": minimum.get("export_geotiff"),
             "pilot_gis_package": minimum.get("pilot_gis_package"),
@@ -168,6 +178,7 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
             or minimum.get("estimated_manifest_pressure_bytes"),
         },
         "preservation_checklist": list(minimum.get("preservation_gate_checklist") or review_only.get("preservation_gate_checklist") or []),
+        "preservation_instructions": dict(hazard_package.get("preservation_instructions") or {}),
         "output_roots": dict(minimum.get("output_roots") or {}),
         "reviewed_handoff_package_path": minimum.get("reviewed_handoff_package_path"),
         "authorization_record_path": minimum.get("authorization_record_path"),
@@ -181,7 +192,11 @@ def _extract_run_shape(package: dict[str, Any]) -> dict[str, Any]:
 
 
 def _reducer_budget_status(package: dict[str, Any], run_shape: dict[str, Any]) -> dict[str, Any]:
-    review_only = dict(package.get("review_only_four_zone_package") or {})
+    review_only = dict(
+        package.get("four_zone_hazard_execution_package")
+        or package.get("review_only_four_zone_package")
+        or {}
+    )
     minimum = dict(
         dict(package.get("follow_up_recommendation") or {}).get("minimum_measured_multi_zone_run")
         or package.get("smallest_measured_multi_zone_run")
