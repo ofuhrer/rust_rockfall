@@ -11,6 +11,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
+PREVIEW_SCRIPT_PATH = ROOT / "scripts" / "preview_aoi_scenario_cost_estimate.py"
 POLICY_PATH = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 RELEASE_POINTS_PATH = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv"
 
@@ -31,6 +32,7 @@ def _load_module(path: Path, name: str):
 
 
 MODULE = _load_module(SCRIPT_PATH, "generate_candidate_source_zone_scenarios")
+PREVIEW_MODULE = _load_module(PREVIEW_SCRIPT_PATH, "preview_aoi_scenario_cost_estimate")
 
 
 class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
@@ -161,8 +163,72 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
 
             self.assertEqual(first_runs, second_runs)
 
-    def _build_review_package_payload(self) -> dict[str, object]:
-        accepted_ids = [f"stable_candidate_{index:03d}" for index in range(1, 13)]
+    def test_selected_zone_pressure_ladder_captures_10_50_100_candidate_sizes(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            review_package = self._write_review_package(
+                tmp_root / "review_package.yaml",
+                self._build_review_package_payload(candidate_count=100),
+            )
+
+            report = PREVIEW_MODULE.build_selected_zone_pressure_report(
+                review_package_path=review_package,
+                selected_zone_counts=(10, 50, 100),
+                trajectory_count=6,
+                output_root=tmp_root / "selected_zone_pressure",
+            )
+            self.assertEqual(report["preview_status"], "ready")
+            self.assertEqual(report["selected_zone_counts"], [10, 50, 100])
+            self.assertEqual(report["largest_selected_zone_count"], 100)
+            self.assertEqual(report["conditional_weight_summary"]["conditional_weight_semantics"], "conditional_sampling_only")
+            self.assertEqual(report["conditional_weight_summary"]["conditional_weight_total"], 10.0)
+            self.assertEqual(report["conditional_weight_summary"]["block_family_count"], 3)
+            self.assertEqual(report["conditional_weight_summary"]["block_family_ids"], [
+                "reviewed_block_family_small",
+                "reviewed_block_family_medium",
+                "reviewed_block_family_large",
+            ])
+
+            counts = [row["selected_zone_count"] for row in report["selected_zone_count_reports"]]
+            self.assertEqual(counts, [10, 50, 100])
+            previous_manifest_bytes = 0
+            previous_csv_bytes = 0
+            for row in report["selected_zone_count_reports"]:
+                self.assertEqual(row["scenario_cardinality"]["source_zone_count"], row["selected_zone_count"])
+                self.assertEqual(row["scenario_cardinality"]["scenario_family_count"], 3)
+                self.assertEqual(row["scenario_cardinality"]["row_count"], row["selected_zone_count"] * 3)
+                self.assertEqual(row["conditional_weight_summary"]["conditional_weight_semantics"], "conditional_sampling_only")
+                self.assertEqual(row["conditional_weight_summary"]["conditional_weight_total"], 10.0)
+                csv_path = Path(row["output_paths"]["scenario_table"])
+                manifest_path = Path(row["output_paths"]["manifest"])
+                self.assertTrue(csv_path.exists())
+                self.assertTrue(manifest_path.exists())
+                self.assertGreater(csv_path.stat().st_size, previous_csv_bytes)
+                self.assertGreater(manifest_path.stat().st_size, previous_manifest_bytes)
+                self.assertEqual(row["expected_output_file_count"], 5)
+                previous_csv_bytes = csv_path.stat().st_size
+                previous_manifest_bytes = manifest_path.stat().st_size
+
+    def test_selected_zone_counts_fail_closed_when_requested_count_exceeds_reviewed_pool(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            review_package = self._write_review_package(
+                tmp_root / "review_package.yaml",
+                self._build_review_package_payload(candidate_count=12),
+            )
+
+            report = PREVIEW_MODULE.build_selected_zone_pressure_report(
+                review_package_path=review_package,
+                selected_zone_counts=(10, 50, 100),
+                trajectory_count=6,
+                output_root=tmp_root / "selected_zone_pressure",
+            )
+
+        self.assertEqual(report["preview_status"], "blocked_missing_reviewed_candidates")
+        self.assertIn("selected-zone count exceeds reviewed candidate pool", report["blocked_reason"])
+
+    def _build_review_package_payload(self, candidate_count: int = 12) -> dict[str, object]:
+        accepted_ids = [f"stable_candidate_{index:03d}" for index in range(1, candidate_count + 1)]
         return {
             "review_package_status": "review_applied",
             "source_zone_id": "stable_review_zone",

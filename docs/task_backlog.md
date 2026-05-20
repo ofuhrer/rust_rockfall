@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-347: Large Deterministic Scenario Table From Candidate Zones
-
-Goal: Generate a large deterministic scenario table from the reviewed candidate-zone subset using existing conditional block/scenario semantics.
-
-Capability gap reduced: The repo needs to know how candidate-driven scenario cardinality grows before multi-zone Balfrin execution is attempted.
-
-Why this outranks alternatives: Scenario-table pressure is a likely first scaling bottleneck and must be measured before submit-package generation.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-
-Deliverables:
-
-- Deterministic scenario CSV/manifest for 10, 50, and 100 candidate-zone planning sizes.
-- Cardinality, file-size, manifest-size, and conditional-weight summaries.
-
-Definition of done:
-
-- The scenario generator reports scenario pressure from real candidate zones and blocks impossible or unsupported semantics fail-closed.
-
-Boundaries: Conditional sampling weights only; no annual frequency, physical probability, source-frequency, or risk semantics.
-
 ### TB-348: Scenario Cardinality And Manifest Pressure Gate
 
 Goal: Convert candidate-driven scenario-table stress evidence into a gate that protects Balfrin packages from excessive manifest, sidecar, or scenario cardinality pressure.

@@ -48,6 +48,7 @@ COST_PROJECTION_SCHEMA_VERSION = "aoi_scenario_cost_projection_v1"
 DEFAULT_REVIEW_PACKAGE = ROOT / "tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml"
 DEFAULT_TRAJECTORY_COUNT = None
 DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/aoi_scenario_preview")
+DEFAULT_SELECTED_ZONE_OUTPUT_ROOT = DEFAULT_OUTPUT_ROOT / "selected_zone_counts"
 DEFAULT_SELECTED_ZONE_COUNTS = (2, 4, 8, 12)
 DEFAULT_PROJECTION_ZONE_COUNTS = (2, 4, 8, 12, 50, 100)
 DEFAULT_OUTPUT_PROFILE_CONTROLS = {
@@ -120,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
+    parser.add_argument("--output-root", type=Path, default=DEFAULT_SELECTED_ZONE_OUTPUT_ROOT)
     args = parser.parse_args(argv)
 
     review_packages = args.review_package or [DEFAULT_REVIEW_PACKAGE]
@@ -148,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
                 trajectory_count=args.trajectory_count,
                 projection_zone_counts=projection_zone_counts,
                 output_profile_policy=output_profile_policy,
+                output_root=args.output_root,
             )
         else:
             report = build_report(
@@ -155,6 +158,7 @@ def main(argv: list[str] | None = None) -> int:
                 trajectory_count=args.trajectory_count,
                 selected_zone_counts=selected_zone_counts,
                 output_profile_policy=output_profile_policy,
+                output_root=args.output_root,
             )
     except AoiScenarioPreviewError as exc:
         print(f"aoi scenario preview error: {exc}", file=sys.stderr)
@@ -178,6 +182,7 @@ def build_report(
     trajectory_count: int | None = DEFAULT_TRAJECTORY_COUNT,
     selected_zone_counts: list[int] | tuple[int, ...] | None = None,
     output_profile_policy: dict[str, Any] | None = None,
+    output_root: Path | None = None,
 ) -> dict[str, Any]:
     if selected_zone_counts is not None:
         if len(review_package_paths) != 1:
@@ -187,6 +192,7 @@ def build_report(
             selected_zone_counts=selected_zone_counts,
             trajectory_count=trajectory_count,
             output_profile_policy=output_profile_policy,
+            output_root=output_root,
         )
 
     if not review_package_paths:
@@ -327,6 +333,7 @@ def build_aoi_cost_projection_report(
     trajectory_count: int | None = DEFAULT_TRAJECTORY_COUNT,
     projection_zone_counts: list[int] | tuple[int, ...] | None = None,
     output_profile_policy: dict[str, Any] | None = None,
+    output_root: Path | None = None,
 ) -> dict[str, Any]:
     profile_policy = output_profile_policy or default_output_profile_policy()
     if profile_policy.get("classification") == OUTPUT_PROFILE_POLICY.BLOCKED_UNSCALABLE_DEFAULT:
@@ -1063,6 +1070,12 @@ def blocked_report(
         "output_profile_policy": output_profile_policy,
         "output_profile_choice": output_profile_policy.get("classification", "unknown"),
         "blocking_labels": [blocking_label],
+        "conditional_weight_summary": {
+            "conditional_weight_total": 0.0,
+            "conditional_weight_semantics": "conditional_sampling_only",
+            "block_family_count": 0,
+            "block_family_ids": [],
+        },
         "source_zone_count": 0,
         "scenario_family_count": 0,
         "scenario_cardinality": {
@@ -1096,6 +1109,7 @@ def build_selected_zone_pressure_report(
     selected_zone_counts: list[int] | tuple[int, ...],
     trajectory_count: int | None = DEFAULT_TRAJECTORY_COUNT,
     output_profile_policy: dict[str, Any] | None = None,
+    output_root: Path | None = None,
 ) -> dict[str, Any]:
     profile_policy = output_profile_policy or default_output_profile_policy()
     if profile_policy.get("classification") == OUTPUT_PROFILE_POLICY.BLOCKED_UNSCALABLE_DEFAULT:
@@ -1162,94 +1176,100 @@ def build_selected_zone_pressure_report(
         )
 
     selected_reports: list[dict[str, Any]] = []
-    with tempfile.TemporaryDirectory(dir="/tmp", prefix="aoi_selected_zone_preview_") as tmpdir:
-        output_root = Path(tmpdir)
-        for count in requested_counts:
-            selected_ids = reviewed_candidates[:count]
-            try:
-                freezer_report = FREEZER.build_freezer_report(
-                    review_package_path=package_path,
-                    accepted_candidate_ids=selected_ids,
-                    output_root=output_root / f"selected_{count:02d}",
-                    trajectory_count=preview_count,
-                    seed=FREEZER.DEFAULT_FREEZER_SEED + count,
-                )
-            except FREEZER.CandidateSourceZoneFreezerError as exc:
-                return blocked_selected_zone_report(
-                    review_package_path=package_path,
-                    selected_zone_counts=requested_counts,
-                    blocked_reason=f"missing reviewed candidates: {exc}",
-                    blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
-                    output_profile_policy=profile_policy,
-                )
+    base_output_root = Path(output_root) if output_root is not None else DEFAULT_SELECTED_ZONE_OUTPUT_ROOT
+    for count in requested_counts:
+        selected_ids = reviewed_candidates[:count]
+        try:
+            freezer_report = FREEZER.build_freezer_report(
+                review_package_path=package_path,
+                accepted_candidate_ids=selected_ids,
+                output_root=base_output_root / f"selected_{count:02d}",
+                trajectory_count=preview_count,
+                seed=FREEZER.DEFAULT_FREEZER_SEED + count,
+            )
+        except FREEZER.CandidateSourceZoneFreezerError as exc:
+            return blocked_selected_zone_report(
+                review_package_path=package_path,
+                selected_zone_counts=requested_counts,
+                blocked_reason=f"missing reviewed candidates: {exc}",
+                blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+                output_profile_policy=profile_policy,
+            )
 
-            block_family_count = len(freezer_report.get("block_family_ids", []))
-            row_units = max(1, freezer_report["accepted_candidate_count"]) * preview_count * max(1, block_family_count)
-            pressure = estimate_output_pressure(row_units)
-            output_paths = {
-                name: Path(path)
-                for name, path in freezer_report.get("output_paths", {}).items()
-            }
-            csv_path = output_paths.get("scenario_table")
-            manifest_path = output_paths.get("manifest")
-            if csv_path is None or manifest_path is None:
-                return blocked_selected_zone_report(
-                    review_package_path=package_path,
-                    selected_zone_counts=requested_counts,
-                    blocked_reason="selected-zone scratch outputs are incomplete",
-                    blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
-                    output_profile_policy=profile_policy,
-                )
-            csv_bytes = csv_path.stat().st_size
-            manifest_bytes = manifest_path.stat().st_size
-            total_bytes = 0
-            for output_path in output_paths.values():
-                total_bytes += output_path.stat().st_size
-            execution_target = recommend_execution_target(
-                profile_policy=profile_policy,
-                projected_files=pressure["projected_files"],
-                projected_bytes=pressure["projected_bytes"],
-                budget_summary=OUTPUT_BUDGET.build_summary(),
+        block_family_count = len(freezer_report.get("block_family_ids", []))
+        row_units = max(1, freezer_report["accepted_candidate_count"]) * preview_count * max(1, block_family_count)
+        pressure = estimate_output_pressure(row_units)
+        output_paths = {
+            name: Path(path)
+            for name, path in freezer_report.get("output_paths", {}).items()
+        }
+        csv_path = output_paths.get("scenario_table")
+        manifest_path = output_paths.get("manifest")
+        if csv_path is None or manifest_path is None:
+            return blocked_selected_zone_report(
+                review_package_path=package_path,
+                selected_zone_counts=requested_counts,
+                blocked_reason="selected-zone scratch outputs are incomplete",
+                blocking_label=BLOCKED_MISSING_REVIEWED_CANDIDATES,
+                output_profile_policy=profile_policy,
             )
-            selected_reports.append(
-                {
-                    "selected_zone_count": count,
-                    "selected_candidate_ids": selected_ids,
-                    "reviewed_candidate_pool_count": len(reviewed_candidates),
-                    "trajectory_count": preview_count,
-                    "seed": freezer_report["seed"],
-                    "seed_policy": freezer_report["seed_policy"],
-                    "block_family_count": block_family_count,
-                    "block_family_ids": list(freezer_report.get("block_family_ids", [])),
-                    "candidate_release_zone_record_count": freezer_report["accepted_candidate_count"],
-                    "scenario_cardinality": {
-                        "source_zone_count": freezer_report["accepted_candidate_count"],
-                        "scenario_family_count": block_family_count,
-                        "row_count": freezer_report["scenario_row_count"],
-                    },
-                    "scenario_row_count": freezer_report["scenario_row_count"],
-                    "storage_measurements": {
-                        "csv_bytes": csv_bytes,
-                        "manifest_bytes": manifest_bytes,
-                        "total_bytes": total_bytes,
-                    },
-                    "manifest_bytes": manifest_bytes,
+        csv_bytes = csv_path.stat().st_size
+        manifest_bytes = manifest_path.stat().st_size
+        total_bytes = 0
+        for output_path in output_paths.values():
+            total_bytes += output_path.stat().st_size
+        conditional_weight_summary = {
+            "conditional_weight_total": freezer_report.get("conditional_weight_total", 0.0),
+            "conditional_weight_semantics": freezer_report.get("conditional_weight_semantics", "conditional_sampling_only"),
+            "block_family_count": block_family_count,
+            "block_family_ids": list(freezer_report.get("block_family_ids", [])),
+        }
+        execution_target = recommend_execution_target(
+            profile_policy=profile_policy,
+            projected_files=pressure["projected_files"],
+            projected_bytes=pressure["projected_bytes"],
+            budget_summary=OUTPUT_BUDGET.build_summary(),
+        )
+        selected_reports.append(
+            {
+                "selected_zone_count": count,
+                "selected_candidate_ids": selected_ids,
+                "reviewed_candidate_pool_count": len(reviewed_candidates),
+                "trajectory_count": preview_count,
+                "seed": freezer_report["seed"],
+                "seed_policy": freezer_report["seed_policy"],
+                "block_family_count": block_family_count,
+                "block_family_ids": list(freezer_report.get("block_family_ids", [])),
+                "conditional_weight_summary": conditional_weight_summary,
+                "candidate_release_zone_record_count": freezer_report["accepted_candidate_count"],
+                "scenario_cardinality": {
+                    "source_zone_count": freezer_report["accepted_candidate_count"],
+                    "scenario_family_count": block_family_count,
+                    "row_count": freezer_report["scenario_row_count"],
+                },
+                "scenario_row_count": freezer_report["scenario_row_count"],
+                "storage_measurements": {
                     "csv_bytes": csv_bytes,
+                    "manifest_bytes": manifest_bytes,
                     "total_bytes": total_bytes,
-                    "projected_files": pressure["projected_files"],
-                    "projected_bytes": pressure["projected_bytes"],
-                    "estimated_runtime_seconds": pressure["estimated_runtime_seconds"],
-                    "output_root": display_path(output_root / f"selected_{count:02d}"),
-                    "output_paths": freezer_report["output_paths"],
-                    "expected_output_file_count": len(freezer_report["output_paths"]),
-                    "execution_target": execution_target,
-                    "output_budget_assessment": {
-                        "local": execution_target["local_assessment"],
-                        "balfrin": execution_target["balfrin_assessment"],
-                        "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
-                    },
-                }
-            )
+                },
+                "manifest_bytes": manifest_bytes,
+                "csv_bytes": csv_bytes,
+                "total_bytes": total_bytes,
+                "projected_files": pressure["projected_files"],
+                "projected_bytes": pressure["projected_bytes"],
+                "estimated_runtime_seconds": pressure["estimated_runtime_seconds"],
+                "output_root": display_path(base_output_root / f"selected_{count:02d}"),
+                "output_paths": freezer_report["output_paths"],
+                "expected_output_file_count": len(freezer_report["output_paths"]),
+                "execution_target": execution_target,
+                "output_budget_assessment": {
+                    "local": execution_target["local_assessment"],
+                    "balfrin": execution_target["balfrin_assessment"],
+                    "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
+                },
+            }
+        )
 
     largest_report = selected_reports[-1]
     return {
@@ -1271,6 +1291,7 @@ def build_selected_zone_pressure_report(
         "output_profile_policy": profile_policy,
         "output_profile_choice": profile_policy.get("classification", "unknown"),
         "blocking_labels": [],
+        "conditional_weight_summary": largest_report["conditional_weight_summary"],
         "source_zone_count": largest_report["scenario_cardinality"]["source_zone_count"],
         "scenario_family_count": largest_report["scenario_cardinality"]["scenario_family_count"],
         "scenario_cardinality": largest_report["scenario_cardinality"],
@@ -1358,10 +1379,13 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"- selected_zone_count: `{row.get('selected_zone_count', '')}`")
             lines.append(f"  selected_candidate_ids: `{row.get('selected_candidate_ids', [])}`")
             lines.append(f"  block_family_ids: `{row.get('block_family_ids', [])}`")
+            lines.append(f"  conditional_weight_summary: `{row.get('conditional_weight_summary', {})}`")
             lines.append(f"  scenario_cardinality: `{row.get('scenario_cardinality', {})}`")
             lines.append(f"  seed_policy: `{row.get('seed_policy', '')}`")
             lines.append(f"  seed: `{row.get('seed', '')}`")
+            lines.append(f"  csv_bytes: `{row.get('csv_bytes', '')}`")
             lines.append(f"  manifest_bytes: `{row.get('manifest_bytes', '')}`")
+            lines.append(f"  total_bytes: `{row.get('total_bytes', '')}`")
             lines.append(f"  output_root: `{row.get('output_root', '')}`")
             lines.append(f"  projected_files: `{row.get('projected_files', {})}`")
             lines.append(f"  projected_bytes: `{row.get('projected_bytes', {})}`")
@@ -1371,6 +1395,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 "",
                 "Largest Selected Zone Count",
                 f"- selected_zone_count: `{report['largest_selected_zone_count']}`",
+                f"- conditional_weight_summary: `{report.get('conditional_weight_summary', {})}`",
                 f"- execution_target: `{report['execution_target'].get('target', '')}`",
                 f"- projected_files: `{report['projected_files']}`",
                 f"- projected_bytes: `{report['projected_bytes']}`",

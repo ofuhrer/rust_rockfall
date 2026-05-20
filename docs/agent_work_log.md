@@ -3668,3 +3668,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: human review remains selection for demonstration only, not validation, calibration, or operational approval; no annual-frequency, risk, exposure, vulnerability, or distributed-execution claim.
 - Next task: `TB-347`
+
+### TB-347: Large Deterministic Scenario Table From Candidate Zones
+- Date: 2026-05-20
+- Commit: local
+- Objective: generate deterministic scenario CSV and manifest outputs for reviewed candidate-zone planning sizes while preserving conditional-only weighting semantics and fail-closed behavior.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Switched the selected-zone preview ladder to persistent scratch output roots under `/tmp` so the 10/50/100 scenario tables and manifests remain inspectable after the helper returns.
+  - Added explicit conditional-weight summaries, file-size totals, and per-count cardinality data to the selected-zone pressure reports and text rendering path.
+  - Extended the stress tests to cover the 10/50/100 ladder plus a fail-closed overreach case when the reviewed candidate pool is too small.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: conditional sampling weights only; no annual frequency, physical probability, source-frequency, or risk semantics; no operational, scale-up, or distributed-execution claim.
+- Next task: `TB-348`
