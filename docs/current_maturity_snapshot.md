@@ -152,10 +152,16 @@ submit-contract, and output-budget acceptance were ready/accepted, while the
 remote output-profile gate returned `blocked_output_profile` with a four-zone
 review-package reason. TB-407 then completed the smallest bounded multi-zone
 probe on Balfrin `postproc` and preserved measured run-root evidence, so the
-smallest multi-zone branch is now measured rather than merely blocked. No live
-job id, runtime, memory, validation output, hazard output, GIS package, or
-operational scale-up claim was produced, and the older TB-362 two-zone branch
-remains failed-closed/blocked rather than measured multi-zone hazard evidence.
+smallest multi-zone branch is now measured rather than merely blocked. The
+older TB-362 two-zone branch remains failed-closed/blocked rather than measured
+multi-zone hazard evidence. TB-428 then attempted the next regional split
+live-probe gate, but correctly failed closed before scheduler submission: the
+regional split/merge contract was ready with 12 splits, while the reviewed
+package exceeded the `next_larger_four_zone_review_only_probe` manifest-size
+budget (`14550` bytes measured versus `14000` allowed). No `sbatch` command was
+run for that branch. The next unblock action is package/manifest compaction or
+an explicitly justified budget revision before another regional split live
+probe.
 TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA

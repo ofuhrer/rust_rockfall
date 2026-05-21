@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-428: Execute Bounded Regional Split Balfrin Probe
-
-Goal: Submit and actively monitor one bounded `postproc` Balfrin probe from the approved regional split package when all repository gates pass.
-
-Capability gap reduced: Measured multi-zone execution realism.
-
-Why this outranks alternatives: Management needs measured evidence for whether multi-zone execution is feasible; this is the smallest live step after the no-submit package is ready.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-
-Deliverables:
-
-- One measured Balfrin `postproc` run or a failed-closed no-submit/submit record with the first blocker identified.
-- Runtime, memory when available, validation/hazard file counts and bytes, reducer metrics, and preserved run-root pointers.
-- Updated evidence surfaces only to the extent needed to distinguish measured execution from blocked/fixture-backed/projection-only evidence.
-
-Definition of done:
-
-- The run either completes with measured evidence or fails closed with the exact persistent blocker and next unblock action; no ambiguous half-state remains.
-
-Boundaries: GPT-5.5 worker required, one bounded probe only, postproc partition only, no distributed execution, no operational, scale-up, annual-frequency, physical-probability, risk, exposure, or vulnerability claims.
-
 ### TB-429: Consolidate AOI User Manual And QGIS Review Entry Point
 
 Goal: Provide a short user-facing manual entry point for AOI preparation, candidate review, bounded execution, and QGIS map inspection.
