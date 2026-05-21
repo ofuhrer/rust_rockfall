@@ -382,6 +382,99 @@ class HazardLayerTests(unittest.TestCase):
         self.assertAlmostEqual(step.height(9.0, 0.0), 5.0)
         self.assertAlmostEqual(step.height(10.0, 0.0), 1.0)
 
+    def test_target_line_conditional_diagnostics_write_csv_geojson_and_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            case_path = work / "case.yaml"
+            write_yaml(
+                case_path,
+                {
+                    "case_id": "target_line_fixture",
+                    "terrain": {"type": "plane", "parameters": {"z0_m": 0.0}},
+                    "block": {"radius": 0.0},
+                },
+            )
+            first_trajectory = work / "trajectory_a.csv"
+            first_trajectory.write_text(
+                "trajectory_id,time_s,x_m,y_m,z_m,kinetic_j,speed_mps\n"
+                "trajectory_a,0,0,0,2,10,1\n"
+                "trajectory_a,1,2,0,4,30,2\n"
+            )
+            second_trajectory = work / "trajectory_b.csv"
+            second_trajectory.write_text(
+                "trajectory_id,time_s,x_m,y_m,z_m,kinetic_j,speed_mps\n"
+                "trajectory_b,0,0,0.5,4,20,1\n"
+                "trajectory_b,1,2,0.5,6,40,2\n"
+            )
+            target_line = work / "target_line.geojson"
+            target_line.write_text(
+                json.dumps(
+                    {
+                        "type": "FeatureCollection",
+                        "features": [
+                            {
+                                "type": "Feature",
+                                "id": "road_review",
+                                "properties": {"name": "synthetic road review line"},
+                                "geometry": {
+                                    "type": "LineString",
+                                    "coordinates": [[1.0, -1.0], [1.0, 1.0]],
+                                },
+                            }
+                        ],
+                    }
+                )
+            )
+            output_dir = work / "hazard"
+
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(case_path),
+                    "--trajectory",
+                    str(first_trajectory),
+                    "--trajectory",
+                    str(second_trajectory),
+                    "--target-line-geojson",
+                    str(target_line),
+                    "--target-line-min-samples",
+                    "2",
+                    "--output-dir",
+                    str(output_dir),
+                    "--cell-size",
+                    "1",
+                    "--no-plots",
+                ]
+            )
+
+            self.assertEqual(status, 0)
+            csv_path = output_dir / "target_line_fixture_target_line_conditional_diagnostics.csv"
+            geojson_path = output_dir / "target_line_fixture_target_line_conditional_diagnostics.geojson"
+            metadata = json.loads((output_dir / "target_line_fixture_metadata.json").read_text())
+            manifest = json.loads((output_dir / "target_line_fixture_manifest.json").read_text())
+            rows = list(csv.DictReader(csv_path.open()))
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row["segment_id"], "road_review__segment_0000")
+            self.assertEqual(row["intersection_count"], "2")
+            self.assertEqual(row["unique_trajectory_count"], "2")
+            self.assertEqual(row["kinetic_energy_sample_count"], "2")
+            self.assertAlmostEqual(float(row["kinetic_energy_mean_j"]), 25.0)
+            self.assertEqual(row["jump_height_sample_count"], "2")
+            self.assertAlmostEqual(float(row["jump_height_median_m"]), 4.0)
+            self.assertEqual(row["insufficient_sample_warning"], "false")
+            feature_collection = json.loads(geojson_path.read_text())
+            self.assertEqual(len(feature_collection["features"]), 1)
+            self.assertEqual(
+                metadata["target_line_conditional_diagnostics"]["schema_version"],
+                hazard.TARGET_LINE_DIAGNOSTICS_SCHEMA_VERSION,
+            )
+            self.assertEqual(metadata["target_line_conditional_diagnostics"]["intersection_count"], 2)
+            self.assertFalse(metadata["target_line_conditional_diagnostics"]["risk_or_exposure"])
+            output_kinds = {output.get("kind") for output in manifest["outputs"]}
+            self.assertIn("target_line_conditional_diagnostics", output_kinds)
+            self.assertFalse(manifest["target_line_conditional_diagnostics"]["annualized"])
+
     def test_fixture_layers_are_reproducible_and_interpretable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

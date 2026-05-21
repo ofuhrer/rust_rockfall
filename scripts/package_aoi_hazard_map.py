@@ -813,6 +813,7 @@ def claim_boundary(map_manifest: dict[str, Any], pilot_manifest: dict[str, Any])
             "unweighted_diagnostic",
             "sampling_weighted_conditional",
             "conditional_intensity_exceedance",
+            "target_line_conditional_diagnostics",
         ],
         "deferred_or_unsupported_labels": [
             "physical_probability",

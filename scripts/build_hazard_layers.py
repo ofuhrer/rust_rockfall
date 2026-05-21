@@ -102,6 +102,30 @@ CONDITIONAL_CURVE_UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS = (
     "source_occurrence_rate_per_year",
     "physical_probability",
 )
+TARGET_LINE_DIAGNOSTICS_SCHEMA_VERSION = "target_line_conditional_diagnostics_v1"
+TARGET_LINE_TABLE_COLUMNS = (
+    "target_line_id",
+    "segment_index",
+    "segment_id",
+    "x0_m",
+    "y0_m",
+    "x1_m",
+    "y1_m",
+    "segment_length_m",
+    "intersection_count",
+    "unique_trajectory_count",
+    "kinetic_energy_sample_count",
+    "kinetic_energy_mean_j",
+    "kinetic_energy_median_j",
+    "kinetic_energy_q90_j",
+    "kinetic_energy_max_j",
+    "jump_height_sample_count",
+    "jump_height_mean_m",
+    "jump_height_median_m",
+    "jump_height_q90_m",
+    "jump_height_max_m",
+    "insufficient_sample_warning",
+)
 
 
 @dataclass(frozen=True)
@@ -179,6 +203,51 @@ class ConditionalCurveExportConfig:
             "csv_table_written": self.write_table,
             "annualized": False,
         }
+
+
+@dataclass(frozen=True)
+class TargetLineDiagnosticsConfig:
+    path: Path
+    min_samples: int = 5
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "path": str(self.path),
+            "min_samples": self.min_samples,
+        }
+
+
+@dataclass(frozen=True)
+class TargetLineSegment:
+    target_line_id: str
+    segment_index: int
+    segment_id: str
+    x0_m: float
+    y0_m: float
+    x1_m: float
+    y1_m: float
+    properties: dict[str, Any]
+
+    @property
+    def length_m(self) -> float:
+        return math.hypot(self.x1_m - self.x0_m, self.y1_m - self.y0_m)
+
+
+@dataclass
+class TargetLineSegmentAccumulator:
+    segment: TargetLineSegment
+    intersection_count: int = 0
+    trajectory_ids: set[str] | None = None
+    kinetic_energy_j: list[float] | None = None
+    jump_height_m: list[float] | None = None
+
+    def __post_init__(self) -> None:
+        if self.trajectory_ids is None:
+            self.trajectory_ids = set()
+        if self.kinetic_energy_j is None:
+            self.kinetic_energy_j = []
+        if self.jump_height_m is None:
+            self.jump_height_m = []
 
 
 @dataclass(frozen=True)
@@ -2550,6 +2619,19 @@ def main_with_args(argv: list[str] | None = None) -> int:
             "the large curve table"
         ),
     )
+    parser.add_argument(
+        "--target-line-geojson",
+        type=Path,
+        help=(
+            "optional GeoJSON LineString/MultiLineString review target; writes conditional "
+            "trajectory-intersection impact diagnostics per target-line segment"
+        ),
+    )
+    parser.add_argument(
+        "--target-line-min-samples",
+        type=int,
+        help="minimum target-line intersection samples before per-segment summaries are considered supported",
+    )
     parser.add_argument("--map-product-id", help="optional Phase 1 map product id for hazard-map package metadata")
     parser.add_argument(
         "--probability-mode",
@@ -2732,6 +2814,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
     map_package_config = parse_hazard_map_package(case, args)
     raster_export_config = parse_raster_export_config(case, args)
     conditional_curve_export = parse_conditional_curve_export(case, args)
+    target_line_config = parse_target_line_diagnostics(case, args)
     pilot_gis_package_config = parse_pilot_gis_package(case, args, raster_export_config)
     map_package_state = load_hazard_map_package_state(map_package_config, probability_state)
     phase_telemetry.add_input_read(time.perf_counter() - map_package_started)
@@ -2854,6 +2937,14 @@ def main_with_args(argv: list[str] | None = None) -> int:
         probability_state,
         map_package_state,
     )
+    target_line_diagnostics = build_target_line_diagnostics(
+        target_line_config,
+        trajectory_paths,
+        terrain,
+        block_radius_m,
+        input_warnings,
+        phase_telemetry=phase_telemetry,
+    )
     metadata = build_metadata(
         case,
         diagnostics,
@@ -2868,6 +2959,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         raster_export_config,
         conditional_curve_export,
         conditional_curve_rows,
+        target_line_diagnostics,
     )
     core_output_json_serialization_seconds = write_core_hazard_outputs(
         output_dir,
@@ -2880,6 +2972,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
         raster_export_config,
         conditional_curve_export,
         conditional_curve_rows,
+        target_line_diagnostics,
         output_file_metadata,
         output_write_kind_seconds,
         output_write_kind_bytes,
@@ -3205,6 +3298,7 @@ def main_with_args(argv: list[str] | None = None) -> int:
             "cog": raster_export_config.cog,
             "plots_enabled": plots_enabled,
             "conditional_curve_export": conditional_curve_export.mode,
+            "target_line_diagnostics": bool(target_line_config),
             "trajectory_workers": args.trajectory_workers,
             "reducer_workers": args.reducer_workers,
             "export_cog_requested": bool(raster_export_config.cog),
@@ -3434,6 +3528,26 @@ def parse_conditional_curve_export(
     if mode not in {"full", "summary-only"}:
         raise SystemExit("conditional_curve_export.mode must be full or summary-only")
     return ConditionalCurveExportConfig(mode=str(mode))
+
+
+def parse_target_line_diagnostics(
+    case: dict[str, Any],
+    args: argparse.Namespace,
+) -> TargetLineDiagnosticsConfig | None:
+    raw = case.get("target_line_diagnostics") or {}
+    if raw and not isinstance(raw, dict):
+        raise SystemExit("target_line_diagnostics must be a mapping")
+    path_value = args.target_line_geojson or raw.get("path") or raw.get("geojson")
+    if not path_value:
+        return None
+    min_samples = int(
+        args.target_line_min_samples
+        if args.target_line_min_samples is not None
+        else raw.get("min_samples", 5)
+    )
+    if min_samples < 1:
+        raise SystemExit("target_line_min_samples must be at least 1")
+    return TargetLineDiagnosticsConfig(path=ROOT / str(path_value), min_samples=min_samples)
 
 
 def parse_pilot_gis_package(
@@ -6044,6 +6158,355 @@ def write_deposition_geojson(
     return serialization_seconds
 
 
+def build_target_line_diagnostics(
+    config: TargetLineDiagnosticsConfig | None,
+    trajectory_paths: list[Path],
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+    warnings: list[str],
+    *,
+    phase_telemetry: HazardBuildPhaseTelemetry | None = None,
+) -> dict[str, Any]:
+    if config is None:
+        return {"enabled": False}
+    if not config.path.exists():
+        raise SystemExit(f"target-line GeoJSON does not exist: {config.path}")
+    segments = read_target_line_segments(config.path)
+    accumulators = [TargetLineSegmentAccumulator(segment) for segment in segments]
+    for trajectory_path in trajectory_paths:
+        batch = read_trajectory_sample_batch(
+            trajectory_path,
+            warnings,
+            phase_telemetry=phase_telemetry,
+        )
+        if batch is None or not batch.samples:
+            continue
+        accumulate_target_line_intersections(
+            accumulators,
+            batch,
+            terrain,
+            block_radius_m,
+        )
+    rows = [target_line_summary_row(accumulator, config.min_samples) for accumulator in accumulators]
+    insufficient_segments = [
+        row["segment_id"]
+        for row in rows
+        if row["insufficient_sample_warning"]
+    ]
+    return {
+        "enabled": True,
+        "schema_version": TARGET_LINE_DIAGNOSTICS_SCHEMA_VERSION,
+        "input_path": str(config.path),
+        "min_samples": config.min_samples,
+        "segment_count": len(rows),
+        "intersection_count": sum(int(row["intersection_count"]) for row in rows),
+        "unique_trajectory_count": len(
+            {
+                trajectory_id
+                for accumulator in accumulators
+                for trajectory_id in (accumulator.trajectory_ids or set())
+            }
+        ),
+        "kinetic_energy_sample_count": sum(int(row["kinetic_energy_sample_count"]) for row in rows),
+        "jump_height_sample_count": sum(int(row["jump_height_sample_count"]) for row in rows),
+        "insufficient_sample_segment_count": len(insufficient_segments),
+        "insufficient_sample_segment_ids": insufficient_segments,
+        "table_columns": list(TARGET_LINE_TABLE_COLUMNS),
+        "rows": rows,
+        "annualized": False,
+        "physical_probability": False,
+        "risk_or_exposure": False,
+        "operational_design_claim": False,
+        "limitations": [
+            "Target-line diagnostics are conditional summaries of supplied trajectory intersections only.",
+            "No source frequency, object vulnerability, exposure, annual probability, return-period, risk, or operational protection-design semantics are included.",
+        ],
+    }
+
+
+def read_target_line_segments(path: Path) -> list[TargetLineSegment]:
+    payload = read_json(path)
+    features = target_line_features(payload)
+    segments: list[TargetLineSegment] = []
+    for feature_index, feature in enumerate(features):
+        geometry = feature.get("geometry") if isinstance(feature, dict) else None
+        properties = feature.get("properties") if isinstance(feature, dict) and isinstance(feature.get("properties"), dict) else {}
+        feature_id = str(feature.get("id") or properties.get("target_line_id") or properties.get("id") or f"target_line_{feature_index}")
+        for line_index, coordinates in enumerate(line_coordinate_sequences(geometry)):
+            line_id = feature_id if line_index == 0 else f"{feature_id}_{line_index}"
+            for segment_index, (start, end) in enumerate(zip(coordinates, coordinates[1:])):
+                x0, y0 = target_line_xy(start, path)
+                x1, y1 = target_line_xy(end, path)
+                if x0 == x1 and y0 == y1:
+                    continue
+                segments.append(
+                    TargetLineSegment(
+                        target_line_id=line_id,
+                        segment_index=segment_index,
+                        segment_id=f"{line_id}__segment_{segment_index:04d}",
+                        x0_m=x0,
+                        y0_m=y0,
+                        x1_m=x1,
+                        y1_m=y1,
+                        properties=dict(properties),
+                    )
+                )
+    if not segments:
+        raise SystemExit(f"target-line GeoJSON contains no LineString segments: {path}")
+    return segments
+
+
+def target_line_features(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    payload_type = payload.get("type")
+    if payload_type == "FeatureCollection":
+        features = payload.get("features")
+        if not isinstance(features, list):
+            raise SystemExit("target-line FeatureCollection must contain a features array")
+        return [feature for feature in features if isinstance(feature, dict)]
+    if payload_type == "Feature":
+        return [payload]
+    if payload_type in {"LineString", "MultiLineString"}:
+        return [{"type": "Feature", "geometry": payload, "properties": {}}]
+    raise SystemExit("target-line GeoJSON must be a FeatureCollection, Feature, LineString, or MultiLineString")
+
+
+def line_coordinate_sequences(geometry: Any) -> list[list[Any]]:
+    if not isinstance(geometry, dict):
+        raise SystemExit("target-line feature is missing GeoJSON geometry")
+    geometry_type = geometry.get("type")
+    coordinates = geometry.get("coordinates")
+    if geometry_type == "LineString":
+        if not isinstance(coordinates, list):
+            raise SystemExit("target-line LineString coordinates must be an array")
+        return [coordinates]
+    if geometry_type == "MultiLineString":
+        if not isinstance(coordinates, list):
+            raise SystemExit("target-line MultiLineString coordinates must be an array")
+        return [line for line in coordinates if isinstance(line, list)]
+    raise SystemExit("target-line diagnostics support only LineString and MultiLineString geometry")
+
+
+def target_line_xy(coordinate: Any, path: Path) -> tuple[float, float]:
+    if not isinstance(coordinate, list | tuple) or len(coordinate) < 2:
+        raise SystemExit(f"invalid target-line coordinate in {path}")
+    x = float(coordinate[0])
+    y = float(coordinate[1])
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise SystemExit(f"non-finite target-line coordinate in {path}")
+    return x, y
+
+
+def accumulate_target_line_intersections(
+    accumulators: list[TargetLineSegmentAccumulator],
+    batch: TrajectorySampleBatch,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+) -> None:
+    trajectory_id = batch.trajectory_id or batch.path.stem
+    for first, second in zip(batch.samples, batch.samples[1:]):
+        if first.x_m is None or first.y_m is None or second.x_m is None or second.y_m is None:
+            continue
+        for accumulator in accumulators:
+            t = segment_intersection_parameter(
+                first.x_m,
+                first.y_m,
+                second.x_m,
+                second.y_m,
+                accumulator.segment.x0_m,
+                accumulator.segment.y0_m,
+                accumulator.segment.x1_m,
+                accumulator.segment.y1_m,
+            )
+            if t is None:
+                continue
+            accumulator.intersection_count += 1
+            assert accumulator.trajectory_ids is not None
+            accumulator.trajectory_ids.add(trajectory_id)
+            kinetic = interpolate_optional(first.kinetic_j, second.kinetic_j, t)
+            if kinetic is not None:
+                assert accumulator.kinetic_energy_j is not None
+                accumulator.kinetic_energy_j.append(kinetic)
+            first_jump = sample_jump_height_for_target_line(first, terrain, block_radius_m)
+            second_jump = sample_jump_height_for_target_line(second, terrain, block_radius_m)
+            jump = interpolate_optional(first_jump, second_jump, t)
+            if jump is not None:
+                assert accumulator.jump_height_m is not None
+                accumulator.jump_height_m.append(jump)
+
+
+def segment_intersection_parameter(
+    ax: float,
+    ay: float,
+    bx: float,
+    by: float,
+    cx: float,
+    cy: float,
+    dx: float,
+    dy: float,
+) -> float | None:
+    rx = bx - ax
+    ry = by - ay
+    sx = dx - cx
+    sy = dy - cy
+    denominator = cross_2d(rx, ry, sx, sy)
+    qpx = cx - ax
+    qpy = cy - ay
+    if abs(denominator) < 1e-12:
+        if abs(cross_2d(qpx, qpy, rx, ry)) > 1e-12:
+            return None
+        rr = rx * rx + ry * ry
+        if rr <= 0.0:
+            return None
+        t0 = ((cx - ax) * rx + (cy - ay) * ry) / rr
+        t1 = ((dx - ax) * rx + (dy - ay) * ry) / rr
+        overlap_min = max(0.0, min(t0, t1))
+        overlap_max = min(1.0, max(t0, t1))
+        if overlap_min > overlap_max + 1e-12:
+            return None
+        return min(1.0, max(0.0, (overlap_min + overlap_max) * 0.5))
+    t = cross_2d(qpx, qpy, sx, sy) / denominator
+    u = cross_2d(qpx, qpy, rx, ry) / denominator
+    if -1e-12 <= t <= 1.0 + 1e-12 and -1e-12 <= u <= 1.0 + 1e-12:
+        return min(1.0, max(0.0, t))
+    return None
+
+
+def cross_2d(ax: float, ay: float, bx: float, by: float) -> float:
+    return ax * by - ay * bx
+
+
+def interpolate_optional(first: float | None, second: float | None, fraction: float) -> float | None:
+    if first is None or second is None:
+        return None
+    return first * (1.0 - fraction) + second * fraction
+
+
+def sample_jump_height_for_target_line(
+    sample: TrajectorySample,
+    terrain: "TerrainSampler",
+    block_radius_m: float,
+) -> float | None:
+    if sample.x_m is None or sample.y_m is None or sample.z_m is None:
+        return None
+    ground = terrain.height(sample.x_m, sample.y_m)
+    if ground is None:
+        return None
+    return max(0.0, sample.z_m - ground - block_radius_m)
+
+
+def target_line_summary_row(
+    accumulator: TargetLineSegmentAccumulator,
+    min_samples: int,
+) -> dict[str, Any]:
+    segment = accumulator.segment
+    kinetic = accumulator.kinetic_energy_j or []
+    jump = accumulator.jump_height_m or []
+    trajectory_ids = accumulator.trajectory_ids or set()
+    insufficient = accumulator.intersection_count > 0 and (
+        len(kinetic) < min_samples or len(jump) < min_samples
+    )
+    return {
+        "target_line_id": segment.target_line_id,
+        "segment_index": segment.segment_index,
+        "segment_id": segment.segment_id,
+        "x0_m": segment.x0_m,
+        "y0_m": segment.y0_m,
+        "x1_m": segment.x1_m,
+        "y1_m": segment.y1_m,
+        "segment_length_m": segment.length_m,
+        "intersection_count": accumulator.intersection_count,
+        "unique_trajectory_count": len(trajectory_ids),
+        "kinetic_energy_sample_count": len(kinetic),
+        "kinetic_energy_mean_j": mean_or_none(kinetic),
+        "kinetic_energy_median_j": quantile_or_none(kinetic, 0.5),
+        "kinetic_energy_q90_j": quantile_or_none(kinetic, 0.9),
+        "kinetic_energy_max_j": max(kinetic) if kinetic else None,
+        "jump_height_sample_count": len(jump),
+        "jump_height_mean_m": mean_or_none(jump),
+        "jump_height_median_m": quantile_or_none(jump, 0.5),
+        "jump_height_q90_m": quantile_or_none(jump, 0.9),
+        "jump_height_max_m": max(jump) if jump else None,
+        "insufficient_sample_warning": insufficient,
+    }
+
+
+def mean_or_none(values: list[float]) -> float | None:
+    return math.fsum(values) / len(values) if values else None
+
+
+def quantile_or_none(values: list[float], probability: float) -> float | None:
+    if not values:
+        return None
+    return quantile(values, probability)
+
+
+def write_target_line_diagnostics_outputs(
+    output_dir: Path,
+    prefix: str,
+    diagnostics: dict[str, Any],
+    output_file_metadata: dict[Path, dict[str, Any]],
+    output_write_kind_seconds: dict[str, float],
+    output_write_kind_bytes: dict[str, int],
+) -> None:
+    if not diagnostics.get("enabled"):
+        return
+    csv_path = output_dir / f"{prefix}_target_line_conditional_diagnostics.csv"
+    geojson_path = output_dir / f"{prefix}_target_line_conditional_diagnostics.geojson"
+    rows = list(diagnostics.get("rows") or [])
+    started = time.perf_counter()
+    with csv_path.open("w", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=list(TARGET_LINE_TABLE_COLUMNS))
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({column: target_line_csv_value(row.get(column)) for column in TARGET_LINE_TABLE_COLUMNS})
+    _register_written_output(
+        csv_path,
+        "csv_table",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=time.perf_counter() - started,
+        total_bytes=csv_path.stat().st_size,
+        sha256_hex=sha256_file(csv_path),
+    )
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [[row["x0_m"], row["y0_m"]], [row["x1_m"], row["y1_m"]]],
+            },
+            "properties": {
+                key: value
+                for key, value in row.items()
+                if key not in {"x0_m", "y0_m", "x1_m", "y1_m"}
+            },
+        }
+        for row in rows
+    ]
+    serialization_started = time.perf_counter()
+    text = json.dumps({"type": "FeatureCollection", "features": features}, indent=2, sort_keys=True) + "\n"
+    serialization_seconds = time.perf_counter() - serialization_started
+    write_file_text(
+        geojson_path,
+        text,
+        "geojson",
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+        elapsed_seconds=serialization_seconds,
+    )
+
+
+def target_line_csv_value(value: Any) -> Any:
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, float):
+        return "" if not math.isfinite(value) else f"{value:.12g}"
+    if value is None:
+        return ""
+    return value
+
 
 
 def build_conditional_intensity_exceedance_curves(
@@ -6244,6 +6707,30 @@ def summarize_conditional_curve_contract(
     }
 
 
+def target_line_manifest_summary(diagnostics: dict[str, Any]) -> dict[str, Any]:
+    if not diagnostics.get("enabled"):
+        return {"enabled": False}
+    return {
+        "enabled": True,
+        "schema_version": diagnostics.get("schema_version"),
+        "input_path": diagnostics.get("input_path"),
+        "min_samples": diagnostics.get("min_samples"),
+        "segment_count": diagnostics.get("segment_count"),
+        "intersection_count": diagnostics.get("intersection_count"),
+        "unique_trajectory_count": diagnostics.get("unique_trajectory_count"),
+        "kinetic_energy_sample_count": diagnostics.get("kinetic_energy_sample_count"),
+        "jump_height_sample_count": diagnostics.get("jump_height_sample_count"),
+        "insufficient_sample_segment_count": diagnostics.get("insufficient_sample_segment_count"),
+        "insufficient_sample_segment_ids": list(diagnostics.get("insufficient_sample_segment_ids") or []),
+        "table_columns": list(TARGET_LINE_TABLE_COLUMNS),
+        "annualized": False,
+        "physical_probability": False,
+        "risk_or_exposure": False,
+        "operational_design_claim": False,
+        "limitations": list(diagnostics.get("limitations") or []),
+    }
+
+
 CONDITIONAL_STATISTIC_PREFIXES = ("kinetic_energy", "jump_height", "velocity")
 CONDITIONAL_STATISTIC_SUFFIXES = (
     "sample_count",
@@ -6318,6 +6805,7 @@ def build_metadata(
     raster_exports: RasterExportConfig,
     conditional_curve_export: ConditionalCurveExportConfig,
     conditional_curve_rows: list[ConditionalCurveRow],
+    target_line_diagnostics: dict[str, Any],
 ) -> dict[str, Any]:
     weighted_layer_names = [
         layer.key for layer in layers if layer.key.startswith("weighted_")
@@ -6357,6 +6845,7 @@ def build_metadata(
             conditional_curve_rows,
             conditional_curve_export,
         ),
+        "target_line_conditional_diagnostics": target_line_manifest_summary(target_line_diagnostics),
         "raster_exports": raster_exports.as_metadata(),
         "layer_semantics": layer_semantics,
         "layers": [
@@ -6473,6 +6962,7 @@ def write_core_hazard_outputs(
     raster_exports: RasterExportConfig,
     conditional_curve_export: ConditionalCurveExportConfig,
     conditional_curve_rows: list[ConditionalCurveRow],
+    target_line_diagnostics: dict[str, Any],
     output_file_metadata: dict[Path, dict[str, Any]],
     output_write_kind_seconds: dict[str, float],
     output_write_kind_bytes: dict[str, int],
@@ -6507,6 +6997,14 @@ def write_core_hazard_outputs(
             output_write_kind_seconds=output_write_kind_seconds,
             output_write_kind_bytes=output_write_kind_bytes,
         )
+    write_target_line_diagnostics_outputs(
+        output_dir,
+        prefix,
+        target_line_diagnostics,
+        output_file_metadata,
+        output_write_kind_seconds,
+        output_write_kind_bytes,
+    )
     json_serialization_seconds += write_deposition_geojson(
         output_dir / f"{prefix}_deposition_points.geojson",
         deposition_points,
@@ -6563,6 +7061,11 @@ def write_pilot_gis_package_manifest(
         for output in outputs
         if output.get("kind") == "conditional_intensity_exceedance_curves"
     ]
+    target_line_outputs = [
+        compact_output_manifest_entry(output)
+        for output in outputs
+        if output.get("kind") == "target_line_conditional_diagnostics"
+    ]
     source_zone_context = [
         input_artifact_entry(path, "source_zone_context", path.suffix.lstrip(".") or "unknown")
         for path in package.source_zone_context_paths
@@ -6591,6 +7094,7 @@ def write_pilot_gis_package_manifest(
         "parity_outputs": parity_outputs,
         "manifest_outputs": manifest_outputs,
         "conditional_intensity_exceedance_curve_outputs": curve_outputs,
+        "target_line_conditional_diagnostic_outputs": target_line_outputs,
         "source_zone_context": source_zone_context,
         "terrain_metadata": terrain_metadata,
         "grid": hazard_manifest.get("grid"),
@@ -6608,6 +7112,7 @@ def write_pilot_gis_package_manifest(
                 "unweighted_diagnostic",
                 "sampling_weighted_conditional",
                 "conditional_intensity_exceedance",
+                "target_line_conditional_diagnostics",
             ],
             "future_unsupported_product_labels": [
                 "physical_probability",
@@ -6622,6 +7127,7 @@ def write_pilot_gis_package_manifest(
             "Local diagnostic review package only; not an operational hazard map.",
             "GeoTIFF rasters are uncompressed review rasters, not verified Cloud-Optimized GeoTIFFs.",
             "Current probability layers are conditional diagnostics, not annual frequencies or return-period products.",
+            "Target-line outputs are conditional trajectory-intersection diagnostics, not road risk or protection-design products.",
             "Exposure, vulnerability, consequences, expected loss, and risk modelling are out of scope.",
         ],
     }
@@ -6703,6 +7209,24 @@ def build_hazard_manifest(
                 output_dir / f"{prefix}_conditional_intensity_exceedance_curves.csv",
                 "conditional_intensity_exceedance_curves",
                 "csv_table",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+    target_line = metadata.get("target_line_conditional_diagnostics") or {}
+    if target_line.get("enabled"):
+        outputs.append(
+            output_manifest_entry(
+                output_dir / f"{prefix}_target_line_conditional_diagnostics.csv",
+                "target_line_conditional_diagnostics",
+                "csv_table",
+                output_file_metadata=output_file_metadata,
+            )
+        )
+        outputs.append(
+            output_manifest_entry(
+                output_dir / f"{prefix}_target_line_conditional_diagnostics.geojson",
+                "target_line_conditional_diagnostics",
+                "geojson",
                 output_file_metadata=output_file_metadata,
             )
         )
@@ -6849,6 +7373,7 @@ def build_hazard_manifest(
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
         "conditional_statistics_surfaces": metadata.get("conditional_statistics_surfaces", {}),
         "conditional_intensity_exceedance_curves": metadata.get("conditional_intensity_exceedance_curves", {}),
+        "target_line_conditional_diagnostics": metadata.get("target_line_conditional_diagnostics", {}),
         "layer_semantics": layer_semantics,
         "cellwise_layers": cellwise_layers_from_outputs(outputs),
         "layers": [
@@ -6924,6 +7449,7 @@ def update_conditional_execution_manifest(
             "sampling_weighted_conditional",
             "conditional_intensity_exceedance",
             "conditional_statistics_surfaces",
+            "target_line_conditional_diagnostics",
         ],
         "annualized": False,
         "physical_probability": False,

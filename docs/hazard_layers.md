@@ -63,6 +63,8 @@ Exports:
 - JSON metadata and `run_manifest_v1` provenance sidecars.
 - a tidy `conditional_intensity_exceedance_curves.csv` table when trajectory
   threshold-exceedance layers are generated.
+- optional target-line conditional diagnostics as CSV and GeoJSON when a
+  road/protection/review LineString GeoJSON is supplied.
 - optional PNG layer plots when diagnostic rendering is enabled.
 - optional local `index.html` report when diagnostic rendering is enabled.
 
@@ -225,6 +227,32 @@ supported normalization scopes, and unsupported physical-frequency fields
 `source_occurrence_rate_per_year`, and `physical_probability`).
 The helper is audit metadata only; it does not introduce annual-frequency or
 physical-frequency semantics.
+
+For linear infrastructure or review-line interpretation, pass a target
+LineString or MultiLineString GeoJSON:
+
+```bash
+python3 scripts/build_hazard_layers.py \
+  --case validation/cases/swissalti3d_hazard_statistics_pilot.yaml \
+  --output-dir hazard/results/swissalti3d_hazard_statistics_target_line \
+  --cell-size 2 \
+  --target-line-geojson /path/to/review_line.geojson \
+  --target-line-min-samples 5 \
+  --no-plots
+```
+
+The builder writes
+`<prefix>_target_line_conditional_diagnostics.csv` and
+`<prefix>_target_line_conditional_diagnostics.geojson`. Each target-line
+segment records trajectory intersection counts, unique trajectory counts,
+conditional kinetic-energy and jump-height sample counts, mean, median, Q90,
+maximum, and an insufficient-sample flag when a crossed segment has fewer than
+the configured finite samples. Hazard metadata, run manifests, and pilot GIS
+package manifests expose these outputs as
+`target_line_conditional_diagnostics`. The target-line product is a conditional
+diagnostic over supplied trajectory outputs only. It is not a road risk model,
+object vulnerability assessment, annual-frequency product, physical occurrence
+probability, return-period product, or operational protection-design claim.
 
 Pilot audit snapshot:
 

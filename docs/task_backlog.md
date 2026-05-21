@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-423: Add Target-Line Conditional Impact Diagnostics
-
-Goal: Compute conditional target-line diagnostics for roads or protection lines from existing trajectory/hazard outputs.
-
-Capability gap reduced: Management and engineering interpretability for Balfrin map outputs.
-
-Why this outranks alternatives: RAMMS target-line analysis is highly useful for linear infrastructure, and a conditional diagnostic variant can be implemented without source-frequency or risk semantics.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/package_aoi_hazard_map.py`
-- `tests/test_hazard_layers.py`
-- `docs/hazard_layers.md`
-
-Deliverables:
-
-- A target-line input mode or helper that counts trajectory intersections and summarizes conditional kinetic energy and jump height along line segments.
-- Output CSV/GeoJSON plus manifest entries with sample counts and insufficient-sample warnings.
-- Tests for a tiny synthetic target line.
-
-Definition of done:
-
-- A road or review line can be evaluated as a conditional diagnostic target, with clear separation from risk, exposure, or annual-frequency claims.
-
-Boundaries: No risk model, no object vulnerability, no physical occurrence probability, no operational protection design claim.
-
 ### TB-424: Define Regional Split Execution Contract
 
 Goal: Define a compact regional split contract that maps AOI candidates into source groups, scenario IDs, execution chunks, and reducer merge keys.
