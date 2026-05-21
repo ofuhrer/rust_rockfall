@@ -26,6 +26,7 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "swisstopo_aoi_acquisition_dry_run_v1"
+ACQUISITION_COMMAND_SET_SCHEMA_VERSION = "swisstopo_aoi_acquisition_command_set_v1"
 ACQUISITION_MODES = {"dry-run", "explicit-acquire"}
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_ACQUISITION_MANIFEST = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
@@ -106,6 +107,7 @@ def build_report(
     aoi_tile_discovery = acquisition_report["aoi_tile_discovery"]
     tile_manifest = build_tile_manifest(candidate_site_id, candidate_site_name, site_extent, aoi_tile_discovery)
     product_manifest = build_product_manifest(candidate_site_id, candidate_site_name, public_context_acquisition_plan, aoi_tile_discovery)
+    acquisition_command_set = build_acquisition_command_set(acquisition_report)
     generated_root_warnings = build_generated_root_warnings(candidate_site_id, paths, acquisition_manifest, repo_root=PREFLIGHT.ROOT)
     acquisition_package_paths: dict[str, str] = {}
     acquisition_package_status = "not_requested"
@@ -223,6 +225,7 @@ def build_report(
         "aoi_tile_discovery": aoi_tile_discovery,
         "tile_manifest": tile_manifest,
         "product_manifest": product_manifest,
+        "acquisition_command_set": acquisition_command_set,
         "public_geodata_workflow_contract": workflow_contract,
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
@@ -236,6 +239,43 @@ def build_report(
         "operational_claims_allowed": False,
     }
     return report
+
+
+def build_acquisition_command_set(report: dict[str, Any]) -> dict[str, Any]:
+    workflow_contract = report.get("public_geodata_workflow_contract") or {}
+    cache_contract = workflow_contract.get("public_geodata_cache_contract") or {}
+    cache_layout = cache_contract.get("cache_layout") or {}
+    stage_commands = list(cache_contract.get("stage_commands") or [])
+    verify_commands = list(cache_contract.get("verify_commands") or [])
+    product_rows = []
+    for row in report.get("aoi_tile_discovery", {}).get("product_resolution_rows") or []:
+        product_rows.append(
+            {
+                "product_id": row.get("source_product_id", ""),
+                "product_label": row.get("product_label", ""),
+                "category": row.get("category", ""),
+                "expected_local_root": row.get("expected_staging_root", ""),
+                "expected_staged_path": row.get("processed_path", ""),
+                "expected_tile_ids": row.get("expected_tile_ids", []),
+                "source_url_or_download_record": row.get("source_url_or_download_record", ""),
+                "staging_mode": row.get("tile_resolution_strategy", ""),
+            }
+        )
+
+    return {
+        "schema_version": ACQUISITION_COMMAND_SET_SCHEMA_VERSION,
+        "candidate_site_id": report.get("candidate_site_id", ""),
+        "candidate_site_name": report.get("candidate_site_name", ""),
+        "site_extent": report.get("site_extent", "placeholder_extent_missing"),
+        "cache_manifest_path": cache_layout.get("cache_manifest_path", ""),
+        "dry_run_stage_command": stage_commands[0]["command"] if len(stage_commands) > 0 else "",
+        "local_copy_stage_command": stage_commands[1]["command"] if len(stage_commands) > 1 else "",
+        "download_stage_command": stage_commands[2]["command"] if len(stage_commands) > 2 else "",
+        "cache_verification_command": verify_commands[0]["command"] if verify_commands else "",
+        "stage_commands": stage_commands,
+        "verify_commands": verify_commands,
+        "products": product_rows,
+    }
 
 
 def metadata_category_set() -> set[str]:
@@ -540,6 +580,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("product_manifest:")
     lines.extend(render_manifest_rows(report.get("product_manifest") or {}))
     lines.append("")
+    lines.append("acquisition_command_set:")
+    lines.extend(render_acquisition_command_set_rows(report.get("acquisition_command_set") or {}))
+    lines.append("")
     lines.append("aoi_tile_discovery:")
     lines.extend(render_aoi_tile_discovery_rows(report.get("aoi_tile_discovery") or {}))
     lines.append("")
@@ -709,6 +752,39 @@ def render_manifest_rows(report: dict[str, Any]) -> list[str]:
                 f"  - {entry.get('product_label', '')}: source_product_id={entry.get('source_product_id', '')}, "
                 f"source_url_or_download_record={entry.get('source_url_or_download_record', '')}"
             )
+    return rendered
+
+
+def render_acquisition_command_set_rows(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    products = list(report.get("products") or [])
+    rendered = [
+        f"- schema_version: {report.get('schema_version', '')}",
+        f"- candidate_site_id: {report.get('candidate_site_id', '')}",
+        f"- candidate_site_name: {report.get('candidate_site_name', '')}",
+        f"- cache_manifest_path: {report.get('cache_manifest_path', '')}",
+        f"- dry_run_stage_command: {report.get('dry_run_stage_command', '')}",
+        f"- local_copy_stage_command: {report.get('local_copy_stage_command', '')}",
+        f"- download_stage_command: {report.get('download_stage_command', '')}",
+        f"- cache_verification_command: {report.get('cache_verification_command', '')}",
+        "- stage_commands:",
+    ]
+    for entry in report.get("stage_commands") or []:
+        rendered.append(f"  - {entry.get('command_id', '')}: {entry.get('command', '')}")
+    rendered.append("- verify_commands:")
+    for entry in report.get("verify_commands") or []:
+        rendered.append(f"  - {entry.get('command_id', '')}: {entry.get('command', '')}")
+    if products:
+        rendered.append("- products:")
+        for entry in products:
+            rendered.append(
+                f"  - {entry.get('product_id', '')}: product_label={entry.get('product_label', '')}, "
+                f"category={entry.get('category', '')}, expected_local_root={entry.get('expected_local_root', '')}, "
+                f"expected_staged_path={entry.get('expected_staged_path', '')}, expected_tile_ids={', '.join(entry.get('expected_tile_ids') or []) or 'none'}"
+            )
+    else:
+        rendered.append("- products: none")
     return rendered
 
 

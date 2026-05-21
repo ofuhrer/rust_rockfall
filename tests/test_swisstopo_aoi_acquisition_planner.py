@@ -259,17 +259,51 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
             try:
                 preflight.ROOT = repo_root
                 planner.PREFLIGHT.ROOT = repo_root
-                report = planner.build_report(config_path)
+                first_report = planner.build_report(config_path)
+                second_report = planner.build_report(config_path)
             finally:
                 preflight.ROOT = original_root
                 planner.PREFLIGHT.ROOT = original_planner_root
 
-        json_report = json.dumps(report, indent=2, sort_keys=True)
-        self.assertEqual(json_report, json.dumps(report, indent=2, sort_keys=True))
+        self.assertEqual(first_report["acquisition_command_set"], second_report["acquisition_command_set"])
+        json_report = json.dumps(first_report, indent=2, sort_keys=True)
+        self.assertEqual(json_report, json.dumps(second_report, indent=2, sort_keys=True))
 
-        text_report = planner.render_text_report(report)
+        command_set = first_report["acquisition_command_set"]
+        self.assertEqual(command_set["schema_version"], "swisstopo_aoi_acquisition_command_set_v1")
+        self.assertIn("scripts/stage_public_geodata_cache.py", command_set["dry_run_stage_command"])
+        self.assertIn("--mode dry-run", command_set["dry_run_stage_command"])
+        self.assertIn("--mode local-copy --apply", command_set["local_copy_stage_command"])
+        self.assertIn("--mode download --download", command_set["download_stage_command"])
+        self.assertIn("scripts/verify_public_geodata_cache.py", command_set["cache_verification_command"])
+        self.assertEqual(
+            [entry["product_id"] for entry in command_set["products"]],
+            [
+                "swissalti3d_2m",
+                "swissimage",
+                "swisstlm3d",
+                "swisssurface3d",
+                "swisssurface3d_raster",
+                "swissbuildings3d",
+            ],
+        )
+        self.assertTrue(
+            command_set["products"][0]["expected_local_root"].endswith(
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"
+            )
+        )
+        self.assertTrue(
+            command_set["products"][1]["expected_local_root"].endswith(
+                "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
+            )
+        )
+
+        text_report = planner.render_text_report(first_report)
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
+        self.assertIn("acquisition_command_set:", text_report)
+        self.assertIn("dry_run_stage_command:", text_report)
+        self.assertIn("cache_verification_command:", text_report)
         self.assertIn("aoi_tile_discovery:", text_report)
         self.assertIn("resolver_status:", text_report)
         self.assertIn("product_resolution_rows:", text_report)

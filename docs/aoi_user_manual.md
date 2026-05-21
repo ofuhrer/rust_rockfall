@@ -19,7 +19,21 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
 
 ## Command Path
 
-1. Describe the AOI config.
+1. Plan the public-geodata acquisition command set.
+
+   ```bash
+   PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py \
+     --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+     --format text
+   ```
+
+   This is the copy/paste handoff for AOI public-geodata staging. It lists the
+   product IDs, expected local roots, cache verification commands, and staging
+   commands for the supplied AOI. The default mode is dry-run, so it stays
+   read-only and does not download public data unless you later opt into the
+   explicit staging driver.
+
+2. Describe the AOI config.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config \
@@ -31,7 +45,7 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
    Use this to inspect the effective site config, generated roots, and current
    local-state dependency note before staging anything.
 
-2. Prepare the AOI.
+3. Prepare the AOI.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare \
@@ -43,7 +57,7 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
    This is the read-only preparation gate. It verifies staged public inputs and
    stops before simulation work.
 
-3. Review candidate release zones.
+4. Review candidate release zones.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review \
@@ -56,7 +70,7 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
    the overlay manifest, review paths, and first blocker when inputs are still
    missing.
 
-4. Generate the diagnostic package.
+5. Generate the diagnostic package.
 
    ```bash
    PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py \
@@ -70,7 +84,7 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
    and annotates raster/vector inventory entries with the matching `.qml`
    references where one exists.
 
-5. Use the front-door packaging gate when you want the compact readiness
+6. Use the front-door packaging gate when you want the compact readiness
    report for an existing hazard root.
 
    ```bash

@@ -5674,3 +5674,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: evidence integration only; no Balfrin job was submitted, TB-432 was not promoted to measured evidence, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-434`
+
+### TB-434: Build Real-AOI Public-Geodata Acquisition Command Set
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: turn the AOI acquisition planning surfaces into a concrete dry-run command set with product IDs, expected local roots, cache verification commands, and staging commands for one supplied AOI.
+- Files changed: `scripts/plan_swisstopo_aoi_acquisition.py`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `tests/test_public_geodata_cache_stager.py`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a first-class `acquisition_command_set` surface to the AOI acquisition planner so the JSON and text reports now surface product IDs, expected local roots, the cache manifest path, and the dry-run, local-copy, download, and verification commands in one place.
+  - Kept the command set deterministic by reusing the existing public-geodata workflow contract and AOI tile discovery outputs rather than introducing a new acquisition state machine.
+  - Strengthened regression coverage so the planner report is stable across repeated builds, the emitted command strings include the expected stage/verify modes, and the staging helper remains read-only when `download` is not explicitly authorized.
+  - Pointed the AOI user manual at the acquisition planner as the first command in the user path so the command set is discoverable from the AOI front door.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner tests.test_public_geodata_cache_stager`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no automatic network download was enabled by default, no generated artifact was committed, no second-site ensemble was run, and no operational claim was added.
+- Next task: `TB-435`

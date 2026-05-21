@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-434: Build Real-AOI Public-Geodata Acquisition Command Set
-
-Goal: Turn the current AOI acquisition planning surfaces into concrete copy/paste commands for acquiring and staging the required public geodata products for one arbitrary AOI.
-
-Capability gap reduced: Manual public-geodata acquisition remains the largest user workflow gap.
-
-Why this outranks alternatives: Swiss-wide workflow automation cannot progress while AOI input acquisition is mostly planning and local-state dependent.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/stage_public_geodata_cache.py`
-
-Deliverables:
-
-- Deterministic dry-run command output listing product IDs, expected local roots, cache verification commands, and staging commands for a supplied AOI.
-- A fixture-backed test proving the commands remain stable and do not perform downloads unless explicitly requested.
-- Documentation update pointing users to the acquisition command path from the AOI manual.
-
-Definition of done:
-
-- A user can go from AOI bounds to a concrete public-geodata acquisition/staging command sequence without reading multiple planning reports.
-
-Boundaries: No automatic network download by default, no generated artifact commits, no second-site ensemble, no operational claim.
-
 ### TB-435: Rehearse Real-AOI Cache Verification With Missing And Partial Inputs
 
 Goal: Make public-geodata cache verification produce actionable missing/partial/input-mismatch reports for arbitrary AOI staging roots.
