@@ -5437,3 +5437,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: target-line outputs remain conditional trajectory-intersection diagnostics only; no road risk model, object vulnerability, exposure, annual-frequency, physical occurrence probability, return-period, operational protection-design, scale-up, or distributed-execution claim was added.
 - Next task: `TB-424`
+
+### TB-424: Define Regional Split Execution Contract
+
+- Date: 2026-05-21
+- Commit: `9ab60d4`; work-log entry recorded in the follow-up commit.
+- Objective: define a compact regional split contract that maps multi-zone AOI candidates into deterministic source groups, scenario ids, execution chunks, expected output roots, and reducer merge keys.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `regional_split_execution_plan_v1` to the existing multi-zone reducer pressure front door.
+  - Materialized `input/regional_split_execution_plan.json` alongside the scratch probe inputs and referenced it from the probe manifest, command plan, and JSON summary.
+  - Defined per-split `group`, `zone_id`, `scenario_id`, `sampling_weight`, `chunk_id`, `expected_output_root`, `merge_key`, and `execution_key` fields.
+  - Used explicit `chunk_id/zone_id/scenario_id` merge keys so later split/merge work does not depend on implicit file naming.
+  - Added fixture tests proving the split plan is stable across rematerialization and has no duplicate execution keys.
+  - Documented the local scratch-plan contract and removed TB-424 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: the split plan is a deterministic local scratch execution contract only; no distributed execution, Balfrin submission, scale-up claim, operational claim, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability semantics were added.
+- Next task: `TB-425`
