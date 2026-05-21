@@ -8,6 +8,7 @@ physics, output, versioning, HPC, or review-policy changes.
 
 - Active task queue: `docs/task_backlog.md`.
 - Compact task context: `scripts/print_agent_task_context.py`.
+- AOI front door and QGIS review: `docs/aoi_user_manual.md`.
 - Durable decisions: `docs/decision_log.md`.
 - Completed TB history: `docs/agent_work_log.md`.
 - Current maturity snapshot: `docs/current_maturity_snapshot.md`.
@@ -35,6 +36,9 @@ implementation task. Run a scoped backlog-refill or gap-analysis task first.
 Read only the selected backlog task and its `Inspect first` files unless the
 task explicitly asks for broader context. Use `--detail full` on the context
 helper only for orchestrator/review work.
+
+For AOI user-facing work, keep `docs/aoi_user_manual.md` as the compact front
+door and link out to detailed workflow docs only when needed.
 
 Use `PYENV_VERSION=system uv run python ...`; avoid plain `python` or `python3`
 because local pyenv shims can point at unavailable interpreters.

@@ -79,10 +79,10 @@ pressure, hazard-throughput no-op boundaries, and the latest Swiss-scale
 projection refresh. These changes improve automation and evidence separation,
 but they still do not provide measured multi-zone Balfrin hazard execution.
 
-The canonical AOI quickstart lives in
-[`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart).
-Use that path for the command-level bounds-to-review-map walkthrough instead
-of duplicating AOI helper steps in new docs.
+The compact AOI front door lives in
+[`docs/aoi_user_manual.md`](docs/aoi_user_manual.md). Use that page for the
+command-level bounds-to-review-map walkthrough and QGIS review entry point
+instead of duplicating AOI helper steps in new docs.
 
 Current next-backlog recommendations are deliberately execution- or
 acquisition-oriented: acquire and preprocess real public geodata for arbitrary
@@ -137,9 +137,8 @@ PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB
 ```
 
 Canonical AOI quickstart:
-[`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart)
-for the end-to-end user-facing AOI path, with helper commands kept linked from
-that document.
+[`docs/aoi_user_manual.md`](docs/aoi_user_manual.md) for the shortest user
+path, with deeper helper details linked from there.
 
 Local repository Python commands should use `PYENV_VERSION=system uv run python ...`
 so pyenv shims and global packages do not affect results. GitHub Actions may

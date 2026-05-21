@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-429: Consolidate AOI User Manual And QGIS Review Entry Point
-
-Goal: Provide a short user-facing manual entry point for AOI preparation, candidate review, bounded execution, and QGIS map inspection.
-
-Capability gap reduced: Usability for non-author workers and management-facing demonstrations.
-
-Why this outranks alternatives: OpenNHM succeeds partly because users have a clear manual and GUI/GIS review path; the Rust workflow needs a concise equivalent without expanding long root docs.
-
-Inspect first:
-
-- `README.md`
-- `AGENTS.md`
-- `docs/opennhm_learnings_report.md`
-- `scripts/run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A concise AOI quickstart or manual page linked from README/AGENTS without duplicating maturity history.
-- Exact commands for AOI config description, preparation, candidate review, package generation, and QGIS style application.
-- Explicit non-operational and conditional-only interpretation boundaries.
-
-Definition of done:
-
-- A new user can find the AOI front door and QGIS review path from README in under one minute, with links to detailed docs only where needed.
-
-Boundaries: Documentation must stay compact; no new claims, no new wrappers, no broad README expansion.
-
 ### TB-430: Prototype Minimal QGIS Processing Connector Manifest
 
 Goal: Define a minimal QGIS Processing connector manifest for the AOI front-door commands without building a full plugin.

@@ -5560,3 +5560,26 @@ scan thousands of lines of completed history.
 - Result/status: failed_closed_no_submit
 - Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-429`
+
+### TB-429: Consolidate AOI User Manual And QGIS Review Entry Point
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: add a compact AOI front door and QGIS review page, link it from the main entry docs, and remove the active backlog task.
+- Files changed: `docs/aoi_user_manual.md`, `README.md`, `AGENTS.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a concise AOI user manual that starts from the `workflow` and `describe-config` front-door commands, then walks through `prepare`, `candidate-review`, package generation, and QGIS style review.
+  - Kept the manual explicitly diagnostic and conditional only, with no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claims.
+  - Linked the new manual from `README.md` and `AGENTS.md`, and registered it in `docs/README.md` so the new front door is discoverable without broad README expansion.
+  - Removed TB-429 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --format text`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --candidate-review-output-root /tmp/tb429_candidate_review --format text`
+  - `PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --input-root hazard/results/tschamut_public_pilot/target_gate_v1 --output-root /tmp/tb429_aoi_review_package --overwrite --format text`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new wrapper, no new claim surface, no operational or scale-up language, and no generated artifact commits.
+- Next task: `TB-430`

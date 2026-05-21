@@ -68,6 +68,8 @@ starting context for implementation unless a task explicitly asks for them.
   second-site boundaries.
 - `aoi_conditional_workflow_contract.md`: canonical AOI conditional-map phase
   model and front-door command contract.
+- `aoi_user_manual.md`: compact AOI preparation, candidate review, package,
+  and QGIS review entry point.
 - `public_real_site_geodata_preparation.md`: public real-site geodata manifest,
   AOI guided workflow, user-defined AOI local demonstration, and review-map
   workflow.
