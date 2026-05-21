@@ -210,7 +210,7 @@ def build_report(
         terrain_metadata_path=terrain_metadata_path,
         terrain_catalog_path=terrain_catalog_path if terrain_catalog_path.exists() else None,
     )
-    if terrain_preprocessing["terrain_preprocessing_status"] not in {"ready", "not_available"}:
+    if terrain_preprocessing["terrain_preprocessing_status"] not in {"ready", "ready_with_warnings", "not_available"}:
         return blocked_report(
             repo_root=repo_root,
             missing_inputs=missing_inputs,
