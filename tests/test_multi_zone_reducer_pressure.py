@@ -56,6 +56,13 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report["manifest_mode"], "full")
             self.assertEqual(first_report["regional_split_plan_schema_version"], "regional_split_execution_plan_v1")
             self.assertEqual(first_report["regional_split_plan_status"], "ready")
+            self.assertEqual(first_report["merge_manifest"]["schema_version"], "regional_split_merge_manifest_v1")
+            self.assertEqual(first_report["merge_manifest"]["status"], "merged_fixture_outputs")
+            self.assertEqual(
+                first_report["merge_manifest"]["merge_order"],
+                "sorted_chunk_id_then_output_family_then_path",
+            )
+            self.assertTrue(first_report["merge_manifest"]["merge_order_independent"])
             self.assertEqual(first_report["release_zone_count"], 12)
             self.assertEqual(first_report["trajectory_chunk_count"], 12)
             self.assertEqual(first_report["reducer_chunk_count"], 2)
@@ -71,6 +78,39 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 2)
             self.assertEqual(first_report["reducer_manifest_file_count"], 2)
             self.assertEqual(first_report["sidecar_file_count"], 9)
+            self.assertEqual(first_report["merged_output_summary"]["file_count"], first_report["output_file_count"] - 2)
+            self.assertGreater(first_report["merged_output_summary"]["byte_count"], 0)
+            self.assertLess(first_report["merged_output_summary"]["byte_count"], first_report["output_byte_count"])
+            self.assertEqual(
+                first_report["merged_output_summary"]["output_family_bytes"],
+                first_report["output_family_bytes"],
+            )
+            self.assertEqual(first_report["sample_support_summary"]["source_zone_count"], 12)
+            self.assertEqual(first_report["sample_support_summary"]["trajectory_sample_rows"], 72)
+            self.assertEqual(first_report["sample_support_summary"]["deposition_sample_rows"], 12)
+            self.assertEqual(first_report["sample_support_summary"]["impact_event_sample_rows"], 24)
+            self.assertEqual(
+                first_report["sample_support_summary"]["source_zone_counts_by_chunk"],
+                {"reducer_chunk_00": 6, "reducer_chunk_01": 6},
+            )
+            self.assertEqual(first_report["rebuild_compatible_output_family_status"], "ready")
+            self.assertEqual(
+                first_report["rebuild_compatible_output_families"],
+                [
+                    "trajectory_csv",
+                    "deposition_csv",
+                    "impact_events_csv",
+                    "trajectory_execution_plan",
+                    "trajectory_execution_index",
+                    "trajectory_merge_state",
+                    "reducer_execution_plan",
+                    "reducer_execution_index",
+                    "reducer_merge_state",
+                    "diagnostics_json",
+                    "map_package_manifest",
+                    "pilot_gis_package_manifest",
+                ],
+            )
             self.assertGreater(len(first_report["largest_output_families_by_bytes"]), 0)
             self.assertIn("kind", first_report["largest_output_families_by_bytes"][0])
             self.assertEqual(
@@ -138,6 +178,46 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 self.assertIn("chunk_id", split)
                 self.assertIn("expected_output_root", split)
                 self.assertIn("merge_key", split)
+
+    def test_merge_manifest_ordering_is_stable_when_output_manifest_order_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            probe_root = Path(tmpdir) / "probe"
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=6,
+                reducer_worker_count=2,
+                reducer_chunk_count=3,
+            )
+            regional_split_plan = json.loads(
+                (probe_root / "input" / "regional_split_execution_plan.json").read_text(encoding="utf-8")
+            )
+            output_manifest = json.loads(
+                (probe_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json").read_text(encoding="utf-8")
+            )
+            merge_manifest_path = probe_root / "output" / "merged" / "regional_split_merge_manifest.json"
+            first_merge = MODULE.build_merge_manifest(
+                probe_root=probe_root,
+                merge_manifest_path=merge_manifest_path,
+                regional_split_plan=regional_split_plan,
+                output_manifest=output_manifest,
+                output_family_mix=MODULE.DEFAULT_OUTPUT_FAMILY_MIX,
+            )
+            shuffled_output_manifest = dict(output_manifest)
+            shuffled_output_manifest["outputs"] = list(reversed(output_manifest["outputs"]))
+            second_merge = MODULE.build_merge_manifest(
+                probe_root=probe_root,
+                merge_manifest_path=merge_manifest_path,
+                regional_split_plan=regional_split_plan,
+                output_manifest=shuffled_output_manifest,
+                output_family_mix=MODULE.DEFAULT_OUTPUT_FAMILY_MIX,
+            )
+
+            self.assertEqual(first_merge, second_merge)
+            output_order = [(entry["kind"], entry["path"]) for entry in first_merge["outputs"]]
+            self.assertEqual(output_order, sorted(output_order))
+            self.assertEqual(first_merge["sample_support_summary"]["source_zone_count"], 6)
+            self.assertEqual(first_merge["sample_support_summary"]["chunk_count"], 3)
+            self.assertEqual(first_merge["sample_support_summary"]["trajectory_sample_rows"], 36)
 
     def test_manifest_pressure_ladder_recommends_compact_mode(self) -> None:
         report = MODULE.build_manifest_pressure_ladder_report(release_zone_counts=(2, 4, 8, 12))

@@ -304,6 +304,12 @@ def build_workflow_contract() -> dict[str, Any]:
         "notes": [
             "conditional map workflow is read-only at the front door",
             "bounded execution, packaging, and interpretation stay non-operational",
+            (
+                "canonical local pre-Balfrin regional split/merge check: "
+                "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py "
+                "--materialize-root /tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1 "
+                "--manifest-mode compact --format json"
+            ),
         ],
     }
 

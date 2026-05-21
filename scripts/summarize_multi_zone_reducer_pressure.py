@@ -48,6 +48,7 @@ BOUNDED_OUTPUT_FAMILY_MIX = (
 DEFAULT_OUTPUT_FAMILY_MIX = BOUNDED_OUTPUT_FAMILY_MIX
 VALIDATION_OUTPUT_MODE = "rebuildable_reduced_output"
 REGIONAL_SPLIT_PLAN_FILENAME = "regional_split_execution_plan.json"
+MERGE_MANIFEST_FILENAME = "regional_split_merge_manifest.json"
 REPLAY_CRITICAL_OUTPUT_FAMILIES = (
     "trajectory_csv",
     "deposition_csv",
@@ -226,12 +227,13 @@ def materialize_probe_root(
 
     input_root = probe_root / "input"
     output_root = probe_root / "output"
+    merged_output_root = output_root / "merged"
     trajectory_root = output_root / "trajectories"
     deposition_root = output_root / "deposition"
     impact_root = output_root / "impact_events"
     trajectory_chunk_root = output_root / "trajectory_chunks"
     reducer_chunk_root = output_root / "chunks"
-    for path in (input_root, output_root, trajectory_root, deposition_root, impact_root, trajectory_chunk_root, reducer_chunk_root):
+    for path in (input_root, output_root, merged_output_root, trajectory_root, deposition_root, impact_root, trajectory_chunk_root, reducer_chunk_root):
         path.mkdir(parents=True, exist_ok=True)
 
     release_zones = build_release_zones(release_zone_count)
@@ -296,6 +298,17 @@ def materialize_probe_root(
         manifest_mode=manifest_mode,
     )
     write_json(output_manifest_path, output_manifest)
+    merge_manifest_path = merged_output_root / MERGE_MANIFEST_FILENAME
+    write_json(
+        merge_manifest_path,
+        build_merge_manifest(
+            probe_root=probe_root,
+            merge_manifest_path=merge_manifest_path,
+            regional_split_plan=regional_split_plan,
+            output_manifest=canonicalize_output_manifest(output_manifest, probe_root),
+            output_family_mix=output_family_mix,
+        ),
+    )
 
     return ProbeMaterialization(
         probe_root=probe_root,
@@ -320,9 +333,10 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     regional_split_plan_path = probe_root / "input" / REGIONAL_SPLIT_PLAN_FILENAME
     command_plan_path = probe_root / "command_plan.json"
     output_manifest_path = probe_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json"
+    merge_manifest_path = probe_root / "output" / "merged" / MERGE_MANIFEST_FILENAME
     missing_paths = [
         str(path)
-        for path in (probe_manifest_path, regional_split_plan_path, command_plan_path, output_manifest_path)
+        for path in (probe_manifest_path, regional_split_plan_path, command_plan_path, output_manifest_path, merge_manifest_path)
         if not path.exists()
     ]
     if missing_paths:
@@ -332,6 +346,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     regional_split_plan = load_json(regional_split_plan_path)
     command_plan = load_json(command_plan_path)
     output_manifest = canonicalize_output_manifest(load_json(output_manifest_path), probe_root)
+    merge_manifest = load_json(merge_manifest_path)
     manifest_mode = "compact" if dict(output_manifest.get("manifest_encoding") or {}).get("mode") == "compact_v1" else "full"
 
     release_zones = ensure_list_of_strings(probe_manifest.get("release_zones"), "probe_manifest.release_zones")
@@ -347,6 +362,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "probe_manifest": file_size(probe_manifest_path),
         "command_plan": file_size(command_plan_path),
         "output_manifest": file_size(output_manifest_path),
+        "merge_manifest": file_size(merge_manifest_path),
     }
     manifest_size_bytes = sum(manifest_size_by_path.values())
     root_file_count = sum(1 for path in probe_root.rglob("*") if path.is_file())
@@ -381,9 +397,11 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "probe_manifest_path": str(probe_manifest_path),
         "regional_split_plan_path": str(regional_split_plan_path),
         "output_manifest_path": str(output_manifest_path),
+        "merge_manifest_path": str(merge_manifest_path),
         "regional_split_plan_schema_version": regional_split_plan.get("schema_version"),
         "regional_split_plan_status": regional_split_plan.get("status"),
         "regional_split_plan": regional_split_plan,
+        "merge_manifest": merge_manifest,
         "manifest_mode": manifest_mode,
         "release_zone_count": len(release_zones),
         "output_family_mix": list(output_family_mix),
@@ -419,6 +437,10 @@ def build_report(probe_root: Path) -> dict[str, Any]:
             output_family_file_counts=output_family_file_counts,
             output_family_bytes=output_family_bytes,
         ),
+        "sample_support_summary": merge_manifest.get("sample_support_summary", {}),
+        "merged_output_summary": merge_manifest.get("merged_output_summary", {}),
+        "rebuild_compatible_output_families": merge_manifest.get("rebuild_compatible_output_families", []),
+        "rebuild_compatible_output_family_status": merge_manifest.get("rebuild_compatible_output_family_status", ""),
         "largest_output_families_by_bytes": largest_families(output_family_bytes, output_family_file_counts),
         "bottleneck_classification": bottleneck_labels["probe_blocker"]["label"],
         "bottleneck_labels": bottleneck_labels,
@@ -1281,6 +1303,126 @@ def build_compact_output_entries(
     if "pilot_gis_package_manifest" in output_family_mix_set:
         outputs.append({"kind": "pilot_gis_package_manifest"})
     return outputs
+
+
+def build_merge_manifest(
+    *,
+    probe_root: Path,
+    merge_manifest_path: Path,
+    regional_split_plan: dict[str, Any],
+    output_manifest: dict[str, Any],
+    output_family_mix: tuple[str, ...],
+) -> dict[str, Any]:
+    outputs = ensure_list_of_mappings(output_manifest.get("outputs"), "output_manifest.outputs")
+    sorted_outputs = sorted(
+        outputs,
+        key=lambda entry: (
+            str(entry.get("kind") or ""),
+            str(entry.get("path") or ""),
+        ),
+    )
+    output_family_file_counts, output_family_bytes = aggregate_output_families(sorted_outputs)
+    sample_support_summary = build_sample_support_summary(
+        regional_split_plan=regional_split_plan,
+        outputs=sorted_outputs,
+    )
+    rebuild_compatible_families = [
+        family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family in set(output_family_mix)
+    ]
+    expected_rebuild_families = [
+        family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family not in DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES
+    ]
+    missing_rebuild_families = [
+        family for family in expected_rebuild_families if family not in rebuild_compatible_families
+    ]
+    return {
+        "schema_version": "regional_split_merge_manifest_v1",
+        "status": "merged_fixture_outputs",
+        "probe_root": str(probe_root),
+        "manifest_path": str(merge_manifest_path),
+        "regional_split_plan_schema_version": regional_split_plan.get("schema_version"),
+        "split_count": regional_split_plan.get("split_count"),
+        "merge_key_policy": regional_split_plan.get("merge_key_policy"),
+        "merge_order": "sorted_chunk_id_then_output_family_then_path",
+        "merge_order_independent": True,
+        "chunk_order": sorted(str(chunk_id) for chunk_id in regional_split_plan.get("chunk_order") or []),
+        "rebuild_compatible_output_families": rebuild_compatible_families,
+        "rebuild_compatible_output_family_status": "ready" if not missing_rebuild_families else "missing_rebuild_families",
+        "missing_rebuild_compatible_output_families": missing_rebuild_families,
+        "merged_output_summary": {
+            "file_count": sum(number_or_zero(entry.get("file_count")) for entry in sorted_outputs),
+            "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in sorted_outputs),
+            "output_family_file_counts": output_family_file_counts,
+            "output_family_bytes": output_family_bytes,
+            "output_manifest_case_id": output_manifest.get("case_id"),
+        },
+        "sample_support_summary": sample_support_summary,
+        "outputs": [
+            {
+                "kind": str(entry.get("kind") or ""),
+                "path": str(entry.get("path") or ""),
+                "file_count": number_or_zero(entry.get("file_count")),
+                "row_count": number_or_zero(entry.get("row_count")),
+                "total_bytes": number_or_zero(entry.get("total_bytes")),
+            }
+            for entry in sorted_outputs
+        ],
+        "claim_boundaries": {
+            "fixture_backed": True,
+            "generated_artifact_commit_required": False,
+            "live_balfrin_submission": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+        },
+    }
+
+
+def build_sample_support_summary(*, regional_split_plan: dict[str, Any], outputs: list[dict[str, Any]]) -> dict[str, Any]:
+    splits = ensure_list_of_mappings(regional_split_plan.get("splits"), "regional_split_plan.splits")
+    row_count_by_family = {
+        family: sum(
+            output_entry_sample_row_count(entry)
+            for entry in outputs
+            if str(entry.get("kind") or "") == family
+        )
+        for family in PRIMARY_OUTPUT_FAMILIES
+    }
+    zone_ids = sorted({str(split.get("zone_id") or "") for split in splits if split.get("zone_id")})
+    chunk_ids = sorted({str(split.get("chunk_id") or "") for split in splits if split.get("chunk_id")})
+    source_zone_counts_by_chunk = {
+        chunk_id: sum(1 for split in splits if str(split.get("chunk_id") or "") == chunk_id)
+        for chunk_id in chunk_ids
+    }
+    return {
+        "source_zone_count": len(zone_ids),
+        "source_zone_ids": zone_ids,
+        "scenario_count": len({str(split.get("scenario_id") or "") for split in splits if split.get("scenario_id")}),
+        "chunk_count": len(chunk_ids),
+        "source_zone_counts_by_chunk": source_zone_counts_by_chunk,
+        "trajectory_sample_rows": row_count_by_family.get("trajectory_csv", 0),
+        "deposition_sample_rows": row_count_by_family.get("deposition_csv", 0),
+        "impact_event_sample_rows": row_count_by_family.get("impact_events_csv", 0),
+        "support_basis": "fixture_csv_row_counts",
+    }
+
+
+def output_entry_sample_row_count(entry: dict[str, Any]) -> int:
+    row_count = number_or_zero(entry.get("row_count"))
+    if isinstance(row_count, int) and row_count > 0:
+        return row_count
+    path_text = str(entry.get("path") or "")
+    if not path_text:
+        return 0
+    path = Path(path_text)
+    if path.suffix.lower() != ".csv" or not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle)
+        try:
+            next(reader)
+        except StopIteration:
+            return 0
+        return sum(1 for _ in reader)
 
 
 def build_trajectory_rows(zone: dict[str, Any], zone_index: int) -> list[dict[str, Any]]:
