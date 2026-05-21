@@ -224,27 +224,28 @@ evidence; fixture-only or ambiguous-role evidence is blocked and cannot appear
 as accepted physical validation. This is a usability and evidence-separation
 improvement, not a physical-credibility or operational upgrade.
 
-Post-TB-387, the active execution queue has been refilled around the current
-highest-leverage path: TB-389 measured a nonempty restaged management-AOI
-release-candidate sweep, and the next queue items are to turn that bundle into
-scenario generation, compile a prepared-pilot package, repair the multi-zone
-reduced-output gate, and only then attempt the smallest measured multi-zone
-Balfrin `postproc` probe. The same queue also now includes complexity-reduction
-work: compact multi-zone manifest-pressure measurement, prepared-pilot state
-consolidation, extraction of a small hazard-layer packaging primitive from the
-giant builder, clean checkout dependency cleanup, and user-facing AOI
-front-door/documentation consolidation. This backlog intentionally favors
-executable capability, measured pressure reduction, and script-surface
-simplification over additional blocked/deferred reports.
+Post-TB-387, the active execution queue stayed centered on the adjacent-
+candidate review path: TB-404 regenerated scenario tables from the accepted
+adjacent candidate, TB-405 threaded that table through the prepared-pilot
+compiler, and TB-411 extended the candidate-expansion ladder so the current
+first executable management-AOI work is to keep that adjacent-candidate bundle
+flowing rather than re-open the old source-zone-overlap repair. The same queue
+also now includes complexity-reduction work: compact multi-zone
+manifest-pressure measurement, prepared-pilot state consolidation, extraction
+of a small hazard-layer packaging primitive from the giant builder, clean
+checkout dependency cleanup, and user-facing AOI front-door/documentation
+consolidation. This backlog intentionally favors executable capability,
+measured pressure reduction, and script-surface simplification over additional
+blocked/deferred reports.
 
-Post-TB-393, the smallest real-AOI multi-zone Balfrin `postproc` probe was
-checked against the live gates and failed closed before `sbatch`. Balfrin SSH,
-remote checkout hygiene, run-root visibility, and scheduler query were all
-reachable, but `scripts/execute_management_aoi_balfrin_run.py` still reported
-`blocked_source_zone_footprint_overlap` with zero current scenario rows and
-`sbatch_attempted=false`. The next unblock action remains the recorded
-management-AOI restage/source-zone-footprint repair; this is not measured
-multi-zone Balfrin hazard execution.
+Post-TB-393, the management-AOI Balfrin execution state still failed closed
+before `sbatch`, but the current candidate/scenario path is now the adjacent-
+candidate review bundle and generated scenario table rather than the old
+zero-candidate 4x4 crop. Balfrin SSH, remote checkout hygiene, run-root
+visibility, and scheduler query were all reachable, and the remaining unblock
+action is to keep the adjacent-candidate scenario-table path threaded through
+prepared-pilot compilation; this is not measured multi-zone Balfrin hazard
+execution.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable
@@ -390,14 +391,11 @@ objective are:
    field evidence. The remaining automation gap is moving from fixture-backed
    dry-run contracts to a measured, public-context-backed second-site run only
    after real swisstopo context is staged. The current management-AOI branch is
-   blocked farther upstream than Balfrin execution: the real-staged Chant Sura /
-   Fluelapass terrain crop is only 4x4 cells, its frozen source-zone footprint
-   covers all four valid interior cells, and the zero-result diagnostic reports
-   `no_screenable_cells`. Scenario generation, prepared-pilot compilation, and
-   the management-AOI Balfrin handoff therefore correctly remain blocked until
-   a non-empty candidate package is produced from a larger or better-scoped AOI
-   crop. This is an AOI/crop/footprint-selection blocker, not a Balfrin or COG
-   packaging blocker.
+   now anchored on the adjacent-candidate review bundle and its generated
+   scenario table, so the current first unblock action is to keep that bundle
+   threaded through prepared-pilot compilation instead of revisiting the stale
+   zero-candidate 4x4 crop repair. This is an AOI/candidate-state and
+   prepared-pilot bookkeeping blocker, not a Balfrin or COG packaging blocker.
 6. Swiss-wide portability has a concrete Chant Sura / Fluelapass candidate, a
    multisite source/scenario contract audit, a reusable public-geodata workflow
    contract, deterministic acquisition planning, a public-geodata cache

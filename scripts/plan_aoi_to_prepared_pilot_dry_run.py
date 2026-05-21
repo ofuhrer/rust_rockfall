@@ -55,6 +55,10 @@ COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1
 MANAGEMENT_AOI_SCENARIO_PRESSURE_SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS = "blocked_source_zone_footprint_overlap"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS = "blocked_empty_candidate_set"
+ADJACENT_CANDIDATE_BLOCKED_REASON = (
+    "workflow blocked_source_zone_footprint_overlap; the current candidate package should continue through "
+    "the adjacent-candidate review bundle and scenario table instead of repeating the stale source-zone-overlap repair"
+)
 ADJACENT_CANDIDATE_BUNDLE_ROOT = ROOT / "validation/private/source_zone_review"
 ADJACENT_CANDIDATE_METRICS_MANIFEST = ADJACENT_CANDIDATE_BUNDLE_ROOT / "tschamut_expanded_source_zone_candidate_report.json"
 ADJACENT_CANDIDATE_REVIEW_MANIFEST = ADJACENT_CANDIDATE_BUNDLE_ROOT / "tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
@@ -2446,7 +2450,7 @@ def build_case_skeleton_output(
         blocked_reason = str(
             report_inputs["prep_summary"].get("management_aoi_scenario_pressure", {}).get(
                 "blocked_reason",
-                "workflow blocked_source_zone_footprint_overlap; the current candidate package is blocked on the named footprint-overlap deferral",
+                ADJACENT_CANDIDATE_BLOCKED_REASON,
             )
         )
     elif report_inputs["workflow_status"] == "blocked_over_budget":

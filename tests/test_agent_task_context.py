@@ -109,12 +109,10 @@ Inspect first:
         self.assertEqual(report["selected_task"]["task_id"], current_task_id)
         self.assertEqual(report["detail"], "compact")
         self.assertIn("inspect_first", report["selected_task"])
-        self.assertTrue(report["selected_task"]["balfrin_access_required"])
-        self.assertEqual(report["selected_task"]["recommended_worker_model"], "gpt-5.5")
-        self.assertIn("check_balfrin_remote_access_preflight.py", report["selected_task"]["balfrin_access_preflight_command"])
+        self.assertNotIn("balfrin_access_required", report["selected_task"])
         other_tasks = [task for task in report["active_tasks"] if task["task_id"] != current_task_id]
-        self.assertTrue(other_tasks)
-        self.assertNotIn("inspect_first", other_tasks[0])
+        if other_tasks:
+            self.assertNotIn("inspect_first", other_tasks[0])
         self.assertLess(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
 
     def test_active_queue_report_does_not_revert_to_backlog_refill_language(self) -> None:
@@ -124,6 +122,11 @@ Inspect first:
         self.assertFalse(report["backlog_refill_needed"])
         self.assertIsNone(report["backlog_note"])
         self.assertIsNone(report["current_execution_focus"])
+
+    def test_current_execution_focus_names_the_adjacent_candidate_unblock_path(self) -> None:
+        self.assertIn("adjacent-candidate review path", agent_context.CURRENT_EXECUTION_FOCUS)
+        self.assertIn("scenario-table regeneration", agent_context.CURRENT_EXECUTION_FOCUS)
+        self.assertNotIn("TB-393", agent_context.CURRENT_EXECUTION_FOCUS)
 
     def test_balfrin_task_includes_worker_routing_fields(self) -> None:
         task = agent_context.ActiveTask(
@@ -182,7 +185,7 @@ Inspect first:
         self.assertEqual(report["detail"], "full")
         self.assertEqual(len(report["canonical_helpers"]), len(agent_context.CANONICAL_HELPERS))
         self.assertTrue(all("inspect_first" in task for task in report["active_tasks"]))
-        self.assertTrue(report["selected_task"]["balfrin_access_required"])
+        self.assertNotIn("balfrin_access_required", report["selected_task"])
 
     def test_rendered_report_includes_compact_worker_output_guidance(self) -> None:
         report = agent_context.build_report(run_checks=False)
@@ -192,9 +195,8 @@ Inspect first:
         self.assertIn("agent_worker_output_guidance_v1", text)
         self.assertIn("final_report_schema: TASK, STATUS, SUMMARY, FILES_CHANGED", text)
         self.assertIn("Preserve the final relevant error block", text)
-        self.assertIn("balfrin_access_required=true", text)
-        self.assertIn("recommended_worker_model=gpt-5.5", text)
-        self.assertIn("check_balfrin_remote_access_preflight.py", text)
+        self.assertNotIn("balfrin_access_required=true", text)
+        self.assertNotIn("recommended_worker_model=gpt-5.5", text)
 
     def test_missing_task_is_explicitly_blocked(self) -> None:
         report = agent_context.build_report("TB-000", run_checks=False)

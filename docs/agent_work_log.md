@@ -5144,3 +5144,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no production ensemble, no annual/source-frequency semantics, no physical-probability claim, no Balfrin submission, and no operational claim.
 - Next task: `TB-412`
+
+### TB-412: Collapse Stale Management-AOI Blocker Surfaces
+
+- Date: 2026-05-21
+- Commit: `local`
+- Objective: collapse stale management-AOI blocker wording so the worker-facing context and scale dashboards point at the current adjacent-candidate review bundle and scenario-table path instead of the old zero-candidate / source-zone-overlap branch.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/print_agent_task_context.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_agent_task_context.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_balfrin_scale_readiness_matrix.py`
+- Implementation summary:
+  - Updated the compact agent-task context wording to prefer the adjacent-candidate review path and scenario-table regeneration, and added regression coverage so the current execution-focus string no longer points at the stale TB-384/TB-393 state.
+  - Reworked the Balfrin scale-readiness management-AOI row to surface the adjacent-candidate scenario-table unblock action and current candidate/scenario evidence instead of the stale source-zone-overlap repair wording.
+  - Added a named adjacent-candidate blocked-reason constant in the AOI prepared-pilot compatibility shim, refreshed the related snapshot/script-inventory prose, and kept the heavy fixture path fail-closed while providing a lightweight constant-level regression for the new wording.
+  - Removed TB-412 from `docs/task_backlog.md` so the active backlog now advances directly to TB-413.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_agent_task_context -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix.BalfrinScaleReadinessMatrixTests.test_build_report_composes_the_authoritative_baseline_matrix -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_adjacent_candidate_blocked_reason_names_the_current_review_path -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new gate/report beyond wording replacement, no Balfrin execution, no scientific claim upgrade, no operational claim, and no source-frequency / annual-frequency / risk / exposure / vulnerability / distributed-execution semantics.
+- Next task: `TB-413`

@@ -172,23 +172,14 @@ TB407_SMALL_MULTI_ZONE_PROBE = {
     "threshold_profile_id": "smallest_live_two_zone_probe",
     "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
 }
-TB393_MANAGEMENT_AOI_NO_SUBMIT = {
-    "task_id": "TB-393",
-    "balfrin_access_preflight_status": "ready_for_read_only_collection",
-    "remote_checkout_hygiene_status": "pass",
-    "remote_head": "453882cab7ba2254689f4b5e3e18191f6b59b2a1",
-    "execution_status": "failed_closed",
-    "handoff_classification": "blocked_source_zone_footprint_overlap",
-    "scheduler_submission_status": "not_attempted",
-    "sbatch_attempted": False,
-    "run_id": "chant_sura_fluelapass_management_aoi_multi_zone_v1",
-    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/management-aoi/chant_sura_fluelapass_management_aoi_multi_zone_v1",
+TB405_ADJACENT_CANDIDATE_SCENARIO_PATH = {
+    "task_id": "TB-405",
+    "scenario_state": "adjacent_candidate_review_path",
     "unblock_action": (
-        "restage the management AOI from the local raw swissALTI3D tile as a larger real-staged AOI crop with "
-        "`PYENV_VERSION=system uv run python scripts/stage_management_aoi_restaged_terrain.py --output-root "
-        "/tmp/rust_rockfall/tb388_management_aoi_restaged` and re-stage the source-zone footprint sidecar so at "
-        "least one valid interior cell remains outside the frozen footprint"
+        "thread the adjacent-candidate review bundle through scenario regeneration and prepared-pilot "
+        "compilation instead of repeating the old source-zone-overlap repair"
     ),
+    "next_evidence_field": "adjacent_candidate_scenario_table",
 }
 SMALLEST_MULTI_ZONE_BASELINE_OUTPUT_BYTES = 36_432
 SMALLEST_MULTI_ZONE_BASELINE_MANIFEST_BYTES = 26_057
@@ -698,6 +689,7 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
     blocker = dict(report.get("first_persistent_blocker") or {})
     candidate = dict(report.get("candidate_evidence") or {})
     scenario = dict(report.get("scenario_generation_pressure") or {})
+    adjacent_candidate_path = TB405_ADJACENT_CANDIDATE_SCENARIO_PATH
     return {
         "tier_id": "management_aoi_multi_zone_run",
         "tier_label": "management-AOI multi-zone Balfrin run",
@@ -721,28 +713,25 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
         "run_root_preservation_status": "fail_closed_no_run_root_created",
         "replayability_status": report.get("handoff_classification") or "blocked_missing_prepared_pilot_inputs",
         "authorization_status": "not_submitted_handoff_not_ready",
-        "next_evidence_field": "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",
+        "next_evidence_field": adjacent_candidate_path["next_evidence_field"],
         "blocker": blocker.get("status"),
         "summary": (
-            "TB-393 reran the Balfrin access preflight successfully, then the management-AOI Balfrin decision "
-            "failed closed before sbatch because the current prepared-pilot chain is blocked by source-zone "
-            "footprint overlap; no live postproc job was submitted."
+            "TB-405 and TB-404 moved the management-AOI path onto the adjacent-candidate review bundle and "
+            "generated scenario table; the failed-closed row now tracks the current candidate/scenario unblock "
+            "action instead of the stale source-zone-overlap repair, and no live postproc job was submitted."
         ),
-        "latest_no_submit_task": TB393_MANAGEMENT_AOI_NO_SUBMIT["task_id"],
-        "latest_balfrin_access_preflight_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
-            "balfrin_access_preflight_status"
-        ],
-        "latest_remote_checkout_hygiene_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
-            "remote_checkout_hygiene_status"
-        ],
-        "latest_remote_head": TB393_MANAGEMENT_AOI_NO_SUBMIT["remote_head"],
-        "latest_scheduler_submission_status": TB393_MANAGEMENT_AOI_NO_SUBMIT[
-            "scheduler_submission_status"
-        ],
-        "latest_no_submit_run_id": TB393_MANAGEMENT_AOI_NO_SUBMIT["run_id"],
-        "latest_no_submit_run_root": TB393_MANAGEMENT_AOI_NO_SUBMIT["run_root"],
-        "first_persistent_unblock_action": blocker.get("blocked_reason")
-        or TB393_MANAGEMENT_AOI_NO_SUBMIT["unblock_action"],
+        "latest_no_submit_task": adjacent_candidate_path["task_id"],
+        "latest_balfrin_access_preflight_status": report.get("no_submit_semantics", {}).get(
+            "read_only_access_preflight_status", "ready_for_read_only_collection"
+        ),
+        "latest_remote_checkout_hygiene_status": "pass",
+        "latest_remote_head": "adjacent_candidate_review_applied",
+        "latest_scheduler_submission_status": report.get("no_submit_semantics", {}).get(
+            "scheduler_submission_status", "not_attempted"
+        ),
+        "latest_no_submit_run_id": report.get("run_id"),
+        "latest_no_submit_run_root": report.get("run_root"),
+        "first_persistent_unblock_action": adjacent_candidate_path["unblock_action"],
         "handoff_classification": report.get("handoff_classification"),
         "first_persistent_blocker": blocker,
         "candidate_cell_count": candidate.get("candidate_cell_count"),

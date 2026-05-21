@@ -39,44 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-412: Collapse Stale Management-AOI Blocker Surfaces
-
-Goal: Remove or update stale references that still imply the active blocker is
-only a zero-candidate 4x4 crop after the adjacent-candidate review path exists.
-
-Capability gap reduced: Stale blocker wording can cause workers to preserve
-obsolete failure states instead of using the current candidate/scenario path.
-
-Why this outranks alternatives: This is a small simplification task that
-prevents future orchestration loops from re-entering already diagnosed blocked
-branches.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/script_inventory.md`
-- `scripts/print_agent_task_context.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_agent_task_context.py`
-
-Deliverables:
-
-- Updated compact status wording that names the current adjacent-candidate
-  unblock path.
-- Removal or deprecation of stale no-op blocker branches where they duplicate
-  newer candidate-state reports.
-- Tests ensuring the compact context points to the current first executable
-  task rather than old TB-384/TB-393 state.
-
-Definition of done:
-
-- Worker-facing context and scale surfaces agree on the current first unblock
-  action and do not recommend stale source-zone-overlap repairs after TB-402
-  through TB-405 land.
-
-Boundaries: No new gate/report unless it replaces stale wording, no scientific
-claim upgrade, no Balfrin execution, and no broad documentation rewrite.
-
 ### TB-413: Reassess Swiss-Scale Feasibility After Adjacent-Candidate Probe
 
 Goal: Update the Swiss-scale feasibility projection using the newest

@@ -50,6 +50,11 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json",
         )
 
+    def test_adjacent_candidate_blocked_reason_names_the_current_review_path(self) -> None:
+        self.assertIn("adjacent-candidate review bundle", planner.ADJACENT_CANDIDATE_BLOCKED_REASON)
+        self.assertIn("scenario table", planner.ADJACENT_CANDIDATE_BLOCKED_REASON)
+        self.assertNotIn("4x4", planner.ADJACENT_CANDIDATE_BLOCKED_REASON)
+
     def test_staged_aoi_with_release_polygon_emits_preparation_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)

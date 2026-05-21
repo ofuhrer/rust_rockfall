@@ -31,11 +31,10 @@ BALFRIN_ACCESS_PREFLIGHT_COMMAND = (
 BALFRIN_RECOMMENDED_WORKER_MODEL = "gpt-5.5"
 BALFRIN_ACCESS_NOTE = "Balfrin SSH access may have expired; rerun the preflight before delegating."
 CURRENT_EXECUTION_FOCUS = (
-    "Backlog refill needed after TB-319: prefer executable next tasks. Start "
-    "from the current maturity snapshot and scale dashboard, then choose among "
-    "two-zone submit-contract repair/regeneration, real public-geodata "
-    "acquisition for a user AOI, optimization from a new measured bottleneck, "
-    "or explicit deferral of physical-frequency/operational semantics."
+    "Backlog refill needed: prefer the adjacent-candidate review path and "
+    "scenario-table regeneration first, then choose the next executable task "
+    "from the current maturity snapshot and scale dashboard rather than "
+    "revisiting the stale source-zone-overlap branch."
 )
 WORKER_OUTPUT_GUIDANCE_SCHEMA_VERSION = "agent_worker_output_guidance_v1"
 WORKER_OUTPUT_REPORT_SCHEMA = [

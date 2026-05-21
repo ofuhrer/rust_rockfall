@@ -189,6 +189,9 @@ doors or command-plan entries listed above.
 
 - `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
   Replacement: `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json`
+  Note: the active candidate-state surface now comes from the adjacent-candidate
+  scenario-pressure and prepared-pilot helpers; this shim should not be treated
+  as the authoritative blocker report.
 
 ## Validators
 

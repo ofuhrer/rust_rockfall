@@ -214,19 +214,19 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 1)
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 3)
         self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])
-        self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_no_submit_task"], "TB-393")
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_no_submit_task"], "TB-405")
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["latest_balfrin_access_preflight_status"],
-            "ready_for_read_only_collection",
+            "not_supplied",
         )
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_scheduler_submission_status"], "not_attempted")
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["first_persistent_unblock_action"],
-            "prepared-pilot inputs are missing",
+            "thread the adjacent-candidate review bundle through scenario regeneration and prepared-pilot compilation instead of repeating the old source-zone-overlap repair",
         )
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
-            "larger_real_staged_management_aoi_crop_with_source_zone_footprint_restaged",
+            "adjacent_candidate_scenario_table",
         )
 
         self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")
@@ -274,6 +274,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
         self.assertIn("next_recommended_scaling_task: optimize_only_from_new_measured_bottleneck", text)
         self.assertIn("TB-407", text)
+        self.assertIn("adjacent-candidate review bundle", text)
         self.assertIn("projected_larger_aoi", text)
 
     def test_cli_emits_json_and_text_reports(self) -> None:
