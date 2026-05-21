@@ -5487,3 +5487,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: the dry run is fixture-backed and scratch-root only; no generated artifacts were committed, no live Balfrin submission or large ensemble was run, and no operational, scale-up, distributed-execution, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-426`
+
+### TB-426: Measure Scenario Storage And Output Tier Pressure
+
+- Date: 2026-05-21
+- Commit: `1fd9474`; work-log entry recorded in the follow-up commit.
+- Objective: quantify fixture and current real-AOI scenario-table, release-plan, reduced-output, GIS, and research-full storage pressure before larger AOI planning.
+- Files changed: `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/script_inventory.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a reusable read-only helper that materializes scenario tables only under `/tmp`, measures existing fixture and current real-AOI candidate bundles, and reports file counts, bytes, CSV cardinality, and output-family counts.
+  - Compared minimal, rebuildable-reduced, GIS, and research-full output tiers using measured roots in this checkout.
+  - Recorded the measured current result: 3 fixture scenario rows, 3 current real-AOI scenario rows, minimal tier at 5 files / 27,675 bytes, rebuildable-reduced at 17 files / 3,953,602 bytes, GIS at 56 files / 79,160,991 bytes, and research-full at 2,716 files / 764,598,283 bytes.
+  - Recommended `rebuildable_reduced` as the smallest Balfrin demonstration replay tier and made GIS/research-full output growth explicit as the next storage bottleneck after compact scenario cardinality.
+  - Removed TB-426 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/measure_scenario_storage_output_tier_pressure.py tests/test_scenario_storage_output_tier_pressure.py`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format text`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json > /tmp/tb426_scenario_storage_pressure.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: measurements use existing fixture/current roots plus scratch `/tmp` scenario-table materialization only; no large production ensemble, deletion, Balfrin submission, scale-up authorization, distributed execution, operational claim, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability semantics were added.
+- Next task: `TB-427`
