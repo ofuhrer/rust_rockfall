@@ -5630,3 +5630,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-432`
+
+### TB-432: Execute Regional Split Balfrin Probe After Package Compaction
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: submit and monitor one bounded regional split Balfrin `postproc` probe only if the repository-generated package and all live gates reported ready.
+- Files changed: `docs/balfrin_regional_split_probe_gate_tb432.md`, `docs/README.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the Balfrin remote access preflight and stopped before submission because it returned `blocked_dirty_remote_checkout`.
+  - Regenerated the regional split submission package with that access preflight under `/tmp/rust_rockfall/tb432_regional_split_failed_closed_package`; the package reported `failed_closed_preflight` with `ready_for_bounded_postproc_submission=false`.
+  - Preserved the exact first blocker: authorization/access preflight blocked because the Balfrin checkout hygiene gate found three stale generated `command_plan.json` files under `validation/private/tb407_repaired_handoff_remote/...`.
+  - Confirmed the package contract, output-budget, writable remote-root, preservation-plan, and 12-split regional split/merge gates were ready, so the live blocker is now remote checkout hygiene rather than package compaction.
+  - Recorded that no `sbatch` command was attempted, no Balfrin job was submitted, and no runtime, memory, validation-output, hazard-output, or live reducer metrics were measured.
+  - Removed TB-432 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb432_balfrin_access_preflight.json` (expected fail-closed exit `2`)
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/rust_rockfall/tb432_regional_split_failed_closed_package --balfrin-access-preflight-json /tmp/tb432_balfrin_access_preflight.json --format json > /tmp/tb432_regional_split_package.json` (expected fail-closed exit `2`)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-433`

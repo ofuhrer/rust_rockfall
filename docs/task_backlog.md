@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-432: Execute Regional Split Balfrin Probe After Package Compaction
-
-Goal: Submit and actively monitor one bounded regional split `postproc` probe after TB-431 makes the reviewed package pass all gates.
-
-Capability gap reduced: Lack of measured regional split execution evidence.
-
-Why this outranks alternatives: Management needs measured evidence beyond the smallest multi-zone branch; this is the next live step once the exact TB-428 package blocker is removed.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-
-Deliverables:
-
-- One measured Balfrin `postproc` run, or a failed-closed pre-submit/submit record with the exact first blocker.
-- Runtime, memory when available, validation/hazard file counts and bytes, reducer metrics, preservation gate status, and run-root pointers.
-- Updated evidence surface only where needed to separate measured regional split execution from failed-closed or fixture-backed evidence.
-
-Definition of done:
-
-- The regional split branch either has measured run-root evidence or a durable failed-closed record with no ambiguous half-state.
-
-Boundaries: GPT-5.5 worker required, one bounded `postproc` probe only, no non-postproc partition, no distributed execution, no scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
-
 ### TB-433: Integrate Regional Split Run Outcome Into Scale Dashboard
 
 Goal: Thread the TB-432 measured or failed-closed outcome into the scale readiness dashboard and Swiss-scale feasibility surfaces.

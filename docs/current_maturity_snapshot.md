@@ -158,10 +158,16 @@ multi-zone hazard evidence. TB-428 then attempted the next regional split
 live-probe gate, but correctly failed closed before scheduler submission: the
 regional split/merge contract was ready with 12 splits, while the reviewed
 package exceeded the `next_larger_four_zone_review_only_probe` manifest-size
-budget (`14550` bytes measured versus `14000` allowed). No `sbatch` command was
-run for that branch. The next unblock action is package/manifest compaction or
-an explicitly justified budget revision before another regional split live
-probe.
+budget (`14550` bytes measured versus `14000` allowed). TB-431 compacted that
+package path enough for the reviewed package gate to pass in fixture-backed
+preflight. TB-432 then reran the live gate and failed closed before `sbatch`
+because the Balfrin remote checkout hygiene/access preflight reported three
+stale generated `command_plan.json` files under
+`validation/private/tb407_repaired_handoff_remote/...`. The regional split
+branch therefore remains unmeasured; the next unblock action is to preserve or
+clean those remote generated files, rerun the Balfrin access preflight, and
+only submit after the regenerated package reports
+`ready_for_bounded_postproc_submission=true`.
 TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA
