@@ -4990,3 +4990,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: deterministic scenario-pressure reporting only; no source-frequency semantics, no annual probability, no physics changes, no heavy artifact commits, and no operational claim.
 - Next task: `TB-405`
+
+### TB-405
+
+- Date: 2026-05-21
+- Commit: `local`
+- Objective: rebuild the management-AOI prepared-pilot chain against the adjacent candidate scenario table so the AOI front door and compiler stop surfacing the stale source-zone-footprint blocker.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_run_aoi_hazard_workflow.py`
+- Implementation summary:
+  - Retargeted the prepared-pilot planner to the adjacent `validation/private/source_zone_review` bundle and threaded the generated adjacent scenario table path through the prepared-pilot summary and case-skeleton handoff fields.
+  - Kept the prepared-pilot compiler on the command-plan blocker once the adjacent table is present, while removing the stale source-zone-footprint deferral from the ready-path summary.
+  - Updated the AOI front door and prepared-pilot regressions to assert the adjacent-table path and the copy-pasteable next command instead of the stale footprint blocker.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure.ManagementAoiScenarioPressureTests.test_adjacent_candidate_bundle_reports_ready_pressure_with_positive_scenario_rows tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_adjacent_candidate_pressure_bundle_reaches_the_prepared_pilot_command_plan tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepare_reports_the_adjacent_candidate_scenario_table_when_the_bundle_is_present`
+  - `git diff --check`
+- Result/status: implemented_fixture_backed
+- Boundaries: adjacent-candidate dry-run reporting only; no live Balfrin job, no heavy artifact commit, no operational claim, no source-frequency semantics, and no scale-up authorization.
+- Next task: `TB-406`

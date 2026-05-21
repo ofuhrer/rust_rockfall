@@ -39,46 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-405: Compile Prepared-Pilot Package From Adjacent Candidate
-
-Goal: Rebuild the management-AOI prepared-pilot chain using the adjacent
-candidate scenario table so downstream handoff commands consume current
-non-overlapping inputs.
-
-Capability gap reduced: The AOI front door and prepared-pilot compiler still
-surface the source-zone-footprint blocker from the stale candidate/scenario
-state.
-
-Why this outranks alternatives: Balfrin submission should not be reattempted
-until the local prepared-pilot package proves that the scenario and output-mode
-contracts are coherent.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A prepared-pilot report that references the adjacent candidate scenario table.
-- Updated first-blocker/next-command output from the AOI front door.
-- Regression coverage proving the prepared-pilot path no longer reports the
-  stale source-zone-footprint blocker when the adjacent candidate bundle is
-  supplied.
-
-Definition of done:
-
-- The prepared-pilot compiler reaches the next genuine blocker or ready handoff
-  state using the adjacent candidate inputs, and the command shown to users is
-  copy-pasteable.
-
-Boundaries: No live Balfrin job, no generated heavy artifact commit, no
-operational claim, no source-frequency semantics, and no scale-up
-authorization.
-
 ### TB-406: Repair Smallest Multi-Zone Balfrin Handoff From Current Inputs
 
 Goal: Regenerate the smallest multi-zone Balfrin handoff from the current

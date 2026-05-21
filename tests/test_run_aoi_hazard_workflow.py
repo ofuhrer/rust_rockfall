@@ -23,7 +23,7 @@ PACKAGE_SCRIPT_PATH = ROOT / "scripts" / "package_aoi_hazard_map.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT = (
-    ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability"
+    ROOT / "validation/private/source_zone_review"
 )
 
 
@@ -194,7 +194,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
-    def test_prepare_reports_the_empty_candidate_set_blocker_when_tb377_bundle_is_present(self) -> None:
+    def test_prepare_reports_the_adjacent_candidate_scenario_table_when_the_bundle_is_present(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
             config_path = self._write_candidate_config(repo_root)
@@ -213,14 +213,16 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 prepared_pilot_output_root=output_root,
             )
 
-        self.assertEqual(report["status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(report["next_step"], "scenario_freeze_readiness")
-        self.assertIn("generate_candidate_source_zone_scenarios.py", report["next_command"])
-        self.assertEqual(report["workflow_steps"][5]["status"], "blocked_source_zone_footprint_overlap")
-        self.assertIn("source-zone footprint", report["workflow_steps"][5]["blocked_reason"])
-        self.assertEqual(report["prepared_pilot_compiler"]["classification"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(report["status"], "ready_for_planning")
+        self.assertEqual(report["next_step"], "release_candidate_planning")
+        self.assertIn("plan_terrain_release_zone_candidates.py", report["next_command"])
+        self.assertEqual(report["workflow_steps"][5]["status"], "ready")
+        self.assertNotIn("source-zone footprint", report["workflow_steps"][5]["blocked_reason"])
+        self.assertEqual(report["prepared_pilot_compiler"]["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(report["prepared_pilot_compiler"]["first_blocker"]["status"], "deferred_public_context_inputs")
+        self.assertIn("tb404_management_aoi_scenario_table/scenario_table.csv", report["prepared_pilot_compiler_report"]["case_skeleton_output"]["case_skeleton"]["scenario_generation_handoff"]["expected_scenario_table_path"])
+        self.assertIn("tb404_management_aoi_scenario_table", report["prepared_pilot_compiler_report"]["case_skeleton_output"]["case_skeleton"]["scenario_generation_handoff"]["scenario_table_manifest_path"])
         self.assertTrue(
             any(
                 item.get("command_id") == "second_site_release_plan_execution_template"
@@ -1343,7 +1345,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self._write_real_context_cache_manifest(repo_root)
 
     def _copy_management_scenario_pressure_bundle(self, repo_root: Path, candidate_site_id: str = "chant_sura_fluelapass_portability_example_v1") -> None:
-        destination = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+        destination = repo_root / "validation/private/source_zone_review"
         shutil.copytree(MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT, destination, dirs_exist_ok=True)
 
     def _write_acquisition_package(

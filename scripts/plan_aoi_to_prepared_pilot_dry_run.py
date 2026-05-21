@@ -55,6 +55,9 @@ COMMAND_TRANSCRIPT_SCHEMA_VERSION = "aoi_to_prepared_pilot_command_transcript_v1
 MANAGEMENT_AOI_SCENARIO_PRESSURE_SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_DEFERRAL_STATUS = "blocked_source_zone_footprint_overlap"
 MANAGEMENT_AOI_SCENARIO_PRESSURE_FALLBACK_STATUS = "blocked_empty_candidate_set"
+ADJACENT_CANDIDATE_BUNDLE_ROOT = ROOT / "validation/private/source_zone_review"
+ADJACENT_CANDIDATE_METRICS_MANIFEST = ADJACENT_CANDIDATE_BUNDLE_ROOT / "tschamut_expanded_source_zone_candidate_report.json"
+ADJACENT_CANDIDATE_REVIEW_MANIFEST = ADJACENT_CANDIDATE_BUNDLE_ROOT / "tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
 DEPRECATED = True
 DEPRECATION_REPLACEMENT_COMMAND = (
     "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare "
@@ -375,14 +378,37 @@ def build_prep_summary(
     )
     release_plan_paths = release_plan_report.get("source_inputs", {})
     generic_release_plan_contract = generic_release_plan_report.get("scenario_generation_contract", {})
+    adjacent_scenario_table_generation = dict(management_aoi_scenario_pressure_report.get("scenario_table_generation") or {})
+    adjacent_scenario_table_manifest = dict(adjacent_scenario_table_generation.get("scenario_table_manifest") or {})
+    adjacent_scenario_table_output_paths = dict(adjacent_scenario_table_manifest.get("output_paths") or {})
+    adjacent_scenario_table_path = (
+        adjacent_scenario_table_output_paths.get("scenario_table")
+        or adjacent_scenario_table_generation.get("scenario_table_csv")
+        or release_plan_paths.get("scenario_table_path", "")
+    )
+    adjacent_scenario_table_manifest_path = (
+        adjacent_scenario_table_output_paths.get("manifest")
+        or adjacent_scenario_table_generation.get("scenario_table_manifest_path")
+        or generic_release_plan_contract.get("generic_scenario_generation", {}).get("scenario_table_manifest_path", "")
+    )
+    adjacent_scenario_table_source = {
+        "scenario_pressure_status": management_aoi_scenario_pressure_report.get("scenario_pressure_status", ""),
+        "scenario_table_output_root": adjacent_scenario_table_generation.get("scenario_table_output_root", ""),
+        "scenario_table_csv": adjacent_scenario_table_path,
+        "scenario_table_manifest_path": adjacent_scenario_table_manifest_path,
+        "accepted_candidate_count": int(adjacent_scenario_table_generation.get("accepted_candidate_count") or 0),
+        "scenario_row_count": int(adjacent_scenario_table_generation.get("scenario_row_count") or 0),
+        "source_inputs": dict(management_aoi_scenario_pressure_report.get("source_inputs") or {}),
+    }
     release_scenario_placeholders = {
         "source_scenario_policy_path": release_plan_paths.get("source_scenario_policy_path", ""),
-        "scenario_table_path": release_plan_paths.get("scenario_table_path", ""),
-        "scenario_table_manifest_path": generic_release_plan_contract.get("generic_scenario_generation", {}).get("scenario_table_manifest_path", ""),
+        "scenario_table_path": adjacent_scenario_table_path,
+        "scenario_table_manifest_path": adjacent_scenario_table_manifest_path,
         "scenario_generation_command": generic_release_plan_contract.get("generic_scenario_generation", {}).get("command", ""),
         "same_scale_reference_path": release_plan_paths.get("same_scale_reference_path", ""),
         "release_polygon": release_polygon,
         "scenario_plan_status": release_plan_report.get("scenario_plan_status", "unknown"),
+        "adjacent_candidate_scenario_table": adjacent_scenario_table_source,
     }
     candidate_source_zones = {
         "candidate_metrics_status": candidate_generation_report.get("candidate_metrics_status", "unknown"),
@@ -410,8 +436,12 @@ def build_prep_summary(
         "same_scale_reference": release_plan_report.get("same_scale_reference", {}),
         "claim_boundary": release_plan_report.get("claim_boundary", {}),
         "pragmatic_coverage_boundary": release_plan_report.get("pragmatic_coverage_boundary", {}),
-        "source_inputs": release_plan_report.get("source_inputs", {}),
-        "scenario_table_manifest_path": generic_release_plan_contract.get("generic_scenario_generation", {}).get("scenario_table_manifest_path", ""),
+        "source_inputs": {
+            **release_plan_report.get("source_inputs", {}),
+            "scenario_table_path": adjacent_scenario_table_path,
+            "scenario_table_manifest_path": adjacent_scenario_table_manifest_path,
+        },
+        "scenario_table_manifest_path": adjacent_scenario_table_manifest_path,
         "blocked_execution_status": generic_release_plan_contract.get("generic_scenario_generation", {}).get(
             "blocked_execution_status", release_plan_report.get("scenario_plan_status", "unknown")
         ),
@@ -424,6 +454,7 @@ def build_prep_summary(
         ),
         "management_aoi_scenario_pressure_source_inputs": management_aoi_scenario_pressure_report.get("source_inputs", {}),
         "management_aoi_scenario_pressure_command_plan_implications": management_aoi_scenario_pressure_report.get("command_plan_implications", []),
+        "adjacent_candidate_scenario_table": adjacent_scenario_table_source,
     }
     if management_aoi_scenario_pressure_is_named_deferral(str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")):
         scenario_generation_inputs["blocked_execution_status"] = str(
@@ -828,10 +859,10 @@ def build_gis_scope_product_entry(row: dict[str, Any], *, source: str) -> dict[s
 
 
 def build_management_aoi_scenario_pressure_report(*, repo_root: Path, candidate_site_id: str) -> dict[str, Any]:
-    candidate_bundle_root = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+    candidate_bundle_root = ADJACENT_CANDIDATE_BUNDLE_ROOT if repo_root == ROOT else repo_root / "validation/private/source_zone_review"
     return MANAGEMENT_AOI_SCENARIO_PRESSURE.build_report(
-        candidate_metrics_manifest_path=candidate_bundle_root / "tschamut_public_pilot_release_zone_candidates_manifest.json",
-        candidate_review_manifest_path=candidate_bundle_root / "tschamut_public_pilot_release_zone_candidate_review_manifest.json",
+        candidate_metrics_manifest_path=ADJACENT_CANDIDATE_METRICS_MANIFEST if repo_root == ROOT else candidate_bundle_root / "tschamut_expanded_source_zone_candidate_report.json",
+        candidate_review_manifest_path=ADJACENT_CANDIDATE_REVIEW_MANIFEST if repo_root == ROOT else candidate_bundle_root / "tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json",
         policy_path=repo_root / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
         output_root=MANAGEMENT_AOI_SCENARIO_PRESSURE_OUTPUT_ROOT / candidate_site_id,
     )
@@ -2459,19 +2490,18 @@ def build_case_skeleton_output(
             "command": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
             .get("generic_scenario_generation", {})
             .get("command", ""),
-            "expected_scenario_table_path": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
-            .get("generic_scenario_generation", {})
-            .get("expected_scenario_table_path", ""),
-            "scenario_table_manifest_path": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
-            .get("generic_scenario_generation", {})
-            .get("scenario_table_manifest_path", ""),
-            "blocked_execution_status": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
-            .get("generic_scenario_generation", {})
-            .get("blocked_execution_status", blocked_execution),
+            "expected_scenario_table_path": prep_summary.get("release_scenario_placeholders", {}).get("scenario_table_path", ""),
+            "scenario_table_manifest_path": prep_summary.get("release_scenario_placeholders", {}).get("scenario_table_manifest_path", ""),
+            "blocked_execution_status": prep_summary.get("adjacent_candidate_scenario_table", {}).get(
+                "scenario_pressure_status",
+                report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+                .get("generic_scenario_generation", {})
+                .get("blocked_execution_status", blocked_execution),
+            ),
             "conditional_only_weighting": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
             .get("generic_scenario_generation", {})
             .get("conditional_only_weighting", True),
-            "generic_candidate_source_zone_provenance": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
+            "generic_candidate_source_zone_provenance": prep_summary.get("scenario_generation_inputs", {})
             .get("generic_candidate_source_zone_provenance", {}),
         },
     }

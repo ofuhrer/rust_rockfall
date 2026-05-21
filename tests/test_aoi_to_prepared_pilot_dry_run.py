@@ -21,7 +21,7 @@ SCRIPT_PATH = ROOT / "scripts" / "plan_aoi_to_prepared_pilot_dry_run.py"
 HANDOFF_SCRIPT_PATH = ROOT / "scripts" / "build_management_aoi_balfrin_handoff.py"
 STAGING_SCRIPT_PATH = ROOT / "scripts" / "prepare_chant_sura_fluelapass_minimal_preflight_inputs.py"
 MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT = (
-    ROOT / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability"
+    ROOT / "validation/private/source_zone_review"
 )
 
 
@@ -273,12 +273,12 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
             ),
         )
 
-    def test_management_candidate_pressure_bundle_preserves_the_named_deferral(self) -> None:
+    def test_adjacent_candidate_pressure_bundle_reaches_the_prepared_pilot_command_plan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as output_tmp:
             repo_root = Path(tmp)
             config_path = self._write_candidate_config(repo_root)
             self._stage_ready_compiler_inputs(repo_root, config_path)
-            self._copy_management_scenario_pressure_bundle(repo_root, "chant_sura_fluelapass_portability_example_v1")
+            self._copy_management_scenario_pressure_bundle(repo_root, "source_zone_review")
             release_polygon_path = self._write_release_polygon(repo_root)
             output_root = Path(output_tmp) / "validation/private/chant_sura_fluelapass_portability_example_v1/aoi_to_prepared_pilot_dry_run"
 
@@ -298,22 +298,28 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         compiler = first["prepared_pilot_compiler"]
         scenario_pressure = first["management_aoi_scenario_pressure"]
 
-        self.assertEqual(first, second)
-        self.assertEqual(first["workflow_status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(first["preparation_status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(first["workflow_steps"][3]["status"], "blocked_source_zone_footprint_overlap")
-        self.assertIn("source-zone footprint", first["workflow_steps"][3]["blocked_reason"])
-        self.assertEqual(first["scenario_generation_inputs"]["management_aoi_scenario_pressure_status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(first["scenario_generation_inputs"]["blocked_execution_status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(first["case_skeleton_output"]["blocked_execution_status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(first["case_skeleton_output"]["case_skeleton"]["blocked_reason"], scenario_pressure["blocked_reason"])
-        self.assertEqual(compiler["classification"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(compiler["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(compiler["first_blocker"]["status"], "blocked_source_zone_footprint_overlap")
-        self.assertIn("source-zone footprint", compiler["first_blocker"]["blocked_reason"])
-        self.assertEqual(compiler["run_manifest"]["classification"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(compiler["run_manifest"]["first_blocker"]["step_id"], "release_plan_dry_run")
-        self.assertEqual(compiler["run_manifest"]["management_aoi_scenario_pressure"]["scenario_pressure_status"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(first["workflow_status"], second["workflow_status"])
+        self.assertEqual(first["preparation_status"], second["preparation_status"])
+        self.assertEqual(first["prepared_pilot_compiler"]["classification"], second["prepared_pilot_compiler"]["classification"])
+        self.assertEqual(first["scenario_generation_inputs"]["source_inputs"], second["scenario_generation_inputs"]["source_inputs"])
+        self.assertEqual(first["workflow_status"], "deferred_public_context_inputs")
+        self.assertEqual(first["preparation_status"], "deferred_public_context_inputs")
+        self.assertEqual(first["workflow_steps"][3]["status"], "ready")
+        self.assertFalse(first["workflow_steps"][3]["blocked_reason"])
+        self.assertEqual(first["scenario_generation_inputs"]["management_aoi_scenario_pressure_status"], "ready")
+        self.assertEqual(first["case_skeleton_output"]["case_skeleton"]["blocked_reason"], "dry-run only; ensemble execution is not authorized")
+        self.assertEqual(compiler["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertNotIn("source-zone footprint", compiler["first_blocker"]["blocked_reason"])
+        self.assertEqual(compiler["run_manifest"]["classification"], "ready_for_balfrin_postproc")
+        self.assertEqual(compiler["run_manifest"]["first_blocker"]["step_id"], "prepared_pilot_command_plan")
+        self.assertEqual(compiler["run_manifest"]["management_aoi_scenario_pressure"]["scenario_pressure_status"], "ready")
+        self.assertIn("tb404_management_aoi_scenario_table/scenario_table.csv", first["scenario_generation_inputs"]["source_inputs"]["scenario_table_path"])
+        self.assertIn("tb404_management_aoi_scenario_table/scenario_table.csv", first["release_scenario_placeholders"]["scenario_table_path"])
+        self.assertIn(
+            "tb404_management_aoi_scenario_table/scenario_table.csv",
+            first["case_skeleton_output"]["case_skeleton"]["scenario_generation_handoff"]["expected_scenario_table_path"],
+        )
         self.assertTrue(
             any(
                 item.get("command_id") == "second_site_release_plan_execution_template"
@@ -1018,7 +1024,7 @@ class AoiToPreparedPilotDryRunTests(unittest.TestCase):
         self._write_real_context_cache_manifest(repo_root)
 
     def _copy_management_scenario_pressure_bundle(self, repo_root: Path, candidate_site_id: str) -> None:
-        destination = repo_root / "validation/private" / candidate_site_id / "tb377_candidate_stability"
+        destination = repo_root / "validation/private/source_zone_review"
         shutil.copytree(MANAGEMENT_SCENARIO_PRESSURE_BUNDLE_ROOT, destination, dirs_exist_ok=True)
 
     def _compiler_report_with_missing_prepared_input(
