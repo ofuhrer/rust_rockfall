@@ -5333,3 +5333,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new physics, no calibrated block population, no annual-frequency or physical-probability claims, no operational claim, no scale-up or distributed-execution claim, and no risk/exposure/vulnerability semantics.
 - Next task: `TB-420`
+
+### TB-420: Add Deterministic Release Geometry Sampling Modes
+
+- Date: 2026-05-21
+- Commit: `4089102`; work-log entry recorded in the follow-up commit.
+- Objective: support deterministic point, line, and area release sampling from candidate source geometries with stable release ids and reproducible release-point manifests.
+- Files changed: `scripts/plan_pragmatic_release_plan.py`, `tests/test_plan_pragmatic_release_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `release-geometry-sampling` mode to `scripts/plan_pragmatic_release_plan.py` for GeoJSON point, line, and area candidate geometries.
+  - Implemented stable release ids, deterministic line endpoint-preserving spacing, deterministic area grid sampling with small-polygon centroid fallback, and compatible `release_points_lv95.csv` output.
+  - Added manifest metadata for sampling density, seed/provenance, geometry type counts, release-count summaries, and explicit non-operational claim boundaries.
+  - Added focused fixture tests for stable ids, boundary behavior, empty candidates, small candidate polygons, and manifest/CSV writing.
+  - Removed TB-420 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_pragmatic_release_plan.py tests/test_plan_pragmatic_release_plan.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_pragmatic_release_plan`
+  - `PYENV_VERSION=system uv run python scripts/plan_pragmatic_release_plan.py --mode release-geometry-sampling --candidate-geometries /tmp/tb420_cli_candidate_geometries.geojson --sampling-spacing-m 5 --sampling-seed 420 --output-root /tmp/tb420_release_geometry_cli --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: candidate geometries remain workflow inputs only, no validated source-zone claim, no tuning to Tschamut, no new simulations, no operational claim, no scale-up or distributed-execution claim, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
+- Next task: `TB-421`
