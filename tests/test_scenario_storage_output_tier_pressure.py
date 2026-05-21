@@ -30,6 +30,52 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         self.assertEqual(report["real_aoi_candidate_measurement"]["scenario_row_count"], 3)
         self.assertGreater(report["real_aoi_candidate_measurement"]["candidate_bundle"]["total_bytes"], 0)
 
+        ladder = report["expanded_candidate_set_measurements"]
+        self.assertEqual([row["candidate_repeat_count"] for row in ladder], [1, 3, 8])
+        self.assertEqual([row["candidate_release_zone_record_count"] for row in ladder], [10, 30, 80])
+        self.assertEqual([row["scenario_row_count"] for row in ladder], [100, 300, 800])
+        self.assertEqual(
+            ladder[0]["scenario_family_template_cardinality"],
+            [
+                {"group_id": "candidate_release_point_summary_v1", "row_count": 10},
+                {"group_id": "policy_block_family_v1", "row_count": 90},
+            ],
+        )
+        self.assertEqual(
+            ladder[1]["source_zone_family_cardinality"],
+            [
+                {"group_id": "release_block_1", "row_count": 150},
+                {"group_id": "release_block_2", "row_count": 60},
+                {"group_id": "release_block_4", "row_count": 90},
+            ],
+        )
+        self.assertEqual(
+            ladder[2]["block_family_cardinality"],
+            [
+                {"group_id": "candidate_release_point_summary", "row_count": 80},
+                {"group_id": "tschamut_public_block_large", "row_count": 240},
+                {"group_id": "tschamut_public_block_medium", "row_count": 240},
+                {"group_id": "tschamut_public_block_small", "row_count": 240},
+            ],
+        )
+        self.assertLess(ladder[0]["csv_bytes"], ladder[1]["csv_bytes"])
+        self.assertLess(ladder[1]["csv_bytes"], ladder[2]["csv_bytes"])
+        self.assertLess(ladder[0]["manifest_bytes"], ladder[1]["manifest_bytes"])
+        self.assertLess(ladder[1]["manifest_bytes"], ladder[2]["manifest_bytes"])
+        self.assertEqual(
+            report["next_balfrin_package_batching_rule"]["recommended_cap_candidate_repeat_count"],
+            3,
+        )
+        self.assertEqual(
+            report["next_balfrin_package_batching_rule"]["recommended_cap_candidate_release_zone_record_count"],
+            30,
+        )
+        self.assertEqual(
+            report["next_balfrin_package_batching_rule"]["recommended_cap_scenario_row_count"],
+            300,
+        )
+        self.assertIn("3-repeat", report["next_balfrin_package_batching_rule"]["reason"])
+
         tiers = {row["tier_id"]: row for row in report["tier_comparison"]}
         self.assertEqual(set(tiers), {"minimal", "rebuildable_reduced", "gis", "research_full"})
         self.assertEqual(tiers["minimal"]["replay_suitability"], "insufficient_missing_trajectory_outputs")

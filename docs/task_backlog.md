@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-439: Stress Scenario Generation From Expanded Candidate Sets
-
-Goal: Measure scenario-table cardinality, file size, and family distribution from expanded release-zone candidate sets.
-
-Capability gap reduced: Scenario cardinality and storage pressure remain uncertain when candidate counts grow.
-
-Why this outranks alternatives: Larger Balfrin probes will fail on scenario/output pressure if expanded candidate sets explode before execution.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Fixture-backed or current-AOI scenario stress output for at least two candidate-count levels.
-- Scenario family counts, bytes, row counts, and expected output-tier pressure estimates.
-- Recommended cap or batching criterion for the next Balfrin package.
-
-Definition of done:
-
-- Scenario generation has measured cardinality and storage behavior for expanded candidate sets and a clear next batching rule.
-
-Boundaries: No source-frequency semantics, no physical probability, no large production ensemble.
-
 ### TB-440: Define Scenario Batching Contract For Multi-Zone Runs
 
 Goal: Split expanded release-zone scenario tables into deterministic batches that respect output-budget and reducer-pressure constraints.

@@ -166,12 +166,17 @@ Measured:
   does not authorize operational GIS claims.
 - `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
   current real-AOI candidate scenario table at 3 rows, the fixture scenario
-  table at 3 rows, the minimal tier at 5 files / 27,675 bytes, the
-  rebuildable-reduced tier at 17 files / 3,953,602 bytes, the GIS tier at
-  56 files / 79,160,991 bytes, and the research-full tier at 2,716 files /
+  table at 3 rows, and an expanded candidate-repeat ladder at 1 / 3 / 8
+  repeats. That ladder yields 100 / 300 / 800 scenario rows, 52,064 / 162,304
+  / 431,904 CSV bytes, and 150,221 / 454,203 / 1,197,781 manifest bytes. The
+  helper still measures the minimal tier at 5 files / 27,675 bytes, the
+  rebuildable-reduced tier at 17 files / 3,953,602 bytes, the GIS tier at 56
+  files / 79,160,991 bytes, and the research-full tier at 2,716 files /
   764,598,283 bytes in this checkout. It recommends `rebuildable_reduced` as
-  the smallest Balfrin demonstration replay tier because the minimal tier omits
-  builder-facing trajectory outputs.
+  the smallest Balfrin demonstration replay tier because the minimal tier
+  omits builder-facing trajectory outputs, and it recommends batching the next
+  Balfrin package at `candidate_repeat_count <= 3` / `30` candidates / `300`
+  rows because the 8-repeat step grows sharply past that point.
 
 Extrapolated:
 

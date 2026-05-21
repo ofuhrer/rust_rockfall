@@ -41,6 +41,7 @@ DEFAULT_REDUCED_ROOT = ROOT / "validation/private/tschamut_public_pilot/target_g
 DEFAULT_FULL_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1"
 DEFAULT_GIS_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_FIXTURE_TRAJECTORY_COUNT = 6
+DEFAULT_EXPANDED_CANDIDATE_REPEAT_COUNTS = (1, 3, 8)
 
 REBUILD_REQUIRED_FAMILIES = (
     "trajectory",
@@ -73,6 +74,8 @@ def build_report(
     candidate_metrics_manifest: Path = DEFAULT_REAL_CANDIDATE_METRICS,
     candidate_review_manifest: Path = DEFAULT_REAL_CANDIDATE_REVIEW,
     policy_path: Path = DEFAULT_POLICY,
+    release_points_path: Path = SCENARIO_FREEZER.DEFAULT_RELEASE_POINTS,
+    candidate_repeat_counts: tuple[int, ...] = DEFAULT_EXPANDED_CANDIDATE_REPEAT_COUNTS,
     rebuildable_reduced_root: Path = DEFAULT_REDUCED_ROOT,
     full_validation_root: Path = DEFAULT_FULL_VALIDATION_ROOT,
     gis_root: Path = DEFAULT_GIS_ROOT,
@@ -88,6 +91,12 @@ def build_report(
             candidate_review_manifest=candidate_review_manifest,
             policy_path=policy_path,
             scratch_root=scratch / "real_aoi",
+        )
+        expanded_candidate_sets = build_expanded_candidate_set_measurements(
+            policy_path=policy_path,
+            release_points_path=release_points_path,
+            candidate_repeat_counts=candidate_repeat_counts,
+            scratch_root=scratch / "expanded_candidate_sets",
         )
 
     output_families = {
@@ -128,6 +137,8 @@ def build_report(
         "operational_claims_allowed": False,
         "fixture_measurement": fixture_scenario,
         "real_aoi_candidate_measurement": real_candidate,
+        "expanded_candidate_set_measurements": expanded_candidate_sets,
+        "next_balfrin_package_batching_rule": recommend_candidate_batching_rule(expanded_candidate_sets),
         "output_family_measurements": output_families,
         "tier_comparison": tier_comparison,
         "balfrin_demonstration_replay_recommendation": recommendation,
@@ -237,6 +248,128 @@ def build_real_candidate_measurement(
             for release_zone_id, count in sorted(release_zone_counts.items())
         ],
         "blocked_reason": generated.get("blocked_reason", ""),
+    }
+
+
+def build_expanded_candidate_set_measurements(
+    *,
+    policy_path: Path,
+    release_points_path: Path,
+    candidate_repeat_counts: tuple[int, ...],
+    scratch_root: Path,
+) -> list[dict[str, Any]]:
+    if not policy_path.exists() or not release_points_path.exists():
+        missing = [
+            display_path(path)
+            for path in (policy_path, release_points_path)
+            if not path.exists()
+        ]
+        return [
+            {
+                "measurement_status": "blocked_missing_inputs",
+                "blocked_reason": "missing required scenario-expansion inputs",
+                "missing_inputs": missing,
+                "candidate_repeat_count": repeat_count,
+                "candidate_release_zone_record_count": 0,
+                "scenario_row_count": 0,
+                "csv_bytes": 0,
+                "manifest_bytes": 0,
+                "total_bytes": 0,
+                "scenario_family_template_cardinality": [],
+                "source_zone_family_cardinality": [],
+                "block_family_cardinality": [],
+                "shape_family_cardinality": [],
+                "first_scaling_bottleneck": {
+                    "name": "unavailable",
+                    "reason": "required scenario-expansion inputs are missing",
+                },
+                "tb_183_planning_input": {
+                    "status": "blocked_missing_inputs",
+                    "reason": "required scenario-expansion inputs are missing",
+                    "candidate_release_zone_record_count": 0,
+                    "scenario_row_count": 0,
+                    "block_family_count": 0,
+                    "scenario_family_template_count": 0,
+                    "ready_for_tb_183": False,
+                },
+            }
+            for repeat_count in candidate_repeat_counts
+        ]
+
+    measurements: list[dict[str, Any]] = []
+    for repeat_count in candidate_repeat_counts:
+        if repeat_count < 1:
+            raise ValueError("candidate-repeat-counts must contain positive integers")
+        generated = SCENARIO_FREEZER.build_report(
+            policy_path=policy_path,
+            release_points_path=release_points_path,
+            output_root=scratch_root / f"candidate_repeat_{repeat_count:02d}",
+            candidate_repeat_count=repeat_count,
+        )
+        manifest = dict(generated.get("scenario_table_manifest") or {})
+        storage = dict(generated.get("storage_measurements") or {})
+        measurements.append(
+            {
+                "measurement_status": generated.get("stress_test_status", "unknown"),
+                "blocked_reason": generated.get("blocked_reason"),
+                "candidate_repeat_count": repeat_count,
+                "candidate_release_zone_record_count": int(generated.get("candidate_release_zone_record_count") or 0),
+                "scenario_row_count": int(generated.get("scenario_row_count") or 0),
+                "csv_bytes": int(storage.get("csv_bytes") or 0),
+                "manifest_bytes": int(storage.get("manifest_bytes") or 0),
+                "total_bytes": int(storage.get("total_bytes") or 0),
+                "scenario_family_template_cardinality": list(manifest.get("scenario_family_template_cardinality") or []),
+                "source_zone_family_cardinality": list(manifest.get("source_zone_family_cardinality") or []),
+                "block_family_cardinality": list(manifest.get("block_family_cardinality") or []),
+                "shape_family_cardinality": list(manifest.get("shape_family_cardinality") or []),
+                "first_scaling_bottleneck": dict(generated.get("first_scaling_bottleneck") or {}),
+                "tb_183_planning_input": dict(generated.get("tb_183_planning_input") or {}),
+            }
+        )
+    return measurements
+
+
+def recommend_candidate_batching_rule(candidate_measurements: list[dict[str, Any]]) -> dict[str, Any]:
+    ready_measurements = [
+        measurement
+        for measurement in candidate_measurements
+        if measurement.get("measurement_status") == "ready"
+    ]
+    if not ready_measurements:
+        return {
+            "recommended_batching_status": "blocked_missing_inputs",
+            "batching_key": "candidate_repeat_count",
+            "recommended_cap_candidate_repeat_count": 0,
+            "recommended_cap_candidate_release_zone_record_count": 0,
+            "recommended_cap_scenario_row_count": 0,
+            "reason": "scenario-expansion measurements are unavailable",
+        }
+
+    ordered = sorted(ready_measurements, key=lambda measurement: int(measurement.get("candidate_repeat_count") or 0))
+    cap_measurement = max(
+        (measurement for measurement in ordered if int(measurement.get("candidate_repeat_count") or 0) <= 3),
+        key=lambda measurement: int(measurement.get("candidate_repeat_count") or 0),
+        default=ordered[0],
+    )
+    return {
+        "recommended_batching_status": "ready",
+        "batching_key": "candidate_repeat_count",
+        "recommended_cap_candidate_repeat_count": int(cap_measurement.get("candidate_repeat_count") or 0),
+        "recommended_cap_candidate_release_zone_record_count": int(cap_measurement.get("candidate_release_zone_record_count") or 0),
+        "recommended_cap_scenario_row_count": int(cap_measurement.get("scenario_row_count") or 0),
+        "cap_measurement": {
+            "candidate_repeat_count": int(cap_measurement.get("candidate_repeat_count") or 0),
+            "candidate_release_zone_record_count": int(cap_measurement.get("candidate_release_zone_record_count") or 0),
+            "scenario_row_count": int(cap_measurement.get("scenario_row_count") or 0),
+            "csv_bytes": int(cap_measurement.get("csv_bytes") or 0),
+            "manifest_bytes": int(cap_measurement.get("manifest_bytes") or 0),
+            "total_bytes": int(cap_measurement.get("total_bytes") or 0),
+        },
+        "reason": (
+            "batch at the largest measured candidate-repeat level at or below 3; "
+            "the 8-repeat step grows to 800 rows and roughly 1.2 MB of manifest bytes, "
+            "so larger candidate pools should be split into 3-repeat / 30-candidate chunks"
+        ),
     }
 
 
@@ -474,14 +607,31 @@ def claim_boundaries() -> dict[str, bool]:
 def render_text_report(report: dict[str, Any]) -> str:
     recommendation = report["balfrin_demonstration_replay_recommendation"]
     bottleneck = report["next_scale_bottleneck"]
+    batching_rule = report["next_balfrin_package_batching_rule"]
     lines = [
         "Scenario Storage And Output-Tier Pressure",
         f"schema_version: {report['schema_version']}",
         f"measurement_status: {report['measurement_status']}",
         f"fixture_scenario_rows: {report['fixture_measurement'].get('scenario_row_count', 0)}",
         f"real_aoi_scenario_rows: {report['real_aoi_candidate_measurement'].get('scenario_row_count', 0)}",
-        "tier_comparison:",
+        "expanded_candidate_measurements:",
     ]
+    for measurement in report.get("expanded_candidate_set_measurements", []):
+        lines.append(
+            f"  - repeat={measurement['candidate_repeat_count']} candidates={measurement['candidate_release_zone_record_count']} "
+            f"rows={measurement['scenario_row_count']} csv_bytes={measurement['csv_bytes']} "
+            f"manifest_bytes={measurement['manifest_bytes']} total_bytes={measurement['total_bytes']}"
+        )
+    lines.extend([
+        "next_balfrin_package_batching_rule:",
+        f"  status: {batching_rule['recommended_batching_status']}",
+        f"  key: {batching_rule['batching_key']}",
+        f"  cap_repeat_count: {batching_rule['recommended_cap_candidate_repeat_count']}",
+        f"  cap_candidate_records: {batching_rule['recommended_cap_candidate_release_zone_record_count']}",
+        f"  cap_scenario_rows: {batching_rule['recommended_cap_scenario_row_count']}",
+        f"  reason: {batching_rule['reason']}",
+        "tier_comparison:",
+    ])
     for tier in report["tier_comparison"]:
         lines.append(
             f"  - {tier['tier_id']}: status={tier['measurement_status']} files={tier['file_count']} "
