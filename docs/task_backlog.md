@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-436: Exercise AOI Terrain Preprocessing On A Real Staged Crop
-
-Goal: Run the terrain preprocessing path against a real staged AOI crop when available, otherwise fail closed with the exact missing input and command needed.
-
-Capability gap reduced: Terrain preprocessing is still too fixture-dependent for arbitrary AOIs.
-
-Why this outranks alternatives: Release-zone generation and scenario automation depend on trustworthy terrain crops and metadata.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/stage_management_aoi_restaged_terrain.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- One real-staged or failed-closed terrain preprocessing report with terrain bounds, resolution, nodata, slope-domain, and provenance summaries.
-- Focused test coverage for the report schema and blocked-state messaging.
-- No generated terrain committed.
-
-Definition of done:
-
-- The AOI terrain preprocessing path either produces a measured real-crop QA report or a precise missing-input blocker that can be acted on.
-
-Boundaries: No synthetic evidence promotion, no simulation, no source-zone acceptance claim.
-
 ### TB-437: Make Release-Zone Candidate Heuristic Explainable Per Candidate
 
 Goal: Add per-candidate feature summaries explaining why each release-zone candidate was selected or rejected.

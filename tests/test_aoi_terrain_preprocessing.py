@@ -206,6 +206,10 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertIn("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml", report["blocked_missing_inputs"])
             self.assertIn("terrain.asc", report["blocked_reason"])
             self.assertIn("terrain_metadata.yaml", report["blocked_reason"])
+            self.assertIn("stage_management_aoi_restaged_terrain.py", report["next_command"])
+            self.assertIn("--output-root", report["next_command"])
+            self.assertIn(str(output_root.parent), report["next_command"])
+            self.assertIn("next_command:", helper.render_text_report(report))
             self.assertTrue((output_root / "terrain_preprocessing_manifest.json").exists())
             self.assertFalse((output_root / "terrain.asc").exists())
             self.assertFalse((output_root / "terrain_metadata.yaml").exists())
@@ -340,6 +344,46 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
         self.assertEqual(report["terrain_domain_qa"]["qa_status"], "ready")
         self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
         self.assertEqual(report["terrain_provenance"]["source_product"], "swissALTI3D")
+
+    def test_repo_root_real_staged_terrain_crop_report_exposes_bounds_resolution_nodata_and_slope_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = self._write_candidate_config(
+                Path(tmp),
+                site_extent={
+                    "crs": "EPSG:2056",
+                    "xmin": 2793002.0,
+                    "ymin": 1180202.0,
+                    "xmax": 2793006.0,
+                    "ymax": 1180206.0,
+                },
+            )
+
+            report = helper.build_report(
+                repo_root=ROOT,
+                site_config=config_path,
+                terrain_crop_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                terrain_metadata_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                aoi_tile_catalog_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml",
+            )
+
+        self.assertEqual(report["terrain_preprocessing_status"], "ready")
+        self.assertEqual(report["preprocessing_gate_classification"], "real_staged")
+        self.assertEqual(report["terrain_summary"]["extent_lv95_m"]["xmin"], 2793000.0)
+        self.assertEqual(report["terrain_summary"]["extent_lv95_m"]["xmax"], 2793008.0)
+        self.assertEqual(report["terrain_summary"]["resolution_m"], 2.0)
+        self.assertEqual(report["terrain_summary"]["nodata"], -9999.0)
+        self.assertEqual(report["terrain_nodata_summary"]["nodata_fraction"], 0.0)
+        self.assertEqual(report["terrain_domain_qa"]["qa_status"], "ready")
+        self.assertEqual(report["terrain_domain_qa"]["resolution_class"], "high_resolution_2m_or_better")
+        self.assertEqual(report["terrain_domain_qa"]["aoi_containment_status"], "ready")
+        self.assertGreater(report["terrain_derivative_inventory"]["slope"]["stats"]["count"], 0)
+        self.assertEqual(report["terrain_derivative_inventory"]["slope"]["kernel"], "horn_3x3")
+        self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
+        self.assertEqual(report["terrain_provenance"]["source_product"], "swissALTI3D")
+        self.assertEqual(report["terrain_provenance"]["source_tile_ids"], ["2793-1180"])
 
     def test_prepared_input_builder_reports_partial_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

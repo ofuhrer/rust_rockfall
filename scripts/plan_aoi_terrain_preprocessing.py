@@ -1259,6 +1259,11 @@ def blocked_report(
     paths: dict[str, Path | None],
     missing_inputs: list[str],
 ) -> dict[str, Any]:
+    staging_output_root = paths["processed_input_root"].parent
+    next_command = (
+        "PYENV_VERSION=system uv run python scripts/stage_management_aoi_restaged_terrain.py "
+        f"--repo-root {repo_root} --output-root {staging_output_root}"
+    )
     output_roots = {
         "raw_swisstopo_cache_root": str(paths["raw_swisstopo_cache_root"]),
         "processed_input_root": str(paths["processed_input_root"]),
@@ -1278,6 +1283,7 @@ def blocked_report(
         "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
         "site_extent": site_extent if site_extent else "placeholder_extent_missing",
         "blocked_reason": "missing staged terrain inputs: " + ", ".join(missing_inputs),
+        "next_command": next_command,
         "terrain_inputs": {
             "terrain_crop_path": display_path(paths["terrain_crop"], repo_root) if paths["terrain_crop"] is not None else None,
             "terrain_metadata_path": display_path(paths["terrain_metadata"], repo_root)
@@ -2189,6 +2195,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"preprocessing_gate_classification: {report.get('preprocessing_gate_classification', '')}",
         f"candidate_site_id: {report['candidate_site_id']}",
         f"candidate_site_name: {report['candidate_site_name']}",
+        f"next_command: {report.get('next_command', '')}",
         "",
         "terrain_inputs:",
     ]

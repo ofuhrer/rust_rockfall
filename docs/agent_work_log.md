@@ -5721,3 +5721,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads were performed, no fabricated real geodata was committed, no physical-evidence claim was added, and the AOI workflow remained non-operational.
 - Next task: `TB-436`
+
+### TB-436: Exercise AOI Terrain Preprocessing On A Real Staged Crop
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: exercise the AOI terrain preprocessing path on the repository's real staged Chant Sura / Flüelapass crop and make the blocked state actionable when staged inputs are missing.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `next_command` recovery field to blocked terrain-preprocessing reports so the missing-input case now points at the existing terrain restaging helper and the expected site-root output location.
+  - Surfaced the same recovery command in text-mode report rendering so the CLI and JSON report stay aligned on the operator action to take next.
+  - Added focused regression coverage for the blocked missing-input message and for a real-staged crop report built from the repository's actual Chant Sura / Flüelapass terrain crop, including bounds, resolution, nodata, slope inventory, and provenance checks.
+  - Exercised the live CLI path against the real staged crop with a temporary site extent that leaves one-cell margin, confirming the report returns `terrain_preprocessing_status: ready` and `preprocessing_gate_classification: real_staged`.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing.AoiTerrainPreprocessingTests.test_missing_staged_terrain_inputs_fail_closed tests.test_aoi_terrain_preprocessing.AoiTerrainPreprocessingTests.test_repo_root_real_staged_terrain_crop_report_exposes_bounds_resolution_nodata_and_slope_inventory tests.test_aoi_terrain_preprocessing.AoiTerrainPreprocessingTests.test_repo_root_real_staged_terrain_metadata_is_not_fixture_backed -v`
+  - `PYENV_VERSION=system uv run python - <<'PY' ... PY`
+- Result/status: implemented_measured
+- Boundaries: no generated terrain was committed, no synthetic evidence was promoted, no simulation or source-zone acceptance claim was added, and the report remains non-operational.
+- Next task: `TB-437`
