@@ -5783,3 +5783,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no candidate acceptance claim was added, no operational hazard semantics were introduced, no unbounded national sweep was authorized, and the new extent artifact remains diagnostic review output only.
 - Next task: `TB-439`
+
+### TB-439: Stress Scenario Generation From Expanded Candidate Sets
+
+- Date: 2026-05-22
+- Commit: `0f86247`
+- Objective: measure scenario-table cardinality, file size, and family distribution from expanded release-zone candidate sets.
+- Files changed: `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an expanded candidate-repeat ladder to the storage-pressure helper so the report now measures 1 / 3 / 8 repeat levels from the current release-point input set and records scenario-family, source-zone-family, block-family, and shape-family distributions for each level.
+  - Surfaced the measured ladder in both JSON and text output and added a batching recommendation that caps the next Balfrin package at `candidate_repeat_count <= 3` / `30` candidate records / `300` rows because the 8-repeat step grows sharply beyond that point.
+  - Updated the focused storage-pressure regressions to assert the expanded ladder, the monotonic byte growth, and the batching cap, then removed TB-439 from the active backlog and reflected the measurement in the Swiss-scale feasibility note.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/measure_scenario_storage_output_tier_pressure.py tests/test_scenario_storage_output_tier_pressure.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_scenario_storage_output_tier_pressure tests.test_candidate_source_zone_scenario_stress -v`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no source-frequency semantics, no physical probability semantics, no large production ensemble, no operational hazard claim, and no scale-up authorization were introduced.
+- Next task: `TB-440`
