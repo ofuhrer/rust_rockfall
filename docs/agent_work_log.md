@@ -4923,3 +4923,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: bounded refactor only; no wrapper addition, no status-vocabulary change, no Balfrin submission, and no scientific semantics change.
 - Next task: `none`
+
+### TB-402: Freeze Adjacent Prau Mulins Review Candidate
+
+- Date: 2026-05-21
+- Commit: `9c56af7`
+- Objective: freeze the user-selected Prau Mulins review patch as a deterministic reviewed-candidate record that stays separate from the frozen Tschamut road-release footprint.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`, `tests/test_candidate_source_zone_freezer.py`
+- Implementation summary:
+  - Added a freezer regression that materializes a deterministic Prau Mulins review package in a temp scratch root, freezes `tschamut_adjacent_prau_mulins_candidate_v1`, and verifies the resulting source-zone geometry remains southwest of the frozen Tschamut footprint.
+  - Kept the provenance explicit as expanded terrain-screening plus user visual review, not field validation, and encoded the review geometry around the requested southwest Prau Mulins window.
+  - Removed the generated private review artifacts from tracking so the repo-consistency gate passes while preserving the load-path regression.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: review geometry and freezer wiring only; no operational release-zone claim, no field validation claim, no source-frequency semantics, no hazard run, and no Balfrin submission.
+- Next task: `TB-403`
