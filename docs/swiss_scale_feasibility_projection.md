@@ -34,6 +34,9 @@ branches into measured capability:
   - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
     restartability, GIS scope, uncertainty, and claim boundaries in the measured
     section while separating projection-only and failed-closed sections.
+  - TB-407 measured the smallest multi-zone Balfrin probe on `postproc`, with
+    `130` validation files, `53` hazard files, `729600` conditional-curve
+    rows, and preservation-ready run-root evidence.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -111,6 +114,8 @@ Measured:
   the current management-AOI failed-closed branch blocked by
   `source_zone_footprint_overlap`; neither upgrades hazard execution
   capability.
+- TB-407 adds the measured smallest multi-zone probe, which is separate from
+  the failed-closed branches and still does not authorize scale-up.
 - TB-389 adds a measured real-AOI candidate bundle on the restaged management
   terrain, which is useful for downstream scenario pressure work but remains a
   heuristic candidate-generation result rather than validated release-zone
@@ -132,7 +137,8 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no-go for regional and Swiss-wide
 execution under the current single-node/postproc boundary. The key separator is
-still measured hazard execution: the repository has measured single-job and
-four-zone postproc evidence, but not measured multi-zone hazard execution, and
-the current management-AOI branch remains blocked by
-`source_zone_footprint_overlap` upstream of any new candidate-screening step.
+still measured hazard execution: the repository has measured single-job,
+four-zone postproc, and smallest multi-zone probe evidence, but not measured
+larger multi-zone hazard execution, and the current management-AOI branch
+remains blocked by `source_zone_footprint_overlap` upstream of any new
+candidate-screening step.

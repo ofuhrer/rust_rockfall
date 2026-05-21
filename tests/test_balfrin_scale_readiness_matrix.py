@@ -23,15 +23,21 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
         self.assertEqual(report["matrix_status"], "blocked_reducer_budget")
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
-        self.assertEqual(report["next_evidence_field"], "defer_eight_zone_probe_until_measured_hazard_execution")
-        self.assertIn("TB-368 now provides preservation-ready measured two-zone evidence", report["summary"])
+        self.assertEqual(report["next_evidence_field"], "optimize_only_from_new_measured_bottleneck")
+        self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("management-AOI Balfrin decision failed closed before sbatch", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
-            ["single_zone", "target_area", "four_zone_review_package", "two_zone_preserved_hazard_run"],
+            [
+                "single_zone",
+                "target_area",
+                "smallest_multi_zone",
+                "four_zone_review_package",
+                "two_zone_preserved_hazard_run",
+            ],
         )
-        self.assertEqual(report["blocked_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
-        self.assertEqual(report["blocked_pre_submit_tiers"], ["smallest_multi_zone", "four_zone_hazard_probe"])
+        self.assertEqual(report["blocked_tiers"], ["four_zone_hazard_probe"])
+        self.assertEqual(report["blocked_pre_submit_tiers"], ["four_zone_hazard_probe"])
         self.assertEqual(report["failed_closed_tiers"], ["management_aoi_multi_zone_run"])
         self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
@@ -42,23 +48,23 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertTrue(report["live_run_authorization_status"]["standing_postproc_clearance_active"])
         self.assertEqual(
             report["live_run_authorization_status"]["recommended_next_action"],
-            "defer_eight_zone_probe_until_measured_hazard_execution",
+            "optimize_only_from_new_measured_bottleneck",
         )
         self.assertEqual(
             report["next_recommended_scaling_task"],
-            "defer_eight_zone_probe_until_measured_hazard_execution",
+            "optimize_only_from_new_measured_bottleneck",
         )
         self.assertEqual(
             [item["action_id"] for item in report["next_backlog_recommendations"]],
             [
-                "repair_four_zone_handoff_and_rerun_gate",
                 "optimize_only_from_new_measured_bottleneck",
+                "repair_four_zone_handoff_and_rerun_gate",
                 "resolve_two_zone_output_profile_blocker",
                 "stage_real_public_context_for_user_aoi",
                 "defer_physical_frequency_and_operational_claims",
             ],
         )
-        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "execution_unblock")
+        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "optimization")
         self.assertEqual(
             report["evidence_label_order"],
             [
@@ -119,20 +125,22 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["target_area"]["authorization_status"], "authorized_for_one_metrics_completion_rerun")
         self.assertIsNone(tiers["target_area"]["next_evidence_field"])
 
-        self.assertEqual(tiers["smallest_multi_zone"]["classification"], "blocked_reducer_budget")
-        self.assertEqual(tiers["smallest_multi_zone"]["evidence_label"], "blocked_pre_submit")
-        self.assertNotIn("smallest_multi_zone", report["measured_tiers"])
-        self.assertEqual(tiers["smallest_multi_zone"]["manifest_bytes"], 26057)
-        self.assertEqual(tiers["smallest_multi_zone"]["reducer_sidecars"], 21)
-        self.assertEqual(tiers["smallest_multi_zone"]["compact_manifest_bytes"], 17788)
-        self.assertEqual(tiers["smallest_multi_zone"]["compact_reducer_sidecars"], 2)
-        self.assertEqual(tiers["smallest_multi_zone"]["next_evidence_field"], "manifest_size_bytes")
-        self.assertIn("manifest_size_bytes", tiers["smallest_multi_zone"]["blocker"])
-        self.assertNotIn("postproc_microbenchmark", report["measured_tiers"])
-        self.assertEqual(tiers["smallest_multi_zone"]["measurement_status"], "blocked_pre_submit")
+        self.assertEqual(tiers["smallest_multi_zone"]["classification"], "measured_smallest_multi_zone_probe")
+        self.assertEqual(tiers["smallest_multi_zone"]["evidence_label"], "measured_on_balfrin")
+        self.assertIn("smallest_multi_zone", report["measured_tiers"])
+        self.assertEqual(tiers["smallest_multi_zone"]["job_id"], "4347579")
+        self.assertEqual(tiers["smallest_multi_zone"]["run_root"], "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1")
+        self.assertEqual(tiers["smallest_multi_zone"]["validation_output_file_count"], 130)
+        self.assertEqual(tiers["smallest_multi_zone"]["validation_output_bytes"], 34565330)
+        self.assertEqual(tiers["smallest_multi_zone"]["hazard_output_file_count"], 53)
+        self.assertEqual(tiers["smallest_multi_zone"]["hazard_output_bytes"], 55831799)
+        self.assertEqual(tiers["smallest_multi_zone"]["threshold_profile_id"], "smallest_live_two_zone_probe")
+        self.assertIsNone(tiers["smallest_multi_zone"]["next_evidence_field"])
+        self.assertIsNone(tiers["smallest_multi_zone"]["blocker"])
+        self.assertEqual(tiers["smallest_multi_zone"]["measurement_status"], "measured_preservation_ready")
         self.assertEqual(
             report["latest_execution_efficiency_status"]["smallest_multi_zone"],
-            "blocked_pre_submit_not_measured",
+            "measured_smallest_multi_zone_probe",
         )
         self.assertEqual(tiers["four_zone_review_package"]["classification"], "measured_postproc_probe")
         self.assertEqual(tiers["four_zone_review_package"]["evidence_label"], "measured_on_balfrin")
@@ -202,9 +210,9 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             tiers["management_aoi_multi_zone_run"]["hazard_execution_status"],
             "failed_closed_no_hazard_execution",
         )
-        self.assertEqual(tiers["management_aoi_multi_zone_run"]["blocker"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 0)
-        self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 0)
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["blocker"], "blocked_missing_prepared_pilot_inputs")
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["candidate_cell_count"], 1)
+        self.assertEqual(tiers["management_aoi_multi_zone_run"]["scenario_row_count"], 3)
         self.assertFalse(tiers["management_aoi_multi_zone_run"]["sbatch_attempted"])
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_no_submit_task"], "TB-393")
         self.assertEqual(
@@ -212,9 +220,9 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             "ready_for_read_only_collection",
         )
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["latest_scheduler_submission_status"], "not_attempted")
-        self.assertIn(
-            "stage_management_aoi_restaged_terrain.py",
+        self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["first_persistent_unblock_action"],
+            "prepared-pilot inputs are missing",
         )
         self.assertEqual(
             tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
@@ -264,8 +272,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("management_aoi_multi_zone_run", text)
         self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
-        self.assertIn("next_recommended_action: defer_eight_zone_probe_until_measured_hazard_execution", text)
-        self.assertIn("manifest_size_bytes", text)
+        self.assertIn("next_recommended_scaling_task: optimize_only_from_new_measured_bottleneck", text)
+        self.assertIn("TB-407", text)
         self.assertIn("projected_larger_aoi", text)
 
     def test_cli_emits_json_and_text_reports(self) -> None:

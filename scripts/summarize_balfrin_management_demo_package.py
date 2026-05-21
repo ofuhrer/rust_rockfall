@@ -44,6 +44,24 @@ DEFAULT_PHYSICAL_CREDIBILITY_GAP_DIR = (
 DEFAULT_READINESS_MATRIX_CLEAN_CHECKOUT_RUN_ROOT = (
     ROOT / "validation/private/tschamut_public_pilot/balfrin_full_scale_readiness_matrix_v1/clean_checkout_missing_run_root"
 )
+TB407_SMALL_MULTI_ZONE_PROBE = {
+    "task_id": "TB-407",
+    "job_id": "4347579",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:29",
+    "alloc_cpus": 16,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34565330,
+    "hazard_output_file_count": 53,
+    "hazard_output_bytes": 55831799,
+    "conditional_curve_rows": 729600,
+    "preservation_status": "ready_for_demonstration_evidence",
+    "metrics_contract_status": "complete",
+    "threshold_profile_id": "smallest_live_two_zone_probe",
+    "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
+}
 
 
 class BalfrinManagementDemoPackageError(ValueError):
@@ -481,25 +499,34 @@ def build_readiness_matrix(
     rows = [
         matrix_row(
             gate="measured_multi_zone_execution",
-            status="unavailable",
-            gate_status=str(follow_up_recommendation.get("authorization_classification") or "blocked_pending_authorization"),
-            evidence_status="dry_run",
+            status="measured",
+            gate_status=TB407_SMALL_MULTI_ZONE_PROBE["metrics_contract_status"],
+            evidence_status="measured",
             summary=(
-                "The current multi-zone evidence bundle records TB-362 as failed closed before scheduler submission; "
-                "it remains the canonical deferral signal and does not yet provide a live full-scale measured execution."
+                "TB-407 completed the smallest bounded multi-zone Balfrin postproc submission and preserved measured run-root evidence; "
+                "this remains bounded diagnostic evidence and does not authorize scale-up or operational hazard claims."
             ),
             helper_sources=[
+                "docs/balfrin_multi_zone_hazard_run_tb407.md",
                 "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
-                "scripts/summarize_multi_zone_reducer_pressure.py",
             ],
             current_evidence={
-                "package_status": multi_zone_handoff_report.get("package_status"),
-                "authorization_classification": follow_up_recommendation.get("authorization_classification"),
-                "pressure_status": multi_zone_pressure.get("status"),
-                "multi_zone_dry_run_blocked": multi_zone_handoff_report.get("multi_zone_dry_run_blocked"),
-                "bundle_multi_zone_status": multi_zone_bundle_evidence.get("status"),
-                "bundle_multi_zone_evidence_type": multi_zone_bundle_evidence.get("evidence_type"),
-                "bundle_multi_zone_next_blocker": multi_zone_bundle_evidence.get("next_blocker"),
+                "task_id": TB407_SMALL_MULTI_ZONE_PROBE["task_id"],
+                "job_id": TB407_SMALL_MULTI_ZONE_PROBE["job_id"],
+                "run_root": TB407_SMALL_MULTI_ZONE_PROBE["run_root"],
+                "slurm_state": TB407_SMALL_MULTI_ZONE_PROBE["slurm_state"],
+                "exit_code": TB407_SMALL_MULTI_ZONE_PROBE["exit_code"],
+                "elapsed": TB407_SMALL_MULTI_ZONE_PROBE["elapsed"],
+                "alloc_cpus": TB407_SMALL_MULTI_ZONE_PROBE["alloc_cpus"],
+                "validation_output_file_count": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_file_count"],
+                "validation_output_bytes": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_bytes"],
+                "hazard_output_file_count": TB407_SMALL_MULTI_ZONE_PROBE["hazard_output_file_count"],
+                "hazard_output_bytes": TB407_SMALL_MULTI_ZONE_PROBE["hazard_output_bytes"],
+                "conditional_curve_rows": TB407_SMALL_MULTI_ZONE_PROBE["conditional_curve_rows"],
+                "metrics_contract_status": TB407_SMALL_MULTI_ZONE_PROBE["metrics_contract_status"],
+                "preservation_status": TB407_SMALL_MULTI_ZONE_PROBE["preservation_status"],
+                "threshold_profile_id": TB407_SMALL_MULTI_ZONE_PROBE["threshold_profile_id"],
+                "source_report": TB407_SMALL_MULTI_ZONE_PROBE["source_report"],
             },
         ),
         matrix_row(
@@ -674,7 +701,7 @@ def build_readiness_matrix(
         "schema_version": READINESS_MATRIX_SCHEMA_VERSION,
         "status": matrix_status,
         "summary": (
-            "Full-scale Balfrin demonstration readiness remains blocked by the absence of measured multi-zone execution and by the still-unauthorized live-run boundary."
+            "Full-scale Balfrin demonstration readiness remains blocked by the absence of larger measured multi-zone execution and by the still-unauthorized live-run boundary."
         ),
         "rows": rows,
         "recommended_next_milestone": build_next_milestone_recommendation(next_live_decision_report),
@@ -1000,7 +1027,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
             "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-            "The rebuilt TB-386 management-AOI branch is still blocked by `source_zone_footprint_overlap`, so it does not add measured support."
+            "TB-407 now supplies measured smallest multi-zone evidence, while the rebuilt TB-386 management-AOI branch remains blocked by `source_zone_footprint_overlap` and does not add measured support."
         ),
         "projection_classification": {
             "10_zone": "feasible",
@@ -1029,6 +1056,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "scripts/estimate_swiss_wide_execution_envelope.py",
             "scripts/summarize_balfrin_scale_readiness_matrix.py",
             "docs/current_maturity_snapshot.md",
+            "docs/balfrin_multi_zone_hazard_run_tb407.md",
         ],
     }
 
@@ -1039,7 +1067,7 @@ def build_failed_closed_section() -> dict[str, Any]:
         "evidence_type": "failed_closed",
         "summary": (
             "The recent submit branches, including the canonical TB-362 two-zone hazard path and the rebuilt TB-386 management-AOI path blocked by `source_zone_footprint_overlap`, "
-            "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability."
+            "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability. TB-407 is separate measured smallest multi-zone evidence and does not change those failed-closed classifications."
         ),
         "failed_closed_branches": [
             {
@@ -1166,7 +1194,7 @@ def build_scaling_section(bundle_report: dict[str, Any], post_run_report: dict[s
         )
     return {
         "status": "measured",
-        "summary": "Scaling stays bounded by the measured single-job path; the package does not authorize a larger execution mode.",
+        "summary": "Scaling stays bounded by the measured single-job path and the measured smallest multi-zone probe; the package does not authorize a larger execution mode.",
         "single_job_sufficient_for_next_step": single_job_sufficient,
         "scale_up_authorized": scale_up_authorized,
         "distributed_execution_authorized": distributed_execution_authorized,
@@ -1191,7 +1219,7 @@ def build_next_decision_section(bundle_report: dict[str, Any], post_run_report: 
         )
     return {
         "status": "deferred",
-        "summary": "This package is for review and decision-making, not for launching another Balfrin job.",
+        "summary": "This package is for review and decision-making, not for launching another Balfrin job; measured TB-407 evidence is already separated from failed-closed and projection-only branches.",
         "recommended_next_authorized_step": next_authorized_step,
         "recommendation": recommendation,
         "evidence_type": "deferred",

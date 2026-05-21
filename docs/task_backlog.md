@@ -39,45 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-408: Integrate Multi-Zone Balfrin Evidence Into Scale Surfaces
-
-Goal: Thread the TB-407 measured or failed-closed multi-zone outcome into the
-scale-readiness matrix, maturity snapshot, management package, and next-action
-ranking without overclaiming.
-
-Capability gap reduced: Balfrin scale evidence remains fragmented unless live
-run outcomes are integrated into the canonical status surfaces.
-
-Why this outranks alternatives: After any live attempt, stale dashboards are
-more dangerous than missing dashboards because they can mislead the next
-orchestrator or management review.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Updated scale-readiness classification for the two-zone/adjacent-candidate
-  branch.
-- Updated next-action ranking based on measured run, failed-closed gate, or
-  missing evidence.
-- Documentation that separates measured, failed-closed, fixture-backed,
-  projection-only, and deferred evidence.
-
-Definition of done:
-
-- The compact task context and scale dashboard identify the correct next action
-  after TB-407 and do not promote failed-closed or fixture-backed outcomes as
-  measured execution.
-
-Boundaries: No scale-up authorization, no operational claims, no annual
-frequency, no risk/exposure/vulnerability semantics, and no invented evidence.
-
 ### TB-409: Add Candidate Review Overlays To The AOI Front Door
 
 Goal: Make the AOI workflow front door able to emit map and SWISSIMAGE review

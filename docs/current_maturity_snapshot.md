@@ -142,10 +142,7 @@ pre-submit gates: the regenerated handoff classified the live package against
 the four-zone review-only profile (`next_larger_four_zone_review_only_probe`,
 `release_zone_count=4`) instead of `smallest_live_two_zone_probe`, and its
 reviewed commands targeted `/scratch/rust_rockfall/...`, which is not writable
-on Balfrin for this account. The scaling frontier still treats the two-zone
-branch as failed closed, not measured multi-zone evidence, and the next safe
-action is package run-root and live-shape repair rather than evidence
-integration or a live scale step. TB-312 later measured the exact compact
+on Balfrin for this account. TB-312 later measured the exact compact
 four-zone post-processing/reducer package on Balfrin `postproc` as efficiency
 evidence only, and TB-314 confirmed the local scratch ladder still first
 blocks at 8 zones on `accumulation_seconds`. TB-362 then reran the explicit
@@ -153,10 +150,13 @@ two-zone hazard path after the remote checkout was cleaned and fast-forwarded,
 but failed closed before `sbatch`: authorization, reducer-budget,
 submit-contract, and output-budget acceptance were ready/accepted, while the
 remote output-profile gate returned `blocked_output_profile` with a four-zone
-review-package reason. No live job id, runtime, memory, validation output,
-hazard output, GIS package, or measured two-zone run root was produced, so the
-canonical two-zone branch remains failed-closed/blocked rather than measured
-multi-zone hazard evidence. TB-315 through TB-318 then moved
+review-package reason. TB-407 then completed the smallest bounded multi-zone
+probe on Balfrin `postproc` and preserved measured run-root evidence, so the
+smallest multi-zone branch is now measured rather than merely blocked. No live
+job id, runtime, memory, validation output, hazard output, GIS package, or
+operational scale-up claim was produced, and the older TB-362 two-zone branch
+remains failed-closed/blocked rather than measured multi-zone hazard evidence.
+TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA
 surface. The
@@ -194,8 +194,8 @@ deferred next authorized step into one management-facing surface without
 upgrading any claim. The readiness matrix points the next runnable milestone
 at hazard-builder optimization, but that remains separate from the next
 authorized step of management review. TB-359 refreshed this synthesis after the
-real-AOI and multi-zone evidence cycle: the next decisive evidence gap is still
-measured multi-zone Balfrin hazard execution, not another projection-only report.
+real-AOI and multi-zone evidence cycle: the next decisive evidence gap is now
+larger measured multi-zone Balfrin hazard execution, not another projection-only report.
 The largest near-term gaps have moved from "can the Balfrin demo execute?" and
 "can an AOI dry run be composed?" to "can real arbitrary-AOI public geodata be
 acquired and preprocessed reproducibly?", "can release-zone and scenario
@@ -417,7 +417,9 @@ objective are:
    same-scale evidence still says validation output size is the dominant
    pressure rather than hazard-reducer parallelism. The measured Balfrin run
    produced a real run root and feeds the evidence bundle, scientific delta,
-   ensemble-frontier, and Swiss-wide envelope helpers. The Balfrin metrics
+   ensemble-frontier, and Swiss-wide envelope helpers. TB-407 then added the
+   measured smallest multi-zone probe, which remains bounded diagnostic
+   evidence rather than scale-up authorization. The Balfrin metrics
    report now separates mandatory, ancillary, measured, unavailable, and
    blocked fields, so memory peak and split-output provenance are explicit
    rather than implied: the live run-root collector can recover split-output
@@ -446,10 +448,13 @@ objective are:
    state is auditable without collapsing unavailable or blocked evidence into
    the measured sections. TB-312 added the measured four-zone Balfrin postproc
    result as separate evidence, TB-313 rejected the accumulator micro-
-   optimization, and TB-314 refreshed the local 1/2/4/8/12-zone ladder so the
+   optimization, TB-314 refreshed the local 1/2/4/8/12-zone ladder so the
    scratch-local frontier still first blocks at 8 zones on
-   `accumulation_seconds`. TB-302 adds a read-only Balfrin run-root
-   output-budget auditor for future preserved roots, and TB-303 adds the
+   `accumulation_seconds`, and TB-407 added the measured smallest multi-zone
+   probe so the canonical surfaces now distinguish measured, failed-closed,
+   fixture-backed, projection-only, and deferred branches more clearly. TB-302
+   adds a read-only Balfrin run-root output-budget auditor for future preserved
+   roots, and TB-303 adds the
    worker-facing scale dashboard that labels tiers as `measured_on_balfrin`,
    `fixture_backed`, `scratch_local`, `projection_only`, or
    `blocked_pre_submit`. None of this authorizes Swiss-wide execution or a new

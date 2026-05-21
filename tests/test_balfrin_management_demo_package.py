@@ -122,18 +122,20 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("fixture_backed", statuses)
         self.assertIn("dry_run", statuses)
         self.assertIn("blocked", statuses)
-        self.assertIn("unavailable", statuses)
         self.assertIn("unauthorized", statuses)
 
         command_plan_row = next(row for row in matrix["rows"] if row["gate"] == "command_plan_reproducibility")
         self.assertEqual(command_plan_row["evidence_status"], "dry_run")
         measured_multi_zone_row = next(row for row in matrix["rows"] if row["gate"] == "measured_multi_zone_execution")
-        self.assertEqual(measured_multi_zone_row["current_evidence"]["bundle_multi_zone_status"], "failed_closed")
-        self.assertEqual(
-            measured_multi_zone_row["current_evidence"]["bundle_multi_zone_next_blocker"],
-            "blocked_reducer_budget:blocked_output_profile",
-        )
-        self.assertEqual(measured_multi_zone_row["current_evidence"]["bundle_multi_zone_status"], "failed_closed")
+        self.assertEqual(measured_multi_zone_row["status"], "measured")
+        self.assertEqual(measured_multi_zone_row["evidence_status"], "measured")
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["job_id"], "4347579")
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["threshold_profile_id"], "smallest_live_two_zone_probe")
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["validation_output_file_count"], 130)
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["hazard_output_file_count"], 53)
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["metrics_contract_status"], "complete")
+        self.assertEqual(measured_multi_zone_row["current_evidence"]["preservation_status"], "ready_for_demonstration_evidence")
+        self.assertIn("TB-407", measured_multi_zone_row["summary"])
         clean_checkout_row = next(row for row in matrix["rows"] if row["gate"] == "clean_checkout_behavior")
         self.assertEqual(clean_checkout_row["evidence_status"], "blocked")
         self.assertIn("does not exist", clean_checkout_row["current_evidence"]["missing_run_root_reason"])

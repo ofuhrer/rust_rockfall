@@ -5059,3 +5059,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: exactly one TB-407 `sbatch` submission reached the scheduler; only `postproc` was used; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no risk/exposure/vulnerability claim, and no physical-probability or annual-frequency claim.
 - Next task: `TB-408`
+
+### TB-408: Integrate Multi-Zone Balfrin Evidence Into Scale Surfaces
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: thread the TB-407 measured smallest multi-zone probe into the canonical scale-readiness, maturity, projection, and management surfaces without promoting failed-closed branches or fixture-backed proofs as measured execution.
+- Files changed: `docs/task_backlog.md`, `docs/current_maturity_snapshot.md`, `docs/swiss_scale_feasibility_projection.md`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_management_demo_package.py`
+- Implementation summary:
+  - Reclassified the smallest multi-zone Balfrin branch as measured smallest-multi-zone probe evidence from TB-407, with the measured run root, 130 validation files, 53 hazard files, 729600 conditional-curve rows, and `ready_for_demonstration_evidence` preservation status preserved in the scale-readiness matrix and management package.
+  - Re-ranked the canonical next action to follow the new measured bottleneck, promoting `optimize_only_from_new_measured_bottleneck` ahead of the stale repair path while keeping the failed-closed and projection-only branches separate.
+  - Updated the maturity snapshot and Swiss-scale projection notes so TB-407 is described as measured diagnostic evidence and the larger multi-zone hazard gap stays distinct from the measured smallest probe.
+  - Refreshed the matrix and management-package tests to assert the new measured classification and the updated next-action ranking.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package`
+- Result/status: implemented_measured
+- Boundaries: no scale-up authorization, no operational claims, no annual-frequency claims, no risk/exposure/vulnerability semantics, and no invented evidence.
+- Next task: `TB-409`

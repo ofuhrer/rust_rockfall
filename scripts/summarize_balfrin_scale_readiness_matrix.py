@@ -154,6 +154,24 @@ TB368_TWO_ZONE_HAZARD_PRESERVED = {
     "missing_output_families": [],
     "source_report": "docs/balfrin_two_zone_hazard_run_tb368.md",
 }
+TB407_SMALL_MULTI_ZONE_PROBE = {
+    "task_id": "TB-407",
+    "job_id": "4347579",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:29",
+    "alloc_cpus": 16,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34565330,
+    "hazard_output_file_count": 53,
+    "hazard_output_bytes": 55831799,
+    "conditional_curve_rows": 729600,
+    "preservation_status": "ready_for_demonstration_evidence",
+    "metrics_contract_status": "complete",
+    "threshold_profile_id": "smallest_live_two_zone_probe",
+    "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
+}
 TB393_MANAGEMENT_AOI_NO_SUBMIT = {
     "task_id": "TB-393",
     "balfrin_access_preflight_status": "ready_for_read_only_collection",
@@ -462,35 +480,46 @@ def _target_area_row() -> dict[str, Any]:
 
 
 def _smallest_multi_zone_row() -> dict[str, Any]:
-    report = _build_smallest_multi_zone_preflight()
-    reducer_budget = dict(report.get("reducer_budget_requirement") or {})
-    before = dict(reducer_budget.get("manifest_pruning_before") or {})
-    after = dict(reducer_budget.get("manifest_pruning_after") or {})
     return {
         "tier_id": "smallest_multi_zone",
-        "tier_label": "smallest multi-zone",
-        "evidence_label": "blocked_pre_submit",
-        "measurement_status": "blocked_pre_submit",
-        "classification": "blocked_reducer_budget",
-        "output_budget_status": reducer_budget.get("handoff_budget_recheck_status") or "blocked_reducer_budget",
-        "execution_efficiency_status": "blocked_pre_submit_not_measured",
-        "file_count": before.get("output_file_count"),
-        "bytes": before.get("output_byte_count"),
-        "manifest_bytes": before.get("manifest_size_bytes"),
-        "reducer_sidecars": before.get("sidecar_file_count"),
-        "compact_file_count": after.get("output_file_count"),
-        "compact_bytes": after.get("output_byte_count"),
-        "compact_manifest_bytes": after.get("manifest_size_bytes"),
-        "compact_reducer_sidecars": after.get("sidecar_file_count"),
-        "runtime_seconds": None,
+        "tier_label": "smallest live two-zone probe",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_preservation_ready",
+        "classification": "measured_smallest_multi_zone_probe",
+        "output_budget_status": "ready_for_demonstration_evidence",
+        "execution_efficiency_status": "measured_smallest_multi_zone_probe",
+        "file_count": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_file_count"],
+        "bytes": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_bytes"],
+        "validation_output_file_count": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_file_count"],
+        "validation_output_bytes": TB407_SMALL_MULTI_ZONE_PROBE["validation_output_bytes"],
+        "hazard_output_file_count": TB407_SMALL_MULTI_ZONE_PROBE["hazard_output_file_count"],
+        "hazard_output_bytes": TB407_SMALL_MULTI_ZONE_PROBE["hazard_output_bytes"],
+        "manifest_bytes": None,
+        "reducer_sidecars": None,
+        "runtime_seconds": 29.0,
         "memory_peak_mb": None,
-        "run_root_preservation_status": "blocked_pre_submit",
-        "replayability_status": "replay_critical_retained",
-        "authorization_status": report.get("authorization_record_status"),
-        "next_evidence_field": "manifest_size_bytes",
-        "blocker": f"{reducer_budget.get('handoff_budget_recheck_status')}:manifest_size_bytes",
+        "run_root_preservation_status": TB407_SMALL_MULTI_ZONE_PROBE["preservation_status"],
+        "replayability_status": "preservation_gate_ready",
+        "authorization_status": "authorized_for_one_bounded_probe",
+        "next_evidence_field": None,
+        "blocker": None,
+        "metrics_contract_status": TB407_SMALL_MULTI_ZONE_PROBE["metrics_contract_status"],
+        "threshold_profile_id": TB407_SMALL_MULTI_ZONE_PROBE["threshold_profile_id"],
+        "conditional_curve_rows": TB407_SMALL_MULTI_ZONE_PROBE["conditional_curve_rows"],
+        "slurm_job_id": TB407_SMALL_MULTI_ZONE_PROBE["job_id"],
+        "job_id": TB407_SMALL_MULTI_ZONE_PROBE["job_id"],
+        "run_root": TB407_SMALL_MULTI_ZONE_PROBE["run_root"],
+        "slurm": {
+            "job_id": TB407_SMALL_MULTI_ZONE_PROBE["job_id"],
+            "state": TB407_SMALL_MULTI_ZONE_PROBE["slurm_state"],
+            "exit_code": TB407_SMALL_MULTI_ZONE_PROBE["exit_code"],
+            "elapsed": TB407_SMALL_MULTI_ZONE_PROBE["elapsed"],
+            "alloc_cpus": TB407_SMALL_MULTI_ZONE_PROBE["alloc_cpus"],
+        },
+        "source_report": TB407_SMALL_MULTI_ZONE_PROBE["source_report"],
         "summary": (
-            "The smallest multi-zone preflight is blocked at manifest_size_bytes even after compact pruning; the replay-critical families must stay intact."
+            "TB-407 completed the smallest bounded multi-zone Balfrin postproc submission and preserved measured run-root evidence; "
+            "this is measured diagnostic evidence, not operational hazard assessment or scale-up authorization."
         ),
     }
 
@@ -875,30 +904,39 @@ def build_report() -> dict[str, Any]:
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
     overall_status = "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
-    four_zone_hazard_row = next((row for row in rows if row["tier_id"] == "four_zone_hazard_probe"), {})
-    next_recommended_scaling_task = str(
-        four_zone_hazard_row.get("next_recommended_action")
-        or "defer_eight_zone_probe_until_measured_hazard_execution"
+    measured_multi_zone_row = next((row for row in rows if row["tier_id"] == "smallest_multi_zone"), {})
+    next_recommended_scaling_task = (
+        "optimize_only_from_new_measured_bottleneck"
+        if measured_multi_zone_row.get("classification") == "measured_smallest_multi_zone_probe"
+        else str(
+            next(
+                (
+                    row.get("next_recommended_action")
+                    for row in rows
+                    if row.get("next_recommended_action")
+                ),
+                "defer_eight_zone_probe_until_measured_hazard_execution",
+            )
+        )
     )
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_backlog_recommendations = [
         {
             "rank": 1,
-            "action_id": "repair_four_zone_handoff_and_rerun_gate",
-            "category": "execution_unblock",
+            "action_id": "optimize_only_from_new_measured_bottleneck",
+            "category": "optimization",
             "status": "recommended_next",
             "reason": (
-                "TB-368 preserved two-zone evidence is ready; the four-zone handoff and live-submit gate should consume it instead of stale TB-362 text."
+                "TB-407 now supplies measured smallest multi-zone evidence, so the next step should follow the new measured bottleneck instead of stale failed-closed branches."
             ),
         },
         {
             "rank": 2,
-            "action_id": "optimize_only_from_new_measured_bottleneck",
-            "category": "optimization",
+            "action_id": "repair_four_zone_handoff_and_rerun_gate",
+            "category": "execution_unblock",
             "status": "defer_until_hypothesis_measured",
             "reason": (
-                "Optimization should follow a new measured bottleneck; the four-zone postproc evidence and fail-closed multi-zone "
-                "branch do not establish an eight-zone hazard execution bottleneck."
+                "The four-zone handoff and live-submit gate remain useful follow-up evidence, but they should stay behind the new measured multi-zone bottleneck."
             ),
         },
         {
@@ -936,10 +974,9 @@ def build_report() -> dict[str, Any]:
         "matrix_status": overall_status,
         "dashboard_status": overall_status,
         "summary": (
-            "Single-zone evidence, TB-307 target-area metrics-completion evidence, and TB-312 four-zone postproc evidence are measured; "
+            "Single-zone evidence, TB-307 target-area metrics-completion evidence, TB-312 four-zone postproc evidence, TB-368 preserved two-zone evidence, and TB-407 smallest multi-zone probe evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
-            "the smallest multi-zone hazard tier remains blocked at manifest_size_bytes, TB-368 now provides preservation-ready measured two-zone evidence for the canonical two-zone hazard path, "
-            "and TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
+            "TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
@@ -1002,7 +1039,7 @@ def build_report() -> dict[str, Any]:
             "blocked_reason": decision_report.get("blocked_reason"),
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
-        "next_recommended_scaling_task_reason": "TB-368 supplies the measured two-zone preservation evidence needed before the four-zone gate can be rerun.",
+        "next_recommended_scaling_task_reason": "TB-407 supplies the measured smallest multi-zone probe evidence, so optimization should follow the new measured bottleneck instead of stale failed-closed branches.",
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_backlog_recommendations": next_backlog_recommendations,
         "blocked_reason": "four_zone_hazard_probe.authorization_record_checksum",
@@ -1022,6 +1059,7 @@ def build_report() -> dict[str, Any]:
             "scripts/estimate_swiss_wide_execution_envelope.py",
             "docs/balfrin_postproc_microbenchmark_tb305.md",
             "docs/balfrin_two_zone_hazard_run_tb368.md",
+            "docs/balfrin_multi_zone_hazard_run_tb407.md",
             "scripts/execute_management_aoi_balfrin_run.py",
         ],
     }
