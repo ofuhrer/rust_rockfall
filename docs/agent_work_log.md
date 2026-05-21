@@ -5033,3 +5033,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no `sbatch`, no live Balfrin job, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no risk/exposure/vulnerability claim, and no physical-probability or annual-frequency claim.
 - Next task: `TB-407`
+
+### TB-407: Execute Smallest Measured Multi-Zone Balfrin Probe
+
+- Date: 2026-05-21
+- Commit: `local`
+- Objective: run the smallest bounded multi-zone Balfrin `postproc` probe after TB-406 gate repair and preserve measured runtime/output evidence.
+- Files changed: `docs/balfrin_multi_zone_hazard_run_tb407.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Refreshed the Balfrin access preflight after fast-forwarding `/users/olifu/work/rust_rockfall` to `f326e7c350c3e00ce930fbdb019eb9274c6e6175`; SSH, scheduler query, run-root visibility, and remote checkout hygiene passed.
+  - Regenerated the TB-406 repaired handoff on Balfrin under ignored `validation/private/tb407_repaired_handoff_remote` and confirmed `first_blocker=null`, `ready_for_authorized_submission=true`, `authorization_record_allows_one_bounded_probe=true`, `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`.
+  - Submitted exactly one scheduler job that reached `sbatch`: job `4347579` on `postproc`, one node, 16 CPUs, 30 minute limit. It completed with `State=COMPLETED`, `ExitCode=0:0`, `Elapsed=00:00:29`, and Slurm batch `MaxRSS=5492K`.
+  - Collected the preserved run-root metrics: metrics contract `complete`, missing mandatory metrics none, collector wall time `5.2313875560003` seconds, collector peak memory `172.921875` MB, validation output `130` files / `34565330` bytes, hazard output `53` files / `55831799` bytes, and conditional curve rows `729600`.
+  - Ran the preservation gate for the run root; it reported `ready_for_demonstration_evidence`, complete required run-root entries, sufficient output families, and no blocked reasons.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb406_repaired_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb406_repaired_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb407_access_preflight_after_remote_pull.json --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir validation/private/tb407_repaired_handoff_remote --requested-release-zone-batch-size 2 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package validation/private/tb407_repaired_handoff_remote/balfrin_multi_release_zone_demo_package_v1.json --authorization-record validation/private/tb407_repaired_handoff_remote/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /scratch/mch/olifu/rust_rockfall/probes/tb407_support/tb407_access_preflight_after_remote_pull.json --format json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package validation/private/tb407_repaired_handoff_remote/balfrin_multi_release_zone_demo_package_v1.json --authorization-record validation/private/tb407_repaired_handoff_remote/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /scratch/mch/olifu/rust_rockfall/probes/tb407_support/tb407_access_preflight_after_remote_pull.json'`
+  - `ssh balfrin 'sacct -j 4347579 --format=JobIDRaw,JobName,State,ExitCode,Elapsed,AllocCPUS,MaxRSS -P'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --output-json /scratch/mch/olifu/rust_rockfall/probes/tb407_support/tb407_collect_metrics_4347579.json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --artifact-dir /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1/preservation_gate_tb407 --format json'`
+- Result/status: implemented_measured
+- Boundaries: exactly one TB-407 `sbatch` submission reached the scheduler; only `postproc` was used; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no risk/exposure/vulnerability claim, and no physical-probability or annual-frequency claim.
+- Next task: `TB-408`

@@ -39,44 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-407: Execute Smallest Measured Multi-Zone Balfrin Probe
-
-Goal: If TB-406 reports a clean handoff, run the smallest bounded multi-zone
-Balfrin `postproc` hazard probe and preserve measured runtime/output evidence.
-
-Capability gap reduced: The repository still lacks measured multi-zone Balfrin
-hazard execution evidence.
-
-Why this outranks alternatives: Management's feasibility question depends more
-on one honest measured multi-zone run than on additional projection-only
-reports.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_execute_management_aoi_balfrin_run.py`
-
-Deliverables:
-
-- A GPT-5.5-routed live Balfrin `postproc` run if all gates pass.
-- Job id, run root, exit status, elapsed time, peak memory, validation/hazard
-  output file counts and bytes, and preservation metadata.
-- A failed-closed record if any live gate blocks before `sbatch`.
-
-Definition of done:
-
-- Either a measured multi-zone Balfrin run is preserved and locally summarized,
-  or the first pre-submit blocker is current, actionable, and not a stale
-  artifact of earlier handoff state.
-
-Boundaries: Standing Balfrin clearance applies only to GPT-5.5 workers on
-`postproc`; no non-postproc partition, no distributed execution, no scale-up
-authorization, no operational claim, and no physical-probability claim.
-
 ### TB-408: Integrate Multi-Zone Balfrin Evidence Into Scale Surfaces
 
 Goal: Thread the TB-407 measured or failed-closed multi-zone outcome into the

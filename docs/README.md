@@ -108,6 +108,9 @@ starting context for implementation unless a task explicitly asks for them.
 - `balfrin_four_zone_hazard_run_tb371.md`: TB-371 repaired the four-zone
   handoff evidence contract and completed one measured `postproc` four-zone
   run with a ready preservation gate.
+- `balfrin_multi_zone_hazard_run_tb407.md`: TB-407 completed one bounded
+  smallest multi-zone `postproc` run with measured metrics and a ready
+  preservation gate.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
