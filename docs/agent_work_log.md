@@ -5385,3 +5385,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: QGIS styles are diagnostic review symbology only; no QGIS plugin, no generated raster commits, no operational map symbology claim, no annual-frequency or physical-probability claim, no scale-up or distributed-execution claim, and no risk/exposure/vulnerability semantics.
 - Next task: `TB-422`
+
+### TB-422: Build Conditional Statistics Surfaces From Trajectory Samples
+
+- Date: 2026-05-21
+- Commit: `cd34a2c`; work-log entry recorded in the follow-up commit.
+- Objective: add reusable per-cell conditional statistics surfaces with sample-support metadata for trajectory-derived hazard diagnostics.
+- Files changed: `scripts/build_hazard_layers.py`, `docs/hazard_layers.md`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added opt-in conditional statistics surfaces for kinetic energy, jump height, and velocity trajectory sample values.
+  - Generated deterministic per-variable `sample_count`, `insufficient_samples`, `median`, `q90`, `q95`, `q99`, and `maximum` layers with configurable minimum sample support.
+  - Carried conditional statistics metadata into hazard metadata, run manifests, `cellwise_layers`, layer semantics, and chunked reducer state serialization.
+  - Documented the opt-in configuration and support-layer interpretation boundaries.
+  - Added fixture-backed hazard-layer tests proving sample-count, insufficient-support flags, Q90/Q99/maximum ordering, and manifest support metadata.
+  - Removed TB-422 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_hazard_layers.py tests/test_hazard_layers.py`
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_hazard_layers.py -k "conditional_statistics_surfaces or probability_standard_error_layers_are_opt_in_and_binomial or fixture_layers_are_reproducible"`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: conditional statistics surfaces remain diagnostic sample summaries only; no annual-frequency, physical-probability, return-period, risk, exposure, vulnerability, operational design-quantile, scale-up, or distributed-execution claim was added.
+- Next task: `TB-423`
