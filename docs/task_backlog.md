@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-425: Run Fixture Regional Split And Merge Dry Run
-
-Goal: Exercise the regional split contract on a small fixture AOI with multiple source groups and merge the resulting reduced outputs.
-
-Capability gap reduced: Rebuildable multi-zone workflow realism.
-
-Why this outranks alternatives: A split contract is only useful if a small end-to-end split/merge path proves output and reducer assumptions before Balfrin jobs.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- Fixture-backed split/merge run producing reduced outputs, merge manifest, file/byte counts, and sample-support summaries.
-- Focused tests for deterministic merge ordering and rebuild-compatible output families.
-- Updated command-plan/front-door references if the dry run becomes the canonical pre-Balfrin check.
-
-Definition of done:
-
-- The repo can demonstrate a complete local multi-group split/merge workflow without generated artifact commits.
-
-Boundaries: No live Balfrin submission, no large ensemble, no operational or scale-up claim.
-
 ### TB-426: Measure Scenario Storage And Output Tier Pressure
 
 Goal: Quantify scenario-table, release-plan, trajectory, statistics, GIS, and reduced-output storage pressure for candidate expansion.

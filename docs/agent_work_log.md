@@ -5461,3 +5461,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: the split plan is a deterministic local scratch execution contract only; no distributed execution, Balfrin submission, scale-up claim, operational claim, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability semantics were added.
 - Next task: `TB-425`
+
+### TB-425: Run Fixture Regional Split And Merge Dry Run
+
+- Date: 2026-05-21
+- Commit: `3b939f6`; work-log entry recorded in the follow-up commit.
+- Objective: exercise the regional split contract on a small fixture AOI with multiple source groups and merge the reduced outputs before any Balfrin execution.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a scratch-only `regional_split_merge_manifest_v1` under `output/merged/` for the multi-zone reducer pressure probe.
+  - Reported merged reduced-output file counts, byte counts, deterministic output ordering, rebuild-compatible output-family status, and fixture sample-support summaries.
+  - Preserved compact-manifest compatibility by deriving CSV sample support from materialized fixture files when compact entries omit row counts.
+  - Added focused tests for stable merge ordering under shuffled output manifests and rebuild-compatible output families.
+  - Added a front-door workflow note naming the split/merge dry run as the canonical local pre-Balfrin regional check.
+  - Removed TB-425 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/tb425_split_merge_probe --release-zone-count 6 --reducer-workers 2 --reducer-chunk-count 3 --manifest-mode compact --format json`
+  - `PYENV_VERSION=system uv run python - <<'PY' ... build_workflow_contract split/merge note check ... PY`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: the dry run is fixture-backed and scratch-root only; no generated artifacts were committed, no live Balfrin submission or large ensemble was run, and no operational, scale-up, distributed-execution, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-426`
