@@ -860,16 +860,22 @@ def build_scenario_batching_contract(
         )
 
     budget_profile = build_scenario_batching_budget_profile()
-    candidate_order = {
-        text_value(candidate.get("candidate_release_zone_record_id")): index
-        for index, candidate in enumerate(candidate_records)
-    }
-    row_order = {text_value(row.get("scenario_id")): index for index, row in enumerate(rows)}
+    ordered_candidate_records = sorted(
+        candidate_records,
+        key=lambda candidate: (
+            text_value(candidate.get("candidate_release_zone_record_id")),
+            int(candidate.get("candidate_repeat_index") or 0),
+            text_value(candidate.get("release_point_id")),
+        ),
+    )
+    # Canonicalize row order so the batching contract does not change when the
+    # fixture input order changes upstream.
     ordered_rows = sorted(
         rows,
         key=lambda row: (
-            candidate_order.get(text_value(row.get("candidate_release_zone_record_id")), 0),
-            row_order.get(text_value(row.get("scenario_id")), 0),
+            text_value(row.get("candidate_release_zone_record_id")),
+            text_value(row.get("scenario_family_template_id")),
+            text_value(row.get("scenario_id")),
         ),
     )
     zone_units: list[dict[str, Any]] = []
@@ -944,7 +950,7 @@ def build_scenario_batching_contract(
         for batch in batches
         for row_id in batch["scenario_row_ids"]
     }
-    release_zone_ids = [text_value(candidate.get("candidate_release_zone_record_id")) for candidate in candidate_records]
+    release_zone_ids = [text_value(candidate.get("candidate_release_zone_record_id")) for candidate in ordered_candidate_records]
     batch_release_zone_counts = [len(batch["release_zone_ids"]) for batch in batches]
     batch_row_counts = [len(batch["scenario_row_ids"]) for batch in batches]
     batch_family_counts = [len(batch["scenario_family_template_ids"]) for batch in batches]
@@ -965,7 +971,7 @@ def build_scenario_batching_contract(
         "batch_release_zone_count_max": max(batch_release_zone_counts) if batch_release_zone_counts else 0,
         "batch_scenario_family_count_max": max(batch_family_counts) if batch_family_counts else 0,
         "batch_row_count_max": max(batch_row_counts) if batch_row_counts else 0,
-        "release_zone_count": len(candidate_records),
+        "release_zone_count": len(ordered_candidate_records),
         "scenario_family_count": len(unique_preserving_order(text_value(row.get("scenario_family_template_id")) for row in ordered_rows)),
         "scenario_row_count": len(ordered_rows),
         "release_zone_ids": release_zone_ids,

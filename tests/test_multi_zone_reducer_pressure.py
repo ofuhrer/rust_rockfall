@@ -223,6 +223,51 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertNotIn("sample_support_summary", first_merge)
             self.assertNotIn("rebuild_compatible_output_families", first_merge)
 
+    def test_merge_manifest_ordering_is_stable_when_batch_plan_order_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            probe_root = Path(tmpdir) / "probe"
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=80,
+                reducer_worker_count=2,
+                reducer_chunk_count=2,
+            )
+            regional_split_plan = json.loads(
+                (probe_root / "input" / "regional_split_execution_plan.json").read_text(encoding="utf-8")
+            )
+            output_manifest = json.loads(
+                (probe_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json").read_text(encoding="utf-8")
+            )
+            merge_manifest_path = probe_root / "output" / "merged" / "regional_split_merge_manifest.json"
+
+            first_merge = MODULE.build_merge_manifest(
+                probe_root=probe_root,
+                merge_manifest_path=merge_manifest_path,
+                regional_split_plan=regional_split_plan,
+                output_manifest=output_manifest,
+                output_family_mix=MODULE.DEFAULT_OUTPUT_FAMILY_MIX,
+            )
+            shuffled_plan = dict(regional_split_plan)
+            shuffled_plan["splits"] = list(reversed(regional_split_plan["splits"]))
+            shuffled_plan["chunk_order"] = list(reversed(regional_split_plan["chunk_order"]))
+            second_merge = MODULE.build_merge_manifest(
+                probe_root=probe_root,
+                merge_manifest_path=merge_manifest_path,
+                regional_split_plan=shuffled_plan,
+                output_manifest=output_manifest,
+                output_family_mix=MODULE.DEFAULT_OUTPUT_FAMILY_MIX,
+            )
+
+            self.assertEqual(first_merge, second_merge)
+            self.assertEqual(first_merge["merge_order"], "sorted_chunk_id_then_output_family_then_path")
+            self.assertTrue(first_merge["merge_order_independent"])
+            self.assertEqual(first_merge["chunk_order"], sorted(first_merge["chunk_order"]))
+            self.assertEqual(first_merge["merged_output_summary"], second_merge["merged_output_summary"])
+            self.assertEqual(
+                [(entry["kind"], entry["path"]) for entry in first_merge["outputs"]],
+                sorted((entry["kind"], entry["path"]) for entry in first_merge["outputs"]),
+            )
+
     def test_manifest_pressure_ladder_recommends_compact_mode(self) -> None:
         report = MODULE.build_manifest_pressure_ladder_report(release_zone_counts=(2, 4, 8, 12))
 

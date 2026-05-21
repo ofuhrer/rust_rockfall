@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-441: Measure Reducer Pressure On Batched Scenario Outputs
-
-Goal: Run a fixture-backed reducer/merge pressure probe over the TB-440 batching contract.
-
-Capability gap reduced: Unknown reducer pressure after scenario batching.
-
-Why this outranks alternatives: Batching only helps if reducer and merge pressure stay bounded and rebuild-compatible.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-
-Deliverables:
-
-- Measured file counts, byte counts, merge ordering, sample support, and output-family summaries for batched fixture outputs.
-- Regression tests proving deterministic merge behavior across batch order changes.
-- Updated reducer pressure doc with the new bottleneck or green path.
-
-Definition of done:
-
-- The batched reducer path has measured pressure evidence and either passes the budget profile or names the next specific bottleneck.
-
-Boundaries: Fixture/scratch only unless a task explicitly authorizes live Balfrin; no generated artifacts committed.
-
 ### TB-442: Add Clean-Checkout AOI Workflow Smoke Test
 
 Goal: Prove the documented AOI front-door commands fail closed or pass using only tracked fixtures and no ignored local artifacts.

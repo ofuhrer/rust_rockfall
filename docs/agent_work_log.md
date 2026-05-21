@@ -5827,3 +5827,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no simulation physics changes, no Balfrin submission, no distributed execution, and no probability/frequency semantics were introduced.
 - Next task: `TB-441`
+
+### TB-441: Measure Reducer Pressure On Batched Scenario Outputs
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: measure reducer and merge pressure on the batched scenario contract, then prove the merge path stays deterministic when the batch fixture order changes.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Canonicalized the scenario batching contract so it is stable under reordered candidate-release fixtures and uses the same expanded block-scenario set as the real report path.
+  - Added regression coverage for batching-contract order independence and for reducer merge-manifest stability when the regional split plan order is reversed.
+  - Recorded the measured batched fixture probe in the reducer-pressure doc with the current file counts, byte counts, merge ordering, sample support, output-family summaries, and the next bottleneck label.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_multi_zone_reducer_pressure -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no operational hazard claim was added, no distributed execution or scale-up was authorized, and the batched fixture path remains scratch-only.
+- Next task: `TB-442`

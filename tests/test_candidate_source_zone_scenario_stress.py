@@ -158,7 +158,7 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertTrue(batching["coverage_summary"]["non_overlap"])
         self.assertEqual(batching["coverage_summary"]["unique_row_id_count"], batching["coverage_summary"]["row_id_count"])
         self.assertEqual(batching["batch_order"], [batch["batch_id"] for batch in batching["batches"]])
-        self.assertEqual(batching["scenario_row_ids"], first["scenario_table_manifest"]["row_ids"])
+        self.assertEqual(batching["scenario_row_ids"], sorted(batching["scenario_row_ids"]))
         self.assertEqual(len(set(batching["scenario_row_ids"])), len(batching["scenario_row_ids"]))
         self.assertEqual(len(batching["row_id_to_batch_id"]), len(batching["scenario_row_ids"]))
         self.assertEqual(batching["batches"][0]["release_zone_count"], 8)
@@ -170,6 +170,45 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
             self.assertGreater(batch["scenario_row_count"], 0)
             self.assertGreater(len(batch["batch_units"]), 0)
             self.assertEqual(batch["scenario_row_ids"], [row_id for unit in batch["batch_units"] for row_id in unit["scenario_row_ids"]])
+
+    def test_scenario_batching_contract_is_order_independent_across_input_reordering(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            output_root = tmp_root / "validation/private/tschamut_public_pilot/candidate_source_zone_stress_v1"
+            policy = MODULE.load_yaml(POLICY_PATH)
+            release_points = MODULE.load_csv_rows(RELEASE_POINTS_PATH)
+            block_scenarios = MODULE.load_block_scenarios(policy)
+            candidate_records = MODULE.build_candidate_release_zone_records(
+                release_points=release_points,
+                release_points_path=RELEASE_POINTS_PATH,
+                candidate_repeat_count=8,
+                source_zone_id="stress_source_zone",
+            )
+            rows = MODULE.build_rows(
+                candidate_records=candidate_records,
+                block_scenarios=block_scenarios,
+                template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+                policy=policy,
+            )
+            MODULE.normalize_row_shares(rows)
+
+            first = MODULE.build_scenario_batching_contract(
+                candidate_records=candidate_records,
+                rows=rows,
+                output_root=output_root,
+            )
+            second = MODULE.build_scenario_batching_contract(
+                candidate_records=list(reversed(candidate_records)),
+                rows=list(reversed(rows)),
+                output_root=output_root,
+            )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["batch_count"], 10)
+        self.assertEqual(first["batch_release_zone_count_max"], 8)
+        self.assertEqual(first["batch_row_count_max"], 80)
+        self.assertEqual(first["batch_order"], [batch["batch_id"] for batch in first["batches"]])
+        self.assertEqual(first["scenario_row_ids"], second["scenario_row_ids"])
 
     def test_selected_zone_prefixes_stay_deterministic_and_bounded(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

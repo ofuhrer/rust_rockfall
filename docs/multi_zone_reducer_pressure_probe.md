@@ -57,6 +57,85 @@ The no-submit smoke-package helper can consume this contract directly, so the
 batched scenario path stays inspectable without authorizing any Balfrin
 submission or distributed execution.
 
+The current fixture-backed stress run expands to `80` candidate release-zone
+records and `800` scenario rows. The resulting batching contract stays at `10`
+batches with a `batch_release_zone_count_max` of `8` and a
+`batch_row_count_max` of `80`; reordering the candidate fixture input no
+longer changes the contract or the downstream batch ordering.
+
+## TB-441 Batched Fixture Probe
+
+The TB-441 batched probe was measured with the reducer-pressure scratch root
+set to `80` release zones, `2` reducer workers, and `2` reducer chunks.
+
+- Probe root: `/tmp/rust_rockfall/tb441_batched_multi_zone_probe`
+- Release zones: `80`
+- Scenarios: `80`
+- Trajectory chunks: `80`
+- Reducer workers: `2`
+- Reducer chunks: `2`
+- Merge order: `sorted_chunk_id`
+- Merge-order independent: `true`
+- Merge-order deterministic: `true`
+- Manifest size: `141137` bytes
+- Root file count: `258`
+- Output file count: `253`
+- Output bytes: `193841`
+- Reducer manifest bytes: `2112`
+- Reducer manifest files: `2`
+- Sidecar files: `9`
+- Sidecar bytes: `3538`
+- Primary output files: `240`
+- Primary output bytes: `51279`
+- Output family mix: `trajectory_csv, deposition_csv, impact_events_csv, reducer_chunk_manifest, trajectory_execution_plan, trajectory_execution_index, trajectory_merge_state, reducer_execution_plan, reducer_execution_index, reducer_merge_state, diagnostics_json, map_package_manifest, pilot_gis_package_manifest`
+
+## Batched Output Families
+
+- `trajectory_csv`: `80` files / `31779` bytes
+- `impact_events_csv`: `80` files / `11180` bytes
+- `deposition_csv`: `80` files / `8320` bytes
+- `reducer_chunk_manifest`: `2` files / `2112` bytes
+- `trajectory_execution_index`: `1` file / `2258` bytes
+- `reducer_execution_index`: `1` file / `178` bytes
+- `reducer_merge_state`: `1` file / `105` bytes
+- `pilot_gis_package_manifest`: `1` file / `105` bytes
+- `map_package_manifest`: `1` file / `93` bytes
+- `trajectory_merge_state`: `1` file / `109` bytes
+- `trajectory_execution_plan`: `1` file / `76` bytes
+- `reducer_execution_plan`: `1` file / `72` bytes
+- `diagnostics_json`: `1` file / `542` bytes
+
+## Batched Sample Support
+
+- Source zones: `80`
+- Trajectory sample rows: `480`
+- Deposition sample rows: `80`
+- Impact-event sample rows: `160`
+- Chunk split: `40` source zones per reducer chunk
+
+## Batched Merge Result
+
+- Merge manifest order: `sorted_chunk_id_then_output_family_then_path`
+- Merge-manifest status: `merged_fixture_outputs`
+- Merge-manifest output count: `251`
+- Merge-manifest output bytes: `56929`
+- Merge-order independent: `true`
+
+## Batched Bottlenecks
+
+- `merge_order`: `sorted_chunk_id_deterministic`
+- `manifest_size`: `manifest_pressure`
+- `output_pressure`: `file_family_pressure`
+- `reducer_runtime`: `reducer_runtime_pressure`
+- `probe_blocker`: `multi_zone_dry_run_blocked`
+
+## Batched Conclusion
+
+The batched fixture path stays merge-compatible and sample-support complete,
+but it still fails closed on manifest pressure, reducer runtime pressure, and
+output-family pressure. The next specific bottleneck is the manifest bundle
+size, not merge nondeterminism.
+
 ## Measured Summary
 
 - Probe root: `/tmp/rust_rockfall/multi_zone_reducer_pressure_tb336_probe`
