@@ -16,12 +16,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from scripts.lib import workflow_validation as WORKFLOW_VALIDATION
 
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from scripts.lib import workflow_validation as WORKFLOW_VALIDATION  # noqa: E402
 
 
 SCHEMA_VERSION = "management_aoi_balfrin_handoff_v1"

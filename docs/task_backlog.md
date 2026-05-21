@@ -39,46 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-406: Repair Smallest Multi-Zone Balfrin Handoff From Current Inputs
-
-Goal: Regenerate the smallest multi-zone Balfrin handoff from the current
-prepared-pilot state and verify submit-contract, output-budget, run-root, and
-preservation gates before any live job is attempted.
-
-Capability gap reduced: Previous two-zone/four-zone branches failed closed on
-stale wrapper manifests, wrong run roots, output-profile mismatches, or stale
-candidate blockers.
-
-Why this outranks alternatives: A measured multi-zone Balfrin hazard run is the
-dominant demonstration gap, but it must be attempted only from a current,
-gate-clean handoff.
-
-Inspect first:
-
-- `scripts/build_management_aoi_balfrin_handoff.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/summarize_balfrin_authorization_gated_multi_zone_measurement_path.py`
-- `tests/test_management_aoi_balfrin_handoff.py`
-- `tests/test_execute_management_aoi_balfrin_run.py`
-
-Deliverables:
-
-- A regenerated smallest multi-zone handoff using the adjacent candidate path.
-- Machine-readable gate results for submit contract, writable run root, reduced
-  output profile, output budget, preservation plan, and authorization record.
-- A no-submit mode that names any remaining first blocker precisely.
-
-Definition of done:
-
-- The handoff is either `ready_for_live_postproc_submission` or fails closed
-  with one current actionable blocker; no stale source-zone-footprint, wrapper
-  manifest, or unwritable-root blocker remains.
-
-Boundaries: No `sbatch` unless all repository gates pass, no non-postproc
-partition, no distributed execution, no scale-up claim, and no operational
-claim.
-
 ### TB-407: Execute Smallest Measured Multi-Zone Balfrin Probe
 
 Goal: If TB-406 reports a clean handoff, run the smallest bounded multi-zone

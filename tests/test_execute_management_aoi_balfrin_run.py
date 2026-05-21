@@ -29,37 +29,35 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
     def _blocked_handoff_report(self, artifact_dir: Path) -> dict[str, object]:
         return {
             "schema_version": "management_aoi_balfrin_handoff_v1",
-            "handoff_classification": "blocked_source_zone_footprint_overlap",
-            "handoff_status": "blocked_source_zone_footprint_overlap",
+            "handoff_classification": "blocked_missing_prepared_pilot_inputs",
+            "handoff_status": "blocked_missing_prepared_pilot_inputs",
             "ready_for_live_management_aoi_postproc_run": False,
-            "blocked_reason": (
-                "replace the committed 4x4 management-AOI crop with a larger real-staged AOI crop and re-stage the source-zone footprint so at least one valid interior cell remains outside the frozen footprint"
-            ),
+            "blocked_reason": "prepared-pilot inputs are missing",
             "package_json_path": str(artifact_dir / "management_aoi_balfrin_handoff_v1.json"),
             "authorization_record_path": str(artifact_dir / "management_aoi_balfrin_authorization_audit_v1.yaml"),
             "exact_run_root": "/scratch/mch/olifu/rust_rockfall/probes/management-aoi/test",
             "run_id": "test",
             "partition": "postproc",
             "candidate_evidence": {
-                "candidate_cell_count": 0,
-                "candidate_area_m2": 0.0,
+                "candidate_cell_count": 3419,
+                "candidate_area_m2": 13676.0,
             },
             "scenario_generation_pressure": {
-                "scenario_pressure_status": "blocked_source_zone_footprint_overlap",
-                "scenario_row_count": 0,
+                "scenario_pressure_status": "ready",
+                "scenario_row_count": 3,
             },
             "budget_checks": [
                 {"gate": "prepared_pilot_inputs", "status": "blocked"},
                 {"gate": "output_budget", "status": "not_evaluated"},
             ],
             "authorization_audit": {
-                "status": "blocked_source_zone_footprint_overlap",
+                "status": "blocked_missing_prepared_pilot_inputs",
                 "live_submission_authorized_by_this_record": False,
             },
             "command_list": [
                 {
                     "command_id": "future_authorized_submit",
-                    "status": "blocked_source_zone_footprint_overlap",
+                    "status": "blocked_missing_prepared_pilot_inputs",
                     "runnable_now": False,
                 }
             ],
@@ -82,16 +80,15 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "management_aoi_balfrin_execution_state_v1")
         self.assertEqual(report["execution_status"], "failed_closed")
         self.assertEqual(report["measurement_status"], "not_measured")
-        self.assertEqual(report["handoff_classification"], "blocked_source_zone_footprint_overlap")
+        self.assertEqual(report["handoff_classification"], "blocked_missing_prepared_pilot_inputs")
         self.assertIsNone(report["job_id"])
         self.assertIsNone(report["runtime_seconds"])
         self.assertIsNone(report["memory_peak_mb"])
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
         self.assertEqual(report["no_submit_semantics"]["scheduler_submission_status"], "not_attempted")
         self.assertFalse(report["no_submit_semantics"]["future_submit_command_runnable_now"])
-        self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_source_zone_footprint_overlap")
-        self.assertEqual(report["first_persistent_blocker"]["candidate_cell_count"], 0)
-        self.assertEqual(report["first_persistent_blocker"]["scenario_row_count"], 0)
+        self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_missing_prepared_pilot_inputs")
+        self.assertEqual(report["first_persistent_blocker"]["scenario_row_count"], 3)
         self.assertEqual(report["validation_output_pressure"]["status"], "not_evaluated")
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
@@ -127,7 +124,7 @@ class ManagementAoiBalfrinExecutionStateTests(unittest.TestCase):
             self.assertEqual(exit_code, 2)
             self.assertEqual(report["execution_status"], "failed_closed")
             self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
-            self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_source_zone_footprint_overlap")
+            self.assertEqual(report["first_persistent_blocker"]["status"], "blocked_missing_prepared_pilot_inputs")
             self.assertTrue((artifact_dir / "management_aoi_balfrin_execution_state_v1.json").exists())
 
 

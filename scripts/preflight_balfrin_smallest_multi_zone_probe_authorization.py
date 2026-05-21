@@ -30,6 +30,7 @@ STATUS_BLOCKED_ACCESS = "blocked_access"
 STATUS_BLOCKED_PACKAGE = "blocked_reviewed_package"
 STATUS_BLOCKED_ACCESS_NOT_CHECKED = "blocked_balfrin_access_not_checked"
 STATUS_BLOCKED_SUBMIT_CONTRACT = "blocked_submit_contract"
+STATUS_READY_FOR_LIVE_POSTPROC_SUBMISSION = "ready_for_live_postproc_submission"
 REVIEWED_BALFRIN_RUN_ROOT_PREFIX = Path("/scratch/mch/olifu/rust_rockfall/probes")
 
 ACCESS_PREFLIGHT_COMMAND = (
@@ -537,6 +538,152 @@ def _overall_status(
     return STATUS_READY, ""
 
 
+def _gate_status_from_ready(status: Any, *, ready_values: set[str], blocked_fallback: str) -> str:
+    text = str(status or "").strip()
+    if text in ready_values:
+        return "ready"
+    return text or blocked_fallback
+
+
+def _build_gate_results(
+    *,
+    package_review: dict[str, Any],
+    authorization_requirement: dict[str, Any],
+    submit_contract: dict[str, Any],
+    access_report: dict[str, Any],
+    reducer_budget: dict[str, Any],
+    output_profile: dict[str, Any],
+    run_shape: dict[str, Any],
+    preflight_status: str,
+) -> dict[str, Any]:
+    submit_status = _gate_status_from_ready(
+        submit_contract.get("status"),
+        ready_values={"ready"},
+        blocked_fallback=STATUS_BLOCKED_SUBMIT_CONTRACT,
+    )
+    run_root_writability = str(submit_contract.get("run_root_writability_status") or "")
+    run_root_status = "ready" if submit_status == "ready" and run_root_writability else STATUS_BLOCKED_SUBMIT_CONTRACT
+    preservation_checklist = list(run_shape.get("preservation_checklist") or [])
+    preservation_status = "ready" if preservation_checklist else "blocked_missing_preservation_plan"
+    authorization_status = _gate_status_from_ready(
+        authorization_requirement.get("status"),
+        ready_values={"authorized"},
+        blocked_fallback=STATUS_BLOCKED_MISSING_AUTHORIZATION,
+    )
+    access_status = str(access_report.get("status") or STATUS_BLOCKED_ACCESS_NOT_CHECKED)
+    return {
+        "schema_version": "balfrin_smallest_multi_zone_gate_results_v1",
+        "handoff_status": (
+            STATUS_READY_FOR_LIVE_POSTPROC_SUBMISSION
+            if preflight_status == STATUS_READY
+            else "failed_closed"
+        ),
+        "reviewed_handoff_package": {
+            "status": _gate_status_from_ready(
+                package_review.get("status"),
+                ready_values={"reviewed"},
+                blocked_fallback=STATUS_BLOCKED_MISSING_PACKAGE,
+            ),
+            "path": package_review.get("path"),
+            "sha256": package_review.get("sha256"),
+            "blocked_reason": package_review.get("blocked_reason", ""),
+        },
+        "submit_contract": {
+            "status": submit_status,
+            "probe_manifest_path": submit_contract.get("probe_manifest_path"),
+            "run_root": submit_contract.get("run_root"),
+            "run_id": submit_contract.get("run_id"),
+            "partition": "postproc",
+            "blocked_reason": submit_contract.get("blocked_reason", ""),
+        },
+        "writable_run_root": {
+            "status": run_root_status,
+            "run_root": submit_contract.get("run_root"),
+            "writability_status": run_root_writability,
+            "blocked_reason": "" if run_root_status == "ready" else submit_contract.get("blocked_reason", ""),
+            "boundary_note": (
+                "Reviewed Balfrin scratch-root contract only; this preflight does not create the run root."
+            ),
+        },
+        "reduced_output_profile": {
+            "status": _gate_status_from_ready(
+                output_profile.get("status"),
+                ready_values={"ready"},
+                blocked_fallback="blocked_output_profile",
+            ),
+            "classification": output_profile.get("classification"),
+            "conditional_curve_export": output_profile.get("conditional_curve_export"),
+            "grid_csv_export": output_profile.get("grid_csv_export"),
+            "blocked_reasons": list(output_profile.get("blocked_reasons") or []),
+        },
+        "output_budget": {
+            "status": _gate_status_from_ready(
+                reducer_budget.get("status"),
+                ready_values={"ready"},
+                blocked_fallback=STATUS_BLOCKED_REDUCER_BUDGET,
+            ),
+            "output_budget_acceptance_status": reducer_budget.get("output_budget_acceptance_status"),
+            "threshold_profile_id": reducer_budget.get("output_budget_acceptance_threshold_profile_id"),
+            "blocked_reasons": list(reducer_budget.get("blocked_reasons") or []),
+        },
+        "preservation_plan": {
+            "status": preservation_status,
+            "checklist_count": len(preservation_checklist),
+            "checklist": preservation_checklist,
+        },
+        "authorization_record": {
+            "status": authorization_status,
+            "authorization_status": authorization_requirement.get("authorization_status"),
+            "record_status": authorization_requirement.get("authorization_record_status"),
+            "sha256": authorization_requirement.get("authorization_record_sha256"),
+            "blocked_reason": authorization_requirement.get("blocked_reason", ""),
+        },
+        "balfrin_access": {
+            "status": "ready" if access_status == access_preflight.STATUS_READY else access_status,
+            "consumed_status": access_status,
+            "ready_for_pre_submit": access_report.get(
+                "ready_for_pre_submit",
+                access_report.get("ready_for_read_only_collection"),
+            ),
+            "remote_head": access_report.get("remote_head"),
+            "remote_checkout_hygiene": access_report.get("remote_checkout_hygiene", {}),
+        },
+        "no_submit": {
+            "status": "not_submitted",
+            "sbatch_attempted": False,
+            "submit_command_executed": False,
+            "live_submission_authorized_by_this_report": False,
+            "boundary_note": "TB-406 verifies gates only; live execution is left to a later task.",
+        },
+    }
+
+
+def _first_blocker_from_gate_results(gate_results: dict[str, Any]) -> dict[str, Any] | None:
+    for gate_id in (
+        "reviewed_handoff_package",
+        "output_budget",
+        "reduced_output_profile",
+        "submit_contract",
+        "writable_run_root",
+        "balfrin_access",
+        "authorization_record",
+        "preservation_plan",
+    ):
+        gate = dict(gate_results.get(gate_id) or {})
+        if gate.get("status") == "ready":
+            continue
+        return {
+            "gate": gate_id,
+            "status": gate.get("status"),
+            "blocked_reason": gate.get("blocked_reason")
+            or "; ".join(str(reason) for reason in gate.get("blocked_reasons", []) if str(reason).strip())
+            or gate.get("consumed_status")
+            or gate.get("record_status")
+            or "gate is not ready",
+        }
+    return None
+
+
 def build_report(
     *,
     reviewed_handoff_package: Path = handoff.DEFAULT_PACKAGE_JSON,
@@ -567,16 +714,32 @@ def build_report(
         reducer_budget=reducer_budget,
         output_profile=output_profile,
     )
+    gate_results = _build_gate_results(
+        package_review=package_review,
+        authorization_requirement=authorization_requirement,
+        submit_contract=submit_contract,
+        access_report=access_report,
+        reducer_budget=reducer_budget,
+        output_profile=output_profile,
+        run_shape=run_shape,
+        preflight_status=preflight_status,
+    )
+    first_blocker = _first_blocker_from_gate_results(gate_results)
     return {
         "schema_version": SCHEMA_VERSION,
         "status": preflight_status,
         "preflight_status": preflight_status,
         "submission_gate_status": preflight_status,
+        "handoff_status": gate_results["handoff_status"],
+        "ready_for_live_postproc_submission": preflight_status == STATUS_READY,
         "ready_for_authorization_review": preflight_status == STATUS_READY,
         "ready_for_authorized_submission": preflight_status == STATUS_READY,
         "authorization_granted_by_preflight": False,
         "live_submission_authorized": False,
         "blocked_reason": blocked_reason,
+        "first_blocker": first_blocker,
+        "gate_results": gate_results,
+        "no_submit_semantics": gate_results["no_submit"],
         "authorization_status": authorization_requirement.get("authorization_status"),
         "reviewed_handoff_package_status": package_review.get("status"),
         "authorization_record_status": authorization_requirement.get("authorization_record_status"),
