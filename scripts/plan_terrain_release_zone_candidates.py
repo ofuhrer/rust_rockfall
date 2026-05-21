@@ -1549,6 +1549,9 @@ def build_candidate_sensitivity_report(
         variant_masks=variant_masks,
         variant_summaries=variant_summaries,
     )
+    selected_candidate_assessment = build_selected_candidate_assessment(
+        candidate_stability_ranking["candidate_stability_ranking"]
+    )
     return {
         "sensitivity_status": "ready",
         "sensitivity_scope": "bounded_threshold_smoothing_resolution_and_boundary_perturbations",
@@ -1578,6 +1581,7 @@ def build_candidate_sensitivity_report(
         "candidate_stability_ranking": candidate_stability_ranking["candidate_stability_ranking"],
         "candidate_stability_ranking_count": candidate_stability_ranking["candidate_stability_ranking_count"],
         "bounded_probe_candidate_selection": candidate_stability_ranking["bounded_probe_candidate_selection"],
+        "selected_candidate_assessment": selected_candidate_assessment,
         "claim_boundaries": {
             "heuristic_stability_characterization_only": True,
             "validated_release_zone_evidence": False,
@@ -1796,6 +1800,86 @@ def build_candidate_stability_ranking(
     }
 
 
+def build_selected_candidate_assessment(ranked_candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    if not ranked_candidates:
+        return {
+            "selected_candidate_status": "blocked_no_ranked_candidates",
+            "candidate_release_zone_id": None,
+            "stability_rank": None,
+            "candidate_stability_class": None,
+            "selected_candidate_classification": "rejected",
+            "selected_candidate_recommendation": {
+                "status": "replacement_candidate_recommended",
+                "reason": (
+                    "No ranked candidate was available, so the workflow must fail closed and select a replacement "
+                    "candidate."
+                ),
+            },
+            "stability_score": None,
+            "minimum_retention_fraction": None,
+            "mean_retention_fraction": None,
+            "variant_presence_fraction": None,
+        }
+
+    selected = dict(ranked_candidates[0])
+    stability_class = text_value(selected.get("candidate_stability_class"))
+    selected_candidate_classification = classify_selected_candidate_classification(selected)
+    if selected_candidate_classification == "stable":
+        recommendation_status = "adequate_for_bounded_engineering_probe"
+        recommendation_reason = (
+            f"{selected['candidate_release_zone_id']} persists under the bounded slope, smoothing, resolution, "
+            "and AOI-boundary variants, so it is adequate for the next engineering step."
+        )
+    elif stability_class == "sensitive":
+        recommendation_status = "replacement_candidate_recommended"
+        recommendation_reason = (
+            f"{selected['candidate_release_zone_id']} is sensitive across the bounded heuristic variants, so the "
+            "workflow should fail closed with a replacement candidate."
+        )
+    else:
+        recommendation_status = "replacement_candidate_recommended"
+        recommendation_reason = (
+            f"{selected['candidate_release_zone_id']} is unstable across the bounded heuristic variants, so the "
+            "workflow should fail closed with a replacement candidate."
+        )
+
+    return {
+        "selected_candidate_status": "ready",
+        "candidate_release_zone_id": selected.get("candidate_release_zone_id"),
+        "stability_rank": selected.get("stability_rank"),
+        "candidate_stability_class": stability_class,
+        "selected_candidate_classification": selected_candidate_classification,
+        "selected_candidate_recommendation": {
+            "status": recommendation_status,
+            "reason": recommendation_reason,
+        },
+        "stability_score": selected.get("stability_score"),
+        "minimum_retention_fraction": selected.get("minimum_retention_fraction"),
+        "mean_retention_fraction": selected.get("mean_retention_fraction"),
+        "variant_presence_fraction": selected.get("variant_presence_fraction"),
+    }
+
+
+def classify_selected_candidate_classification(candidate_summary: dict[str, Any]) -> str:
+    stability_class = text_value(candidate_summary.get("candidate_stability_class")) if candidate_summary.get("candidate_stability_class") else ""
+    if stability_class == "stable":
+        return "stable"
+    if stability_class == "sensitive":
+        return "sensitive"
+    if stability_class == "unstable":
+        return "rejected"
+
+    minimum_retention_fraction = candidate_summary.get("minimum_retention_fraction")
+    if isinstance(minimum_retention_fraction, (int, float)):
+        minimum_retention_fraction = float(minimum_retention_fraction)
+        if minimum_retention_fraction >= STABILITY_STABLE_MIN_RETENTION_FRACTION:
+            return "stable"
+        if minimum_retention_fraction <= STABILITY_UNSTABLE_MAX_RETENTION_FRACTION:
+            return "rejected"
+        return "sensitive"
+    return "rejected"
+
+
 def candidate_stability_rank_key(candidate_summary: dict[str, Any]) -> tuple[Any, ...]:
     bbox = candidate_summary.get("component_bbox_lv95_m", {}) or {}
     return (
@@ -1946,6 +2030,21 @@ def candidate_sensitivity_report_stub() -> dict[str, Any]:
         "candidate_stability_score_method": "minimum_retention_fraction_across_bounded_heuristic_variants",
         "candidate_stability_ranking_count": 0,
         "candidate_stability_ranking": [],
+        "selected_candidate_assessment": {
+            "selected_candidate_status": "blocked_no_ranked_candidates",
+            "candidate_release_zone_id": None,
+            "stability_rank": None,
+            "candidate_stability_class": None,
+            "selected_candidate_classification": "rejected",
+            "selected_candidate_recommendation": {
+                "status": "replacement_candidate_recommended",
+                "reason": "No ranked candidate was available, so the workflow must fail closed and select a replacement candidate.",
+            },
+            "stability_score": None,
+            "minimum_retention_fraction": None,
+            "mean_retention_fraction": None,
+            "variant_presence_fraction": None,
+        },
         "bounded_probe_candidate_selection": {
             "selection_sizes": list(STABILITY_SELECTION_SIZES),
             "selection_by_size": {
@@ -2635,6 +2734,9 @@ def build_candidate_stability_summary(candidate_sensitivity_report: dict[str, An
         for entry in candidate_sensitivity_report.get("candidate_stability_ranking", [])
         if isinstance(entry, dict)
     ]
+    selected_candidate_assessment = candidate_sensitivity_report.get("selected_candidate_assessment")
+    if not isinstance(selected_candidate_assessment, dict):
+        selected_candidate_assessment = build_selected_candidate_assessment(ranking)
     class_counts = {"stable": 0, "sensitive": 0, "unstable": 0}
     stable_ids: list[str] = []
     sensitive_ids: list[str] = []
@@ -2658,6 +2760,7 @@ def build_candidate_stability_summary(candidate_sensitivity_report: dict[str, An
         "sensitive_candidate_ids": sensitive_ids,
         "unstable_candidate_ids": unstable_ids,
         "bounded_probe_candidate_selection": candidate_sensitivity_report.get("bounded_probe_candidate_selection", {}),
+        "selected_candidate_assessment": selected_candidate_assessment,
     }
 
 

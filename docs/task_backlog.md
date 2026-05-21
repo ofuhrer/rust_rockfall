@@ -39,41 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-410: Measure Adjacent-Candidate Stability Against Heuristic Variants
-
-Goal: Test whether the selected Prau Mulins candidate persists under bounded
-slope, smoothing, resolution, and AOI-boundary perturbations.
-
-Capability gap reduced: The selected adjacent candidate is currently a visual
-review choice; stability evidence is needed before using it as a robust
-workflow input.
-
-Why this outranks alternatives: A candidate that disappears under small
-heuristic changes is a poor basis for a management-facing multi-zone probe.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `tests/test_balfrin_target_area_candidate_stability.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- Persistence metrics for the adjacent candidate under bounded perturbations.
-- Stable, sensitive, and rejected classification for the selected component.
-- A recommendation for whether the candidate is adequate for a bounded
-  engineering probe.
-
-Definition of done:
-
-- The adjacent candidate is classified as stable enough for the next
-  engineering step or the workflow fails closed with a replacement-candidate
-  recommendation.
-
-Boundaries: No tuning to force stability, no physical validation claim, no
-field-supported provenance, no frequency semantics, and no Balfrin execution.
-
 ### TB-411: Stress Scenario Cardinality For Candidate Expansion
 
 Goal: Estimate scenario-row, manifest, and output-pressure growth if the

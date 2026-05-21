@@ -137,6 +137,7 @@ def build_report(
         )
 
     candidate_sensitivity_report = candidate_report["candidate_sensitivity_report"]
+    selected_candidate_assessment = candidate_sensitivity_report["selected_candidate_assessment"]
     stable_region = candidate_sensitivity_report["stable_candidate_region"]
     unstable_region = candidate_sensitivity_report["unstable_candidate_region"]
     heuristic_sensitive_region = candidate_sensitivity_report["heuristic_sensitive_candidate_region"]
@@ -193,7 +194,9 @@ def build_report(
             "pairwise_overlap_summary": candidate_sensitivity_report["pairwise_overlap_summary"],
             "candidate_stability_ranking": candidate_sensitivity_report["candidate_stability_ranking"],
             "bounded_probe_candidate_selection": candidate_sensitivity_report["bounded_probe_candidate_selection"],
+            "selected_candidate_assessment": selected_candidate_assessment,
         },
+        "selected_candidate_assessment": selected_candidate_assessment,
         "candidate_region_classifications": candidate_sensitivity_report["candidate_region_classifications"],
         "candidate_sensitivity_matrix": candidate_sensitivity_report["candidate_sensitivity_matrix"],
         "candidate_persistence_metrics": candidate_sensitivity_report["candidate_persistence_metrics"],
@@ -480,6 +483,14 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Source-zone metadata: `{report['frozen_input_freeze']['source_zone_metadata_path']}`",
         f"- Scenario table: `{report['frozen_input_freeze']['scenario_table_path']}`",
         f"- Source-scenario policy: `{report['frozen_input_freeze']['source_scenario_policy_path']}`",
+        "",
+        "## Selected Candidate",
+        "",
+        f"- Candidate id: `{report['selected_candidate_assessment'].get('candidate_release_zone_id', 'n/a')}`",
+        f"- Stability class: `{report['selected_candidate_assessment'].get('candidate_stability_class', 'n/a')}`",
+        f"- Workflow classification: `{report['selected_candidate_assessment'].get('selected_candidate_classification', 'n/a')}`",
+        f"- Recommendation: `{report['selected_candidate_assessment'].get('selected_candidate_recommendation', {}).get('status', 'n/a')}`",
+        f"- Recommendation reason: {report['selected_candidate_assessment'].get('selected_candidate_recommendation', {}).get('reason', 'n/a')}",
         "",
         "## Stability Summary",
         "",

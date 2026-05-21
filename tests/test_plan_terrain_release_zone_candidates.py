@@ -197,6 +197,23 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                 first["candidate_sensitivity_report"]["candidate_persistence_metrics"]["heuristic_sensitive_candidate_cell_count"],
                 751,
             )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["selected_candidate_assessment"]["candidate_release_zone_id"],
+                "tschamut_public_lps_release_bbox_candidate_058",
+            )
+            self.assertEqual(first["candidate_sensitivity_report"]["selected_candidate_assessment"]["candidate_stability_class"], "stable")
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["selected_candidate_assessment"]["selected_candidate_classification"],
+                "stable",
+            )
+            self.assertEqual(
+                first["candidate_sensitivity_report"]["selected_candidate_assessment"]["selected_candidate_recommendation"]["status"],
+                "adequate_for_bounded_engineering_probe",
+            )
+            self.assertIn(
+                "persists under the bounded slope, smoothing, resolution, and AOI-boundary variants",
+                first["candidate_sensitivity_report"]["selected_candidate_assessment"]["selected_candidate_recommendation"]["reason"],
+            )
             self.assertTrue(first["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"])
             self.assertEqual(first["candidate_footprint_comparison"]["candidate_and_frozen_footprint_intersection_cell_count"], 0)
             self.assertIn(
@@ -248,6 +265,10 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_review_package"]["review_summary"]["default_review_decision"], "needs_field_review")
             self.assertEqual(first["candidate_review_package"]["review_summary"]["review_decision_counts"]["needs_field_review"], first["candidate_review_package"]["review_summary"]["candidate_count"])
             self.assertEqual(first["candidate_review_package"]["review_summary"]["provenance_label_counts"]["workflow_generated"], first["candidate_review_package"]["review_summary"]["candidate_count"])
+            self.assertEqual(
+                first["candidate_review_package"]["candidate_stability_summary"]["selected_candidate_assessment"]["selected_candidate_classification"],
+                "stable",
+            )
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["mask"]).exists())
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["csv"]).exists())
@@ -310,6 +331,54 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertIn("frozen_source_zone_footprint:", text_report)
             self.assertIn("candidate_release_zone_products:", text_report)
             self.assertIn("candidate_review_package:", text_report)
+
+    def test_selected_candidate_assessment_maps_stable_sensitive_and_rejected_verdicts(self) -> None:
+        stable = planner.build_selected_candidate_assessment(
+            [
+                {
+                    "candidate_release_zone_id": "stable_candidate",
+                    "candidate_stability_class": "stable",
+                    "stability_rank": 1,
+                    "stability_score": 0.95,
+                    "minimum_retention_fraction": 0.95,
+                    "mean_retention_fraction": 0.98,
+                    "variant_presence_fraction": 1.0,
+                }
+            ]
+        )
+        sensitive = planner.build_selected_candidate_assessment(
+            [
+                {
+                    "candidate_release_zone_id": "sensitive_candidate",
+                    "candidate_stability_class": "sensitive",
+                    "stability_rank": 1,
+                    "stability_score": 0.75,
+                    "minimum_retention_fraction": 0.75,
+                    "mean_retention_fraction": 0.8,
+                    "variant_presence_fraction": 0.9,
+                }
+            ]
+        )
+        rejected = planner.build_selected_candidate_assessment(
+            [
+                {
+                    "candidate_release_zone_id": "rejected_candidate",
+                    "candidate_stability_class": "unstable",
+                    "stability_rank": 1,
+                    "stability_score": 0.2,
+                    "minimum_retention_fraction": 0.2,
+                    "mean_retention_fraction": 0.3,
+                    "variant_presence_fraction": 0.5,
+                }
+            ]
+        )
+
+        self.assertEqual(stable["selected_candidate_classification"], "stable")
+        self.assertEqual(stable["selected_candidate_recommendation"]["status"], "adequate_for_bounded_engineering_probe")
+        self.assertEqual(sensitive["selected_candidate_classification"], "sensitive")
+        self.assertEqual(sensitive["selected_candidate_recommendation"]["status"], "replacement_candidate_recommended")
+        self.assertEqual(rejected["selected_candidate_classification"], "rejected")
+        self.assertEqual(rejected["selected_candidate_recommendation"]["status"], "replacement_candidate_recommended")
 
     def test_missing_public_inputs_are_reported_as_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
