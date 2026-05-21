@@ -11,6 +11,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"
 POLICY_VALIDATOR_PATH = ROOT / "scripts" / "validate_source_scenario_policy.py"
+PRAU_MULINS_REVIEW_PACKAGE_PATH = (
+    ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
+)
 
 
 def load_module(path: Path, name: str):
@@ -259,6 +262,35 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
                         }
                     ],
                 )
+
+    def test_freezer_loads_the_adjacent_prau_mulins_review_candidate_southwest_of_the_frozen_footprint(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            report = freezer.build_freezer_report(
+                review_package_path=PRAU_MULINS_REVIEW_PACKAGE_PATH,
+                accepted_candidate_ids=["tschamut_adjacent_prau_mulins_candidate_v1"],
+                output_root=workdir / "validation/private/source_zone_review_freeze",
+                trajectory_count=24,
+                seed=34014,
+            )
+
+        source_zone_metadata = report["source_zone_metadata"]
+        bbox = source_zone_metadata["geometry"]["vertices"]
+        xmin = min(vertex[0] for vertex in bbox)
+        xmax = max(vertex[0] for vertex in bbox)
+        ymin = min(vertex[1] for vertex in bbox)
+        ymax = max(vertex[1] for vertex in bbox)
+
+        self.assertEqual(report["freezer_status"], "ready")
+        self.assertEqual(report["accepted_candidate_ids"], ["tschamut_adjacent_prau_mulins_candidate_v1"])
+        self.assertEqual(source_zone_metadata["source_zone_id"], "tschamut_adjacent_prau_mulins_reviewed_source_zone_v1")
+        self.assertEqual(source_zone_metadata["source_review_package_path"], str(PRAU_MULINS_REVIEW_PACKAGE_PATH.relative_to(ROOT)))
+        self.assertGreaterEqual(xmin, 2696440.0)
+        self.assertLessEqual(xmax, 2696525.0)
+        self.assertGreaterEqual(ymin, 1167485.0)
+        self.assertLessEqual(ymax, 1167575.0)
+        self.assertLess(xmax, 2696622.482)
+        self.assertLess(ymax, 1167728.092)
 
 
 if __name__ == "__main__":

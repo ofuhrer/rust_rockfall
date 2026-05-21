@@ -39,48 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-402: Freeze Adjacent Prau Mulins Review Candidate
-
-Goal: Convert the user-selected adjacent Prau Mulins source patch into a
-reproducible reviewed candidate record that is separate from the artificial
-Tschamut road-release footprint.
-
-Capability gap reduced: The current management-AOI chain is blocked by
-`blocked_source_zone_footprint_overlap`; this task creates the concrete
-non-overlapping candidate needed before scenario generation can resume.
-
-Why this outranks alternatives: The smallest Balfrin multi-zone path is blocked
-upstream of execution, so selecting and freezing one defensible adjacent
-candidate is higher leverage than more downstream Balfrin packaging.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_candidate_source_zone_freezer.py`
-- generated scratch: `validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json`
-
-Deliverables:
-
-- A deterministic reviewed-candidate record for
-  `tschamut_adjacent_prau_mulins_candidate_v1`.
-- A small GPX/GeoJSON or equivalent review geometry for the selected candidate.
-- Explicit provenance stating that the candidate is selected from expanded
-  terrain-screening plus user visual review, not field validation.
-- A focused regression showing the candidate is spatially separated from the
-  frozen Tschamut road-release footprint.
-
-Definition of done:
-
-- The selected candidate can be loaded by the existing candidate/freezer path,
-  has stable IDs, is non-overlapping with the frozen Tschamut source footprint,
-  and remains labelled as workflow/user-review provenance only.
-
-Boundaries: No operational release-zone claim, no field-supported provenance,
-no source-frequency semantics, no tuning to match outcomes, no hazard run, and
-no Balfrin submission.
-
 ### TB-403: Encode Expanded Steep-Terrain Source-Zone Heuristic
 
 Goal: Replace the overly narrow 30-55 degree source-zone screen with a
