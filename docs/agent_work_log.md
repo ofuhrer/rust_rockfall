@@ -5168,3 +5168,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new gate/report beyond wording replacement, no Balfrin execution, no scientific claim upgrade, no operational claim, and no source-frequency / annual-frequency / risk / exposure / vulnerability / distributed-execution semantics.
 - Next task: `TB-413`
+
+### TB-413: Reassess Swiss-Scale Feasibility After Adjacent-Candidate Probe
+
+- Date: 2026-05-21
+- Commit: `1cc919a`; never leave `pending` in a pushed commit.
+- Objective: refresh the Swiss-scale feasibility projection so it reflects the adjacent-candidate management-AOI path, measured smallest multi-zone Balfrin evidence, and the current ranking of remaining planning bottlenecks.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworked the management-demo package projection section to keep 10-zone feasible, 100-zone deferred, and regional/Swiss-wide out of reach while explicitly ranking scenario cardinality, reducer pressure, hazard throughput, GIS packaging, and Balfrin access.
+  - Rewrote the standalone Swiss-scale projection note so the adjacent-candidate management-AOI path replaces the stale source-zone-overlap repair as the active context and the management-facing summary separates measured, projection-only, and out-of-reach tiers.
+  - Refreshed the maturity snapshot and focused regression coverage to match the new adjacent-candidate wording, and removed TB-413 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_scale_execution_probe -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no Swiss-wide run, no distributed execution, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability semantics.
+- Next task: backlog refill needed
