@@ -5122,3 +5122,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no Balfrin execution, no field-validation claim, no physical-probability claim, no operational claim, and no tuning to force stability.
 - Next task: `TB-411`
+
+### TB-411: Stress Scenario Cardinality For Candidate Expansion
+
+- Date: 2026-05-21
+- Commit: `15e838a`; never leave `pending` in a pushed commit.
+- Objective: estimate candidate-driven scenario-row, manifest, and output-pressure growth across 1/2/4/8 candidate expansions while keeping the report fail-closed on over-budget growth.
+- Files changed: `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_management_aoi_scenario_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic 1/2/4/8 candidate expansion ladder to the management-AOI scenario-pressure report by synthesizing bounded candidate review packages from the adjacent-candidate input and freezing each rung into scratch outputs.
+  - Reported scenario-table CSV bytes, manifest bytes, total bytes, and estimated output-pressure labels per rung, and added a fail-closed threshold search that stops at the first over-budget candidate expansion.
+  - Extended the management-AOI regression coverage to pin the new ladder plus a mocked fail-closed threshold branch.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_management_aoi_scenario_pressure.py tests/test_management_aoi_scenario_pressure.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no production ensemble, no annual/source-frequency semantics, no physical-probability claim, no Balfrin submission, and no operational claim.
+- Next task: `TB-412`
