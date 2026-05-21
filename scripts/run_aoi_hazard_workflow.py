@@ -1556,7 +1556,7 @@ def build_prepare_report(
         "schema_version": PREPARE_SCHEMA_VERSION,
         "command": "prepare",
         "status": status,
-        "next_command": next_step.get("command", ""),
+        "next_command": next_blocker_next_command(first_blocker, next_step),
         "next_step": next_step.get("step_id", ""),
         "first_blocker": first_blocker,
         "prepared_pilot_output_root": str(prepared_pilot_output_root) if prepared_pilot_output_root is not None else "",
@@ -1599,6 +1599,14 @@ def build_prepare_report(
         "prepared_pilot_compiler": prepared_pilot_report.get("prepared_pilot_compiler", {}),
     }
     return report
+
+
+def next_blocker_next_command(first_blocker: dict[str, Any] | None, next_step: dict[str, Any]) -> str:
+    if first_blocker:
+        next_command = str(first_blocker.get("next_command") or "")
+        if next_command:
+            return next_command
+    return str(next_step.get("command", "") or "")
 
 
 def build_local_smoke_report(*, repo_root: Path, smoke_case_path: Path, smoke_output_root: Path) -> dict[str, Any]:
@@ -3154,6 +3162,7 @@ def build_cache_step(*, repo_root: Path, candidate_site_id: str, paths: dict[str
         "missing": "public geodata cache is missing required real public-geodata inputs",
         "metadata_mismatch": "public geodata cache metadata does not match the staged files",
     }.get(audit_status, "public geodata cache verification did not pass")
+    recovery = report.get("cache_recovery") if isinstance(report.get("cache_recovery"), dict) else {}
     return {
         "step_id": "public_geodata_cache_verification",
         "label": "Public geodata cache verification",
@@ -3162,6 +3171,9 @@ def build_cache_step(*, repo_root: Path, candidate_site_id: str, paths: dict[str
         "expected_input_path": str(cache_manifest_path),
         "expected_input_paths": [str(cache_manifest_path)],
         "command": command,
+        "next_command": str(recovery.get("next_command") or "") if status != "ready" else "",
+        "next_files": recovery.get("next_files") or [],
+        "cache_recovery": recovery,
         "report": report,
     }
 

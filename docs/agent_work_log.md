@@ -5697,3 +5697,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no automatic network download was enabled by default, no generated artifact was committed, no second-site ensemble was run, and no operational claim was added.
 - Next task: `TB-435`
+
+### TB-435: Rehearse Real-AOI Cache Verification With Missing And Partial Inputs
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: make public-geodata cache verification emit actionable missing, partial, fixture-backed, and metadata-mismatched recovery hints for arbitrary AOI staging roots.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/verify_public_geodata_cache.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_public_geodata_cache_verifier.py`, `tests/test_second_site_public_geodata_preflight.py`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `cache_recovery` surface to the cache verifier that distinguishes ready, missing, partial, fixture-backed, and metadata-mismatched public inputs with machine-readable `next_command`, `next_files`, and per-product recovery hints.
+  - Extended the second-site preflight cache contract with recovery-hint templates and surfaced the cache recovery command chain through the AOI prepare workflow.
+  - Reworked the cache-verifier tests to use fixture-backed ready, missing, partial, and metadata-mismatch cases so the new recovery hints are exercised against concrete staged paths.
+  - Updated the AOI prep documentation with the compact recovery path that starts from verifier JSON output and points at the missing or mismatched staged files.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py scripts/verify_public_geodata_cache.py scripts/run_aoi_hazard_workflow.py tests/test_public_geodata_cache_verifier.py tests/test_second_site_public_geodata_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_verifier tests.test_second_site_public_geodata_preflight`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_documented_aoi_bounds_to_review_map_command_chain_smoke`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads were performed, no fabricated real geodata was committed, no physical-evidence claim was added, and the AOI workflow remained non-operational.
+- Next task: `TB-436`

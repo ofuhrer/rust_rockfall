@@ -1558,7 +1558,67 @@ def build_public_geodata_cache_contract(
             "metadata_mismatch",
         ],
         "cache_audit_statuses": list(PUBLIC_GEODATA_CACHE_AUDIT_STATUSES),
+        "recovery_hints": build_public_geodata_cache_recovery_hints(cache_manifest_path),
         "claim_boundaries": claim_boundaries(),
+    }
+
+
+def build_public_geodata_cache_recovery_hints(cache_manifest_path: Path) -> dict[str, dict[str, Any]]:
+    stage_dry_run_command = (
+        "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+        f"--cache-manifest {cache_manifest_path} --mode dry-run --format json"
+    )
+    verify_command = (
+        "PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py "
+        f"--cache-manifest {cache_manifest_path} --format json"
+    )
+    return {
+        "ready": {
+            "blocked_status": "ready",
+            "next_command_id": "verify_public_geodata_cache",
+            "next_command": verify_command,
+            "next_file_templates": [],
+            "recovery_note": "cache verification passed and no recovery step is required",
+        },
+        "missing": {
+            "blocked_status": "blocked_missing_inputs",
+            "next_command_id": "acquire_public_geodata_dry_run",
+            "next_command": stage_dry_run_command,
+            "next_file_templates": [
+                "products[*].missing_paths",
+            ],
+            "recovery_note": "stage the missing staged file or metadata sidecar and rerun the verifier",
+        },
+        "partial": {
+            "blocked_status": "blocked_partial_real_inputs",
+            "next_command_id": "acquire_public_geodata_dry_run",
+            "next_command": stage_dry_run_command,
+            "next_file_templates": [
+                "products[*].expected_staged_path",
+                "products[*].metadata_path",
+            ],
+            "recovery_note": "replace fixture-backed public inputs with real staged inputs and rerun the verifier",
+        },
+        "fixture_backed": {
+            "blocked_status": "blocked_fixture_backed_inputs",
+            "next_command_id": "acquire_public_geodata_dry_run",
+            "next_command": stage_dry_run_command,
+            "next_file_templates": [
+                "products[*].expected_staged_path",
+                "products[*].metadata_path",
+            ],
+            "recovery_note": "replace fixture-backed inputs with real staged inputs and rerun the verifier",
+        },
+        "metadata_mismatch": {
+            "blocked_status": "blocked_metadata_mismatch_inputs",
+            "next_command_id": "acquire_public_geodata_dry_run",
+            "next_command": stage_dry_run_command,
+            "next_file_templates": [
+                "products[*].actual.metadata_path",
+                "products[*].actual.staged_path",
+            ],
+            "recovery_note": "rewrite the metadata sidecar so it matches the staged file and rerun the verifier",
+        },
     }
 
 
@@ -1633,12 +1693,14 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
         if status == "metadata_mismatch" and overall_status not in {"missing", "checksum_mismatch"}:
             overall_status = status
     audit_summary = summarize_public_geodata_cache_audit(products)
+    recovery = build_public_geodata_cache_recovery_report(manifest_path, products, audit_summary)
     return {
         "schema_version": PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION,
         "verification_status": overall_status,
         "cache_audit_status": audit_summary["audit_status"],
         "cache_audit_classification": audit_summary["audit_status"],
         "cache_audit_summary": audit_summary,
+        "cache_recovery": recovery,
         "cache_manifest_path": str(manifest_path),
         "product_count": len(products),
         "verification_fields": build_public_geodata_cache_contract(
@@ -1653,6 +1715,38 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
             },
         )["verification_fields"],
         "products": products,
+    }
+
+
+def build_public_geodata_cache_recovery_report(
+    manifest_path: Path,
+    products: list[dict[str, Any]],
+    audit_summary: dict[str, Any],
+) -> dict[str, Any]:
+    hints = build_public_geodata_cache_recovery_hints(manifest_path)
+    blocked_status = hints.get(audit_summary["audit_status"], hints["missing"])
+    product_hints = [
+        product["recovery_hint"]
+        for product in products
+        if isinstance(product, dict) and product.get("recovery_hint")
+    ]
+    next_files: list[str] = []
+    for hint in product_hints:
+        for path in hint.get("next_files") or []:
+            if path not in next_files:
+                next_files.append(path)
+    next_command = blocked_status.get("next_command") if audit_summary["audit_status"] != "ready" else ""
+    if audit_summary["audit_status"] == "ready":
+        next_command = blocked_status.get("next_command", "")
+    return {
+        "status": audit_summary["audit_status"],
+        "blocked_status": blocked_status["blocked_status"],
+        "next_command_id": blocked_status["next_command_id"],
+        "next_command": next_command,
+        "next_file_templates": blocked_status["next_file_templates"],
+        "next_files": next_files,
+        "recovery_note": blocked_status["recovery_note"],
+        "product_hints": product_hints,
     }
 
 
@@ -1674,6 +1768,17 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
             "missing_paths": [],
             "checksum_match": False,
             "metadata_mismatches": [],
+            "recovery_hint": build_public_geodata_cache_product_recovery_hint(
+                product_id=text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+                verification_status="unsupported_product",
+                provenance_classification=provenance_classification,
+                provenance_reason=provenance_reason,
+                staged_path="",
+                metadata_path="",
+                missing_paths=[],
+                manifest_base=manifest_base,
+                actual={},
+            ),
             "expected": cache_expected_record(record),
             "actual": {},
         }
@@ -1719,6 +1824,17 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
             "missing_paths": missing_paths,
             "checksum_match": False,
             "metadata_mismatches": [],
+            "recovery_hint": build_public_geodata_cache_product_recovery_hint(
+                product_id=text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+                verification_status="missing" if required else "optional_missing",
+                provenance_classification=provenance_classification,
+                provenance_reason=provenance_reason,
+                staged_path=str(staged_path),
+                metadata_path=str(metadata_path),
+                missing_paths=missing_paths,
+                manifest_base=manifest_base,
+                actual=actual,
+            ),
             "expected": cache_expected_record(record),
             "actual": actual,
         }
@@ -1770,8 +1886,90 @@ def verify_public_geodata_cache_product(record: dict[str, Any], manifest_base: P
         "missing_paths": [],
         "checksum_match": checksum_match,
         "metadata_mismatches": metadata_mismatches,
+        "recovery_hint": build_public_geodata_cache_product_recovery_hint(
+            product_id=text_value(record.get("product_id")) or text_value(record.get("source_product_id")) or "unspecified",
+            verification_status=verification_status,
+            provenance_classification=provenance_classification,
+            provenance_reason=provenance_reason,
+            staged_path=str(staged_path),
+            metadata_path=str(metadata_path),
+            missing_paths=[],
+            manifest_base=manifest_base,
+            actual=actual,
+        ),
         "expected": cache_expected_record(record),
         "actual": actual,
+    }
+
+
+def build_public_geodata_cache_product_recovery_hint(
+    *,
+    product_id: str,
+    verification_status: str,
+    provenance_classification: str,
+    provenance_reason: str,
+    staged_path: str,
+    metadata_path: str,
+    missing_paths: list[str],
+    manifest_base: Path,
+    actual: dict[str, Any],
+) -> dict[str, Any] | None:
+    if verification_status == "verified" and provenance_classification == "real_staged":
+        return None
+
+    blocked_status = "blocked_missing_inputs"
+    if verification_status in {"checksum_mismatch"}:
+        blocked_status = "blocked_partial_real_inputs"
+    elif verification_status == "metadata_mismatch":
+        blocked_status = "blocked_metadata_mismatch_inputs"
+    elif provenance_classification == "fixture_backed":
+        blocked_status = "blocked_fixture_backed_inputs"
+    elif provenance_classification == "partial":
+        blocked_status = "blocked_partial_real_inputs"
+    elif verification_status == "missing":
+        blocked_status = "blocked_missing_inputs"
+    elif verification_status == "optional_missing":
+        blocked_status = "blocked_missing_inputs"
+
+    next_files: list[str] = []
+    if verification_status in {"missing", "optional_missing", "metadata_mismatch", "checksum_mismatch"} or provenance_classification in {
+        "fixture_backed",
+        "partial",
+    }:
+        if staged_path:
+            next_files.append(staged_path)
+        if metadata_path:
+            next_files.append(metadata_path)
+    if not next_files:
+        next_files = list(dict.fromkeys([path for path in missing_paths if path]))
+
+    next_command = (
+        "PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py "
+        f"--cache-manifest {manifest_base / 'public_geodata_cache_manifest.yaml'} --mode dry-run --format json"
+    )
+    if verification_status == "verified" and provenance_classification == "fixture_backed":
+        recovery_note = "fixture-backed input should be replaced by a real staged input"
+    elif verification_status == "metadata_mismatch":
+        recovery_note = "metadata sidecar does not match the staged file"
+    elif verification_status == "checksum_mismatch":
+        recovery_note = "staged bytes do not match the expected checksum"
+    elif verification_status in {"missing", "optional_missing"}:
+        recovery_note = "required staged file or metadata sidecar is missing"
+    else:
+        recovery_note = provenance_reason
+
+    return {
+        "product_id": product_id,
+        "verification_status": verification_status,
+        "provenance_classification": provenance_classification,
+        "blocked_status": blocked_status,
+        "next_command": next_command,
+        "next_file_templates": [
+            "products[*].missing_paths" if verification_status in {"missing", "optional_missing"} else "products[*].actual.metadata_path",
+            "products[*].actual.staged_path",
+        ],
+        "next_files": next_files,
+        "recovery_note": recovery_note,
     }
 
 
@@ -2786,6 +2984,16 @@ def _render_public_geodata_cache_contract(contract: dict[str, Any]) -> list[str]
     lines.extend(f"    - {field}" for field in contract["verification_fields"])
     lines.append("  - verification_statuses:")
     lines.extend(f"    - {status}" for status in contract["verification_statuses"])
+    if contract.get("recovery_hints"):
+        lines.append("  - recovery_hints:")
+        for status, hint in contract["recovery_hints"].items():
+            lines.append(
+                f"    - {status}: blocked_status={hint.get('blocked_status', '')}, "
+                f"next_command_id={hint.get('next_command_id', '')}, "
+                f"next_files={', '.join(hint.get('next_file_templates') or []) or 'none'}"
+            )
+            if hint.get("recovery_note"):
+                lines.append(f"      - note: {hint.get('recovery_note')}")
     if contract.get("cache_manifest_template"):
         template = contract["cache_manifest_template"]
         lines.append("  - cache_manifest_template:")

@@ -143,10 +143,22 @@ mismatch, or unsupported products.
 `scripts/verify_public_geodata_cache.py` now adds a companion audit summary
 for `ready`, `partial`, `fixture_backed`, `missing`, and
 `metadata_mismatch` cache states, which keeps tiny fixture-backed inputs from
-being treated as real public-context evidence in the AOI workflow.
-Its CLI exits `0` only when that audit summary is `ready`; the other audit
-states remain blocked even if the file-level checksum and metadata checks
-individually pass.
+being treated as real public-context evidence in the AOI workflow. The
+verifier report also carries machine-readable `cache_recovery` hints:
+`next_command` is a safe dry-run staging command for blocked states, and
+`next_files` names the concrete staged file and/or metadata sidecar paths that
+need attention. Its CLI exits `0` only when the audit summary is `ready`; the
+other audit states remain blocked even if the file-level checksum and metadata
+checks individually pass.
+Recovery path:
+
+1. Run the verifier in JSON mode and inspect `cache_recovery.next_files`.
+2. If the report says `missing` or `partial`, stage or replace the indicated
+   files and rerun `scripts/verify_public_geodata_cache.py`.
+3. If the report says `metadata_mismatch`, rewrite the metadata sidecar so it
+   matches the staged file, then rerun the verifier.
+4. If the report says `fixture_backed`, replace the fixture-backed paths with
+   real staged inputs before treating the cache as usable for AOI automation.
 The same helper now serves as the explicit acquisition driver: `--mode dry-run`
 keeps the run read-only, `--mode local-copy --apply` copies staged local
 inputs into the cache, and `--mode download --download` is the only path that

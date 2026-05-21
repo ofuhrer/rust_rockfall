@@ -70,6 +70,26 @@ def render_text_report(report: dict[str, object]) -> str:
         lines.append(f"- fixture_backed_required_product_count: {summary.get('fixture_backed_required_product_count', 0)}")
         lines.append(f"- missing_required_product_count: {summary.get('missing_required_product_count', 0)}")
         lines.append(f"- metadata_mismatch_required_product_count: {summary.get('metadata_mismatch_required_product_count', 0)}")
+    recovery = report.get("cache_recovery") or {}
+    if isinstance(recovery, dict):
+        lines.append("cache_recovery:")
+        lines.append(f"- status: {recovery.get('status', '')}")
+        lines.append(f"- blocked_status: {recovery.get('blocked_status', '')}")
+        lines.append(f"- next_command_id: {recovery.get('next_command_id', '')}")
+        lines.append(f"- next_command: {recovery.get('next_command', '')}")
+        lines.append(f"- next_files: {', '.join(recovery.get('next_files') or []) or 'none'}")
+        lines.append(f"- recovery_note: {recovery.get('recovery_note', '')}")
+        if recovery.get("product_hints"):
+            lines.append("- product_hints:")
+            for hint in recovery["product_hints"]:
+                if not isinstance(hint, dict):
+                    continue
+                lines.append(
+                    f"  - {hint.get('product_id', '')}: blocked_status={hint.get('blocked_status', '')}, "
+                    f"next_command={hint.get('next_command', '')}, "
+                    f"next_files={', '.join(hint.get('next_files') or []) or 'none'}, "
+                    f"note={hint.get('recovery_note', '')}"
+                )
     lines.append("products:")
     products = report.get("products") or []
     if products:

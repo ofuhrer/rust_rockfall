@@ -48,6 +48,14 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["public_geodata_workflow_contract"]["synthetic_fixture_readiness_status"], "not_applicable")
         self.assertEqual(report["public_geodata_workflow_contract"]["required_aoi_metadata"][2]["field"], "site_extent.crs")
         self.assertEqual(report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["schema_version"], "swiss_public_geodata_cache_contract_v1")
+        self.assertEqual(
+            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["recovery_hints"]["missing"]["next_command_id"],
+            "acquire_public_geodata_dry_run",
+        )
+        self.assertEqual(
+            report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["recovery_hints"]["metadata_mismatch"]["next_file_templates"][0],
+            "products[*].actual.metadata_path",
+        )
         stage_commands = [
             row["command"]
             for row in report["public_geodata_workflow_contract"]["public_geodata_cache_contract"]["stage_commands"]
@@ -338,6 +346,7 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertIn("public_context_acquisition_plan:", text)
         self.assertIn("validate_public_real_site_conditional_pilot_run.py", text)
         self.assertIn("acquisition_manifest_status:", text)
+        self.assertIn("recovery_hints:", text)
         self.assertIn("public_context_product_requirements:", text)
         self.assertIn("deferred_public_context_categories:", text)
         self.assertIn("blocked_second_site_commands:", text)

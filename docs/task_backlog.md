@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-435: Rehearse Real-AOI Cache Verification With Missing And Partial Inputs
-
-Goal: Make public-geodata cache verification produce actionable missing/partial/input-mismatch reports for arbitrary AOI staging roots.
-
-Capability gap reduced: Hidden local-state coupling in real-AOI preprocessing.
-
-Why this outranks alternatives: Robust failure messages for missing or partial public inputs are required before broad AOI automation or Balfrin execution can be trusted.
-
-Inspect first:
-
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/test_second_site_public_geodata_preflight.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Fixture-backed cache-verification cases for missing, partial, metadata-mismatched, and ready public inputs.
-- Machine-readable next-command or next-file hints for each blocked state.
-- Updated AOI manual or geodata prep doc with the concise recovery path.
-
-Definition of done:
-
-- Cache verification distinguishes ready, partial, missing, and metadata-mismatched inputs with actionable recovery hints and focused tests.
-
-Boundaries: No downloads, no fabricated real geodata, no physical-evidence claim.
-
 ### TB-436: Exercise AOI Terrain Preprocessing On A Real Staged Crop
 
 Goal: Run the terrain preprocessing path against a real staged AOI crop when available, otherwise fail closed with the exact missing input and command needed.
