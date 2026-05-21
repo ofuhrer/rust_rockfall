@@ -149,6 +149,7 @@ def validate_release_sampling(sampling: dict[str, Any]) -> None:
 def validate_block_scenario_policy(block_policy: dict[str, Any], status: str) -> None:
     require(block_policy.get("active_shape_physics_supported") is False, "active shape physics must remain unsupported by this policy")
     require(block_policy.get("sampling_weight_semantics") == "conditional_sampling_only", "block sampling weights must remain conditional_sampling_only")
+    validate_family_templates(block_policy)
     scenarios = require_list(block_policy.get("scenarios"), "block_scenario_policy.scenarios")
     if status == "template_not_run" and not scenarios:
         return
@@ -161,7 +162,20 @@ def validate_block_scenario_policy(block_policy: dict[str, Any], status: str) ->
         require(scenario_id not in ids, f"duplicate block_scenario_id {scenario_id!r}")
         ids.add(scenario_id)
         require_text(scenario.get("block_size_class"), f"block scenario {scenario_id}.block_size_class")
-        require(scenario.get("block_shape_class") == "sphere", f"block scenario {scenario_id} must use block_shape_class sphere until active shape physics exists")
+        shape_class = require_text(scenario.get("block_shape_class"), f"block scenario {scenario_id}.block_shape_class")
+        require(
+            shape_class in {"sphere", "equant", "platy", "elongated"},
+            f"block scenario {scenario_id} uses unsupported passive block_shape_class {shape_class!r}",
+        )
+        if shape_class != "sphere":
+            require(
+                require_text(
+                    scenario.get("deterministic_orientation_policy"),
+                    f"block scenario {scenario_id}.deterministic_orientation_policy",
+                )
+                == "passive_shape_metadata_no_orientation_sampling",
+                f"block scenario {scenario_id} non-spherical shape labels must remain passive metadata",
+            )
         weight = require_number(scenario.get("sampling_weight"), f"block scenario {scenario_id}.sampling_weight")
         require(math.isfinite(weight) and weight >= 0.0, f"block scenario {scenario_id} sampling_weight must be finite and nonnegative")
         total_weight += weight
@@ -171,6 +185,48 @@ def validate_block_scenario_policy(block_policy: dict[str, Any], status: str) ->
         for forbidden in ("physical_probability", "annual_frequency_per_year", "return_period_years"):
             require(scenario.get(forbidden) in (None, ""), f"block scenario {scenario_id} must not set {forbidden}")
     require(total_weight > 0.0, "block scenario sampling_weight total must be positive")
+
+
+def validate_family_templates(block_policy: dict[str, Any]) -> None:
+    volume_families = block_policy.get("block_volume_families")
+    shape_families = block_policy.get("shape_families")
+    if volume_families is None and shape_families is None:
+        return
+    volumes = require_list(volume_families, "block_scenario_policy.block_volume_families")
+    shapes = require_list(shape_families, "block_scenario_policy.shape_families")
+    require_text(block_policy.get("scenario_family_template_id"), "block_scenario_policy.scenario_family_template_id")
+    require(
+        require_text(block_policy.get("deterministic_orientation_policy"), "block_scenario_policy.deterministic_orientation_policy")
+        == "passive_shape_metadata_no_orientation_sampling",
+        "deterministic orientation policy must keep shape labels passive",
+    )
+    require_text(block_policy.get("deterministic_repetition_policy"), "block_scenario_policy.deterministic_repetition_policy")
+    require(len(volumes) >= 3, "block_volume_families must include at least small, medium, and large families")
+    require(len(shapes) >= 3, "shape_families must include at least equant, platy, and elongated families")
+    volume_classes = set()
+    for index, raw in enumerate(volumes):
+        family = require_mapping(raw, f"block_volume_families[{index}]")
+        family_id = require_text(family.get("block_family_id"), f"block_volume_families[{index}].block_family_id")
+        volume_classes.add(require_text(family.get("block_size_class"), f"block volume family {family_id}.block_size_class"))
+        weight = require_number(family.get("sampling_weight"), f"block volume family {family_id}.sampling_weight")
+        require(math.isfinite(weight) and weight >= 0.0, f"block volume family {family_id} sampling_weight must be finite and nonnegative")
+        require(family.get("block_radius_m") is not None or family.get("block_mass_kg") is not None, f"block volume family {family_id} must record block_radius_m or block_mass_kg")
+    require(any("small" in item for item in volume_classes), "block_volume_families must include a small class")
+    require(any("medium" in item for item in volume_classes), "block_volume_families must include a medium class")
+    require(any("large" in item for item in volume_classes), "block_volume_families must include a large class")
+    shape_classes = set()
+    for index, raw in enumerate(shapes):
+        family = require_mapping(raw, f"shape_families[{index}]")
+        shape_id = require_text(family.get("shape_family_id"), f"shape_families[{index}].shape_family_id")
+        shape_class = require_text(family.get("block_shape_class"), f"shape family {shape_id}.block_shape_class")
+        shape_classes.add(shape_class)
+        require(
+            require_text(family.get("rust_input_support"), f"shape family {shape_id}.rust_input_support") == "passive_metadata_only",
+            f"shape family {shape_id} must declare passive metadata-only support",
+        )
+        weight = require_number(family.get("sampling_weight"), f"shape family {shape_id}.sampling_weight")
+        require(math.isfinite(weight) and weight >= 0.0, f"shape family {shape_id} sampling_weight must be finite and nonnegative")
+    require({"equant", "platy", "elongated"}.issubset(shape_classes), "shape_families must include equant, platy, and elongated")
 
 
 def validate_claim_boundary(boundary: dict[str, Any]) -> None:

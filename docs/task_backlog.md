@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-419: Add Rock Shape And Block-Volume Scenario Families
-
-Goal: Make deterministic block-volume and rock-shape scenario families first-class inputs to scenario-table generation.
-
-Capability gap reduced: Handcrafted scenario semantics and weak shape/volume uncertainty representation.
-
-Why this outranks alternatives: RAMMS guidance shows that block volume and shape variation are core scenario dimensions; scaling release zones without structured scenario families would multiply poorly documented assumptions.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
-- `docs/probabilistic_scenario_model_design.md`
-
-Deliverables:
-
-- Deterministic scenario-family templates for small/medium/large block volumes and at least equant/platy/elongated shape classes where supported by the current Rust inputs.
-- Scenario-table provenance fields that identify release geometry, block family, shape family, and deterministic orientation/repetition policy.
-- Tests proving stable scenario IDs and cardinality for a fixture candidate set.
-
-Definition of done:
-
-- A multi-zone candidate set can produce reproducible scenario tables with explicit block/shape families and no hidden physical-frequency semantics.
-
-Boundaries: No new physics, no calibrated block population, no annual-frequency or physical-probability claims.
-
 ### TB-420: Add Deterministic Release Geometry Sampling Modes
 
 Goal: Support deterministic point, line, and area release sampling from candidate source geometries with stable release IDs and reproducible start distributions.

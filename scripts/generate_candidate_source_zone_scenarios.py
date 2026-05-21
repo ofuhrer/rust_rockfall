@@ -80,10 +80,15 @@ FREEZER_SCENARIO_TABLE_COLUMNS = [
     "candidate_release_zone_id",
     "release_row_id",
     "source_zone_id",
+    "release_geometry_id",
+    "release_geometry_type",
     "block_family_id",
+    "shape_family_id",
     "block_scenario_id",
     "block_size_class",
     "block_shape_class",
+    "deterministic_orientation_policy",
+    "deterministic_repetition_policy",
     "block_radius_m",
     "block_mass_kg",
     "trajectory_count",
@@ -101,12 +106,17 @@ SCENARIO_TABLE_COLUMNS = [
     "candidate_repeat_index",
     "release_point_id",
     "source_zone_id",
+    "release_geometry_id",
+    "release_geometry_type",
     "source_zone_family_id",
     "scenario_family_template_id",
     "block_family_id",
+    "shape_family_id",
     "block_scenario_id",
     "block_size_class",
     "block_shape_class",
+    "deterministic_orientation_policy",
+    "deterministic_repetition_policy",
     "release_point_mass_kg",
     "release_point_radius_m",
     "block_radius_m",
@@ -126,8 +136,9 @@ DEFAULT_FREEZER_BLOCK_SCENARIOS = [
     {
         "block_scenario_id": "reviewed_block_small",
         "block_family_id": "reviewed_block_family_small",
+        "shape_family_id": "reviewed_shape_equant",
         "block_size_class": "reviewed_small",
-        "block_shape_class": "sphere",
+        "block_shape_class": "equant",
         "block_radius_m": 0.16,
         "block_mass_kg": 40.0,
         "sampling_weight": 3.0,
@@ -135,8 +146,9 @@ DEFAULT_FREEZER_BLOCK_SCENARIOS = [
     {
         "block_scenario_id": "reviewed_block_medium",
         "block_family_id": "reviewed_block_family_medium",
+        "shape_family_id": "reviewed_shape_equant",
         "block_size_class": "reviewed_medium",
-        "block_shape_class": "sphere",
+        "block_shape_class": "equant",
         "block_radius_m": 0.176667,
         "block_mass_kg": 69.0,
         "sampling_weight": 5.0,
@@ -144,8 +156,9 @@ DEFAULT_FREEZER_BLOCK_SCENARIOS = [
     {
         "block_scenario_id": "reviewed_block_large",
         "block_family_id": "reviewed_block_family_large",
+        "shape_family_id": "reviewed_shape_equant",
         "block_size_class": "reviewed_large",
-        "block_shape_class": "sphere",
+        "block_shape_class": "equant",
         "block_radius_m": 0.198333,
         "block_mass_kg": 79.0,
         "sampling_weight": 2.0,
@@ -545,6 +558,10 @@ def build_rows(
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     policy_prefix = policy_root_prefix(policy)
+    release_geometry = build_release_geometry_provenance(policy)
+    deterministic_policy = build_deterministic_orientation_repetition_policy(
+        policy.get("block_scenario_policy", {}) if isinstance(policy.get("block_scenario_policy"), dict) else {}
+    )
     for candidate_record in candidate_records:
         candidate_id = text_value(candidate_record.get("candidate_release_zone_record_id"))
         source_zone_id = text_value(candidate_record.get("source_zone_id"))
@@ -565,12 +582,17 @@ def build_rows(
                         "candidate_repeat_index": repeat_index,
                         "release_point_id": release_point_id,
                         "source_zone_id": source_zone_id,
+                        "release_geometry_id": release_geometry["release_geometry_id"],
+                        "release_geometry_type": release_geometry["release_geometry_type"],
                         "source_zone_family_id": source_zone_family_id,
                         "scenario_family_template_id": template_id,
                         "block_family_id": "candidate_release_point_summary",
+                        "shape_family_id": "not_applicable",
                         "block_scenario_id": f"{policy_prefix}_candidate_release_point_summary",
                         "block_size_class": "candidate_release_point_summary",
                         "block_shape_class": "",
+                        "deterministic_orientation_policy": deterministic_policy["orientation_policy"],
+                        "deterministic_repetition_policy": deterministic_policy["repetition_policy"],
                         "release_point_mass_kg": candidate_record.get("release_point_mass_kg"),
                         "release_point_radius_m": candidate_record.get("release_point_radius_m"),
                         "block_radius_m": "",
@@ -588,9 +610,12 @@ def build_rows(
 
             if template_id == "policy_block_family_v1":
                 for block_scenario in block_scenarios:
-                    block_family_id = text_value(block_scenario.get("block_size_class")) or text_value(
-                        block_scenario.get("block_scenario_id")
+                    block_family_id = (
+                        text_value(block_scenario.get("block_family_id"))
+                        or text_value(block_scenario.get("block_size_class"))
+                        or text_value(block_scenario.get("block_scenario_id"))
                     )
+                    shape_family_id = text_value(block_scenario.get("shape_family_id")) or text_value(block_scenario.get("block_shape_class"))
                     rows.append(
                         {
                             "scenario_id": f"{candidate_id}__{text_value(block_scenario.get('block_scenario_id'))}",
@@ -598,12 +623,17 @@ def build_rows(
                             "candidate_repeat_index": repeat_index,
                             "release_point_id": release_point_id,
                             "source_zone_id": source_zone_id,
+                            "release_geometry_id": release_geometry["release_geometry_id"],
+                            "release_geometry_type": release_geometry["release_geometry_type"],
                             "source_zone_family_id": source_zone_family_id,
                             "scenario_family_template_id": template_id,
                             "block_family_id": block_family_id,
+                            "shape_family_id": shape_family_id,
                             "block_scenario_id": text_value(block_scenario.get("block_scenario_id")),
                             "block_size_class": text_value(block_scenario.get("block_size_class")),
                             "block_shape_class": text_value(block_scenario.get("block_shape_class")),
+                            "deterministic_orientation_policy": text_value(block_scenario.get("deterministic_orientation_policy")) or deterministic_policy["orientation_policy"],
+                            "deterministic_repetition_policy": text_value(block_scenario.get("deterministic_repetition_policy")) or deterministic_policy["repetition_policy"],
                             "release_point_mass_kg": candidate_record.get("release_point_mass_kg"),
                             "release_point_radius_m": candidate_record.get("release_point_radius_m"),
                             "block_radius_m": block_scenario.get("block_radius_m"),
@@ -688,14 +718,20 @@ def build_manifest(
     candidate_cardinality = summarize_candidate_cardinality(candidate_records, rows, template_ids, block_scenarios)
     source_zone_family_cardinality = summarize_group_cardinality(rows, "source_zone_family_id")
     block_family_cardinality = summarize_group_cardinality(rows, "block_family_id")
+    shape_family_cardinality = summarize_group_cardinality(rows, "shape_family_id")
     scenario_family_template_cardinality = summarize_group_cardinality(rows, "scenario_family_template_id")
+    release_geometry_cardinality = summarize_group_cardinality(rows, "release_geometry_id")
     row_summaries = [
         {
             "row_id": text_value(row.get("scenario_id")),
             "candidate_release_zone_record_id": text_value(row.get("candidate_release_zone_record_id")),
+            "release_geometry_id": text_value(row.get("release_geometry_id")),
             "source_zone_family_id": text_value(row.get("source_zone_family_id")),
             "scenario_family_template_id": text_value(row.get("scenario_family_template_id")),
             "block_family_id": text_value(row.get("block_family_id")),
+            "shape_family_id": text_value(row.get("shape_family_id")),
+            "deterministic_orientation_policy": text_value(row.get("deterministic_orientation_policy")),
+            "deterministic_repetition_policy": text_value(row.get("deterministic_repetition_policy")),
             "sampling_weight": row.get("sampling_weight"),
             "normalized_sampling_share": row.get("normalized_sampling_share"),
             "release_candidate_provenance_state": text_value(row.get("release_candidate_provenance_state")),
@@ -718,12 +754,20 @@ def build_manifest(
         "scenario_row_count": len(rows),
         "candidate_release_zone_record_ids": [text_value(candidate.get("candidate_release_zone_record_id")) for candidate in candidate_records],
         "source_zone_family_ids": sorted({text_value(candidate.get("source_zone_family_id")) for candidate in candidate_records}),
-        "block_family_ids": sorted({text_value(item.get("block_size_class")) or text_value(item.get("block_scenario_id")) for item in block_scenarios}),
+        "block_family_ids": sorted({
+            text_value(item.get("block_family_id"))
+            or text_value(item.get("block_size_class"))
+            or text_value(item.get("block_scenario_id"))
+            for item in block_scenarios
+        }),
+        "shape_family_ids": sorted({text_value(item.get("shape_family_id")) or text_value(item.get("block_shape_class")) for item in block_scenarios}),
         "scenario_family_template_ids": list(template_ids),
         "row_ids": [text_value(row.get("scenario_id")) for row in rows],
+        "release_geometry_cardinality": release_geometry_cardinality,
         "candidate_cardinality": candidate_cardinality,
         "source_zone_family_cardinality": source_zone_family_cardinality,
         "block_family_cardinality": block_family_cardinality,
+        "shape_family_cardinality": shape_family_cardinality,
         "scenario_family_template_cardinality": scenario_family_template_cardinality,
         "row_summaries": row_summaries,
         "conditional_weighting_semantics": {
@@ -736,6 +780,10 @@ def build_manifest(
         "release_candidate_physical_meaning_firewall": release_candidate_firewall
         or build_release_candidate_firewall(candidate_records=candidate_records, rows=rows),
         "forest_realization_plan": build_forest_realization_plan(),
+        "deterministic_orientation_repetition_policy": build_deterministic_orientation_repetition_policy(
+            policy.get("block_scenario_policy", {}) if isinstance(policy.get("block_scenario_policy"), dict) else {}
+        ),
+        "block_shape_volume_family_templates": build_family_template_summary(policy),
         "first_scaling_bottleneck": first_scaling_bottleneck,
         "tb_183_planning_input": build_tb_183_planning_input(
             candidate_record_count=len(candidate_records),
@@ -882,8 +930,9 @@ def normalize_freezer_block_scenarios(block_scenarios: list[dict[str, Any]]) -> 
         if block_scenario_id in ids:
             raise CandidateSourceZoneFreezerError(f"duplicate block_scenario_id: {block_scenario_id}")
         block_size_class = text_value(scenario.get("block_size_class"))
-        block_shape_class = text_value(scenario.get("block_shape_class")) or "sphere"
+        block_shape_class = text_value(scenario.get("block_shape_class")) or "equant"
         block_family_id = text_value(scenario.get("block_family_id")) or block_size_class or block_scenario_id
+        shape_family_id = text_value(scenario.get("shape_family_id")) or block_shape_class
         block_radius_m = scenario.get("block_radius_m")
         block_mass_kg = scenario.get("block_mass_kg")
         sampling_weight = scenario.get("sampling_weight")
@@ -901,11 +950,14 @@ def normalize_freezer_block_scenarios(block_scenarios: list[dict[str, Any]]) -> 
             {
                 "block_scenario_id": block_scenario_id,
                 "block_family_id": block_family_id,
+                "shape_family_id": shape_family_id,
                 "block_size_class": block_size_class or block_family_id,
                 "block_shape_class": block_shape_class,
                 "block_radius_m": block_radius_m,
                 "block_mass_kg": block_mass_kg,
                 "sampling_weight": weight,
+                "deterministic_orientation_policy": text_value(scenario.get("deterministic_orientation_policy")) or "passive_shape_metadata_no_orientation_sampling",
+                "deterministic_repetition_policy": text_value(scenario.get("deterministic_repetition_policy")) or "one_row_per_release_geometry_block_volume_shape_family",
             }
         )
     if total_weight <= 0.0:
@@ -1157,6 +1209,7 @@ def build_freezer_scenario_rows(
     seed: int,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    release_geometry_id = f"{source_zone_id}__deterministic_grid"
     for release_row in release_rows:
         for block_scenario in block_scenarios:
             scenario_id = f"{release_row['release_row_id']}__{block_scenario['block_scenario_id']}"
@@ -1167,10 +1220,15 @@ def build_freezer_scenario_rows(
                     "candidate_release_zone_id": release_row["candidate_release_zone_id"],
                     "release_row_id": release_row["release_row_id"],
                     "source_zone_id": source_zone_id,
+                    "release_geometry_id": release_geometry_id,
+                    "release_geometry_type": "polygon",
                     "block_family_id": text_value(block_scenario.get("block_family_id")) or text_value(block_scenario.get("block_size_class")),
+                    "shape_family_id": text_value(block_scenario.get("shape_family_id")) or text_value(block_scenario.get("block_shape_class")),
                     "block_scenario_id": text_value(block_scenario.get("block_scenario_id")),
                     "block_size_class": text_value(block_scenario.get("block_size_class")),
-                    "block_shape_class": text_value(block_scenario.get("block_shape_class")) or "sphere",
+                    "block_shape_class": text_value(block_scenario.get("block_shape_class")) or "equant",
+                    "deterministic_orientation_policy": text_value(block_scenario.get("deterministic_orientation_policy")) or "passive_shape_metadata_no_orientation_sampling",
+                    "deterministic_repetition_policy": text_value(block_scenario.get("deterministic_repetition_policy")) or "one_row_per_release_geometry_block_volume_shape_family",
                     "block_radius_m": block_scenario.get("block_radius_m"),
                     "block_mass_kg": block_scenario.get("block_mass_kg"),
                     "trajectory_count": trajectory_count,
@@ -1248,18 +1306,24 @@ def build_freezer_policy(
     block_policy["block_population_status"] = "representative_scenarios_not_physical_population"
     block_policy["active_shape_physics_supported"] = False
     block_policy["sampling_weight_semantics"] = "conditional_sampling_only"
+    block_policy["scenario_family_template_id"] = "deterministic_block_volume_shape_family_v1"
+    block_policy["deterministic_orientation_policy"] = "passive_shape_metadata_no_orientation_sampling"
+    block_policy["deterministic_repetition_policy"] = "one_row_per_release_geometry_block_volume_shape_family"
     block_policy["trajectory_count_target"] = trajectory_count
     block_policy["scenarios"] = [
         {
             "block_scenario_id": text_value(scenario.get("block_scenario_id")),
             "block_family_id": text_value(scenario.get("block_family_id")) or text_value(scenario.get("block_size_class")),
+            "shape_family_id": text_value(scenario.get("shape_family_id")) or text_value(scenario.get("block_shape_class")),
             "block_size_class": text_value(scenario.get("block_size_class")),
-            "block_shape_class": text_value(scenario.get("block_shape_class")) or "sphere",
+            "block_shape_class": text_value(scenario.get("block_shape_class")) or "equant",
             "block_radius_m": scenario.get("block_radius_m"),
             "block_mass_kg": scenario.get("block_mass_kg"),
             "sampling_weight": float(scenario.get("sampling_weight") or 0.0),
             "trajectory_count_target": trajectory_count,
             "conditional_weight": float(scenario.get("sampling_weight") or 0.0),
+            "deterministic_orientation_policy": text_value(scenario.get("deterministic_orientation_policy")) or "passive_shape_metadata_no_orientation_sampling",
+            "deterministic_repetition_policy": text_value(scenario.get("deterministic_repetition_policy")) or "one_row_per_release_geometry_block_volume_shape_family",
         }
         for scenario in block_scenarios
     ]
@@ -1295,6 +1359,7 @@ def build_freezer_policy(
         "seed_policy": "fixed_integer_recorded_before_simulation",
         "seed": seed,
         "block_family_ids": [text_value(scenario.get("block_family_id")) or text_value(scenario.get("block_size_class")) for scenario in block_scenarios],
+        "shape_family_ids": [text_value(scenario.get("shape_family_id")) or text_value(scenario.get("block_shape_class")) for scenario in block_scenarios],
         "conditional_weight_total": sum(float(scenario.get("sampling_weight") or 0.0) for scenario in block_scenarios),
     }
     return policy
@@ -1555,7 +1620,7 @@ def load_csv_rows(path: Path) -> list[dict[str, str]]:
 
 def load_block_scenarios(policy: dict[str, Any]) -> list[dict[str, Any]]:
     block_policy = policy.get("block_scenario_policy", {}) if isinstance(policy.get("block_scenario_policy"), dict) else {}
-    scenarios = block_policy.get("scenarios", []) if isinstance(block_policy.get("scenarios"), list) else []
+    scenarios = expand_policy_block_scenarios(policy)
     block_scenarios: list[dict[str, Any]] = []
     for scenario in scenarios:
         if not isinstance(scenario, dict):
@@ -1563,14 +1628,103 @@ def load_block_scenarios(policy: dict[str, Any]) -> list[dict[str, Any]]:
         block_scenarios.append(
             {
                 "block_scenario_id": text_value(scenario.get("block_scenario_id")),
+                "block_family_id": text_value(scenario.get("block_family_id")) or text_value(scenario.get("block_size_class")),
+                "shape_family_id": text_value(scenario.get("shape_family_id")) or text_value(scenario.get("block_shape_class")),
                 "block_size_class": text_value(scenario.get("block_size_class")),
                 "block_shape_class": text_value(scenario.get("block_shape_class")),
                 "block_radius_m": scenario.get("block_radius_m"),
                 "block_mass_kg": scenario.get("block_mass_kg"),
                 "sampling_weight": scenario.get("sampling_weight"),
+                "deterministic_orientation_policy": text_value(scenario.get("deterministic_orientation_policy")),
+                "deterministic_repetition_policy": text_value(scenario.get("deterministic_repetition_policy")),
             }
         )
     return block_scenarios
+
+
+def expand_policy_block_scenarios(policy: dict[str, Any]) -> list[dict[str, Any]]:
+    block_policy = policy.get("block_scenario_policy", {}) if isinstance(policy.get("block_scenario_policy"), dict) else {}
+    volume_families = block_policy.get("block_volume_families", []) if isinstance(block_policy.get("block_volume_families"), list) else []
+    shape_families = block_policy.get("shape_families", []) if isinstance(block_policy.get("shape_families"), list) else []
+    deterministic_policy = build_deterministic_orientation_repetition_policy(block_policy)
+    if volume_families and shape_families:
+        scenarios: list[dict[str, Any]] = []
+        for volume in volume_families:
+            if not isinstance(volume, dict):
+                continue
+            for shape in shape_families:
+                if not isinstance(shape, dict):
+                    continue
+                block_family_id = text_value(volume.get("block_family_id")) or text_value(volume.get("block_volume_family_id"))
+                shape_family_id = text_value(shape.get("shape_family_id")) or text_value(shape.get("block_shape_class"))
+                if not block_family_id or not shape_family_id:
+                    continue
+                scenarios.append(
+                    {
+                        "block_scenario_id": f"{block_family_id}__{shape_family_id}",
+                        "block_family_id": block_family_id,
+                        "shape_family_id": shape_family_id,
+                        "block_size_class": text_value(volume.get("block_size_class")) or block_family_id,
+                        "block_shape_class": text_value(shape.get("block_shape_class")) or shape_family_id,
+                        "block_radius_m": volume.get("block_radius_m"),
+                        "block_mass_kg": volume.get("block_mass_kg"),
+                        "sampling_weight": float(volume.get("sampling_weight") or 0.0) * float(shape.get("sampling_weight") or 0.0),
+                        "deterministic_orientation_policy": text_value(shape.get("deterministic_orientation_policy")) or deterministic_policy["orientation_policy"],
+                        "deterministic_repetition_policy": text_value(shape.get("deterministic_repetition_policy")) or deterministic_policy["repetition_policy"],
+                    }
+                )
+        return scenarios
+    scenarios = block_policy.get("scenarios", []) if isinstance(block_policy.get("scenarios"), list) else []
+    return [scenario for scenario in scenarios if isinstance(scenario, dict)]
+
+
+def build_family_template_summary(policy: dict[str, Any]) -> dict[str, Any]:
+    block_policy = policy.get("block_scenario_policy", {}) if isinstance(policy.get("block_scenario_policy"), dict) else {}
+    volume_families = block_policy.get("block_volume_families", []) if isinstance(block_policy.get("block_volume_families"), list) else []
+    shape_families = block_policy.get("shape_families", []) if isinstance(block_policy.get("shape_families"), list) else []
+    return {
+        "template_id": text_value(block_policy.get("scenario_family_template_id")) or "policy_block_family_v1",
+        "block_volume_families": [
+            {
+                "block_family_id": text_value(item.get("block_family_id")) or text_value(item.get("block_volume_family_id")),
+                "block_size_class": text_value(item.get("block_size_class")),
+                "block_radius_m": item.get("block_radius_m"),
+                "block_mass_kg": item.get("block_mass_kg"),
+                "sampling_weight": item.get("sampling_weight"),
+            }
+            for item in volume_families
+            if isinstance(item, dict)
+        ],
+        "shape_families": [
+            {
+                "shape_family_id": text_value(item.get("shape_family_id")) or text_value(item.get("block_shape_class")),
+                "block_shape_class": text_value(item.get("block_shape_class")),
+                "rust_input_support": text_value(item.get("rust_input_support")) or "passive_metadata_only",
+                "sampling_weight": item.get("sampling_weight"),
+            }
+            for item in shape_families
+            if isinstance(item, dict)
+        ],
+    }
+
+
+def build_release_geometry_provenance(policy: dict[str, Any]) -> dict[str, str]:
+    source_zone_policy = policy.get("source_zone_policy", {}) if isinstance(policy.get("source_zone_policy"), dict) else {}
+    release_sampling = source_zone_policy.get("release_sampling", {}) if isinstance(source_zone_policy.get("release_sampling"), dict) else {}
+    source_zone_id = text_value(source_zone_policy.get("source_zone_id")) or "source_zone"
+    mode = text_value(release_sampling.get("mode")) or "deterministic_grid"
+    geometry = source_zone_policy.get("geometry", {}) if isinstance(source_zone_policy.get("geometry"), dict) else {}
+    return {
+        "release_geometry_id": f"{source_zone_id}__{mode}",
+        "release_geometry_type": text_value(geometry.get("type")) or text_value(source_zone_policy.get("allowed_geometry_type")) or "polygon",
+    }
+
+
+def build_deterministic_orientation_repetition_policy(block_policy: dict[str, Any]) -> dict[str, str]:
+    return {
+        "orientation_policy": text_value(block_policy.get("deterministic_orientation_policy")) or "passive_shape_metadata_no_orientation_sampling",
+        "repetition_policy": text_value(block_policy.get("deterministic_repetition_policy")) or "one_row_per_release_geometry_block_volume_shape_family",
+    }
 
 
 def resolve_output_root(output_root: Path) -> Path:

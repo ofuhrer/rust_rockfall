@@ -40,10 +40,9 @@ class TschamutBlockScenarioTableGenerationTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            self.assertEqual(
-                csv_path.read_text(encoding="utf-8"),
-                (FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv").read_text(encoding="utf-8"),
-            )
+            generated_rows = generator.load_csv_rows(csv_path)
+            reference_rows = generator.load_csv_rows(FIXTURE_INPUT_ROOT / "tschamut_public_scenario_table_v1.csv")
+            self.assertEqual(generator.normalize_rows_for_compare(reference_rows), [generator.row_for_csv(row) for row in generated_rows])
 
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertEqual(manifest["schema_version"], "candidate_source_zone_block_scenario_generation_manifest_v1")
@@ -57,6 +56,10 @@ class TschamutBlockScenarioTableGenerationTests(unittest.TestCase):
             self.assertEqual(manifest["release_metadata_provenance"]["release_point_count"], 10)
             self.assertEqual(manifest["release_metadata_provenance"]["release_mass_kg_mean"], 62.3)
             self.assertEqual(manifest["release_metadata_provenance"]["release_radius_m_mean"], 0.176)
+            self.assertEqual(manifest["release_geometry_provenance"]["release_geometry_id"], "tschamut_public_lps_release_bbox__deterministic_grid")
+            self.assertEqual(manifest["rows"][0]["block_family_id"], "tschamut_public_observed_rows_family")
+            self.assertEqual(manifest["rows"][0]["shape_family_id"], "sphere_metadata_only")
+            self.assertEqual(manifest["rows"][0]["deterministic_orientation_policy"], "passive_shape_metadata_no_orientation_sampling")
             self.assertEqual(manifest["normalized_sampling_share_total"], 1.0)
             self.assertEqual(manifest["conditional_weighting_semantics"]["sampling_weight_semantics"], "conditional_sampling_only")
             self.assertTrue(manifest["conditional_weighting_semantics"]["conditional_only_weighting"])
@@ -74,21 +77,39 @@ class TschamutBlockScenarioTableGenerationTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["scenario_table_status"], "ready")
-        self.assertEqual(first["scenario_table_summary"]["row_count"], 3)
+        self.assertEqual(first["scenario_table_summary"]["row_count"], 9)
         self.assertEqual(first["scenario_table_summary"]["row_ids"], [
-            "tschamut_public_lps_release_bbox__tschamut_public_block_small",
-            "tschamut_public_lps_release_bbox__tschamut_public_block_medium",
-            "tschamut_public_lps_release_bbox__tschamut_public_block_large",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_small__tschamut_public_shape_equant",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_small__tschamut_public_shape_platy",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_small__tschamut_public_shape_elongated",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_medium__tschamut_public_shape_equant",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_medium__tschamut_public_shape_platy",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_medium__tschamut_public_shape_elongated",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_large__tschamut_public_shape_equant",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_large__tschamut_public_shape_platy",
+            "tschamut_public_lps_release_bbox__tschamut_public_block_large__tschamut_public_shape_elongated",
         ])
         self.assertEqual(first["scenario_table_summary"]["block_scenario_ids"], [
-            "tschamut_public_block_small",
-            "tschamut_public_block_medium",
-            "tschamut_public_block_large",
+            "tschamut_public_block_small__tschamut_public_shape_equant",
+            "tschamut_public_block_small__tschamut_public_shape_platy",
+            "tschamut_public_block_small__tschamut_public_shape_elongated",
+            "tschamut_public_block_medium__tschamut_public_shape_equant",
+            "tschamut_public_block_medium__tschamut_public_shape_platy",
+            "tschamut_public_block_medium__tschamut_public_shape_elongated",
+            "tschamut_public_block_large__tschamut_public_shape_equant",
+            "tschamut_public_block_large__tschamut_public_shape_platy",
+            "tschamut_public_block_large__tschamut_public_shape_elongated",
         ])
-        self.assertEqual(first["scenario_table_summary"]["policy_sampling_weight_total"], 10.0)
+        self.assertEqual(first["scenario_table_summary"]["policy_sampling_weight_total"], 30.0)
         self.assertEqual(first["scenario_table_summary"]["normalized_sampling_share_total"], 1.0)
-        self.assertEqual([row["sampling_weight"] for row in first["generated_scenario_table_rows"]], [3.0, 5.0, 2.0])
-        self.assertEqual([row["normalized_sampling_share"] for row in first["scenario_table_manifest"]["rows"]], [0.3, 0.5, 0.2])
+        self.assertEqual([row["sampling_weight"] for row in first["generated_scenario_table_rows"]], [3.0, 3.0, 3.0, 5.0, 5.0, 5.0, 2.0, 2.0, 2.0])
+        self.assertEqual(first["scenario_table_manifest"]["block_shape_volume_family_templates"]["template_id"], "deterministic_block_volume_shape_family_v1")
+        self.assertEqual(
+            sorted({row["shape_family_id"] for row in first["generated_scenario_table_rows"]}),
+            ["tschamut_public_shape_elongated", "tschamut_public_shape_equant", "tschamut_public_shape_platy"],
+        )
+        self.assertTrue(all(row["release_geometry_id"] == "tschamut_public_lps_release_bbox__deterministic_grid" for row in first["generated_scenario_table_rows"]))
+        self.assertTrue(all(row["deterministic_orientation_policy"] == "passive_shape_metadata_no_orientation_sampling" for row in first["generated_scenario_table_rows"]))
         self.assertTrue(all(row["release_probability"] == "" for row in first["generated_scenario_table_rows"]))
         self.assertTrue(all(row["scenario_probability"] == "" for row in first["generated_scenario_table_rows"]))
         self.assertTrue(all(row["annual_frequency_per_year"] == "" for row in first["generated_scenario_table_rows"]))

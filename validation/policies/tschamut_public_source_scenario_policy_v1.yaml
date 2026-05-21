@@ -90,27 +90,77 @@ block_scenario_policy:
   block_population_status: representative_scenarios_not_physical_population
   active_shape_physics_supported: false
   sampling_weight_semantics: conditional_sampling_only
-  scenarios:
-    - block_scenario_id: tschamut_public_block_small
+  scenario_family_template_id: deterministic_block_volume_shape_family_v1
+  deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+  deterministic_repetition_policy: one_row_per_release_geometry_block_volume_shape_family
+  block_volume_families:
+    - block_family_id: tschamut_public_block_small
       block_size_class: tschamut_selected_rows_small
-      block_shape_class: sphere
       block_radius_m: 0.16
       block_mass_kg: 40.0
       sampling_weight: 3.0
       derivation_basis: selected public Tschamut rows with block_id 4 in the default ten-run package
-    - block_scenario_id: tschamut_public_block_medium
+    - block_family_id: tschamut_public_block_medium
       block_size_class: tschamut_selected_rows_medium
-      block_shape_class: sphere
       block_radius_m: 0.176667
       block_mass_kg: 69.0
       sampling_weight: 5.0
       derivation_basis: selected public Tschamut rows with block_id 1 in the default ten-run package
-    - block_scenario_id: tschamut_public_block_large
+    - block_family_id: tschamut_public_block_large
       block_size_class: tschamut_selected_rows_large
-      block_shape_class: sphere
       block_radius_m: 0.198333
       block_mass_kg: 79.0
       sampling_weight: 2.0
+      derivation_basis: selected public Tschamut rows with block_id 2 in the default ten-run package
+  shape_families:
+    - shape_family_id: tschamut_public_shape_equant
+      block_shape_class: equant
+      rust_input_support: passive_metadata_only
+      sampling_weight: 1.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+    - shape_family_id: tschamut_public_shape_platy
+      block_shape_class: platy
+      rust_input_support: passive_metadata_only
+      sampling_weight: 1.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+    - shape_family_id: tschamut_public_shape_elongated
+      block_shape_class: elongated
+      rust_input_support: passive_metadata_only
+      sampling_weight: 1.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+  scenarios:
+    - block_scenario_id: tschamut_public_block_small__tschamut_public_shape_equant
+      block_family_id: tschamut_public_block_small
+      shape_family_id: tschamut_public_shape_equant
+      block_size_class: tschamut_selected_rows_small
+      block_shape_class: equant
+      block_radius_m: 0.16
+      block_mass_kg: 40.0
+      sampling_weight: 3.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+      deterministic_repetition_policy: one_row_per_release_geometry_block_volume_shape_family
+      derivation_basis: selected public Tschamut rows with block_id 4 in the default ten-run package
+    - block_scenario_id: tschamut_public_block_medium__tschamut_public_shape_equant
+      block_family_id: tschamut_public_block_medium
+      shape_family_id: tschamut_public_shape_equant
+      block_size_class: tschamut_selected_rows_medium
+      block_shape_class: equant
+      block_radius_m: 0.176667
+      block_mass_kg: 69.0
+      sampling_weight: 5.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+      deterministic_repetition_policy: one_row_per_release_geometry_block_volume_shape_family
+      derivation_basis: selected public Tschamut rows with block_id 1 in the default ten-run package
+    - block_scenario_id: tschamut_public_block_large__tschamut_public_shape_equant
+      block_family_id: tschamut_public_block_large
+      shape_family_id: tschamut_public_shape_equant
+      block_size_class: tschamut_selected_rows_large
+      block_shape_class: equant
+      block_radius_m: 0.198333
+      block_mass_kg: 79.0
+      sampling_weight: 2.0
+      deterministic_orientation_policy: passive_shape_metadata_no_orientation_sampling
+      deterministic_repetition_policy: one_row_per_release_geometry_block_volume_shape_family
       derivation_basis: selected public Tschamut rows with block_id 2 in the default ten-run package
 
 claim_boundary:

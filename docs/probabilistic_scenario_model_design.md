@@ -238,6 +238,33 @@ block-size distributions. A block class can define:
 - optional class probability, only when a documented block-population model
   exists.
 
+Current deterministic scenario-table generation supports declared
+`block_volume_families` for small, medium, and large representative block
+volumes. These families are input templates for conditional scenario rows. Their
+`sampling_weight` values remain conditional design weights and do not define a
+calibrated block population, physical probability, annual frequency, return
+period, or risk.
+
+### Shape Family Classes
+
+Current scenario-table generation supports passive shape-family labels for at
+least `equant`, `platy`, and `elongated` classes. These labels are propagated as
+scenario provenance only. The active Rust simulation inputs do not use them to
+change contact physics or orientation-dependent behavior in the current phase.
+Every deterministic block/shape family row must therefore record:
+
+- `shape_family_id`;
+- `block_shape_class`;
+- `deterministic_orientation_policy`, currently
+  `passive_shape_metadata_no_orientation_sampling`;
+- `deterministic_repetition_policy`, currently one row per release geometry,
+  block-volume family, and shape family.
+
+The scenario table should also carry `release_geometry_id`, `block_family_id`,
+and `shape_family_id` so reducers and review tools can identify which release
+geometry and deterministic block/shape template produced a row without
+inferring hidden physical-frequency semantics.
+
 ### Future Block-Size Probability Distribution
 
 A future distribution model may assign probabilities to block classes or sample

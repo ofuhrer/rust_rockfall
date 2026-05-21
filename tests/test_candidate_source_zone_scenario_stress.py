@@ -70,13 +70,13 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertEqual(first["stress_test_status"], "ready")
         self.assertEqual(first["candidate_repeat_count"], 3)
         self.assertEqual(first["candidate_release_zone_record_count"], 30)
-        self.assertEqual(first["scenario_row_count"], 120)
+        self.assertEqual(first["scenario_row_count"], 300)
         self.assertTrue(first["tb_183_planning_input"]["ready_for_tb_183"])
         self.assertEqual(first["tb_183_planning_input"]["status"], "ready")
         self.assertEqual(first["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state"], "workflow_generated")
         self.assertEqual(first["release_candidate_physical_meaning_firewall"]["firewall_status"], "workflow_generated")
         self.assertEqual(first["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state_counts"]["workflow_generated"], 30)
-        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["scenario_row_count"], 120)
+        self.assertEqual(first["release_candidate_physical_meaning_firewall"]["scenario_row_count"], 300)
         self.assertEqual(first["release_candidate_physical_meaning_firewall"]["sampling_weight_semantics"], "conditional_sampling_only")
         self.assertEqual(first["scenario_table_manifest"]["release_candidate_physical_meaning_firewall"]["release_candidate_provenance_state"], "workflow_generated")
         self.assertEqual(first["scenario_table_manifest"]["row_summaries"][0]["release_candidate_provenance_state"], "workflow_generated")
@@ -89,19 +89,29 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertEqual(first["first_scaling_bottleneck"]["name"], "manifest_size")
 
         self.assertEqual(manifest["candidate_release_zone_record_count"], 30)
-        self.assertEqual(manifest["scenario_row_count"], 120)
+        self.assertEqual(manifest["scenario_row_count"], 300)
         self.assertEqual(manifest["candidate_repeat_count"], 3)
-        self.assertEqual(manifest["candidate_cardinality"][0]["row_count"], 4)
+        self.assertEqual(manifest["candidate_cardinality"][0]["row_count"], 10)
         self.assertEqual(manifest["candidate_cardinality"][0]["template_count"], 2)
         self.assertEqual(manifest["source_zone_family_cardinality"], [
-            {"group_id": "release_block_1", "row_count": 60},
-            {"group_id": "release_block_2", "row_count": 24},
-            {"group_id": "release_block_4", "row_count": 36},
+            {"group_id": "release_block_1", "row_count": 150},
+            {"group_id": "release_block_2", "row_count": 60},
+            {"group_id": "release_block_4", "row_count": 90},
         ])
         self.assertEqual(manifest["scenario_family_template_cardinality"], [
             {"group_id": "candidate_release_point_summary_v1", "row_count": 30},
-            {"group_id": "policy_block_family_v1", "row_count": 90},
+            {"group_id": "policy_block_family_v1", "row_count": 270},
         ])
+        self.assertEqual(manifest["release_geometry_cardinality"], [
+            {"group_id": "tschamut_public_lps_release_bbox__deterministic_grid", "row_count": 300},
+        ])
+        self.assertEqual(manifest["shape_family_cardinality"], [
+            {"group_id": "not_applicable", "row_count": 30},
+            {"group_id": "tschamut_public_shape_elongated", "row_count": 90},
+            {"group_id": "tschamut_public_shape_equant", "row_count": 90},
+            {"group_id": "tschamut_public_shape_platy", "row_count": 90},
+        ])
+        self.assertEqual(manifest["block_shape_volume_family_templates"]["template_id"], "deterministic_block_volume_shape_family_v1")
         self.assertEqual(manifest["row_ids"][0], "v004__repeat_000__candidate_release_point_summary")
         self.assertTrue(csv_text.startswith("scenario_id,"))
         self.assertIn("release_candidate_physical_meaning_firewall", report_text)
