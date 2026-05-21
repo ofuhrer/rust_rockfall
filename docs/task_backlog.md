@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-427: Build Balfrin Regional Split Submission Package
-
-Goal: Generate a no-submit Balfrin `postproc` submission package from the regional split/merge contract and current accepted source candidates.
-
-Capability gap reduced: Balfrin multi-zone demonstration readiness.
-
-Why this outranks alternatives: After local split/merge evidence, the next management-relevant step is a runnable, budgeted Balfrin package rather than another projection report.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- A no-submit package with exact command, writable remote roots, output budgets, preservation plan, and authorization/preflight status.
-- Failure-closed behavior if access, budget, output profile, or package contracts are not ready.
-- Tests or smoke checks proving no `sbatch` is attempted during package generation.
-
-Definition of done:
-
-- A GPT-5.5 worker can inspect one package and know whether a bounded `postproc` submission is authorized and runnable.
-
-Boundaries: No submission in this task, no non-postproc partition, no distributed execution, no scale-up or operational claim.
-
 ### TB-428: Execute Bounded Regional Split Balfrin Probe
 
 Goal: Submit and actively monitor one bounded `postproc` Balfrin probe from the approved regional split package when all repository gates pass.

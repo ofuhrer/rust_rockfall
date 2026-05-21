@@ -43,6 +43,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/execute_management_aoi_balfrin_run.py`
 - `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
 - `scripts/generate_balfrin_postproc_microbenchmark_package.py`
+- `scripts/generate_balfrin_regional_split_submission_package.py`
 - `scripts/generate_balfrin_target_area_demo_handoff.py`
 - `scripts/generate_balfrin_target_area_scenario_tables.py`
 - `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
