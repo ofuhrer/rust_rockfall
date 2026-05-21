@@ -9,8 +9,14 @@ from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCENARIO_SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 SCRIPT_PATH = ROOT / "scripts" / "generate_balfrin_regional_split_submission_package.py"
+SCENARIO_SPEC = importlib.util.spec_from_file_location("generate_candidate_source_zone_scenarios", SCENARIO_SCRIPT_PATH)
 SPEC = importlib.util.spec_from_file_location("generate_balfrin_regional_split_submission_package", SCRIPT_PATH)
+assert SCENARIO_SPEC is not None
+SCENARIO_MODULE = importlib.util.module_from_spec(SCENARIO_SPEC)
+assert SCENARIO_SPEC.loader is not None
+SCENARIO_SPEC.loader.exec_module(SCENARIO_MODULE)
 assert SPEC is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -127,6 +133,37 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertIn("missing regional merge manifest", report["first_blocker"]["reason"])
         self.assertFalse(report["ready_for_bounded_postproc_submission"])
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
+
+    def test_batched_scenario_smoke_package_tracks_contract_without_submitting(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp_root = Path(tmpdir)
+            scenario_output_root = tmp_root / "validation/private/tschamut_public_pilot/candidate_source_zone_stress_v1"
+            scenario_report = SCENARIO_MODULE.build_report(
+                policy_path=SCENARIO_MODULE.DEFAULT_POLICY,
+                release_points_path=SCENARIO_MODULE.DEFAULT_RELEASE_POINTS,
+                output_root=scenario_output_root,
+                candidate_repeat_count=3,
+                template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+            )
+            smoke_artifact_dir = tmp_root / "validation/private/balfrin_scenario_batch_smoke"
+            smoke_report = MODULE.build_batched_scenario_smoke_package(
+                scenario_batching_contract=scenario_report["scenario_batching_contract"],
+                artifact_dir=smoke_artifact_dir,
+            )
+            MODULE.materialize_batched_scenario_smoke_artifacts(smoke_report)
+            text = Path(smoke_report["package_text_path"]).read_text(encoding="utf-8")
+
+        self.assertEqual(smoke_report["schema_version"], "balfrin_scenario_batch_smoke_package_v1")
+        self.assertEqual(smoke_report["package_status"], "ready_for_batched_scenario_smoke")
+        self.assertTrue(smoke_report["ready_for_batched_scenario_smoke"])
+        self.assertIsNone(smoke_report["first_blocker"])
+        self.assertFalse(smoke_report["no_submit_semantics"]["sbatch_attempted"])
+        self.assertFalse(smoke_report["no_submit_semantics"]["submit_command_executed"])
+        self.assertTrue(smoke_report["no_submit_semantics"]["smoke_only"])
+        self.assertEqual(smoke_report["scenario_batch_count"], scenario_report["scenario_batching_contract"]["batch_count"])
+        self.assertEqual(smoke_report["scenario_batching_summary"]["batch_count"], 4)
+        self.assertIn("Batch count: `4`", text)
+        self.assertIn("package_generation_only: `True`", text)
 
 
 if __name__ == "__main__":

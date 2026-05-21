@@ -5806,3 +5806,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no source-frequency semantics, no physical probability semantics, no large production ensemble, no operational hazard claim, and no scale-up authorization were introduced.
 - Next task: `TB-440`
+
+### TB-440: Define Scenario Batching Contract For Multi-Zone Runs
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: define deterministic batching metadata for expanded multi-zone scenario tables and add a no-submit smoke package path for the batched contract.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `candidate_source_zone_scenario_batching_contract_v1` surface with ordered zone batches, nested scenario-family grouping, explicit budget-profile metadata, and non-overlap coverage summaries.
+  - Preserved the existing scenario-table ordering in the batch contract, wrote the contract to a dedicated JSON artifact, and surfaced a compact batching summary in the manifest and text report.
+  - Added a no-submit batched-scenario smoke-package helper and focused regressions for stable ordering, batch coverage, budget caps, and no-submit semantics.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py scripts/generate_balfrin_regional_split_submission_package.py tests/test_candidate_source_zone_scenario_stress.py tests/test_balfrin_regional_split_submission_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_balfrin_regional_split_submission_package -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_fixture_backed
+- Boundaries: no simulation physics changes, no Balfrin submission, no distributed execution, and no probability/frequency semantics were introduced.
+- Next task: `TB-441`

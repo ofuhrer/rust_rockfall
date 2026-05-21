@@ -29,6 +29,10 @@ DEFAULT_PACKAGE_JSON = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.json"
 DEFAULT_PACKAGE_TXT = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
 REGIONAL_SPLIT_PLAN_RELATIVE = Path("input/regional_split_execution_plan.json")
 REGIONAL_MERGE_MANIFEST_RELATIVE = Path("output/merged/regional_split_merge_manifest.json")
+SCENARIO_BATCH_SMOKE_SCHEMA_VERSION = "balfrin_scenario_batch_smoke_package_v1"
+DEFAULT_SCENARIO_BATCH_SMOKE_ARTIFACT_DIR = Path("/tmp/rust_rockfall/balfrin_scenario_batch_smoke_package_v1")
+DEFAULT_SCENARIO_BATCH_SMOKE_JSON = DEFAULT_SCENARIO_BATCH_SMOKE_ARTIFACT_DIR / f"{SCENARIO_BATCH_SMOKE_SCHEMA_VERSION}.json"
+DEFAULT_SCENARIO_BATCH_SMOKE_TXT = DEFAULT_SCENARIO_BATCH_SMOKE_ARTIFACT_DIR / f"{SCENARIO_BATCH_SMOKE_SCHEMA_VERSION}.txt"
 
 
 class BalfrinRegionalSplitSubmissionPackageError(ValueError):
@@ -377,6 +381,108 @@ def first_blocker(
             "reason": preflight_report.get("blocked_reason", ""),
         }
     return None
+
+
+def build_batched_scenario_smoke_package(
+    *,
+    scenario_batching_contract: dict[str, Any],
+    artifact_dir: Path = DEFAULT_SCENARIO_BATCH_SMOKE_ARTIFACT_DIR,
+) -> dict[str, Any]:
+    artifact_dir = resolve_output_root(artifact_dir)
+    if not is_allowed_output_root(artifact_dir):
+        raise BalfrinRegionalSplitSubmissionPackageError(
+            f"artifact-dir must stay under /tmp or validation/private: {artifact_dir}"
+        )
+
+    contract = dict(scenario_batching_contract or {})
+    contract_status = str(contract.get("batching_status") or "blocked_missing_inputs")
+    batch_count = int(contract.get("batch_count") or 0)
+    ready = contract_status == "ready" and batch_count > 0
+    package_status = "ready_for_batched_scenario_smoke" if ready else "failed_closed_scenario_batch_contract"
+    first_blocker = None if ready else {
+        "gate": "scenario_batching_contract",
+        "status": contract_status,
+        "reason": str(contract.get("blocked_reason") or "scenario batching contract is not ready"),
+    }
+    package_json_path = artifact_dir / DEFAULT_SCENARIO_BATCH_SMOKE_JSON.name
+    package_text_path = artifact_dir / DEFAULT_SCENARIO_BATCH_SMOKE_TXT.name
+    return {
+        "schema_version": SCENARIO_BATCH_SMOKE_SCHEMA_VERSION,
+        "package_status": package_status,
+        "ready_for_batched_scenario_smoke": ready,
+        "first_blocker": first_blocker,
+        "artifact_dir": str(artifact_dir),
+        "package_json_path": str(package_json_path),
+        "package_text_path": str(package_text_path),
+        "scenario_batching_contract": contract,
+        "scenario_batching_summary": dict(contract.get("batching_summary") or {}),
+        "scenario_batch_count": batch_count,
+        "scenario_row_count": int(contract.get("scenario_row_count") or 0),
+        "release_zone_count": int(contract.get("release_zone_count") or 0),
+        "no_submit_semantics": {
+            "status": "not_submitted",
+            "sbatch_attempted": False,
+            "submit_command_executed": False,
+            "package_generation_only": True,
+            "smoke_only": True,
+            "boundary_note": "Smoke packaging records the batched scenario contract and never executes sbatch.",
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+            "live_submission_performed": False,
+        },
+        "output_paths": {
+            "package_json": str(package_json_path),
+            "package_text": str(package_text_path),
+        },
+    }
+
+
+def materialize_batched_scenario_smoke_artifacts(
+    report: dict[str, Any],
+    *,
+    json_output: Path | None = None,
+    text_output: Path | None = None,
+) -> None:
+    artifact_dir = Path(report["artifact_dir"])
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    report_json = Path(report["package_json_path"])
+    report_text = Path(report["package_text_path"])
+    report_json.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    report_text.write_text(render_batched_scenario_smoke_text_report(report) + "\n", encoding="utf-8")
+    if json_output is not None and Path(json_output) != report_json:
+        json_output.parent.mkdir(parents=True, exist_ok=True)
+        json_output.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+    if text_output is not None and Path(text_output) != report_text:
+        text_output.parent.mkdir(parents=True, exist_ok=True)
+        text_output.write_text(render_batched_scenario_smoke_text_report(report) + "\n", encoding="utf-8")
+
+
+def render_batched_scenario_smoke_text_report(report: dict[str, Any]) -> str:
+    first = report.get("first_blocker") or {}
+    contract = dict(report.get("scenario_batching_contract") or {})
+    budget_profile = dict(contract.get("budget_profile") or {})
+    lines = [
+        "Balfrin Scenario Batch Smoke Package",
+        "",
+        f"- Package status: `{report.get('package_status')}`",
+        f"- Ready for batched scenario smoke: `{report.get('ready_for_batched_scenario_smoke')}`",
+        f"- First blocker: `{first.get('gate')}` `{first.get('status')}` {first.get('reason', '')}",
+        f"- Batching status: `{contract.get('batching_status')}`",
+        f"- Batch count: `{report.get('scenario_batch_count')}`",
+        f"- Release zone batch max: `{budget_profile.get('simultaneous_release_zone_batch_max')}`",
+        "",
+        "## No Submit",
+        "- sbatch_attempted: `False`",
+        "- submit_command_executed: `False`",
+        "- package_generation_only: `True`",
+    ]
+    return "\n".join(lines)
 
 
 def materialize_artifacts(

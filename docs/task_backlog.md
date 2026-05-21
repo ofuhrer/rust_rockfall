@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-440: Define Scenario Batching Contract For Multi-Zone Runs
-
-Goal: Split expanded release-zone scenario tables into deterministic batches that respect output-budget and reducer-pressure constraints.
-
-Capability gap reduced: Multi-zone runs need bounded execution units rather than one monolithic scenario table.
-
-Why this outranks alternatives: TB-428 showed package size and reducer budgets are first-order blockers; batching is the pragmatic path to larger measured runs.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- Deterministic batching metadata keyed by release zone, scenario family, and budget profile.
-- Tests for stable ordering, non-overlap, and budget summaries.
-- A no-submit package smoke path using batched scenarios.
-
-Definition of done:
-
-- Multi-zone scenario tables can be partitioned into reproducible budget-aware batches without changing simulation physics.
-
-Boundaries: No Balfrin submission, no distributed execution, no probability/frequency semantics.
-
 ### TB-441: Measure Reducer Pressure On Batched Scenario Outputs
 
 Goal: Run a fixture-backed reducer/merge pressure probe over the TB-440 batching contract.

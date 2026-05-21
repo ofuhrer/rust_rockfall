@@ -40,6 +40,7 @@ MANIFEST_SCHEMA_VERSION = "candidate_source_zone_scenario_stress_test_manifest_v
 FREEZER_SCHEMA_VERSION = "reviewed_candidate_source_zone_freezer_v1"
 FREEZER_MANIFEST_SCHEMA_VERSION = "reviewed_candidate_source_zone_freezer_manifest_v1"
 FOREST_REALIZATION_PLAN_SCHEMA_VERSION = "candidate_source_zone_forest_realization_plan_v1"
+SCENARIO_BATCHING_SCHEMA_VERSION = "candidate_source_zone_scenario_batching_contract_v1"
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 DEFAULT_RELEASE_POINTS = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv"
 DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall_tb182_candidate_source_zone_scenarios")
@@ -49,6 +50,7 @@ DEFAULT_FREEZER_TRAJECTORY_COUNT = 60
 DEFAULT_FREEZER_SEED = 34014
 SCENARIO_TABLE_FILENAME = "candidate_source_zone_scenario_table.csv"
 SCENARIO_MANIFEST_FILENAME = "candidate_source_zone_scenario_manifest.json"
+SCENARIO_BATCHING_FILENAME = "candidate_source_zone_scenario_batching_contract.json"
 STRESS_REPORT_FILENAME = "candidate_source_zone_scenario_stress_report.json"
 FREEZER_SOURCE_ZONE_METADATA_FILENAME = "source_zone_metadata.yaml"
 FREEZER_RELEASE_ROWS_FILENAME = "release_rows.csv"
@@ -128,6 +130,13 @@ SCENARIO_TABLE_COLUMNS = [
     "annual_frequency_per_year",
     "time_horizon_years",
 ]
+SCENARIO_BATCHING_BUDGET_PROFILE_ID = "measured_multi_zone_reducer_pressure_budget_v1"
+SCENARIO_BATCHING_RELEASE_ZONE_MAX = 8
+SCENARIO_BATCHING_REDUCER_WORKER_MAX = 2
+SCENARIO_BATCHING_REDUCER_CHUNK_MAX = 2
+SCENARIO_BATCHING_MANIFEST_SIZE_MAX = 12_000
+SCENARIO_BATCHING_OUTPUT_FILE_MAX = 50
+SCENARIO_BATCHING_SIDECAR_FILE_MAX = 12
 SUPPORTED_TEMPLATES = {
     "candidate_release_point_summary_v1": "one row per deterministic candidate release point",
     "policy_block_family_v1": "one row per frozen Tschamut block-family scenario",
@@ -292,6 +301,11 @@ def build_report(
     )
     normalize_row_shares(rows)
     release_candidate_firewall = build_release_candidate_firewall(candidate_records=candidate_records, rows=rows)
+    scenario_batching_contract = build_scenario_batching_contract(
+        candidate_records=candidate_records,
+        rows=rows,
+        output_root=output_root,
+    )
 
     manifest = build_manifest(
         policy=policy,
@@ -303,21 +317,28 @@ def build_report(
         block_scenarios=block_scenarios,
         template_ids=template_ids,
         release_candidate_firewall=release_candidate_firewall,
+        scenario_batching_summary=scenario_batching_contract["batching_summary"],
     )
     build_seconds = time.perf_counter() - build_started
 
     scenario_table_output_path = output_root / SCENARIO_TABLE_FILENAME
     scenario_manifest_output_path = output_root / SCENARIO_MANIFEST_FILENAME
+    scenario_batching_output_path = output_root / SCENARIO_BATCHING_FILENAME
     report_output_path = output_root / STRESS_REPORT_FILENAME
     write_started = time.perf_counter()
     scenario_table_output_path.parent.mkdir(parents=True, exist_ok=True)
     write_csv(scenario_table_output_path, rows)
     scenario_manifest_output_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    scenario_batching_output_path.write_text(
+        json.dumps(scenario_batching_contract, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     write_seconds = time.perf_counter() - write_started
 
     csv_bytes = scenario_table_output_path.stat().st_size
     manifest_bytes = scenario_manifest_output_path.stat().st_size
-    total_bytes = csv_bytes + manifest_bytes
+    batching_contract_bytes = scenario_batching_output_path.stat().st_size
+    total_bytes = csv_bytes + manifest_bytes + batching_contract_bytes
     first_scaling_bottleneck = build_first_scaling_bottleneck(
         csv_bytes=csv_bytes,
         manifest_bytes=manifest_bytes,
@@ -334,6 +355,7 @@ def build_report(
     storage_measurements = {
         "csv_bytes": csv_bytes,
         "manifest_bytes": manifest_bytes,
+        "batching_contract_bytes": batching_contract_bytes,
         "total_bytes": total_bytes,
     }
     tb_183_planning_input = build_tb_183_planning_input(
@@ -356,6 +378,7 @@ def build_report(
         "scenario_row_count": len(rows),
         "generated_scenario_table_rows": rows,
         "scenario_table_manifest": manifest,
+        "scenario_batching_contract": scenario_batching_contract,
         "forest_realization_plan": manifest["forest_realization_plan"],
         "release_candidate_physical_meaning_firewall": release_candidate_firewall,
         "runtime_measurements": runtime_measurements,
@@ -365,6 +388,7 @@ def build_report(
         "output_paths": {
             "scenario_table_csv": display_path(scenario_table_output_path),
             "scenario_table_manifest_json": display_path(scenario_manifest_output_path),
+            "scenario_batching_contract_json": display_path(scenario_batching_output_path),
             "stress_report_json": display_path(report_output_path),
         },
     }
@@ -385,6 +409,7 @@ def blocked_report(
     output_root = resolve_output_root(output_root)
     scenario_table_output_path = output_root / SCENARIO_TABLE_FILENAME
     scenario_manifest_output_path = output_root / SCENARIO_MANIFEST_FILENAME
+    scenario_batching_output_path = output_root / SCENARIO_BATCHING_FILENAME
     report_output_path = output_root / STRESS_REPORT_FILENAME
     return {
         "schema_version": SCHEMA_VERSION,
@@ -433,6 +458,12 @@ def blocked_report(
             "source_zone_family_cardinality": [],
             "block_family_cardinality": [],
             "scenario_family_template_cardinality": [],
+            "scenario_batching_summary": {
+                "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+                "batching_status": "blocked_missing_inputs",
+                "batch_count": 0,
+                "batch_order": [],
+            },
             "first_scaling_bottleneck": {
                 "name": "unavailable",
                 "reason": blocked_reason,
@@ -476,8 +507,13 @@ def blocked_report(
         "storage_measurements": {
             "csv_bytes": 0,
             "manifest_bytes": 0,
+            "batching_contract_bytes": 0,
             "total_bytes": 0,
         },
+        "scenario_batching_contract": build_blocked_scenario_batching_contract(
+            blocked_reason=blocked_reason,
+            output_root=output_root,
+        ),
         "first_scaling_bottleneck": {
             "name": "unavailable",
             "reason": blocked_reason,
@@ -493,6 +529,7 @@ def blocked_report(
         "output_paths": {
             "scenario_table_csv": display_path(scenario_table_output_path),
             "scenario_table_manifest_json": display_path(scenario_manifest_output_path),
+            "scenario_batching_contract_json": display_path(scenario_batching_output_path),
             "stress_report_json": display_path(report_output_path),
         },
     }
@@ -714,6 +751,7 @@ def build_manifest(
     block_scenarios: list[dict[str, Any]],
     template_ids: list[str],
     release_candidate_firewall: dict[str, Any] | None = None,
+    scenario_batching_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     candidate_cardinality = summarize_candidate_cardinality(candidate_records, rows, template_ids, block_scenarios)
     source_zone_family_cardinality = summarize_group_cardinality(rows, "source_zone_family_id")
@@ -791,6 +829,12 @@ def build_manifest(
             block_family_count=len(block_scenarios),
             template_count=len(template_ids),
         ),
+        "scenario_batching_summary": scenario_batching_summary or {
+            "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+            "batching_status": "blocked_missing_inputs",
+            "batch_count": 0,
+            "batch_order": [],
+        },
         "source_inputs": {
             "policy_path": display_path(policy_path),
             "release_points_path": display_path(release_points_path),
@@ -801,6 +845,336 @@ def build_manifest(
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
     }
+
+
+def build_scenario_batching_contract(
+    *,
+    candidate_records: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
+    output_root: Path,
+) -> dict[str, Any]:
+    if not candidate_records or not rows:
+        return build_blocked_scenario_batching_contract(
+            blocked_reason="required candidate records or scenario rows are missing",
+            output_root=output_root,
+        )
+
+    budget_profile = build_scenario_batching_budget_profile()
+    candidate_order = {
+        text_value(candidate.get("candidate_release_zone_record_id")): index
+        for index, candidate in enumerate(candidate_records)
+    }
+    row_order = {text_value(row.get("scenario_id")): index for index, row in enumerate(rows)}
+    ordered_rows = sorted(
+        rows,
+        key=lambda row: (
+            candidate_order.get(text_value(row.get("candidate_release_zone_record_id")), 0),
+            row_order.get(text_value(row.get("scenario_id")), 0),
+        ),
+    )
+    zone_units: list[dict[str, Any]] = []
+    current_zone_id = ""
+    current_zone_unit: dict[str, Any] | None = None
+    for row in ordered_rows:
+        zone_id = text_value(row.get("candidate_release_zone_record_id"))
+        if zone_id != current_zone_id:
+            if current_zone_unit is not None:
+                zone_units.append(finalize_scenario_zone_unit(current_zone_unit, budget_profile, output_root))
+            current_zone_id = zone_id
+            current_zone_unit = {
+                "candidate_release_zone_record_id": zone_id,
+                "candidate_repeat_index": row.get("candidate_repeat_index"),
+                "source_zone_id": text_value(row.get("source_zone_id")),
+                "source_zone_family_id": text_value(row.get("source_zone_family_id")),
+                "scenario_family_groups": [],
+                "_scenario_family_groups_by_id": {},
+                "_scenario_row_ids": [],
+            }
+        assert current_zone_unit is not None
+        family_id = text_value(row.get("scenario_family_template_id"))
+        family_groups_by_id = current_zone_unit["_scenario_family_groups_by_id"]
+        family_group = family_groups_by_id.get(family_id)
+        if family_group is None:
+            family_group = {
+                "scenario_family_template_id": family_id,
+                "row_ids": [],
+                "block_family_ids": [],
+                "shape_family_ids": [],
+            }
+            family_groups_by_id[family_id] = family_group
+            current_zone_unit["scenario_family_groups"].append(family_group)
+        family_group["row_ids"].append(text_value(row.get("scenario_id")))
+        family_group["block_family_ids"].append(text_value(row.get("block_family_id")))
+        family_group["shape_family_ids"].append(text_value(row.get("shape_family_id")))
+        current_zone_unit["_scenario_row_ids"].append(text_value(row.get("scenario_id")))
+    if current_zone_unit is not None:
+        zone_units.append(finalize_scenario_zone_unit(current_zone_unit, budget_profile, output_root))
+
+    batches: list[dict[str, Any]] = []
+    current_batch_units: list[dict[str, Any]] = []
+    current_batch_zone_ids: list[str] = []
+    for unit in zone_units:
+        next_zone_ids = current_batch_zone_ids + [text_value(unit["candidate_release_zone_record_id"])]
+        if current_batch_units and len(unique_preserving_order(next_zone_ids)) > budget_profile["simultaneous_release_zone_batch_max"]:
+            batches.append(
+                finalize_scenario_batch(
+                    batch_index=len(batches),
+                    batch_units=current_batch_units,
+                    budget_profile=budget_profile,
+                    output_root=output_root,
+                )
+            )
+            current_batch_units = []
+            current_batch_zone_ids = []
+        current_batch_units.append(unit)
+        current_batch_zone_ids.append(text_value(unit["candidate_release_zone_record_id"]))
+    if current_batch_units:
+        batches.append(
+            finalize_scenario_batch(
+                batch_index=len(batches),
+                batch_units=current_batch_units,
+                budget_profile=budget_profile,
+                output_root=output_root,
+            )
+        )
+
+    row_ids = [text_value(row.get("scenario_id")) for row in ordered_rows]
+    row_id_to_batch_id = {
+        row_id: batch["batch_id"]
+        for batch in batches
+        for row_id in batch["scenario_row_ids"]
+    }
+    release_zone_ids = [text_value(candidate.get("candidate_release_zone_record_id")) for candidate in candidate_records]
+    batch_release_zone_counts = [len(batch["release_zone_ids"]) for batch in batches]
+    batch_row_counts = [len(batch["scenario_row_ids"]) for batch in batches]
+    batch_family_counts = [len(batch["scenario_family_template_ids"]) for batch in batches]
+    duplicate_row_ids = sorted({row_id for row_id in row_ids if row_ids.count(row_id) > 1})
+    batching_status = "ready" if not duplicate_row_ids else "blocked_duplicate_rows"
+    return {
+        "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+        "batching_status": batching_status,
+        "batching_key": {
+            "release_zone_key": "candidate_release_zone_record_id",
+            "scenario_family_key": "scenario_family_template_id",
+            "budget_profile_id": budget_profile["budget_profile_id"],
+        },
+        "ordering_policy": "release_zone_input_order_then_scenario_family_template_order",
+        "budget_profile": budget_profile,
+        "batch_count": len(batches),
+        "batch_order": [batch["batch_id"] for batch in batches],
+        "batch_release_zone_count_max": max(batch_release_zone_counts) if batch_release_zone_counts else 0,
+        "batch_scenario_family_count_max": max(batch_family_counts) if batch_family_counts else 0,
+        "batch_row_count_max": max(batch_row_counts) if batch_row_counts else 0,
+        "release_zone_count": len(candidate_records),
+        "scenario_family_count": len(unique_preserving_order(text_value(row.get("scenario_family_template_id")) for row in ordered_rows)),
+        "scenario_row_count": len(ordered_rows),
+        "release_zone_ids": release_zone_ids,
+        "scenario_family_template_ids": unique_preserving_order(
+            text_value(row.get("scenario_family_template_id")) for row in ordered_rows
+        ),
+        "scenario_row_ids": row_ids,
+        "row_id_to_batch_id": row_id_to_batch_id,
+        "duplicate_row_ids": duplicate_row_ids,
+        "coverage_summary": {
+            "coverage_status": "ready" if not duplicate_row_ids else "blocked_duplicate_rows",
+            "batch_count": len(batches),
+            "release_zone_count": len(candidate_records),
+            "scenario_family_count": len(unique_preserving_order(text_value(row.get("scenario_family_template_id")) for row in ordered_rows)),
+            "scenario_row_count": len(ordered_rows),
+            "row_id_count": len(row_ids),
+            "unique_row_id_count": len(set(row_ids)),
+            "non_overlap": not duplicate_row_ids,
+        },
+        "batches": batches,
+        "batching_summary": {
+            "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+            "batching_status": batching_status,
+            "budget_profile_id": budget_profile["budget_profile_id"],
+            "batch_count": len(batches),
+            "batch_order": [batch["batch_id"] for batch in batches],
+            "batch_release_zone_count_max": max(batch_release_zone_counts) if batch_release_zone_counts else 0,
+            "batch_scenario_family_count_max": max(batch_family_counts) if batch_family_counts else 0,
+            "batch_row_count_max": max(batch_row_counts) if batch_row_counts else 0,
+            "non_overlap": not duplicate_row_ids,
+        },
+    }
+
+
+def build_blocked_scenario_batching_contract(*, blocked_reason: str, output_root: Path) -> dict[str, Any]:
+    return {
+        "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+        "batching_status": "blocked_missing_inputs",
+        "blocked_reason": blocked_reason,
+        "batching_key": {
+            "release_zone_key": "candidate_release_zone_record_id",
+            "scenario_family_key": "scenario_family_template_id",
+            "budget_profile_id": SCENARIO_BATCHING_BUDGET_PROFILE_ID,
+        },
+        "ordering_policy": "release_zone_input_order_then_scenario_family_template_order",
+        "budget_profile": build_scenario_batching_budget_profile(),
+        "batch_count": 0,
+        "batch_order": [],
+        "batch_release_zone_count_max": 0,
+        "batch_scenario_family_count_max": 0,
+        "batch_row_count_max": 0,
+        "release_zone_count": 0,
+        "scenario_family_count": 0,
+        "scenario_row_count": 0,
+        "release_zone_ids": [],
+        "scenario_family_template_ids": [],
+        "scenario_row_ids": [],
+        "row_id_to_batch_id": {},
+        "duplicate_row_ids": [],
+        "coverage_summary": {
+            "coverage_status": "blocked_missing_inputs",
+            "batch_count": 0,
+            "release_zone_count": 0,
+            "scenario_family_count": 0,
+            "scenario_row_count": 0,
+            "row_id_count": 0,
+            "unique_row_id_count": 0,
+            "non_overlap": False,
+        },
+        "batches": [],
+        "batching_summary": {
+            "schema_version": SCENARIO_BATCHING_SCHEMA_VERSION,
+            "batching_status": "blocked_missing_inputs",
+            "budget_profile_id": SCENARIO_BATCHING_BUDGET_PROFILE_ID,
+            "batch_count": 0,
+            "batch_order": [],
+            "batch_release_zone_count_max": 0,
+            "batch_scenario_family_count_max": 0,
+            "batch_row_count_max": 0,
+            "non_overlap": False,
+        },
+        "expected_output_root": display_path(output_root),
+    }
+
+
+def finalize_scenario_zone_unit(
+    unit: dict[str, Any],
+    budget_profile: dict[str, Any],
+    output_root: Path,
+) -> dict[str, Any]:
+    family_groups = []
+    for family_group in unit.get("scenario_family_groups") or []:
+        family_groups.append(
+            {
+                "scenario_family_template_id": family_group["scenario_family_template_id"],
+                "row_ids": list(family_group["row_ids"]),
+                "row_count": len(family_group["row_ids"]),
+                "block_family_ids": unique_preserving_order(family_group["block_family_ids"]),
+                "shape_family_ids": unique_preserving_order(family_group["shape_family_ids"]),
+                "batching_key": {
+                    "release_zone_id": unit["candidate_release_zone_record_id"],
+                    "scenario_family_template_id": family_group["scenario_family_template_id"],
+                    "budget_profile_id": budget_profile["budget_profile_id"],
+                },
+            }
+        )
+    scenario_row_ids = list(unit.pop("_scenario_row_ids"))
+    unit.pop("_scenario_family_groups_by_id")
+    return {
+        "candidate_release_zone_record_id": unit["candidate_release_zone_record_id"],
+        "candidate_repeat_index": unit["candidate_repeat_index"],
+        "source_zone_id": unit["source_zone_id"],
+        "source_zone_family_id": unit["source_zone_family_id"],
+        "batching_key": {
+            "release_zone_id": unit["candidate_release_zone_record_id"],
+            "scenario_family_template_ids": [group["scenario_family_template_id"] for group in family_groups],
+            "budget_profile_id": budget_profile["budget_profile_id"],
+        },
+        "expected_output_root": display_path(output_root / "scenario_batches" / text_value(unit["candidate_release_zone_record_id"])),
+        "scenario_family_template_ids": [group["scenario_family_template_id"] for group in family_groups],
+        "scenario_family_count": len(family_groups),
+        "scenario_row_ids": scenario_row_ids,
+        "scenario_row_count": len(scenario_row_ids),
+        "scenario_family_groups": family_groups,
+    }
+
+
+def finalize_scenario_batch(
+    *,
+    batch_index: int,
+    batch_units: list[dict[str, Any]],
+    budget_profile: dict[str, Any],
+    output_root: Path,
+) -> dict[str, Any]:
+    batch_id = f"scenario_batch_{batch_index:03d}"
+    release_zone_ids = [text_value(unit["candidate_release_zone_record_id"]) for unit in batch_units]
+    scenario_family_template_ids = unique_preserving_order(
+        group_id
+        for unit in batch_units
+        for group_id in unit.get("scenario_family_template_ids") or []
+    )
+    scenario_row_ids = [
+        row_id
+        for unit in batch_units
+        for row_id in unit.get("scenario_row_ids") or []
+    ]
+    return {
+        "batch_id": batch_id,
+        "batch_index": batch_index,
+        "batching_key": {
+            "release_zone_ids": release_zone_ids,
+            "scenario_family_template_ids": scenario_family_template_ids,
+            "budget_profile_id": budget_profile["budget_profile_id"],
+        },
+        "batch_key": f"{budget_profile['budget_profile_id']}:{release_zone_ids[0]}->{release_zone_ids[-1]}",
+        "expected_output_root": display_path(output_root / "scenario_batches" / batch_id),
+        "release_zone_ids": release_zone_ids,
+        "scenario_family_template_ids": scenario_family_template_ids,
+        "scenario_row_ids": scenario_row_ids,
+        "scenario_row_count": len(scenario_row_ids),
+        "release_zone_count": len(release_zone_ids),
+        "scenario_family_count": len(scenario_family_template_ids),
+        "batch_units": batch_units,
+        "batch_budget_summary": {
+            "budget_profile_id": budget_profile["budget_profile_id"],
+            "simultaneous_release_zone_batch_max": budget_profile["simultaneous_release_zone_batch_max"],
+            "reducer_worker_count_max": budget_profile["reducer_worker_count_max"],
+            "reducer_chunk_count_max": budget_profile["reducer_chunk_count_max"],
+            "manifest_size_bytes_max": budget_profile["manifest_size_bytes_max"],
+            "output_file_count_max": budget_profile["output_file_count_max"],
+            "sidecar_file_count_max": budget_profile["sidecar_file_count_max"],
+            "release_zone_count": len(release_zone_ids),
+            "scenario_family_count": len(scenario_family_template_ids),
+            "scenario_row_count": len(scenario_row_ids),
+            "budget_projection_status": "bounded_by_contract",
+            "release_zone_budget_ok": len(release_zone_ids) <= budget_profile["simultaneous_release_zone_batch_max"],
+        },
+    }
+
+
+def build_scenario_batching_budget_profile() -> dict[str, Any]:
+    return {
+        "budget_profile_id": SCENARIO_BATCHING_BUDGET_PROFILE_ID,
+        "budget_profile_label": "measured_multi_zone_reducer_pressure",
+        "simultaneous_release_zone_batch_max": SCENARIO_BATCHING_RELEASE_ZONE_MAX,
+        "reducer_worker_count_max": SCENARIO_BATCHING_REDUCER_WORKER_MAX,
+        "reducer_chunk_count_max": SCENARIO_BATCHING_REDUCER_CHUNK_MAX,
+        "manifest_size_bytes_max": SCENARIO_BATCHING_MANIFEST_SIZE_MAX,
+        "output_file_count_max": SCENARIO_BATCHING_OUTPUT_FILE_MAX,
+        "sidecar_file_count_max": SCENARIO_BATCHING_SIDECAR_FILE_MAX,
+        "batching_key": {
+            "release_zone_key": "candidate_release_zone_record_id",
+            "scenario_family_key": "scenario_family_template_id",
+            "budget_profile_id": SCENARIO_BATCHING_BUDGET_PROFILE_ID,
+        },
+        "rationale": "batch release zones in measured reducer-pressure groups of at most 8 so multi-zone runs stay bounded before any live execution",
+    }
+
+
+def unique_preserving_order(values: Any) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        token = text_value(value)
+        if not token or token in seen:
+            continue
+        seen.add(token)
+        ordered.append(token)
+    return ordered
 
 
 def summarize_candidate_cardinality(
@@ -1830,9 +2204,16 @@ def write_outputs(report: dict[str, Any]) -> None:
     output_paths = report.get("output_paths", {}) or {}
     csv_path = repo_path(output_paths.get("scenario_table_csv"))
     manifest_path = repo_path(output_paths.get("scenario_table_manifest_json"))
+    batching_path = output_paths.get("scenario_batching_contract_json")
+    batching_contract_path = repo_path(batching_path) if batching_path else None
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     write_csv(csv_path, report["generated_scenario_table_rows"])
     manifest_path.write_text(json.dumps(report["scenario_table_manifest"], indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if batching_contract_path is not None:
+        batching_contract_path.write_text(
+            json.dumps(report["scenario_batching_contract"], indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
 
 
 def repo_path(value: Any) -> Path:
@@ -1851,6 +2232,13 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Candidate repeat count: `{report['candidate_repeat_count']}`",
         f"- Candidate release-zone record count: `{report['candidate_release_zone_record_count']}`",
         f"- Scenario row count: `{report['scenario_row_count']}`",
+        "",
+        "Scenario Batching",
+        f"- status: `{(report.get('scenario_batching_contract') or {}).get('batching_status', '')}`",
+        f"- batch_count: `{(report.get('scenario_batching_contract') or {}).get('batch_count', '')}`",
+        f"- batch_row_count_max: `{(report.get('scenario_batching_contract') or {}).get('batch_row_count_max', '')}`",
+        f"- batch_release_zone_count_max: `{(report.get('scenario_batching_contract') or {}).get('batch_release_zone_count_max', '')}`",
+        f"- contract_json: `{report.get('output_paths', {}).get('scenario_batching_contract_json', '')}`",
         "",
         "Release Candidate Physical-Meaning Firewall",
     ]

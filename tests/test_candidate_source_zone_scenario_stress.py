@@ -54,6 +54,7 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
                 candidate_repeat_count=3,
                 template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
             )
+            MODULE.write_outputs(first)
 
             manifest_path = Path(first["output_paths"]["scenario_table_manifest_json"])
             csv_path = Path(first["output_paths"]["scenario_table_csv"])
@@ -118,6 +119,57 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         self.assertIn("workflow_generated", report_text)
         self.assertIn("candidate_release_point_summary_v1", report_text)
         self.assertIn("policy_block_family_v1", report_text)
+        self.assertEqual(manifest["scenario_batching_summary"]["batching_status"], "ready")
+        self.assertEqual(manifest["scenario_batching_summary"]["batch_count"], 4)
+        self.assertEqual(first["scenario_batching_contract"]["batch_count"], 4)
+        self.assertEqual(first["scenario_batching_contract"]["batch_release_zone_count_max"], 8)
+        self.assertEqual(first["scenario_batching_contract"]["coverage_summary"]["non_overlap"], True)
+        self.assertTrue(first["output_paths"]["scenario_batching_contract_json"].endswith("candidate_source_zone_scenario_batching_contract.json"))
+
+    def test_scenario_batching_contract_is_deterministic_and_budget_bounded(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            output_root = Path(tmp) / "validation/private/tschamut_public_pilot/candidate_source_zone_stress_v1"
+
+            first = MODULE.build_report(
+                policy_path=POLICY_PATH,
+                release_points_path=RELEASE_POINTS_PATH,
+                output_root=output_root,
+                candidate_repeat_count=3,
+                template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+            )
+            second = MODULE.build_report(
+                policy_path=POLICY_PATH,
+                release_points_path=RELEASE_POINTS_PATH,
+                output_root=output_root,
+                candidate_repeat_count=3,
+                template_ids=("candidate_release_point_summary_v1", "policy_block_family_v1"),
+            )
+
+        batching = first["scenario_batching_contract"]
+        self.assertEqual(batching, second["scenario_batching_contract"])
+        self.assertEqual(batching["schema_version"], "candidate_source_zone_scenario_batching_contract_v1")
+        self.assertEqual(batching["batching_status"], "ready")
+        self.assertEqual(batching["batching_key"]["budget_profile_id"], "measured_multi_zone_reducer_pressure_budget_v1")
+        self.assertEqual(batching["budget_profile"]["simultaneous_release_zone_batch_max"], 8)
+        self.assertEqual(batching["batch_count"], 4)
+        self.assertEqual(batching["batch_release_zone_count_max"], 8)
+        self.assertEqual(batching["batch_row_count_max"], 80)
+        self.assertEqual(batching["coverage_summary"]["coverage_status"], "ready")
+        self.assertTrue(batching["coverage_summary"]["non_overlap"])
+        self.assertEqual(batching["coverage_summary"]["unique_row_id_count"], batching["coverage_summary"]["row_id_count"])
+        self.assertEqual(batching["batch_order"], [batch["batch_id"] for batch in batching["batches"]])
+        self.assertEqual(batching["scenario_row_ids"], first["scenario_table_manifest"]["row_ids"])
+        self.assertEqual(len(set(batching["scenario_row_ids"])), len(batching["scenario_row_ids"]))
+        self.assertEqual(len(batching["row_id_to_batch_id"]), len(batching["scenario_row_ids"]))
+        self.assertEqual(batching["batches"][0]["release_zone_count"], 8)
+        self.assertEqual(batching["batches"][-1]["release_zone_count"], 6)
+        for batch in batching["batches"]:
+            self.assertEqual(batch["batch_budget_summary"]["budget_projection_status"], "bounded_by_contract")
+            self.assertTrue(batch["batch_budget_summary"]["release_zone_budget_ok"])
+            self.assertLessEqual(batch["release_zone_count"], 8)
+            self.assertGreater(batch["scenario_row_count"], 0)
+            self.assertGreater(len(batch["batch_units"]), 0)
+            self.assertEqual(batch["scenario_row_ids"], [row_id for unit in batch["batch_units"] for row_id in unit["scenario_row_ids"]])
 
     def test_selected_zone_prefixes_stay_deterministic_and_bounded(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

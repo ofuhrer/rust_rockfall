@@ -37,6 +37,26 @@ The same manifest is referenced from `command_plan.json`, the probe manifest,
 and the JSON summary. Fixture tests enforce stable ordering and reject duplicate
 execution keys so later split/merge work does not rely on implicit file naming.
 
+## Scenario Batching Contract
+
+The candidate scenario generator now also emits
+`candidate_source_zone_scenario_batching_contract.json` with schema
+`candidate_source_zone_scenario_batching_contract_v1`. This is the local
+batching contract for splitting an expanded release-zone scenario table into
+deterministic execution units that stay within the measured reducer-pressure
+budget profile.
+
+Each batch records the release-zone ids it contains, the scenario-family ids it
+carries, the budget-profile id, the ordered scenario-row ids, and a nested
+budget summary with the same cap profile used by the multi-zone pressure probe.
+The batches are ordered by release-zone input order, never overlap, and keep
+the release-zone batch cap explicit instead of inferring it from filename
+conventions.
+
+The no-submit smoke-package helper can consume this contract directly, so the
+batched scenario path stays inspectable without authorizing any Balfrin
+submission or distributed execution.
+
 ## Measured Summary
 
 - Probe root: `/tmp/rust_rockfall/multi_zone_reducer_pressure_tb336_probe`
