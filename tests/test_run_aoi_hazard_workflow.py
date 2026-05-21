@@ -329,6 +329,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 "physical_probability_claims_allowed": False,
                 "risk_exposure_vulnerability_claims_allowed": False,
             },
+            "workflow_contract": workflow.build_workflow_contract(),
             "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
             "candidate_site_name": "Chant Sura / Flüelapass portability example",
         }
@@ -344,12 +345,15 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("required_inputs:", text_output)
         self.assertIn("generated_outputs:", text_output)
         self.assertIn("claim_boundaries:", text_output)
+        self.assertIn("workflow_contract:", text_output)
+        self.assertIn("docs/aoi_conditional_workflow_contract.md", text_output)
         self.assertNotIn("delegate_statuses", text_output)
-        self.assertLessEqual(len(text_output.splitlines()), 15)
+        self.assertLessEqual(len(text_output.splitlines()), 16)
         parsed = json.loads(json_output)
         self.assertEqual(parsed["workflow_status"], "ready")
         self.assertEqual(parsed["next_action"], "submit-balfrin")
         self.assertEqual(parsed["expected_outputs"], ["submission request", "submission summary"])
+        self.assertEqual(parsed["workflow_contract"]["phase_order"][0], "prepare")
 
     def test_workflow_main_renders_compact_text_summary_for_copy_paste(self) -> None:
         workflow_report = {
@@ -384,6 +388,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 "physical_probability_claims_allowed": False,
                 "risk_exposure_vulnerability_claims_allowed": False,
             },
+            "workflow_contract": workflow.build_workflow_contract(),
             "candidate_site_id": "guided_fixture",
             "candidate_site_name": "Guided Fixture",
         }
@@ -407,6 +412,8 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("first_blocker:", text_output)
         self.assertIn("required_inputs:", text_output)
         self.assertIn("generated_outputs:", text_output)
+        self.assertIn("workflow_contract:", text_output)
+        self.assertIn("scenario_generation", text_output)
         self.assertIn("workflow_output_root=/tmp/aoi_workflow", text_output)
         self.assertNotIn("command_sequence:", text_output)
         self.assertLessEqual(len(text_output.splitlines()), 16)
@@ -418,6 +425,8 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/run_aoi_hazard_workflow.py workflow", help_text)
         self.assertIn("--workflow-output-root /tmp/aoi_workflow", help_text)
         self.assertIn("--format text", help_text)
+        self.assertIn("docs/aoi_conditional_workflow_contract.md", help_text)
+        self.assertIn("prepare -> review -> scenario_generation", help_text)
 
     def test_fixture_backed_status_aggregation_surfaces_expected_paths_and_claim_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as scratch:

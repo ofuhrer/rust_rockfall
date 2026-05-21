@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-414: Freeze The AOI Conditional Map Workflow Contract
-
-Goal: Define the canonical AOI-to-conditional-map workflow as an executable contract rather than another scattered set of helper commands.
-
-Capability gap reduced: User-facing workflow coherence and reproducible AOI execution.
-
-Why this outranks alternatives: OpenNHM-style workflow design and RAMMS scenario practice both point to one named project/scenario workflow before adding more science surfaces or wrappers.
-
-Inspect first:
-
-- `docs/opennhm_learnings_report.md`
-- `background/RAMMS_ROCK2_Manual.pdf`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- One compact AOI workflow contract covering prepare, review, scenario generation, bounded execution, post-processing, GIS packaging, and interpretation.
-- `scripts/run_aoi_hazard_workflow.py` help/status output aligned with that contract, or a documented reason if the CLI already exposes the needed phases.
-- Regression coverage or a focused smoke check proving the contract remains discoverable from the front door.
-
-Definition of done:
-
-- A new worker can discover the canonical AOI workflow without reading long maturity or backlog history, and the task removes any stale competing AOI workflow wording it touches.
-
-Boundaries: No new simulation, no operational claims, no scale-up authorization, no physical-probability or annual-frequency semantics.
-
 ### TB-415: Add AOI Config Describe And Precedence Mode
 
 Goal: Make AOI workflow configuration inspectable before execution, including defaults, site config, source/scenario policy, generated manifests, and CLI overrides.

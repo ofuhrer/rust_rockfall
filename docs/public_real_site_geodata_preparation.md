@@ -523,7 +523,10 @@ helper is intentionally not a release-zone interpretation: it stops at the dry
 run boundary and reports `deferred_public_context_inputs` when real context is
 absent.
 
-The canonical AOI-to-prepared-pilot front door,
+The canonical AOI conditional-map workflow contract lives in
+`docs/aoi_conditional_workflow_contract.md`, and the front door
+`scripts/run_aoi_hazard_workflow.py` prints the same phase model in `--help`
+and `status` output. The preparation gate,
 `scripts/run_aoi_hazard_workflow.py prepare`, composes the acquisition,
 cache-verification, terrain-preprocessing, release-plan, and portable
 command-plan dry-run helpers into one preparation scaffold. Its report names

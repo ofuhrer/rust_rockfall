@@ -66,6 +66,8 @@ starting context for implementation unless a task explicitly asks for them.
 - `swisstopo_data_strategy.md`: Swiss public geodata roles, metadata
   requirements, AOI automation gaps, explicit acquisition/staging modes, and
   second-site boundaries.
+- `aoi_conditional_workflow_contract.md`: canonical AOI conditional-map phase
+  model and front-door command contract.
 - `public_real_site_geodata_preparation.md`: public real-site geodata manifest,
   AOI guided workflow, user-defined AOI local demonstration, and review-map
   workflow.

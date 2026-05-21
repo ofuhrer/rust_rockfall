@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Front door for the AOI-to-hazard-map workflow.
+"""Front door for the AOI conditional-map workflow.
 
 The helper is read-only. It normalizes the existing AOI dry-run, portable
 command-plan, and GIS/COG audit helpers into one compact JSON status object
-with the next action, first blocker, expected paths, and claim boundaries.
-It does not download data, submit Balfrin jobs, or write heavy outputs.
+with the next action, first blocker, expected paths, claim boundaries, and the
+canonical phase contract. It does not download data, submit Balfrin jobs, or
+write heavy outputs.
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ from scripts.lib import workflow_validation as WORKFLOW_VALIDATION
 
 SCHEMA_VERSION = "aoi_hazard_workflow_front_door_v1"
 PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION = "aoi_prepared_pilot_local_execution_v1"
+CONTRACT_DOC_PATH = ROOT / "docs" / "aoi_conditional_workflow_contract.md"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 DEFAULT_ACQUISITION_PACKAGE = ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml"
 DEFAULT_ARTIFACT_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
@@ -77,6 +79,10 @@ HELP_EXAMPLE = """Examples:
       --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
       --candidate-review-output-root /tmp/aoi_candidate_review \
       --format json
+
+  Canonical phase model:
+    docs/aoi_conditional_workflow_contract.md
+    prepare -> review -> scenario_generation -> bounded_execution -> post_processing -> gis_packaging -> interpretation
 
   See docs/public_real_site_geodata_preparation.md for the full bootstrap-to-review path.
 """
@@ -207,6 +213,71 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--format", choices=("text", "json"), default="json")
     parser.add_argument("--json-output", type=Path, default=None)
     return parser
+
+
+def build_workflow_contract() -> dict[str, Any]:
+    phases = [
+        {
+            "phase_id": "prepare",
+            "label": "Prepare inputs",
+            "entrypoint": "scripts/run_aoi_hazard_workflow.py prepare",
+            "purpose": "bootstrap AOI inputs, verify public geodata, and stop before any simulation",
+        },
+        {
+            "phase_id": "review",
+            "label": "Review candidate release zones",
+            "entrypoint": "scripts/run_aoi_hazard_workflow.py candidate-review",
+            "purpose": "inspect the bounded candidate set and review overlays before scenario freezing",
+        },
+        {
+            "phase_id": "scenario_generation",
+            "label": "Generate scenarios",
+            "entrypoint": "scripts/generate_candidate_source_zone_scenarios.py --mode freeze",
+            "purpose": "materialize the deterministic scenario table from the reviewed candidate package",
+        },
+        {
+            "phase_id": "bounded_execution",
+            "label": "Run bounded execution",
+            "entrypoint": "scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local",
+            "purpose": "run the bounded local smoke path or the prepared pilot execution wrapper",
+        },
+        {
+            "phase_id": "post_processing",
+            "label": "Post-process results",
+            "entrypoint": "scripts/run_aoi_hazard_workflow.py package-map",
+            "purpose": "reduce validation outputs into map-ready products and package manifests",
+        },
+        {
+            "phase_id": "gis_packaging",
+            "label": "Package GIS outputs",
+            "entrypoint": "scripts/package_aoi_hazard_map.py",
+            "purpose": "build the review package, manifest, and optional pilot GIS bundle",
+        },
+        {
+            "phase_id": "interpretation",
+            "label": "Interpret results",
+            "entrypoint": "scripts/run_aoi_hazard_workflow.py workflow",
+            "purpose": "open the QA review surface and read the limitations before acting on outputs",
+        },
+    ]
+    return {
+        "schema_version": "aoi_conditional_workflow_contract_v1",
+        "doc_path": str(CONTRACT_DOC_PATH),
+        "front_door": "scripts/run_aoi_hazard_workflow.py",
+        "phase_order": [phase["phase_id"] for phase in phases],
+        "phases": phases,
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "scale_up_authorized": False,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+        },
+        "notes": [
+            "conditional map workflow is read-only at the front door",
+            "bounded execution, packaging, and interpretation stay non-operational",
+        ],
+    }
 
 
 def build_report(
@@ -965,6 +1036,7 @@ def assemble_workflow_report(
         "command_sequence": command_sequence,
         "generated_artifact_paths": generated_artifact_paths,
         "claim_boundaries": dict(claim_boundaries) if claim_boundaries else default_claim_boundaries(),
+        "workflow_contract": build_workflow_contract(),
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "bootstrap_report": bootstrap_report,
@@ -1937,6 +2009,7 @@ def normalize_status_report(
         "read-only front door only",
         "no simulation, no live Balfrin submission, and no claim upgrade",
     ])
+    workflow_contract = build_workflow_contract()
     workflow_status = normalize_workflow_status(command, detailed_report)
     return {
         "schema_version": SCHEMA_VERSION,
@@ -1957,6 +2030,7 @@ def normalize_status_report(
         "expected_inputs": expected_inputs,
         "expected_outputs": expected_outputs,
         "claim_boundaries": claim_boundaries,
+        "workflow_contract": workflow_contract,
         "candidate_site_id": detailed_report.get("candidate_site_id", ""),
         "candidate_site_name": detailed_report.get("candidate_site_name", ""),
     }
@@ -1985,6 +2059,7 @@ def build_status_failure_report(
         "expected_inputs": expected_inputs,
         "expected_outputs": expected_outputs,
         "claim_boundaries": claim_boundaries,
+        "workflow_contract": build_workflow_contract(),
         "candidate_site_id": candidate_site_id,
         "candidate_site_name": candidate_site_name,
         "site_config": str(site_config),
@@ -2265,6 +2340,32 @@ def format_inline_mapping(mapping: dict[str, Any] | None) -> str:
     return "; ".join(parts)
 
 
+def format_workflow_contract(contract: dict[str, Any] | None) -> str:
+    if not contract:
+        return "none"
+    phases = contract.get("phase_order") or []
+    phase_labels = []
+    phase_entries = contract.get("phases") or []
+    for phase in phase_entries:
+        if not isinstance(phase, dict):
+            continue
+        phase_id = str(phase.get("phase_id") or "")
+        label = str(phase.get("label") or "")
+        if phase_id and label:
+            phase_labels.append(f"{phase_id}:{label}")
+        elif phase_id:
+            phase_labels.append(phase_id)
+    parts = [
+        f"schema_version={contract.get('schema_version', '')}",
+        f"doc_path={contract.get('doc_path', '')}",
+        f"front_door={contract.get('front_door', '')}",
+        f"phase_order={format_inline_list([str(item) for item in phases])}",
+    ]
+    if phase_labels:
+        parts.append(f"phases={format_inline_list(phase_labels, limit=8)}")
+    return "; ".join(parts)
+
+
 def render_status_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
@@ -2276,6 +2377,7 @@ def render_status_text_report(report: dict[str, Any]) -> str:
         f"required_inputs: {format_inline_list(report.get('expected_inputs', []))}",
         f"generated_outputs: {format_inline_list(report.get('expected_outputs', []))}",
         f"claim_boundaries: {format_inline_mapping(report.get('claim_boundaries'))}",
+        f"workflow_contract: {format_workflow_contract(report.get('workflow_contract'))}",
     ]
     return "\n".join(lines)
 
@@ -2296,6 +2398,7 @@ def render_workflow_text_report(report: dict[str, Any]) -> str:
         f"required_inputs: {format_inline_list(required_inputs)}",
         f"generated_outputs: {format_inline_mapping(report.get('generated_artifact_paths'))}",
         f"claim_boundaries: {format_inline_mapping(report.get('claim_boundaries'))}",
+        f"workflow_contract: {format_workflow_contract(report.get('workflow_contract'))}",
     ]
     return "\n".join(lines)
 
