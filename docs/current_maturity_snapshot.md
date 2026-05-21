@@ -230,6 +230,13 @@ evidence; fixture-only or ambiguous-role evidence is blocked and cannot appear
 as accepted physical validation. This is a usability and evidence-separation
 improvement, not a physical-credibility or operational upgrade.
 
+Post-TB-430, the user-facing AOI/QGIS path is easier to find and less
+scattered: `docs/aoi_user_manual.md` is the compact command-level entry point,
+and the QGIS Processing bridge is a manifest-only prototype validated against
+the existing AOI front-door commands and tracked QGIS style assets. This
+improves review usability and future GUI integration readiness without adding a
+plugin, GUI, new execution framework, or operational map claim.
+
 Post-TB-387, the active execution queue stayed centered on the adjacent-
 candidate review path: TB-404 regenerated scenario tables from the accepted
 adjacent candidate, TB-405 threaded that table through the prepared-pilot

@@ -101,7 +101,11 @@ diagnostic symbology only:
 - conditional exceedance rasters.
 
 There is no separate plugin or operational QGIS project in this repository.
-The package command is the style-application entry point.
+The package command is the style-application entry point. A manifest-only QGIS
+Processing bridge prototype is tracked at
+`tests/fixtures/qgis_processing_connector_manifest_v1.json`; it maps future
+QGIS actions onto the existing CLI front doors and is covered by
+`tests/test_qgis_processing_connector_manifest.py`.
 
 ## Interpretation Boundaries
 

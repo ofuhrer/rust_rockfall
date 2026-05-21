@@ -22,10 +22,12 @@ It provides measured runtime/output evidence for the frozen target-area
 contract. Peak-memory and split validation/hazard output metrics were then
 measured by the TB-307 metrics-completion rerun on `postproc` as SLURM job
 `4339889`; the earlier blocked/failed-closed attempts remain history, not
-current blockers. The smallest two-zone submit path still has no measured
-multi-zone hazard result: TB-309 failed closed before `sbatch` because the
-reviewed submit package did not match the executable pilot-run contract. The
-current scale surface also includes reduced-output command-plan
+current blockers. The smallest bounded multi-zone branch is now measured:
+TB-407 completed one `postproc` run with preserved metrics and a ready
+preservation gate. The newer regional split branch is not yet measured; TB-428
+failed closed before `sbatch` because the reviewed regional split package
+exceeded its manifest-size budget. The current scale surface also includes
+reduced-output command-plan
 enforcement, validation-output replay/debug budget inventories, a local
 1/2/4/8/12-zone scaling ladder, a measured four-zone post-processing/reducer
 package on Balfrin `postproc`, a read-only Balfrin run-root output-budget
@@ -50,10 +52,12 @@ mode-gated public-geodata staging, AOI terrain preprocessing from staged
 tiles, terrain-driven release-zone candidate stability checks, generic
 candidate-source-zone scenario generation, second-site acquisition planning,
 site-level case-skeleton handoff, and planning-only GIS scope summaries. The
-AOI-to-map user path now has a guided front door, a fixture-backed
-bounds-to-review-map regression, an AOI hazard-map packager, and a static QA
-review surface that exposes layer inventory, warnings, provenance, observed
-overlay status, and the next recommended command. It does not yet download all
+AOI-to-map user path now has a guided front door, a compact AOI user manual, a
+fixture-backed bounds-to-review-map regression, an AOI hazard-map packager, a
+static QA review surface, and a manifest-only QGIS Processing connector
+prototype. These expose layer inventory, warnings, provenance, observed overlay
+status, style assets, and the next recommended command. They do not yet
+download all
 public inputs by default, run arbitrary real AOIs end to end, execute
 second-site ensembles, or generate physically annualized intensity-frequency
 products. The canonical quickstart documents the `workflow --format text`
@@ -82,7 +86,10 @@ but they still do not provide measured multi-zone Balfrin hazard execution.
 The compact AOI front door lives in
 [`docs/aoi_user_manual.md`](docs/aoi_user_manual.md). Use that page for the
 command-level bounds-to-review-map walkthrough and QGIS review entry point
-instead of duplicating AOI helper steps in new docs.
+instead of duplicating AOI helper steps in new docs. The QGIS Processing bridge
+is intentionally only a checked manifest prototype at
+`tests/fixtures/qgis_processing_connector_manifest_v1.json`; it is not a plugin
+or a second workflow layer.
 
 Current next-backlog recommendations are deliberately execution- or
 acquisition-oriented: acquire and preprocess real public geodata for arbitrary

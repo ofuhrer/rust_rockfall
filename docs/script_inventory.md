@@ -64,6 +64,13 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/stage_management_aoi_restaged_terrain.py`
 - `scripts/verify_public_geodata_cache.py`
 
+Related non-script interface fixture:
+
+- `tests/fixtures/qgis_processing_connector_manifest_v1.json` maps future QGIS
+  Processing actions to the existing AOI front-door commands and tracked QGIS
+  style assets. It is a manifest-only prototype, not a plugin or execution
+  framework.
+
 ## Repository Checks And Context Helpers
 
 - `scripts/audit_case_schema.py`
