@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-420: Add Deterministic Release Geometry Sampling Modes
-
-Goal: Support deterministic point, line, and area release sampling from candidate source geometries with stable release IDs and reproducible start distributions.
-
-Capability gap reduced: Release-zone automation realism.
-
-Why this outranks alternatives: RAMMS distinguishes point, line, and area releases as materially different representations; current Swiss-wide automation needs this before larger multi-zone demonstrations are meaningful.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/plan_pragmatic_release_plan.py`
-- `tests/test_plan_pragmatic_release_plan.py`
-
-Deliverables:
-
-- Deterministic sampling modes for point, line, and area candidate geometries.
-- Release-plan manifests with sampling density, seed/provenance, geometry type, and release-count summaries.
-- Fixture tests covering stable IDs, boundary behavior, and empty/small candidate handling.
-
-Definition of done:
-
-- Candidate source polygons or lines can be converted into reproducible release-point plans without manual point editing.
-
-Boundaries: No claim that generated candidates are validated source zones, no tuning to fit Tschamut, no new simulations.
-
 ### TB-421: Add Candidate And Hazard QGIS Style Bundle
 
 Goal: Provide reusable QGIS style files for source candidates, accepted/rejected review zones, release points, scenario families, and conditional hazard rasters.

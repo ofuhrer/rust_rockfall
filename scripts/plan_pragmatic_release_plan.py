@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,10 +27,12 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_block_scenario_sensitivity_plan_v1"
+RELEASE_GEOMETRY_SAMPLING_SCHEMA_VERSION = "deterministic_release_geometry_sampling_plan_v1"
 PLAN_TITLE = "Balfrin block-scenario sensitivity plan"
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 DEFAULT_SCENARIO_TABLE = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv"
 DEFAULT_SAME_SCALE_REFERENCE = ROOT / "docs/tschamut_public_same_scale_uncertainty_envelope.md"
+DEFAULT_RELEASE_GEOMETRY_OUTPUT_ROOT = Path("/tmp/rust_rockfall_tb420_release_geometry_sampling")
 EXPLICIT_NON_FREQUENCY_LABELS = [
     "conditional_sampling_only",
     "not_annual_frequency",
@@ -36,22 +40,66 @@ EXPLICIT_NON_FREQUENCY_LABELS = [
     "not_return_period",
     "not_operational_hazard_map",
 ]
+RELEASE_POINTS_COLUMNS = [
+    "trajectory_id",
+    "experiment_id",
+    "x_m",
+    "y_m",
+    "z_m",
+    "ground_z_m",
+    "vx_mps",
+    "vy_mps",
+    "vz_mps",
+    "block_id",
+    "mass_kg",
+    "radius_m",
+    "source",
+    "release_geometry_id",
+    "release_geometry_type",
+    "candidate_feature_id",
+    "sample_index",
+    "sampling_mode",
+    "sampling_spacing_m",
+    "sampling_seed",
+]
+
+
+class PragmaticReleasePlanError(ValueError):
+    """User-facing release-plan error."""
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("scenario-plan", "release-geometry-sampling"), default="scenario-plan")
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     parser.add_argument("--scenario-table", type=Path, default=DEFAULT_SCENARIO_TABLE)
     parser.add_argument("--same-scale-reference", type=Path, default=DEFAULT_SAME_SCALE_REFERENCE)
+    parser.add_argument("--candidate-geometries", type=Path, default=None)
+    parser.add_argument("--sampling-spacing-m", type=float, default=10.0)
+    parser.add_argument("--sampling-seed", type=int, default=420)
+    parser.add_argument("--output-root", type=Path, default=DEFAULT_RELEASE_GEOMETRY_OUTPUT_ROOT)
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report(
-        policy_path=args.policy,
-        scenario_table_path=args.scenario_table,
-        same_scale_reference_path=args.same_scale_reference,
-    )
+    try:
+        if args.mode == "release-geometry-sampling":
+            report = build_release_geometry_sampling_report(
+                candidate_geometries_path=args.candidate_geometries,
+                output_root=args.output_root,
+                sampling_spacing_m=args.sampling_spacing_m,
+                seed=args.sampling_seed,
+                write_outputs=True,
+            )
+        else:
+            report = build_report(
+                policy_path=args.policy,
+                scenario_table_path=args.scenario_table,
+                same_scale_reference_path=args.same_scale_reference,
+            )
+    except PragmaticReleasePlanError as exc:
+        print(f"pragmatic release-plan error: {exc}", file=sys.stderr)
+        return 2
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -59,9 +107,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.mode == "release-geometry-sampling":
+        print(render_release_geometry_sampling_text_report(report))
     else:
         print(render_text_report(report))
-    return 0 if report["scenario_plan_status"] == "ready" else 2
+    status_key = "release_plan_status" if args.mode == "release-geometry-sampling" else "scenario_plan_status"
+    return 0 if report[status_key] == "ready" else 2
 
 
 def build_report(
@@ -366,8 +417,509 @@ def build_bin_label(block_size_class: str, block_scenario_id: str) -> str:
     return block_scenario_id or block_size_class or "bin"
 
 
+def build_release_geometry_sampling_report(
+    *,
+    candidate_geometries_path: Path | None,
+    output_root: Path | None = None,
+    sampling_spacing_m: float = 10.0,
+    seed: int = 420,
+    write_outputs: bool = False,
+) -> dict[str, Any]:
+    if sampling_spacing_m <= 0:
+        raise PragmaticReleasePlanError("sampling-spacing-m must be greater than zero")
+    if candidate_geometries_path is None:
+        raise PragmaticReleasePlanError("candidate-geometries is required for release-geometry-sampling mode")
+
+    if not candidate_geometries_path.exists():
+        return blocked_release_geometry_sampling_report(
+            candidate_geometries_path=candidate_geometries_path,
+            output_root=output_root,
+            sampling_spacing_m=sampling_spacing_m,
+            seed=seed,
+        )
+
+    payload = load_yaml_or_json(candidate_geometries_path)
+    features = normalize_candidate_features(payload)
+    release_rows: list[dict[str, Any]] = []
+    geometry_summaries: list[dict[str, Any]] = []
+    geometry_type_counts: dict[str, int] = {}
+    release_count_by_geometry_type: dict[str, int] = {}
+
+    for feature_index, feature in enumerate(features, start=1):
+        properties = feature.get("properties", {}) if isinstance(feature.get("properties"), dict) else {}
+        geometry = feature.get("geometry", {}) if isinstance(feature.get("geometry"), dict) else {}
+        geometry_type = text_value(geometry.get("type")) or "Unknown"
+        geometry_type_key = geometry_type.lower()
+        feature_id = stable_feature_id(feature=feature, feature_index=feature_index)
+        release_geometry_id = text_value(properties.get("release_geometry_id")) or f"{feature_id}__{geometry_type_key}"
+        source_zone_id = text_value(properties.get("source_zone_id")) or feature_id
+        points = sample_geometry_points(
+            geometry=geometry,
+            feature_id=feature_id,
+            sampling_spacing_m=sampling_spacing_m,
+            seed=seed,
+        )
+        geometry_type_counts[geometry_type_key] = geometry_type_counts.get(geometry_type_key, 0) + 1
+        release_count_by_geometry_type[geometry_type_key] = release_count_by_geometry_type.get(geometry_type_key, 0) + len(points)
+        geometry_summaries.append(
+            {
+                "candidate_feature_id": feature_id,
+                "release_geometry_id": release_geometry_id,
+                "source_zone_id": source_zone_id,
+                "geometry_type": geometry_type,
+                "release_count": len(points),
+                "sampling_mode": sampling_mode_for_geometry(geometry_type),
+                "sampling_spacing_m": sampling_spacing_m,
+            }
+        )
+        for sample_index, point in enumerate(points, start=1):
+            release_id = f"{release_geometry_id}__release_{sample_index:04d}"
+            release_rows.append(
+                build_release_point_row(
+                    release_id=release_id,
+                    point=point,
+                    properties=properties,
+                    release_geometry_id=release_geometry_id,
+                    geometry_type=geometry_type,
+                    feature_id=feature_id,
+                    sample_index=sample_index,
+                    sampling_spacing_m=sampling_spacing_m,
+                    seed=seed,
+                    source_zone_id=source_zone_id,
+                )
+            )
+
+    output_paths = release_geometry_output_paths(output_root)
+    report = {
+        "schema_version": RELEASE_GEOMETRY_SAMPLING_SCHEMA_VERSION,
+        "release_plan_status": "ready",
+        "blocked_reason": None,
+        "read_only": not write_outputs,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "candidate_geometries_path": display_path(candidate_geometries_path),
+        "sampling_policy": {
+            "sampling_modes": ["point", "line_spacing", "area_grid"],
+            "sampling_spacing_m": sampling_spacing_m,
+            "sampling_seed": seed,
+            "seed_role": "deterministic stable ordering and provenance label only; no stochastic physical probability",
+            "point_mode": "one release point per point geometry",
+            "line_mode": "distance-spaced points with endpoints preserved",
+            "area_mode": "axis-aligned grid centers with centroid fallback for sub-spacing polygons",
+        },
+        "release_count_summary": {
+            "candidate_geometry_count": len(features),
+            "release_point_count": len(release_rows),
+            "geometry_type_counts": geometry_type_counts,
+            "release_count_by_geometry_type": release_count_by_geometry_type,
+            "empty_candidate_handled": len(features) == 0,
+        },
+        "geometry_summaries": geometry_summaries,
+        "release_points": release_rows,
+        "output_paths": output_paths,
+        "provenance": {
+            "source_path": display_path(candidate_geometries_path),
+            "source_sha256": sha256_file(candidate_geometries_path),
+            "generated_by": "scripts/plan_pragmatic_release_plan.py --mode release-geometry-sampling",
+            "candidate_interpretation": "workflow_candidate_only_not_validated_source_zone",
+            "claim_boundary": {
+                "validated_release_zone_evidence": False,
+                "physical_probability_supported": False,
+                "annual_frequency_supported": False,
+                "operational_hazard_map_supported": False,
+                "risk_or_exposure_supported": False,
+            },
+        },
+    }
+    if write_outputs:
+        write_release_geometry_sampling_outputs(report)
+    return report
+
+
+def blocked_release_geometry_sampling_report(
+    *,
+    candidate_geometries_path: Path,
+    output_root: Path | None,
+    sampling_spacing_m: float,
+    seed: int,
+) -> dict[str, Any]:
+    return {
+        "schema_version": RELEASE_GEOMETRY_SAMPLING_SCHEMA_VERSION,
+        "release_plan_status": "blocked_missing_inputs",
+        "blocked_reason": "candidate geometries file is missing",
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "candidate_geometries_path": display_path(candidate_geometries_path),
+        "sampling_policy": {
+            "sampling_modes": ["point", "line_spacing", "area_grid"],
+            "sampling_spacing_m": sampling_spacing_m,
+            "sampling_seed": seed,
+            "seed_role": "deterministic provenance only",
+        },
+        "release_count_summary": {
+            "candidate_geometry_count": 0,
+            "release_point_count": 0,
+            "geometry_type_counts": {},
+            "release_count_by_geometry_type": {},
+            "empty_candidate_handled": False,
+        },
+        "geometry_summaries": [],
+        "release_points": [],
+        "output_paths": release_geometry_output_paths(output_root),
+        "provenance": {
+            "source_path": display_path(candidate_geometries_path),
+            "source_sha256": None,
+            "generated_by": "scripts/plan_pragmatic_release_plan.py --mode release-geometry-sampling",
+            "candidate_interpretation": "workflow_candidate_only_not_validated_source_zone",
+            "claim_boundary": {
+                "validated_release_zone_evidence": False,
+                "physical_probability_supported": False,
+                "annual_frequency_supported": False,
+                "operational_hazard_map_supported": False,
+                "risk_or_exposure_supported": False,
+            },
+        },
+    }
+
+
+def normalize_candidate_features(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    payload_type = text_value(payload.get("type")).lower()
+    raw_features: list[Any]
+    if payload_type == "featurecollection":
+        raw_features = payload.get("features", []) if isinstance(payload.get("features"), list) else []
+    elif payload_type == "feature":
+        raw_features = [payload]
+    elif "geometry" in payload:
+        raw_features = [{"type": "Feature", "properties": {}, "geometry": payload["geometry"]}]
+    elif payload_type in {"point", "linestring", "polygon", "multipoint", "multilinestring", "multipolygon"}:
+        raw_features = [{"type": "Feature", "properties": {}, "geometry": payload}]
+    else:
+        raise PragmaticReleasePlanError("candidate geometries must be GeoJSON FeatureCollection, Feature, or geometry")
+    features: list[dict[str, Any]] = []
+    for index, raw_feature in enumerate(raw_features, start=1):
+        if not isinstance(raw_feature, dict):
+            raise PragmaticReleasePlanError(f"candidate feature {index} must be an object")
+        geometry = raw_feature.get("geometry")
+        if not isinstance(geometry, dict):
+            raise PragmaticReleasePlanError(f"candidate feature {index} must include a geometry object")
+        features.append(raw_feature)
+    return features
+
+
+def stable_feature_id(*, feature: dict[str, Any], feature_index: int) -> str:
+    properties = feature.get("properties", {}) if isinstance(feature.get("properties"), dict) else {}
+    for key in ("candidate_release_zone_id", "release_geometry_id", "source_zone_id", "id"):
+        value = text_value(properties.get(key))
+        if value:
+            return sanitize_id(value)
+    feature_id = text_value(feature.get("id"))
+    if feature_id:
+        return sanitize_id(feature_id)
+    geometry_text = json.dumps(feature.get("geometry", {}), sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(geometry_text.encode("utf-8")).hexdigest()[:10]
+    return f"candidate_geometry_{feature_index:03d}_{digest}"
+
+
+def sanitize_id(value: str) -> str:
+    cleaned = "".join(char if char.isalnum() or char in {"_", "-"} else "_" for char in value.strip())
+    return cleaned.strip("_") or "candidate_geometry"
+
+
+def sample_geometry_points(
+    *,
+    geometry: dict[str, Any],
+    feature_id: str,
+    sampling_spacing_m: float,
+    seed: int,
+) -> list[tuple[float, float]]:
+    geometry_type = text_value(geometry.get("type")).lower()
+    coordinates = geometry.get("coordinates")
+    if geometry_type == "point":
+        return [coordinate_pair(coordinates)]
+    if geometry_type == "multipoint":
+        return sorted({coordinate_pair(point) for point in coordinates if isinstance(point, list)})
+    if geometry_type == "linestring":
+        return sample_line_string([coordinate_pair(point) for point in coordinates], sampling_spacing_m)
+    if geometry_type == "multilinestring":
+        points: list[tuple[float, float]] = []
+        for line_index, line in enumerate(coordinates if isinstance(coordinates, list) else [], start=1):
+            line_points = sample_line_string([coordinate_pair(point) for point in line], sampling_spacing_m)
+            points.extend(line_points)
+        return unique_points(points)
+    if geometry_type == "polygon":
+        return sample_polygon(coordinates, feature_id=feature_id, sampling_spacing_m=sampling_spacing_m, seed=seed)
+    if geometry_type == "multipolygon":
+        points = []
+        for polygon in coordinates if isinstance(coordinates, list) else []:
+            points.extend(sample_polygon(polygon, feature_id=feature_id, sampling_spacing_m=sampling_spacing_m, seed=seed))
+        return unique_points(points)
+    raise PragmaticReleasePlanError(f"unsupported candidate geometry type: {geometry.get('type')}")
+
+
+def coordinate_pair(value: Any) -> tuple[float, float]:
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
+        raise PragmaticReleasePlanError("coordinates must contain x and y values")
+    return (round(float(value[0]), 6), round(float(value[1]), 6))
+
+
+def sample_line_string(points: list[tuple[float, float]], sampling_spacing_m: float) -> list[tuple[float, float]]:
+    if not points:
+        return []
+    if len(points) == 1:
+        return [points[0]]
+    segment_lengths = [distance(start, end) for start, end in zip(points[:-1], points[1:])]
+    total_length = sum(segment_lengths)
+    if total_length == 0:
+        return [points[0]]
+    distances = [0.0]
+    current = sampling_spacing_m
+    while current < total_length:
+        distances.append(round(current, 6))
+        current += sampling_spacing_m
+    if not math.isclose(distances[-1], total_length):
+        distances.append(total_length)
+    return unique_points([interpolate_line_point(points, segment_lengths, target) for target in distances])
+
+
+def interpolate_line_point(points: list[tuple[float, float]], segment_lengths: list[float], target_distance: float) -> tuple[float, float]:
+    walked = 0.0
+    for index, segment_length in enumerate(segment_lengths):
+        if segment_length == 0:
+            continue
+        if target_distance <= walked + segment_length or index == len(segment_lengths) - 1:
+            ratio = max(0.0, min(1.0, (target_distance - walked) / segment_length))
+            start = points[index]
+            end = points[index + 1]
+            return (round(start[0] + (end[0] - start[0]) * ratio, 6), round(start[1] + (end[1] - start[1]) * ratio, 6))
+        walked += segment_length
+    return points[-1]
+
+
+def sample_polygon(
+    coordinates: Any,
+    *,
+    feature_id: str,
+    sampling_spacing_m: float,
+    seed: int,
+) -> list[tuple[float, float]]:
+    rings = polygon_rings(coordinates)
+    if not rings:
+        return []
+    outer = rings[0]
+    xmin, ymin, xmax, ymax = bbox_for_points(outer)
+    offset = deterministic_grid_offset(feature_id=feature_id, seed=seed, sampling_spacing_m=sampling_spacing_m)
+    x_values = stepped_values(xmin + offset, xmax, sampling_spacing_m)
+    y_values = stepped_values(ymin + offset, ymax, sampling_spacing_m)
+    points: list[tuple[float, float]] = []
+    for y_value in y_values:
+        for x_value in x_values:
+            point = (round(x_value, 6), round(y_value, 6))
+            if point_in_polygon_with_holes(point, rings):
+                points.append(point)
+    if not points:
+        centroid = polygon_centroid(outer)
+        if point_in_polygon_with_holes(centroid, rings):
+            points.append(centroid)
+    return unique_points(points)
+
+
+def polygon_rings(coordinates: Any) -> list[list[tuple[float, float]]]:
+    if not isinstance(coordinates, list):
+        return []
+    rings: list[list[tuple[float, float]]] = []
+    for ring in coordinates:
+        if not isinstance(ring, list):
+            continue
+        ring_points = [coordinate_pair(point) for point in ring]
+        if len(ring_points) >= 3:
+            rings.append(ring_points)
+    return rings
+
+
+def deterministic_grid_offset(*, feature_id: str, seed: int, sampling_spacing_m: float) -> float:
+    digest = hashlib.sha256(f"{seed}:{feature_id}".encode("utf-8")).hexdigest()
+    fraction = int(digest[:8], 16) / 0xFFFFFFFF
+    return round((0.25 + 0.5 * fraction) * sampling_spacing_m, 6)
+
+
+def stepped_values(start: float, stop: float, step: float) -> list[float]:
+    if start > stop:
+        return []
+    values: list[float] = []
+    current = start
+    while current <= stop + 1e-9:
+        values.append(current)
+        current += step
+    return values
+
+
+def point_in_polygon_with_holes(point: tuple[float, float], rings: list[list[tuple[float, float]]]) -> bool:
+    if not rings or not point_in_ring(point, rings[0], include_boundary=True):
+        return False
+    return not any(point_in_ring(point, hole, include_boundary=True) for hole in rings[1:])
+
+
+def point_in_ring(point: tuple[float, float], ring: list[tuple[float, float]], *, include_boundary: bool) -> bool:
+    x, y = point
+    inside = False
+    for first, second in zip(ring, ring[1:] + ring[:1]):
+        x1, y1 = first
+        x2, y2 = second
+        if include_boundary and point_on_segment(point, first, second):
+            return True
+        crosses = (y1 > y) != (y2 > y)
+        if crosses:
+            slope_x = (x2 - x1) * (y - y1) / (y2 - y1) + x1
+            if x < slope_x:
+                inside = not inside
+    return inside
+
+
+def point_on_segment(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> bool:
+    px, py = point
+    x1, y1 = start
+    x2, y2 = end
+    cross = (py - y1) * (x2 - x1) - (px - x1) * (y2 - y1)
+    if abs(cross) > 1e-9:
+        return False
+    return min(x1, x2) - 1e-9 <= px <= max(x1, x2) + 1e-9 and min(y1, y2) - 1e-9 <= py <= max(y1, y2) + 1e-9
+
+
+def polygon_centroid(points: list[tuple[float, float]]) -> tuple[float, float]:
+    if len(points) < 3:
+        return points[0] if points else (0.0, 0.0)
+    area_twice = 0.0
+    cx = 0.0
+    cy = 0.0
+    for first, second in zip(points, points[1:] + points[:1]):
+        cross = first[0] * second[1] - second[0] * first[1]
+        area_twice += cross
+        cx += (first[0] + second[0]) * cross
+        cy += (first[1] + second[1]) * cross
+    if abs(area_twice) < 1e-9:
+        return (round(sum(point[0] for point in points) / len(points), 6), round(sum(point[1] for point in points) / len(points), 6))
+    return (round(cx / (3.0 * area_twice), 6), round(cy / (3.0 * area_twice), 6))
+
+
+def bbox_for_points(points: list[tuple[float, float]]) -> tuple[float, float, float, float]:
+    return (min(point[0] for point in points), min(point[1] for point in points), max(point[0] for point in points), max(point[1] for point in points))
+
+
+def distance(start: tuple[float, float], end: tuple[float, float]) -> float:
+    return math.hypot(end[0] - start[0], end[1] - start[1])
+
+
+def unique_points(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    seen: set[tuple[float, float]] = set()
+    unique: list[tuple[float, float]] = []
+    for point in points:
+        if point not in seen:
+            seen.add(point)
+            unique.append(point)
+    return unique
+
+
+def sampling_mode_for_geometry(geometry_type: str) -> str:
+    key = geometry_type.lower()
+    if key in {"point", "multipoint"}:
+        return "point"
+    if key in {"linestring", "multilinestring"}:
+        return "line_spacing"
+    if key in {"polygon", "multipolygon"}:
+        return "area_grid"
+    return "unsupported"
+
+
+def build_release_point_row(
+    *,
+    release_id: str,
+    point: tuple[float, float],
+    properties: dict[str, Any],
+    release_geometry_id: str,
+    geometry_type: str,
+    feature_id: str,
+    sample_index: int,
+    sampling_spacing_m: float,
+    seed: int,
+    source_zone_id: str,
+) -> dict[str, Any]:
+    return {
+        "trajectory_id": release_id,
+        "experiment_id": text_value(properties.get("experiment_id")) or "deterministic_release_geometry_sampling_v1",
+        "x_m": point[0],
+        "y_m": point[1],
+        "z_m": properties.get("z_m", ""),
+        "ground_z_m": properties.get("ground_z_m", ""),
+        "vx_mps": properties.get("vx_mps", 0.0),
+        "vy_mps": properties.get("vy_mps", 0.0),
+        "vz_mps": properties.get("vz_mps", 0.0),
+        "block_id": text_value(properties.get("block_id")) or f"{sample_index:03d}",
+        "mass_kg": properties.get("mass_kg", ""),
+        "radius_m": properties.get("radius_m", ""),
+        "source": (
+            f"deterministic {sampling_mode_for_geometry(geometry_type)} candidate release sampling; "
+            f"source_zone_id={source_zone_id}; not validated source-zone evidence"
+        ),
+        "release_geometry_id": release_geometry_id,
+        "release_geometry_type": geometry_type,
+        "candidate_feature_id": feature_id,
+        "sample_index": sample_index,
+        "sampling_mode": sampling_mode_for_geometry(geometry_type),
+        "sampling_spacing_m": sampling_spacing_m,
+        "sampling_seed": seed,
+    }
+
+
+def release_geometry_output_paths(output_root: Path | None) -> dict[str, str | None]:
+    if output_root is None:
+        return {"release_points_csv": None, "manifest_json": None}
+    return {
+        "release_points_csv": display_path(output_root / "release_points_lv95.csv"),
+        "manifest_json": display_path(output_root / "release_geometry_sampling_manifest.json"),
+    }
+
+
+def write_release_geometry_sampling_outputs(report: dict[str, Any]) -> None:
+    output_paths = report.get("output_paths", {})
+    release_points_path = repo_path(output_paths.get("release_points_csv"))
+    manifest_path = repo_path(output_paths.get("manifest_json"))
+    if not is_allowed_output_root(release_points_path.parent) or not is_allowed_output_root(manifest_path.parent):
+        raise PragmaticReleasePlanError("output-root must stay under /tmp or an ignored repo output root")
+    release_points_path.parent.mkdir(parents=True, exist_ok=True)
+    with release_points_path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=RELEASE_POINTS_COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        for row in report.get("release_points", []):
+            writer.writerow({column: csv_value(row.get(column)) for column in RELEASE_POINTS_COLUMNS})
+    manifest_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def is_allowed_output_root(output_root: Path) -> bool:
+    resolved = output_root.resolve(strict=False)
+    allowed_roots = [
+        Path("/tmp").resolve(strict=False),
+        (ROOT / "validation/private").resolve(strict=False),
+        (ROOT / "hazard/results").resolve(strict=False),
+    ]
+    return any(resolved == root or root in resolved.parents for root in allowed_roots)
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def load_yaml_or_json(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".json":
+        data = json.loads(text)
+    else:
+        data = yaml.safe_load(text)
     return data if isinstance(data, dict) else {}
 
 
@@ -386,6 +938,43 @@ def display_path(path: Path) -> str:
         return str(resolved.relative_to(ROOT))
     except ValueError:
         return str(resolved)
+
+
+def repo_path(value: Any) -> Path:
+    path = Path(text_value(value))
+    return path if path.is_absolute() else ROOT / path
+
+
+def csv_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        return f"{value:.6f}"
+    return str(value)
+
+
+def render_release_geometry_sampling_text_report(report: dict[str, Any]) -> str:
+    summary = report.get("release_count_summary", {})
+    lines = [
+        "Deterministic Release Geometry Sampling Plan",
+        "",
+        f"- Schema version: `{report['schema_version']}`",
+        f"- Release plan status: `{report['release_plan_status']}`",
+        f"- Candidate geometries: `{summary.get('candidate_geometry_count', 0)}`",
+        f"- Release points: `{summary.get('release_point_count', 0)}`",
+        f"- Sampling spacing m: `{report.get('sampling_policy', {}).get('sampling_spacing_m', '')}`",
+        f"- Sampling seed: `{report.get('sampling_policy', {}).get('sampling_seed', '')}`",
+    ]
+    if report.get("blocked_reason"):
+        lines.append(f"- Blocked reason: {report['blocked_reason']}")
+    lines.append("- release_count_by_geometry_type:")
+    for key, value in summary.get("release_count_by_geometry_type", {}).items():
+        lines.append(f"  - {key}: `{value}`")
+    lines.append("- outputs:")
+    for key, value in report.get("output_paths", {}).items():
+        lines.append(f"  - {key}: `{value}`")
+    lines.append("- candidate_interpretation: `workflow_candidate_only_not_validated_source_zone`")
+    return "\n".join(lines)
 
 
 def render_text_report(report: dict[str, Any]) -> str:
