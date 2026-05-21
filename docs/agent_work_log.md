@@ -5513,3 +5513,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measurements use existing fixture/current roots plus scratch `/tmp` scenario-table materialization only; no large production ensemble, deletion, Balfrin submission, scale-up authorization, distributed execution, operational claim, annual-frequency claim, physical-probability claim, or risk/exposure/vulnerability semantics were added.
 - Next task: `TB-427`
+
+### TB-427: Build Balfrin Regional Split Submission Package
+
+- Date: 2026-05-21
+- Commit: `40cd0fb`; work-log entry recorded in the follow-up commit.
+- Objective: generate a no-submit Balfrin `postproc` submission package from the regional split/merge contract and current accepted source candidates.
+- Files changed: `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a no-submit package builder that composes the existing multi-release-zone handoff, regional split/merge files, authorization preflight gates, writable reviewed scratch-root contract, output-budget status, and preservation checklist into one JSON/text package.
+  - Recorded the exact later bounded `postproc` command while explicitly marking `sbatch_attempted=false`, `submit_command_executed=false`, and `balfrin_job_submitted=false`.
+  - Made the package fail closed when regional contract files, submit contract, output budget, remote-root, or authorization/access preflight gates are not ready.
+  - Ran a CLI smoke package under `/tmp/rust_rockfall/tb427_regional_split_submission_package_smoke`; current status is `failed_closed_output_budget` because the authorization preflight reports `blocked_reducer_budget`, while the regional split/merge contract is ready and no submit was attempted.
+  - Removed TB-427 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_balfrin_regional_split_submission_package.py`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/rust_rockfall/tb427_regional_split_submission_package_smoke --format json >/tmp/tb427_regional_split_submission_package_smoke.json` (expected fail-closed exit `2`)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_blocked_report
+- Boundaries: no Balfrin job was submitted, no non-`postproc` partition was introduced, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-428`
