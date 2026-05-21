@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-418: Add Forest Context Intake And Realization Planning
-
-Goal: Add an optional forest-context intake and deterministic realization plan so forest presence, missing DBH/density evidence, and scenario variants are explicit.
-
-Capability gap reduced: Missing vegetation/context treatment for real AOIs.
-
-Why this outranks alternatives: RAMMS treats forest as a major runout-control input; even if the Rust workflow does not yet model tree impacts, the uncertainty must be explicit before Balfrin-scale demonstration claims.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-
-Deliverables:
-
-- Optional forest-context fields in AOI/prepared-pilot manifests.
-- A deterministic forest-on/forest-deferred scenario planning record that separates mapped forest presence from missing stem-density/DBH evidence.
-- Focused tests proving forest data absence remains a bounded deferral, not a silent omission.
-
-Definition of done:
-
-- Real AOI scenario plans can state whether forest context is staged, deferred, or intentionally excluded, with no change to physical model behavior.
-
-Boundaries: No tree-impact physics, no calibrated forest parameters, no operational forest-protection claim.
-
 ### TB-419: Add Rock Shape And Block-Volume Scenario Families
 
 Goal: Make deterministic block-volume and rock-shape scenario families first-class inputs to scenario-table generation.

@@ -151,6 +151,14 @@ explicit unknown category for everything missing or not source-backed. The
 manifest is provenance for scenario metadata and GIS review only; it does not
 transfer calibrated terrain parameters or operational material claims.
 
+AOI and prepared-pilot manifests now also carry a separate forest-context
+intake and realization plan. The plan records whether mapped forest context is
+staged, deferred, or intentionally excluded, and it keeps missing stem-density
+and DBH evidence separate from mapped forest presence. The current realization
+variants are record-only (`forest_deferred` and a deferred future
+`forest_context_on_after_evidence` variant); they do not add tree-impact
+physics, calibrated forest parameters, or operational forest-protection claims.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the

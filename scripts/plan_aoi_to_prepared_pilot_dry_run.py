@@ -370,6 +370,8 @@ def build_prep_summary(
     if terrain_metadata_record is not None:
         terrain_manifests.append(terrain_metadata_record)
     context_manifests = list(acquisition_report.get("public_context_acquisition_plan", []))
+    forest_context_intake = dict(acquisition_report.get("forest_context_intake") or default_forest_context_intake())
+    forest_realization_plan = dict(acquisition_report.get("forest_realization_plan") or default_forest_realization_plan())
     workflow_contract = acquisition_report.get("public_geodata_workflow_contract", {})
     cache_layout = workflow_contract.get("public_geodata_cache_contract", {}).get("cache_layout", {}) if isinstance(workflow_contract, dict) else {}
     gis_scope_summary = build_gis_scope_summary(
@@ -528,6 +530,8 @@ def build_prep_summary(
         "real_input_acquisition_handoff": real_input_acquisition_handoff,
         "terrain_manifests": terrain_manifests,
         "context_manifests": context_manifests,
+        "forest_context_intake": forest_context_intake,
+        "forest_realization_plan": forest_realization_plan,
         "gis_scope_summary": gis_scope_summary,
         "release_scenario_placeholders": release_scenario_placeholders,
         "command_plan_hooks": command_plan_hooks,
@@ -719,6 +723,8 @@ def build_report(
         "cache_verification": cache_verification_report,
         "terrain_manifests": prep_summary["terrain_manifests"],
         "context_manifests": prep_summary["context_manifests"],
+        "forest_context_intake": prep_summary["forest_context_intake"],
+        "forest_realization_plan": prep_summary["forest_realization_plan"],
         "prepared_pilot_real_input_readiness": prep_summary.get("prepared_pilot_real_input_readiness", {}),
         "real_input_acquisition_handoff": prep_summary.get("real_input_acquisition_handoff", {}),
         "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
@@ -840,6 +846,45 @@ def build_gis_scope_summary(
         "cog_export_expectation": cog_export_expectation,
         "non_operational_gis_boundaries": non_operational_gis_boundaries,
         "no_hazard_layers_generated": True,
+    }
+
+
+def default_forest_context_intake() -> dict[str, Any]:
+    return {
+        "schema_version": "aoi_forest_context_intake_v1",
+        "context_status": "deferred_missing_public_context",
+        "mapped_forest_presence": "not_evaluated",
+        "stem_density_evidence": {"status": "missing", "source": "", "path": "", "note": ""},
+        "dbh_evidence": {"status": "missing", "source": "", "path": "", "note": ""},
+        "bounded_deferral": True,
+        "silent_omission": False,
+        "physical_model_behavior": "unchanged_no_tree_impact_physics",
+    }
+
+
+def default_forest_realization_plan() -> dict[str, Any]:
+    return {
+        "schema_version": "aoi_forest_realization_plan_v1",
+        "plan_status": "forest_context_deferred_missing_public_context",
+        "mapped_forest_presence_status": "not_evaluated",
+        "stem_density_evidence_status": "missing",
+        "dbh_evidence_status": "missing",
+        "forest_presence_separated_from_stem_evidence": True,
+        "bounded_deferral": True,
+        "silent_omission": False,
+        "physical_model_behavior": "unchanged_no_tree_impact_physics",
+        "realization_variants": [
+            {
+                "variant_id": "forest_deferred",
+                "variant_status": "selected_default",
+                "scenario_effect": "record_only_physical_model_unchanged",
+            },
+            {
+                "variant_id": "forest_context_on_after_evidence",
+                "variant_status": "deferred_until_mapped_presence_and_stem_density_dbh_evidence",
+                "scenario_effect": "future_planning_record_only_no_current_tree_impact_physics",
+            },
+        ],
     }
 
 
@@ -1630,7 +1675,7 @@ def missing_expected_paths_from_mapping(values: dict[str, Any], *, repo_root: Pa
     for key, value in values.items():
         if not isinstance(value, str) or not value:
             continue
-        if key == "same_scale_reference_path":
+        if key in {"same_scale_reference_path", "scenario_table_manifest_path"}:
             continue
         if not key.endswith("_path"):
             continue
@@ -1839,6 +1884,8 @@ def build_run_manifest(
         "execution_hints": execution_hints,
         "prepared_pilot_input_readiness": prepared_pilot_input_readiness,
         "management_aoi_scenario_pressure": prep_summary.get("management_aoi_scenario_pressure", {}),
+        "forest_context_intake": prep_summary.get("forest_context_intake", {}),
+        "forest_realization_plan": prep_summary.get("forest_realization_plan", {}),
         "command_transcript": command_transcript,
         "handoff_layout": handoff_layout,
         "first_blocker": first_blocker,
@@ -2467,6 +2514,8 @@ def build_case_skeleton_output(
         "site_extent": prep_summary["site_extent"],
         "release_polygon": prep_summary["release_polygon"],
         "gis_scope_summary": prep_summary.get("gis_scope_summary", {}),
+        "forest_context_intake": prep_summary.get("forest_context_intake", {}),
+        "forest_realization_plan": prep_summary.get("forest_realization_plan", {}),
         "blocked_reason": (
             blocked_reason
         ),

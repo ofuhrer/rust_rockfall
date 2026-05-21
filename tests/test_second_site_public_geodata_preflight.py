@@ -92,6 +92,13 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["deferred_public_context_references"], {})
         self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
         self.assertEqual(report["synthetic_fixture_boundaries"][1]["allowed"], False)
+        self.assertEqual(report["forest_context_intake"]["context_status"], "staged")
+        self.assertEqual(report["forest_context_intake"]["stem_density_evidence"]["status"], "missing")
+        self.assertEqual(report["forest_context_intake"]["dbh_evidence"]["status"], "missing")
+        self.assertFalse(report["forest_context_intake"]["silent_omission"])
+        self.assertEqual(report["forest_realization_plan"]["plan_status"], "forest_context_staged_missing_stem_density_or_dbh")
+        self.assertTrue(report["forest_realization_plan"]["forest_presence_separated_from_stem_evidence"])
+        self.assertEqual(report["forest_realization_plan"]["realization_variants"][0]["variant_id"], "forest_deferred")
 
         required_products = {entry["category"]: entry for entry in report["required_public_geodata_products"]}
         self.assertEqual(required_products["terrain_crop"]["status"], "ready")
@@ -129,6 +136,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
                 "deferred_public_context_status",
                 "expected_local_paths",
                 "expected_artifact_roots",
+                "forest_context_intake",
+                "forest_realization_plan",
                 "missing_input_categories",
                 "missing_input_paths_or_patterns",
                 "metadata_requirements",
@@ -202,6 +211,8 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertEqual(report["source_zone_manifest_status"], "ready")
         self.assertEqual(report["scenario_manifest_status"], "ready")
         self.assertEqual(report["public_context_boundary_status"], "deferred_public_context_inputs")
+        self.assertEqual(report["forest_context_intake"]["context_status"], "deferred_missing_public_context")
+        self.assertTrue(report["forest_realization_plan"]["bounded_deferral"])
         self.assertIn("source_zone_scenario_contract", report)
         self.assertIn("source_zone_id_pattern", report["source_zone_scenario_contract"])
         self.assertIn("Candidate selection rationale", "\n".join(report["acquisition_or_staging_checklist"]))
@@ -251,6 +262,22 @@ class SecondSitePublicGeodataPreflightTests(unittest.TestCase):
         self.assertIn("public-context products are intentionally deferred", report["blocked_reason"])
         product_requirements = {entry["category"]: entry for entry in report["public_context_product_requirements"]}
         self.assertEqual(product_requirements["swisstlm3d_metadata"]["current_status"], "deferred_public_context")
+
+    def test_missing_forest_context_is_bounded_deferral_not_silent_omission(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = self._build_report(
+                root,
+                site_config=self._candidate_example_config_path(),
+                omit=["swisssurface3d_context", "swisssurface3d_raster_context", "swisstlm3d_context", "swisstlm3d_metadata"],
+            )
+
+        self.assertEqual(report["forest_context_intake"]["context_status"], "deferred_missing_public_context")
+        self.assertEqual(report["forest_context_intake"]["mapped_forest_presence"], "not_evaluated")
+        self.assertEqual(report["forest_realization_plan"]["plan_status"], "forest_context_deferred_missing_public_context")
+        self.assertTrue(report["forest_realization_plan"]["bounded_deferral"])
+        self.assertFalse(report["forest_realization_plan"]["silent_omission"])
+        self.assertEqual(report["forest_realization_plan"]["physical_model_behavior"], "unchanged_no_tree_impact_physics")
 
     def test_missing_tile_catalog_blocks_preflight_and_reports_missing_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

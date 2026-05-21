@@ -30,6 +30,8 @@ PUBLIC_GEODATA_WORKFLOW_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_workflow
 PUBLIC_GEODATA_CACHE_CONTRACT_SCHEMA_VERSION = "swiss_public_geodata_cache_contract_v1"
 PUBLIC_GEODATA_CACHE_VERIFICATION_SCHEMA_VERSION = "swiss_public_geodata_cache_verification_v1"
 PUBLIC_GEODATA_CACHE_TEMPLATE_SCHEMA_VERSION = "swiss_public_geodata_cache_manifest_template_v1"
+FOREST_CONTEXT_INTAKE_SCHEMA_VERSION = "aoi_forest_context_intake_v1"
+FOREST_REALIZATION_PLAN_SCHEMA_VERSION = "aoi_forest_realization_plan_v1"
 DEFAULT_CANDIDATE_SITE_ID = "unspecified_second_site"
 DEFAULT_AOI_TILE_CATALOG = (
     ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_aoi_tile_catalog.yaml"
@@ -220,6 +222,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
     source_zone_manifest_status = manifest_status(paths["source_zone_metadata"])
     scenario_manifest_status = manifest_status(paths["scenario_table"], paths["source_scenario_policy"])
     public_context_acquisition_plan = build_public_context_acquisition_plan(acquisition_manifest, requirements)
+    forest_context_intake = build_forest_context_intake(config, paths)
+    forest_realization_plan = build_forest_realization_plan(forest_context_intake)
     aoi_tile_discovery = build_aoi_tile_discovery(
         candidate_site_id=candidate_site_id,
         site_extent=site_extent,
@@ -258,6 +262,8 @@ def build_report(site_config: Path | None, site_id: str | None = None) -> dict[s
         "acquisition_manifest_command_template_count": len(acquisition_manifest.get("command_templates") or []),
         "public_context_acquisition_summary": build_public_context_acquisition_summary(public_context_acquisition_plan),
         "public_context_acquisition_plan": public_context_acquisition_plan,
+        "forest_context_intake": forest_context_intake,
+        "forest_realization_plan": forest_realization_plan,
         "aoi_tile_discovery": aoi_tile_discovery,
         "public_geodata_workflow_contract": build_public_geodata_workflow_contract(
             candidate_site_id=candidate_site_id,
@@ -453,6 +459,130 @@ def build_public_context_acquisition_summary(plan: list[dict[str, Any]]) -> dict
         "metadata_contracts": {
             entry["category"]: entry["metadata_contract"] for entry in plan
         },
+    }
+
+
+def build_forest_context_intake(config: dict[str, Any], paths: dict[str, Path]) -> dict[str, Any]:
+    raw = config.get("forest_context")
+    config_record = raw if isinstance(raw, dict) else {}
+    intentionally_excluded = bool(config_record.get("intentionally_excluded")) or text_value(config_record.get("status")) in {
+        "intentionally_excluded",
+        "excluded",
+    }
+    surface_paths = {
+        "swisssurface3d_context": str(paths["swisssurface3d_context"]),
+        "swisssurface3d_raster_context": str(paths["swisssurface3d_raster_context"]),
+        "swisstlm3d_context": str(paths["swisstlm3d_context"]),
+    }
+    staged_surface_categories = [
+        category
+        for category, path_text in surface_paths.items()
+        if is_staged_path(Path(path_text))
+    ]
+    configured_presence = text_value(config_record.get("mapped_forest_presence"))
+    if intentionally_excluded:
+        context_status = "intentionally_excluded"
+    elif staged_surface_categories:
+        context_status = "staged"
+    else:
+        context_status = "deferred_missing_public_context"
+
+    mapped_presence_status = configured_presence or ("staged_pending_review" if staged_surface_categories else "not_evaluated")
+    stem_density = normalize_forest_evidence(config_record.get("stem_density_evidence"), default_status="missing")
+    dbh = normalize_forest_evidence(config_record.get("dbh_evidence"), default_status="missing")
+    return {
+        "schema_version": FOREST_CONTEXT_INTAKE_SCHEMA_VERSION,
+        "context_status": context_status,
+        "mapped_forest_presence": mapped_presence_status,
+        "mapped_forest_presence_source": text_value(config_record.get("mapped_forest_presence_source")),
+        "staged_surface_context_categories": staged_surface_categories,
+        "expected_surface_context_paths": surface_paths,
+        "stem_density_evidence": stem_density,
+        "dbh_evidence": dbh,
+        "intentionally_excluded": intentionally_excluded,
+        "bounded_deferral": context_status == "deferred_missing_public_context"
+        or stem_density["status"] == "missing"
+        or dbh["status"] == "missing",
+        "silent_omission": False,
+        "physical_model_behavior": "unchanged_no_tree_impact_physics",
+        "claim_boundary": {
+            "tree_impact_physics_added": False,
+            "calibrated_forest_parameters_added": False,
+            "operational_forest_protection_claim_allowed": False,
+        },
+    }
+
+
+def normalize_forest_evidence(value: Any, *, default_status: str) -> dict[str, Any]:
+    if isinstance(value, dict):
+        status = text_value(value.get("status")) or default_status
+        return {
+            "status": status,
+            "source": text_value(value.get("source")),
+            "path": text_value(value.get("path")),
+            "note": text_value(value.get("note")),
+        }
+    if text_value(value):
+        return {
+            "status": text_value(value),
+            "source": "",
+            "path": "",
+            "note": "",
+        }
+    return {
+        "status": default_status,
+        "source": "",
+        "path": "",
+        "note": "",
+    }
+
+
+def build_forest_realization_plan(forest_context_intake: dict[str, Any]) -> dict[str, Any]:
+    context_status = text_value(forest_context_intake.get("context_status"))
+    mapped_presence = text_value(forest_context_intake.get("mapped_forest_presence"))
+    stem_density_status = text_value(forest_context_intake.get("stem_density_evidence", {}).get("status"))
+    dbh_status = text_value(forest_context_intake.get("dbh_evidence", {}).get("status"))
+    evidence_complete = stem_density_status not in {"", "missing"} and dbh_status not in {"", "missing"}
+    if context_status == "intentionally_excluded":
+        plan_status = "forest_intentionally_excluded"
+    elif context_status == "staged" and evidence_complete:
+        plan_status = "forest_context_staged_evidence_complete"
+    elif context_status == "staged":
+        plan_status = "forest_context_staged_missing_stem_density_or_dbh"
+    else:
+        plan_status = "forest_context_deferred_missing_public_context"
+
+    return {
+        "schema_version": FOREST_REALIZATION_PLAN_SCHEMA_VERSION,
+        "plan_status": plan_status,
+        "mapped_forest_presence_status": mapped_presence,
+        "stem_density_evidence_status": stem_density_status,
+        "dbh_evidence_status": dbh_status,
+        "forest_presence_separated_from_stem_evidence": True,
+        "bounded_deferral": plan_status in {
+            "forest_context_deferred_missing_public_context",
+            "forest_context_staged_missing_stem_density_or_dbh",
+        },
+        "silent_omission": False,
+        "physical_model_behavior": "unchanged_no_tree_impact_physics",
+        "realization_variants": [
+            {
+                "variant_id": "forest_deferred",
+                "variant_status": "selected_default",
+                "mapped_forest_presence": mapped_presence,
+                "stem_density_evidence_status": stem_density_status,
+                "dbh_evidence_status": dbh_status,
+                "scenario_effect": "record_only_physical_model_unchanged",
+            },
+            {
+                "variant_id": "forest_context_on_after_evidence",
+                "variant_status": "deferred_until_mapped_presence_and_stem_density_dbh_evidence",
+                "mapped_forest_presence_required": True,
+                "stem_density_evidence_required": True,
+                "dbh_evidence_required": True,
+                "scenario_effect": "future_planning_record_only_no_current_tree_impact_physics",
+            },
+        ],
     }
 
 

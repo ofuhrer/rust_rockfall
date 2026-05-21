@@ -39,6 +39,7 @@ SCHEMA_VERSION = "candidate_source_zone_scenario_stress_test_v1"
 MANIFEST_SCHEMA_VERSION = "candidate_source_zone_scenario_stress_test_manifest_v1"
 FREEZER_SCHEMA_VERSION = "reviewed_candidate_source_zone_freezer_v1"
 FREEZER_MANIFEST_SCHEMA_VERSION = "reviewed_candidate_source_zone_freezer_manifest_v1"
+FOREST_REALIZATION_PLAN_SCHEMA_VERSION = "candidate_source_zone_forest_realization_plan_v1"
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
 DEFAULT_RELEASE_POINTS = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/release_points_lv95.csv"
 DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall_tb182_candidate_source_zone_scenarios")
@@ -342,6 +343,7 @@ def build_report(
         "scenario_row_count": len(rows),
         "generated_scenario_table_rows": rows,
         "scenario_table_manifest": manifest,
+        "forest_realization_plan": manifest["forest_realization_plan"],
         "release_candidate_physical_meaning_firewall": release_candidate_firewall,
         "runtime_measurements": runtime_measurements,
         "storage_measurements": storage_measurements,
@@ -451,6 +453,7 @@ def blocked_report(
                 "scenario_row_provenance_profile": [],
                 "scenario_row_count": 0,
             },
+            "forest_realization_plan": build_forest_realization_plan(),
         },
         "runtime_measurements": {
             "build_seconds": 0.0,
@@ -626,6 +629,50 @@ def normalize_row_shares(rows: list[dict[str, Any]]) -> None:
         row["normalized_sampling_share"] = round(float(row.get("sampling_weight") or 0.0) / total_weight, 6) if total_weight else None
 
 
+def build_forest_realization_plan(forest_context_intake: dict[str, Any] | None = None) -> dict[str, Any]:
+    intake = forest_context_intake or {}
+    context_status = text_value(intake.get("context_status")) or "deferred_missing_public_context"
+    mapped_presence = text_value(intake.get("mapped_forest_presence")) or "not_evaluated"
+    stem_density = intake.get("stem_density_evidence") if isinstance(intake.get("stem_density_evidence"), dict) else {}
+    dbh = intake.get("dbh_evidence") if isinstance(intake.get("dbh_evidence"), dict) else {}
+    stem_density_status = text_value(stem_density.get("status")) or "missing"
+    dbh_status = text_value(dbh.get("status")) or "missing"
+    if context_status == "intentionally_excluded":
+        plan_status = "forest_intentionally_excluded"
+    elif context_status == "staged" and stem_density_status != "missing" and dbh_status != "missing":
+        plan_status = "forest_context_staged_evidence_complete"
+    elif context_status == "staged":
+        plan_status = "forest_context_staged_missing_stem_density_or_dbh"
+    else:
+        plan_status = "forest_context_deferred_missing_public_context"
+    return {
+        "schema_version": FOREST_REALIZATION_PLAN_SCHEMA_VERSION,
+        "plan_status": plan_status,
+        "mapped_forest_presence_status": mapped_presence,
+        "stem_density_evidence_status": stem_density_status,
+        "dbh_evidence_status": dbh_status,
+        "forest_presence_separated_from_stem_evidence": True,
+        "bounded_deferral": plan_status in {
+            "forest_context_deferred_missing_public_context",
+            "forest_context_staged_missing_stem_density_or_dbh",
+        },
+        "silent_omission": False,
+        "physical_model_behavior": "unchanged_no_tree_impact_physics",
+        "realization_variants": [
+            {
+                "variant_id": "forest_deferred",
+                "variant_status": "selected_default",
+                "scenario_effect": "record_only_physical_model_unchanged",
+            },
+            {
+                "variant_id": "forest_context_on_after_evidence",
+                "variant_status": "deferred_until_mapped_presence_and_stem_density_dbh_evidence",
+                "scenario_effect": "future_planning_record_only_no_current_tree_impact_physics",
+            },
+        ],
+    }
+
+
 def build_manifest(
     *,
     policy: dict[str, Any],
@@ -688,6 +735,7 @@ def build_manifest(
         },
         "release_candidate_physical_meaning_firewall": release_candidate_firewall
         or build_release_candidate_firewall(candidate_records=candidate_records, rows=rows),
+        "forest_realization_plan": build_forest_realization_plan(),
         "first_scaling_bottleneck": first_scaling_bottleneck,
         "tb_183_planning_input": build_tb_183_planning_input(
             candidate_record_count=len(candidate_records),
@@ -1458,6 +1506,9 @@ def build_freezer_report(
         "block_scenario_ids": [text_value(scenario.get("block_scenario_id")) for scenario in block_scenarios],
         "conditional_weight_total": conditional_weight_total,
         "conditional_weight_semantics": "conditional_sampling_only",
+        "forest_realization_plan": build_forest_realization_plan(
+            review_package.get("forest_context_intake") if isinstance(review_package.get("forest_context_intake"), dict) else None
+        ),
         "source_zone_metadata": source_zone_metadata,
         "release_rows": release_rows,
         "scenario_table_rows": scenario_rows,
