@@ -7,16 +7,31 @@ risk, exposure, or vulnerability semantics.
 ## Recommendation
 
 - 10-zone: feasible as a projection-supported planning class on the current
-  single-node/postproc boundary. The next feasibility step is a measured
-  10-zone probe only after the current `source_zone_footprint_overlap`
-  upstream blocker is cleared.
-- 100-zone: conditionally feasible and deferred. The next step is further
-  reducer, manifest, and scheduler pressure reduction, not a live run.
+  single-node/postproc boundary. The adjacent-candidate path means source-zone
+  automation is no longer the first blocker; the next evidence should support a
+  larger bounded probe only if scenario cardinality stays manageable.
+- 100-zone: conditionally feasible and deferred. The next step is reducer and
+  replay-pressure reduction, not a live run, because the current projection is
+  still dominated by manifest and metadata growth rather than measured
+  multi-zone hazard throughput.
 - Regional: out of reach under current single-node/postproc constraints. The
-  next step is to keep it as a no-go planning branch until multi-AOI evidence
+  next step is continued deferral until multi-AOI hazard-throughput evidence
   exists.
 - Swiss-wide: out of reach under the current authorization boundary. The next
-  step is no-go until multi-AOI evidence and authorization gaps close.
+  step is continued deferral until Balfrin access, authorization, and multi-AOI
+  evidence gaps close.
+
+## Bottleneck Ranking
+
+The adjacent-candidate branch moved the first blocker away from source-zone
+automation and onto the remaining planning bottlenecks:
+
+1. Scenario cardinality and manifest size.
+1. Reducer pressure and replay/metadata growth.
+1. Hazard throughput, because no larger measured multi-zone hazard execution
+   exists yet.
+1. GIS packaging and manifest metadata completeness.
+1. Balfrin access and authorization boundaries for larger planning cases.
 
 ## Evidence Basis
 
@@ -24,16 +39,17 @@ The current projection separates evidence by class instead of folding fail-close
 branches into measured capability:
 
 - Measured evidence:
-  - `scripts/estimate_swiss_wide_execution_envelope.py` anchors the projection
-    to measured support of 1 AOI, 10 release zones, 6 trajectories, and 60
-    units per job.
+  - `scripts/estimate_large_scale_execution.py` anchors the 10-zone and
+    100-zone planning rows to the measured conditional-output profile and the
+    current Balfrin gate coefficients.
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
-    four-zone postproc/reducer package, TB-368 preserved two-zone evidence, and
-    the current claim boundaries.
+    four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
+    TB-407 smallest multi-zone probe, and the current claim boundaries.
   - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
     restartability, GIS scope, uncertainty, and claim boundaries in the measured
-    section while separating projection-only and failed-closed sections.
+    section while separating projection-only and failed-closed sections and now
+    reflects the adjacent-candidate scenario path.
   - TB-407 measured the smallest multi-zone Balfrin probe on `postproc`, with
     `130` validation files, `53` hazard files, `729600` conditional-curve
     rows, and preservation-ready run-root evidence.
@@ -51,10 +67,9 @@ branches into measured capability:
     larger measured memory series.
 - Failed-closed branches:
   - TB-386 rebuilt the current management-AOI Balfrin decision from the
-    candidate-screening branch and still failed closed at
-    `source_zone_footprint_overlap`: the committed 4x4 crop has four valid
-    interior cells, all four remain covered by the frozen source-zone footprint,
-    and slope screening is not reached.
+    candidate-screening branch and now fails closed on the adjacent-candidate
+    review bundle and generated scenario-table path rather than the old
+    source-zone-overlap repair.
   - TB-362 failed closed before `sbatch` on the explicit two-zone hazard path:
     `authorization_status=authorized`, `reducer_budget_status=ready`,
     `submit_contract_status=ready`, and `output_budget_acceptance_status=accepted`,
@@ -68,19 +83,22 @@ branches into measured capability:
   - TB-321 and TB-309 are also failed-closed submit-contract mismatches, not
     measured hazard runs.
 - No-go thresholds:
-  - `job_count > 1` crosses the current single-job evidence boundary.
-  - `release_zone_count > 10` or `trajectory_count > 6` exceeds the measured
-    support envelope used by the Swiss-wide helper.
+  - `scenario_cardinality` and `manifest_size` remain the first planning
+    bottlenecks for larger bounded probes.
+  - `reducer_pressure` and replay metadata growth remain the next bottlenecks
+    for 100-zone planning.
+  - `hazard_throughput` remains out of reach until a larger measured multi-zone
+    hazard execution exists.
   - GIS/COG conversion remains blocked until the packaged AOI root has the
     required manifest fields and raster package metadata.
+  - `job_count > 1` still crosses the current single-job evidence boundary.
   - `scale_up_authorized=false` and `distributed_execution_authorized=false`
     remain hard boundaries.
 - Unknowns:
-  - The committed tiny management-AOI crop remains blocked by
-    `source_zone_footprint_overlap`, but TB-389 showed that the restaged
-    management-AOI terrain can produce a nonempty deterministic candidate
-    bundle. Candidate generation still remains separate from scenario
-    generation and prepared-pilot packaging.
+  - The adjacent-candidate review bundle now replaces the old
+    source-zone-overlap repair as the active management-AOI path, but candidate
+    generation still remains separate from scenario generation and prepared-pilot
+    packaging.
   - There is no measured multi-AOI Balfrin hazard execution in this repository
     checkout.
   - The target-area validation and hazard-output ratios remain unavailable in
@@ -96,10 +114,10 @@ treated as projection bounds, not new measurements.
 
 | Case | Evidence class | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Bottleneck summary | GIS/COG status | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Single-job supported; manifest size remains the first bottleneck; no measured hazard execution yet | blocked_missing_inputs | next probe candidate after the current upstream blocker clears |
-| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | reducer_merge_multi_job_pressure; scheduler_practicality_requires_authorization; manifest size still first bottleneck | blocked_missing_inputs | deferred planning case; not the next live step |
-| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | multi-job pressure without measured distributed support; manifest size still first bottleneck | blocked_missing_inputs | no-go planning branch until multi-AOI evidence exists |
-| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | 26 jobs, scheduler_practicality_requires_authorization, manifest size still first bottleneck | blocked_missing_inputs | no-go until multi-AOI evidence and authorization gaps close |
+| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Scenario cardinality remains the first bottleneck; source-zone automation is no longer first after the adjacent-candidate path | blocked_missing_inputs | next probe candidate if the scenario table stays compact |
+| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | blocked_missing_inputs | optimization task before any live step |
+| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent | blocked_missing_inputs | continued deferral until larger measured evidence exists |
+| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | Balfrin access, authorization, and scheduler practicality remain the final boundary | blocked_missing_inputs | continued deferral until access and multi-AOI gaps close |
 
 ## Measured Versus Extrapolated
 
@@ -111,9 +129,8 @@ Measured:
   that evidence is still postproc-only and does not upgrade hazard execution
   capability.
 - The readiness matrix records TB-368 preserved two-zone evidence and TB-386 as
-  the current management-AOI failed-closed branch blocked by
-  `source_zone_footprint_overlap`; neither upgrades hazard execution
-  capability.
+  the current management-AOI failed-closed branch on the adjacent-candidate
+  review bundle; neither upgrades hazard execution capability.
 - TB-407 adds the measured smallest multi-zone probe, which is separate from
   the failed-closed branches and still does not authorize scale-up.
 - TB-389 adds a measured real-AOI candidate bundle on the restaged management
@@ -137,8 +154,8 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no-go for regional and Swiss-wide
 execution under the current single-node/postproc boundary. The key separator is
-still measured hazard execution: the repository has measured single-job,
-four-zone postproc, and smallest multi-zone probe evidence, but not measured
-larger multi-zone hazard execution, and the current management-AOI branch
-remains blocked by `source_zone_footprint_overlap` upstream of any new
-candidate-screening step.
+now the adjacent-candidate bottleneck ranking: scenario cardinality first,
+then reducer pressure, then hazard throughput, GIS packaging, and Balfrin
+access. The repository has measured single-job, four-zone postproc, and
+smallest multi-zone probe evidence, but not measured larger multi-zone hazard
+execution.

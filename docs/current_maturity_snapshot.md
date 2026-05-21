@@ -234,9 +234,11 @@ also now includes complexity-reduction work: compact multi-zone
 manifest-pressure measurement, prepared-pilot state consolidation, extraction
 of a small hazard-layer packaging primitive from the giant builder, clean
 checkout dependency cleanup, and user-facing AOI front-door/documentation
-consolidation. This backlog intentionally favors executable capability,
-measured pressure reduction, and script-surface simplification over additional
-blocked/deferred reports.
+consolidation. The current adjacent-candidate bottleneck is scenario
+cardinality and reducer pressure, not the stale source-zone-overlap repair.
+This backlog intentionally favors executable capability, measured pressure
+reduction, and script-surface simplification over additional blocked/deferred
+reports.
 
 Post-TB-393, the management-AOI Balfrin execution state still failed closed
 before `sbatch`, but the current candidate/scenario path is now the adjacent-
@@ -244,8 +246,9 @@ candidate review bundle and generated scenario table rather than the old
 zero-candidate 4x4 crop. Balfrin SSH, remote checkout hygiene, run-root
 visibility, and scheduler query were all reachable, and the remaining unblock
 action is to keep the adjacent-candidate scenario-table path threaded through
-prepared-pilot compilation; this is not measured multi-zone Balfrin hazard
-execution.
+prepared-pilot compilation; the next ranked bottlenecks are scenario
+cardinality, reducer pressure, hazard throughput, GIS packaging, and Balfrin
+access. This is not measured multi-zone Balfrin hazard execution.
 
 Medium-term objectives are to make the conditional pilot scientifically
 interpretable, reproducible on Balfrin/CSCS-style infrastructure, and scalable

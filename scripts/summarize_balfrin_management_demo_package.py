@@ -1027,7 +1027,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
             "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-            "TB-407 now supplies measured smallest multi-zone evidence, while the rebuilt TB-386 management-AOI branch remains blocked by `source_zone_footprint_overlap` and does not add measured support."
+            "TB-407 supplies measured smallest multi-zone evidence, and the adjacent-candidate management-AOI path now shifts the first remaining bottleneck to scenario cardinality rather than source-zone automation."
         ),
         "projection_classification": {
             "10_zone": "feasible",
@@ -1036,27 +1036,29 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "swiss_wide": "out_of_reach",
         },
         "upstream_data_blockers": [
-            "source_zone_footprint_overlap",
+            "scenario_cardinality",
         ],
         "top_blockers": [
-            "manifest_size_first_bottleneck",
-            "multi_job_pressure_without_measured_distributed_support",
-            "scheduler_practicality_requires_authorization",
-            "gis_cog_manifest_fields_missing",
-            "no_measured_multi_zone_hazard_execution",
+            "scenario_cardinality",
+            "reducer_pressure",
+            "hazard_throughput",
+            "gis_packaging",
+            "balfrin_access",
         ],
         "measured_basis": {
             "aoi_count": 1,
             "release_zone_count": 10,
             "trajectory_count": 6,
             "single_node_postproc_boundary": True,
+            "adjacent_candidate_review_path": True,
         },
         "source_paths": [
-            "docs/swiss_scale_feasibility_projection.md",
-            "scripts/estimate_swiss_wide_execution_envelope.py",
+            "scripts/estimate_large_scale_execution.py",
             "scripts/summarize_balfrin_scale_readiness_matrix.py",
+            "docs/swiss_scale_feasibility_projection.md",
             "docs/current_maturity_snapshot.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
+            "docs/balfrin_management_demo_package.md",
         ],
     }
 
@@ -1066,7 +1068,7 @@ def build_failed_closed_section() -> dict[str, Any]:
         "status": "failed_closed",
         "evidence_type": "failed_closed",
         "summary": (
-            "The recent submit branches, including the canonical TB-362 two-zone hazard path and the rebuilt TB-386 management-AOI path blocked by `source_zone_footprint_overlap`, "
+            "The recent submit branches, including the canonical TB-362 two-zone hazard path and the rebuilt TB-386 management-AOI path on the adjacent-candidate review bundle and generated scenario table, "
             "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability. TB-407 is separate measured smallest multi-zone evidence and does not change those failed-closed classifications."
         ),
         "failed_closed_branches": [

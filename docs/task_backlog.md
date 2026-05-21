@@ -39,46 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-413: Reassess Swiss-Scale Feasibility After Adjacent-Candidate Probe
-
-Goal: Update the Swiss-scale feasibility projection using the newest
-candidate/scenario/Balfrin evidence from the adjacent-candidate path.
-
-Capability gap reduced: Management needs a feasibility projection tied to
-current measured evidence rather than stale single-zone or failed-closed
-branches.
-
-Why this outranks alternatives: Once the adjacent-candidate branch either runs
-or fails closed, the projection should immediately say what bottleneck remains:
-source-zone automation, scenario cardinality, hazard throughput, reducer
-pressure, GIS packaging, or Balfrin access.
-
-Inspect first:
-
-- `docs/swiss_scale_feasibility_projection.md`
-- `scripts/estimate_large_scale_execution.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_large_scale_execution_probe.py`
-
-Deliverables:
-
-- Updated feasibility categories for 10-zone, 100-zone, regional, and
-  Swiss-wide planning cases.
-- Explicit bottleneck ranking after the adjacent-candidate branch.
-- Management-facing summary that distinguishes measured, projection-only, and
-  out-of-reach tiers.
-
-Definition of done:
-
-- The projection states whether the next evidence supports a larger bounded
-  probe, an optimization task, or continued deferral, with no unsupported
-  scale-up claim.
-
-Boundaries: Projection-only unless using already measured evidence; no
-Swiss-wide run, no distributed execution, no operational claim, no annual
-frequency, and no risk/exposure/vulnerability semantics.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

@@ -64,7 +64,17 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "feasible")
         self.assertEqual(
             report["swiss_scale_feasibility_projection_section"]["upstream_data_blockers"],
-            ["source_zone_footprint_overlap"],
+            ["scenario_cardinality"],
+        )
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection_section"]["top_blockers"],
+            [
+                "scenario_cardinality",
+                "reducer_pressure",
+                "hazard_throughput",
+                "gis_packaging",
+                "balfrin_access",
+            ],
         )
         self.assertEqual(report["failed_closed_section"]["status"], "failed_closed")
         self.assertEqual(report["next_decision_section"]["evidence_type"], "deferred")
@@ -77,8 +87,9 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
         self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
         self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
-        self.assertIn("source_zone_footprint_overlap", report["failed_closed_section"]["summary"])
-        self.assertIn("TB-386", report["failed_closed_section"]["summary"])
+        self.assertIn("adjacent-candidate management-AOI path", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("scenario cardinality", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("adjacent-candidate review bundle", report["failed_closed_section"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
         self.assertEqual(len(report["regeneration_commands"]), 5)
         self.assertIn("summarize_balfrin_management_demo_package.py", report["regeneration_commands"][-1])
