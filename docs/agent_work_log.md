@@ -5410,3 +5410,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: conditional statistics surfaces remain diagnostic sample summaries only; no annual-frequency, physical-probability, return-period, risk, exposure, vulnerability, operational design-quantile, scale-up, or distributed-execution claim was added.
 - Next task: `TB-423`
+
+### TB-423: Add Target-Line Conditional Impact Diagnostics
+
+- Date: 2026-05-21
+- Commit: `06954ad`; work-log entry recorded in the follow-up commit.
+- Objective: compute conditional target-line diagnostics for road, protection, or review LineStrings from existing trajectory outputs.
+- Files changed: `scripts/build_hazard_layers.py`, `scripts/package_aoi_hazard_map.py`, `tests/test_hazard_layers.py`, `docs/hazard_layers.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `--target-line-geojson` and `--target-line-min-samples` support to `scripts/build_hazard_layers.py`.
+  - Parsed GeoJSON LineString and MultiLineString inputs into deterministic segment ids, counted supplied trajectory intersections, and summarized conditional kinetic energy and jump height per segment.
+  - Wrote `<prefix>_target_line_conditional_diagnostics.csv` and `.geojson` outputs with sample counts, unique trajectory counts, mean/median/Q90/maximum summaries, and insufficient-sample flags.
+  - Carried target-line diagnostic summaries into metadata, run manifests, pilot GIS package manifests, phase timing, and allowed diagnostic product labels.
+  - Documented the target-line workflow and explicit non-risk, non-frequency, non-operational boundaries.
+  - Added a tiny synthetic target-line test that verifies CSV, GeoJSON, metadata, and run-manifest entries.
+  - Removed TB-423 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_hazard_layers.py scripts/package_aoi_hazard_map.py tests/test_hazard_layers.py`
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_hazard_layers.py -k "target_line_conditional_diagnostics"`
+  - `PYENV_VERSION=system uv run --with pytest python -m pytest tests/test_hazard_layers.py -k "target_line_conditional_diagnostics or conditional_statistics_surfaces or conditional_intensity_exceedance"`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: target-line outputs remain conditional trajectory-intersection diagnostics only; no road risk model, object vulnerability, exposure, annual-frequency, physical occurrence probability, return-period, operational protection-design, scale-up, or distributed-execution claim was added.
+- Next task: `TB-424`
