@@ -5211,3 +5211,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new simulation, no operational claims, no scale-up authorization, no physical-probability or annual-frequency semantics, and no risk/exposure/vulnerability upgrade.
 - Next task: `TB-415`
+
+### TB-415: Add AOI Config Describe And Precedence Mode
+
+- Date: 2026-05-21
+- Commit: `f5e71ee`; never leave `pending` in a pushed commit.
+- Objective: make AOI workflow configuration inspectable before execution, including defaults, site config, source/scenario policy paths, generated manifests, and CLI overrides.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a compact `describe-config` command to the AOI front door with machine-readable layers for built-in defaults, site config, and CLI override/default values.
+  - Reported effective candidate metadata, path precedence, expected source/scenario policy and scenario-table paths, generated roots and manifest locations, unknown site-config fields, missing required fields, and hard claim boundaries without checking staged file existence.
+  - Added focused tests for site-root-relative precedence, unknown-field reporting, CLI override reporting, generated-root output, and missing-field behavior through the JSON CLI path.
+  - Removed TB-415 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_describe_config_reports_precedence_unknown_fields_and_generated_roots tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_describe_config_main_reports_missing_required_fields_without_running_steps`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config --format json >/tmp/tb415_describe_config.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no downloads, no simulations, no operational claims, no scale-up authorization, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability or distributed-execution semantics.
+- Next task: `TB-416`
