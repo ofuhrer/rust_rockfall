@@ -164,10 +164,14 @@ preflight. TB-432 then reran the live gate and failed closed before `sbatch`
 because the Balfrin remote checkout hygiene/access preflight reported three
 stale generated `command_plan.json` files under
 `validation/private/tb407_repaired_handoff_remote/...`. The regional split
-branch therefore remains unmeasured; the next unblock action is to preserve or
-clean those remote generated files, rerun the Balfrin access preflight, and
-only submit after the regenerated package reports
-`ready_for_bounded_postproc_submission=true`.
+branch therefore remains unmeasured and TB-432 remains failed-closed/no-submit
+evidence. After TB-432, the orchestrator preserved/removed those ignored remote
+generated files and a fresh Balfrin access preflight returned
+`ready_for_read_only_collection`, `ready_for_pre_submit=true`, remote checkout
+hygiene `pass`, and `dirty_path_count=0`. The next blocker category is evidence
+collection rather than output pressure or reducer pressure: regenerate the
+ready regional split package with the fresh passing access preflight and retry
+one bounded regional split `postproc` probe.
 TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA

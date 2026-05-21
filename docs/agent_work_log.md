@@ -5655,3 +5655,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-433`
+
+### TB-433: Integrate Regional Split Run Outcome Into Scale Dashboard
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: thread the TB-432 regional split failed-closed outcome and post-task remote-hygiene cleanup into the scale dashboard and Swiss-scale feasibility surfaces.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/current_maturity_snapshot.md`, `docs/balfrin_regional_split_probe_gate_tb428.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a dedicated `regional_split_probe` dashboard row classified as `failed_closed` / `failed_closed_no_submission`, with no measured runtime, memory, run root, validation output, or hazard output promoted.
+  - Preserved TB-432 as failed-closed/no-submit evidence while recording the later cleanup fact: the transient remote checkout hygiene blocker was cleared and a fresh access preflight reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, hygiene `pass`, and `dirty_path_count=0`.
+  - Updated the scale recommendation so the next regional split action is evidence collection: regenerate the ready package with a fresh passing access preflight and retry one bounded regional split `postproc` probe.
+  - Updated the Swiss-scale feasibility and maturity snapshot text so output pressure and reducer pressure are not described as the current blocker for the regional split branch.
+  - Added regression coverage for the new dashboard row, top-level regional split status, and next-action classification.
+  - Removed TB-433 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix` (initial run failed on assertion wording, then rerun after correction)
+- Result/status: implemented_blocked_report
+- Boundaries: evidence integration only; no Balfrin job was submitted, TB-432 was not promoted to measured evidence, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-434`

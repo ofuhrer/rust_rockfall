@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-433: Integrate Regional Split Run Outcome Into Scale Dashboard
-
-Goal: Thread the TB-432 measured or failed-closed outcome into the scale readiness dashboard and Swiss-scale feasibility surfaces.
-
-Capability gap reduced: Stale scale interpretation after the regional split probe branch changes state.
-
-Why this outranks alternatives: Scale decisions should be based on the latest measured or failed-closed regional evidence, not the older TB-407/TB-428 state.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/current_maturity_snapshot.md`
-- `docs/balfrin_regional_split_probe_gate_tb428.md`
-
-Deliverables:
-
-- Updated scale dashboard classification for the regional split branch.
-- Updated concise documentation stating whether the next blocker is execution, output pressure, reducer pressure, or evidence collection.
-- Regression coverage for the new classification path.
-
-Definition of done:
-
-- The scale dashboard and maturity snapshot agree on the current regional split status and next executable action.
-
-Boundaries: Evidence integration only; do not promote failed-closed, fixture-backed, or projection-only evidence into measured scale capability.
-
 ### TB-434: Build Real-AOI Public-Geodata Acquisition Command Set
 
 Goal: Turn the current AOI acquisition planning surfaces into concrete copy/paste commands for acquiring and staging the required public geodata products for one arbitrary AOI.

@@ -172,6 +172,30 @@ TB407_SMALL_MULTI_ZONE_PROBE = {
     "threshold_profile_id": "smallest_live_two_zone_probe",
     "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
 }
+TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
+    "task_id": "TB-432",
+    "submission_package_status": "failed_closed_preflight",
+    "measurement_status": "failed_closed_no_submission",
+    "classification": "failed_closed_remote_hygiene_preflight",
+    "regional_split_merge_contract_status": "ready",
+    "regional_split_count": 12,
+    "ready_for_bounded_postproc_submission": False,
+    "sbatch_attempted": False,
+    "balfrin_job_submitted": False,
+    "preflight_status": "blocked_dirty_remote_checkout",
+    "remote_checkout_hygiene_status_at_gate": "fail",
+    "dirty_path_count_at_gate": 3,
+    "stale_generated_file_pattern": "validation/private/tb407_repaired_handoff_remote/**/command_plan.json",
+    "post_task_cleanup_status": "remote_hygiene_blocker_cleared",
+    "post_cleanup_access_preflight_status": "ready_for_read_only_collection",
+    "post_cleanup_ready_for_pre_submit": True,
+    "post_cleanup_remote_checkout_hygiene_status": "pass",
+    "post_cleanup_dirty_path_count": 0,
+    "next_blocker_category": "evidence_collection",
+    "next_recommended_action": "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+    "next_evidence_field": "regional_split_bounded_postproc_probe_run_root",
+    "source_report": "docs/balfrin_regional_split_probe_gate_tb432.md",
+}
 TB405_ADJACENT_CANDIDATE_SCENARIO_PATH = {
     "task_id": "TB-405",
     "scenario_state": "adjacent_candidate_review_path",
@@ -746,6 +770,70 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
     }
 
 
+def _regional_split_failed_closed_row() -> dict[str, Any]:
+    gate = TB432_REGIONAL_SPLIT_FAILED_CLOSED
+    return {
+        "tier_id": "regional_split_probe",
+        "tier_label": "regional split postproc probe",
+        "evidence_label": "failed_closed",
+        "measurement_status": gate["measurement_status"],
+        "classification": gate["classification"],
+        "output_budget_status": "ready_after_tb431_package_compaction",
+        "output_pressure_status": "ready_after_tb431_package_compaction",
+        "reducer_pressure_status": "ready_regional_split_merge_contract",
+        "execution_efficiency_status": "not_measured_no_submission",
+        "hazard_execution_status": "failed_closed_no_hazard_execution",
+        "file_count": None,
+        "bytes": None,
+        "validation_output_file_count": None,
+        "validation_output_bytes": None,
+        "hazard_output_file_count": None,
+        "hazard_output_bytes": None,
+        "manifest_bytes": None,
+        "reducer_sidecars": None,
+        "runtime_seconds": None,
+        "memory_peak_mb": None,
+        "run_root_preservation_status": "fail_closed_no_run_root_created",
+        "replayability_status": "not_measured",
+        "authorization_status": "not_submitted_access_preflight_failed_at_gate",
+        "next_evidence_field": gate["next_evidence_field"],
+        "next_recommended_action": gate["next_recommended_action"],
+        "next_recommended_action_reason": (
+            "TB-432 remains failed-closed/no-submit because its live gate stopped on stale generated remote "
+            "command_plan.json files, but that transient hygiene blocker was later cleared and a fresh access "
+            "preflight reported ready_for_read_only_collection, ready_for_pre_submit=true, hygiene pass, and "
+            "dirty_path_count=0. The next action is evidence collection: regenerate the ready package with that "
+            "fresh passing preflight and retry exactly one bounded regional split postproc probe."
+        ),
+        "next_blocker_category": gate["next_blocker_category"],
+        "blocker": "tb432_failed_closed_remote_checkout_hygiene_at_gate",
+        "current_blocker": None,
+        "summary": (
+            "TB-432 produced failed-closed no-submit regional split evidence, not a measured run. The remote "
+            "checkout hygiene blocker that caused the stop was subsequently cleared, so the current dashboard "
+            "should not point back to output pressure or reducer pressure; it should point to one bounded "
+            "evidence-collection retry after regenerating the ready package with a fresh passing access preflight."
+        ),
+        "latest_no_submit_task": gate["task_id"],
+        "submission_package_status": gate["submission_package_status"],
+        "regional_split_merge_contract_status": gate["regional_split_merge_contract_status"],
+        "regional_split_count": gate["regional_split_count"],
+        "ready_for_bounded_postproc_submission_at_gate": gate["ready_for_bounded_postproc_submission"],
+        "sbatch_attempted": gate["sbatch_attempted"],
+        "balfrin_job_submitted": gate["balfrin_job_submitted"],
+        "preflight_status_at_gate": gate["preflight_status"],
+        "remote_checkout_hygiene_status_at_gate": gate["remote_checkout_hygiene_status_at_gate"],
+        "dirty_path_count_at_gate": gate["dirty_path_count_at_gate"],
+        "stale_generated_file_pattern": gate["stale_generated_file_pattern"],
+        "post_task_cleanup_status": gate["post_task_cleanup_status"],
+        "post_cleanup_access_preflight_status": gate["post_cleanup_access_preflight_status"],
+        "post_cleanup_ready_for_pre_submit": gate["post_cleanup_ready_for_pre_submit"],
+        "post_cleanup_remote_checkout_hygiene_status": gate["post_cleanup_remote_checkout_hygiene_status"],
+        "post_cleanup_dirty_path_count": gate["post_cleanup_dirty_path_count"],
+        "source_report": gate["source_report"],
+    }
+
+
 def _postproc_microbenchmark_row() -> dict[str, Any]:
     return {
         "tier_id": "postproc_microbenchmark",
@@ -875,6 +963,7 @@ def build_report() -> dict[str, Any]:
         _four_zone_hazard_probe_blocked_row(),
         _two_zone_preserved_row(),
         _management_aoi_failed_closed_row(),
+        _regional_split_failed_closed_row(),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
         _scratch_local_reducer_row(),
@@ -894,11 +983,13 @@ def build_report() -> dict[str, Any]:
     overall_status = "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
     measured_multi_zone_row = next((row for row in rows if row["tier_id"] == "smallest_multi_zone"), {})
-    next_recommended_scaling_task = (
-        "optimize_only_from_new_measured_bottleneck"
-        if measured_multi_zone_row.get("classification") == "measured_smallest_multi_zone_probe"
-        else str(
-            next(
+    regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
+    next_recommended_scaling_task = str(
+        regional_split_row.get("next_recommended_action")
+        or (
+            "optimize_only_from_new_measured_bottleneck"
+            if measured_multi_zone_row.get("classification") == "measured_smallest_multi_zone_probe"
+            else next(
                 (
                     row.get("next_recommended_action")
                     for row in rows
@@ -912,15 +1003,24 @@ def build_report() -> dict[str, Any]:
     next_backlog_recommendations = [
         {
             "rank": 1,
-            "action_id": "optimize_only_from_new_measured_bottleneck",
-            "category": "optimization",
+            "action_id": "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "category": "evidence_collection",
             "status": "recommended_next",
             "reason": (
-                "TB-407 now supplies measured smallest multi-zone evidence, so the next step should follow the new measured bottleneck instead of stale failed-closed branches."
+                "TB-432 remains failed-closed/no-submit, but its transient remote-hygiene blocker was cleared after the task; regenerate the ready package with a fresh passing access preflight and retry one bounded regional split postproc probe."
             ),
         },
         {
             "rank": 2,
+            "action_id": "optimize_only_from_new_measured_bottleneck",
+            "category": "optimization",
+            "status": "defer_until_regional_split_probe_measured_or_failed_closed",
+            "reason": (
+                "TB-407 supplies measured smallest multi-zone evidence, but the newer regional split branch now has a cleared access blocker and should collect its bounded outcome first."
+            ),
+        },
+        {
+            "rank": 3,
             "action_id": "repair_four_zone_handoff_and_rerun_gate",
             "category": "execution_unblock",
             "status": "defer_until_hypothesis_measured",
@@ -929,7 +1029,7 @@ def build_report() -> dict[str, Any]:
             ),
         },
         {
-            "rank": 3,
+            "rank": 4,
             "action_id": "resolve_two_zone_output_profile_blocker",
             "category": "execution_unblock",
             "status": "ready_for_operator_choice",
@@ -939,7 +1039,7 @@ def build_report() -> dict[str, Any]:
             ),
         },
         {
-            "rank": 4,
+            "rank": 5,
             "action_id": "stage_real_public_context_for_user_aoi",
             "category": "acquisition",
             "status": "ready_for_operator_choice",
@@ -949,7 +1049,7 @@ def build_report() -> dict[str, Any]:
             ),
         },
         {
-            "rank": 5,
+            "rank": 6,
             "action_id": "defer_physical_frequency_and_operational_claims",
             "category": "explicit_deferral",
             "status": "deferred_boundary",
@@ -967,6 +1067,7 @@ def build_report() -> dict[str, Any]:
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
+            "TB-432 failed closed before sbatch on regional split remote checkout hygiene and remains no-submit evidence, while the transient hygiene blocker was later cleared for a fresh bounded retry, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
         ),
@@ -1028,7 +1129,19 @@ def build_report() -> dict[str, Any]:
             "blocked_reason": decision_report.get("blocked_reason"),
         },
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
-        "next_recommended_scaling_task_reason": "TB-407 supplies the measured smallest multi-zone probe evidence, so optimization should follow the new measured bottleneck instead of stale failed-closed branches.",
+        "next_recommended_scaling_task_reason": "TB-432 remains failed-closed/no-submit, but the post-task cleanup cleared the remote hygiene blocker; the next scale action is one bounded regional split evidence-collection retry with a freshly regenerated ready package and passing access preflight.",
+        "regional_split_status": {
+            "classification": regional_split_row.get("classification"),
+            "evidence_label": regional_split_row.get("evidence_label"),
+            "measurement_status": regional_split_row.get("measurement_status"),
+            "next_blocker_category": regional_split_row.get("next_blocker_category"),
+            "next_recommended_action": regional_split_row.get("next_recommended_action"),
+            "post_cleanup_access_preflight_status": regional_split_row.get("post_cleanup_access_preflight_status"),
+            "post_cleanup_remote_checkout_hygiene_status": regional_split_row.get(
+                "post_cleanup_remote_checkout_hygiene_status"
+            ),
+            "post_cleanup_dirty_path_count": regional_split_row.get("post_cleanup_dirty_path_count"),
+        },
         "next_evidence_field": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_backlog_recommendations": next_backlog_recommendations,
         "blocked_reason": "four_zone_hazard_probe.authorization_record_checksum",
@@ -1049,6 +1162,7 @@ def build_report() -> dict[str, Any]:
             "docs/balfrin_postproc_microbenchmark_tb305.md",
             "docs/balfrin_two_zone_hazard_run_tb368.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
+            "docs/balfrin_regional_split_probe_gate_tb432.md",
             "scripts/execute_management_aoi_balfrin_run.py",
         ],
     }
@@ -1085,6 +1199,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  measurement_status: {row.get('measurement_status')}",
                 f"  output_budget_status: {row.get('output_budget_status')}",
                 f"  output_pressure_status: {row.get('output_pressure_status')}",
+                f"  reducer_pressure_status: {row.get('reducer_pressure_status')}",
                 f"  execution_efficiency_status: {row.get('execution_efficiency_status')}",
                 f"  hazard_execution_status: {row.get('hazard_execution_status')}",
                 f"  file_count: {row.get('file_count')}",
@@ -1098,6 +1213,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  authorization_status: {row.get('authorization_status')}",
                 f"  next_evidence_field: {row.get('next_evidence_field')}",
                 f"  next_recommended_action: {row.get('next_recommended_action')}",
+                f"  next_blocker_category: {row.get('next_blocker_category')}",
                 f"  blocker: {row.get('blocker')}",
                 f"  summary: {row.get('summary')}",
             ]

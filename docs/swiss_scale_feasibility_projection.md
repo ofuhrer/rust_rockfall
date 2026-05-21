@@ -14,9 +14,14 @@ risk, exposure, or vulnerability semantics.
   replay-pressure reduction, not a live run, because the current projection is
   still dominated by manifest and metadata growth rather than measured
   multi-zone hazard throughput.
-- Regional: out of reach under current single-node/postproc constraints. The
-  next step is continued deferral until multi-AOI hazard-throughput evidence
-  exists.
+- Regional split probe branch: still unmeasured and failed-closed/no-submit
+  after TB-432, but no longer blocked by the transient remote checkout hygiene
+  issue that stopped TB-432. The next blocker category is evidence collection:
+  regenerate the ready package with a fresh passing Balfrin access preflight
+  and retry one bounded regional split `postproc` probe.
+- Regional workflows: still out of reach as scale capability under current
+  single-node/postproc constraints until that bounded branch produces measured
+  evidence.
 - Swiss-wide: out of reach under the current authorization boundary. The next
   step is continued deferral until Balfrin access, authorization, and multi-AOI
   evidence gaps close.
@@ -55,6 +60,10 @@ branches into measured capability:
   - TB-407 measured the smallest multi-zone Balfrin probe on `postproc`, with
     `130` validation files, `53` hazard files, `729600` conditional-curve
     rows, and preservation-ready run-root evidence.
+  - The regional split dashboard row does not add measured evidence: TB-432
+    failed closed before `sbatch`, and the later remote-hygiene cleanup only
+    makes a fresh bounded retry executable after a regenerated ready package
+    and passing access preflight.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -82,6 +91,13 @@ branches into measured capability:
   - TB-352 failed closed before scheduler submission, so it remains guardrail
     evidence rather than measured multi-zone hazard execution.
   - TB-332/TB-333 failed closed on an authorization checksum mismatch.
+  - TB-432 failed closed before `sbatch` on the regional split branch because
+    the Balfrin remote checkout hygiene gate found three stale generated
+    `command_plan.json` files. The orchestrator later removed those ignored
+    generated files from the remote checkout, and a fresh access preflight
+    reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`,
+    remote hygiene `pass`, and `dirty_path_count=0`; this clears the transient
+    hygiene blocker but does not convert TB-432 into measured evidence.
   - TB-321 and TB-309 are also failed-closed submit-contract mismatches, not
     measured hazard runs.
 - No-go thresholds:
@@ -118,7 +134,8 @@ treated as projection bounds, not new measurements.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Scenario cardinality remains the first bottleneck; source-zone automation is no longer first after the adjacent-candidate path | blocked_missing_inputs | next probe candidate if the scenario table stays compact |
 | 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | blocked_missing_inputs | optimization task before any live step |
-| regional | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent | blocked_missing_inputs | continued deferral until larger measured evidence exists |
+| regional split probe | failed-closed/no-submit | n/a | n/a | n/a | TB-432 stopped before `sbatch`; output pressure and reducer pressure are no longer the current blocker after TB-431/TB-432 cleanup | ready_for_fresh_preflight_retry | regenerate the ready package with fresh passing access preflight and retry one bounded regional split `postproc` probe |
+| regional workflows | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent | blocked_missing_inputs | no scale-capability promotion until the bounded regional split branch is measured |
 | Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | Balfrin access, authorization, and scheduler practicality remain the final boundary | blocked_missing_inputs | continued deferral until access and multi-AOI gaps close |
 
 ## Measured Versus Extrapolated
@@ -135,6 +152,10 @@ Measured:
   review bundle; neither upgrades hazard execution capability.
 - TB-407 adds the measured smallest multi-zone probe, which is separate from
   the failed-closed branches and still does not authorize scale-up.
+- TB-432 adds only failed-closed/no-submit regional split evidence. The next
+  executable action is evidence collection, not output-pressure repair or
+  reducer-pressure repair: regenerate the ready regional split package with a
+  fresh passing access preflight and retry one bounded `postproc` probe.
 - TB-389 adds a measured real-AOI candidate bundle on the restaged management
   terrain, which is useful for downstream scenario pressure work but remains a
   heuristic candidate-generation result rather than validated release-zone
@@ -162,11 +183,10 @@ Extrapolated:
 ## Bottom Line
 
 The current evidence supports a feasible 10-zone planning class, a deferred and
-conditional 100-zone planning class, and no-go for regional and Swiss-wide
-execution under the current single-node/postproc boundary. The key separator is
-now the adjacent-candidate bottleneck ranking: scenario cardinality is measured
-and compact for the current candidate, then GIS/research-full output growth,
-reducer pressure, hazard throughput, GIS packaging completeness, and Balfrin
-access remain. The repository has measured single-job, four-zone postproc, and
-smallest multi-zone probe evidence, but not measured larger multi-zone hazard
-execution.
+conditional 100-zone planning class, and no promoted regional or Swiss-wide
+scale capability under the current single-node/postproc boundary. The regional
+split branch is now a bounded evidence-collection retry candidate, not a
+measured scale result: TB-432 remains failed-closed/no-submit, while the
+transient remote-hygiene blocker has been cleared. The repository has measured
+single-job, four-zone postproc, and smallest multi-zone probe evidence, but not
+measured larger multi-zone hazard execution.

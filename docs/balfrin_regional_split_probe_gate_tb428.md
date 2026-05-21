@@ -45,6 +45,22 @@ manifest/package by at least 550 bytes, or to revise the reviewed budget with a
 measured justification in a separate task. Until then, the regional split
 Balfrin probe remains a no-submit branch.
 
+## Later Integration Status
+
+TB-431 later compacted the reviewed package enough for the package gate to pass
+in fixture-backed preflight. TB-432 then reran the live gate and still failed
+closed before `sbatch`, this time because the Balfrin remote checkout hygiene
+gate found three stale generated `command_plan.json` files. That TB-432 result
+remains failed-closed/no-submit evidence, not measured regional capability.
+
+After TB-432, the transient remote hygiene blocker was cleared outside the
+failed-closed run: the ignored generated files were preserved/removed from the
+remote checkout, and a fresh access preflight reported
+`ready_for_read_only_collection`, `ready_for_pre_submit=true`, remote hygiene
+`pass`, and `dirty_path_count=0`. The current next action is therefore evidence
+collection: regenerate the ready package with a fresh passing access preflight
+and retry one bounded regional split `postproc` probe.
+
 ## Boundaries
 
 - No Balfrin job was submitted.
