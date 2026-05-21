@@ -45,6 +45,9 @@ OBSERVED_EVIDENCE_OVERLAY_ROLE = "observed_evidence_overlays"
 CALIBRATION_INPUT_ROLE = "calibration_inputs"
 HOLDOUT_EVIDENCE_ROLE = "holdout_evidence"
 DEFERRED_SOURCE_FREQUENCY_ROLE = "deferred_source_frequency_records"
+QGIS_STYLE_BUNDLE_SCHEMA_VERSION = "aoi_qgis_style_bundle_v1"
+QGIS_STYLE_ROOT = ROOT / "qgis" / "styles"
+QGIS_STYLE_BUNDLE_INDEX = QGIS_STYLE_ROOT / "aoi_qgis_style_bundle.json"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -165,6 +168,12 @@ def package_aoi_hazard_map(
         source_zone_metadata_path,
         scenario_table_path,
     )
+    qgis_style_assets = copy_qgis_style_assets(output_root)
+    apply_qgis_style_references(
+        raster_package["inventory"],
+        [source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
+        qgis_style_assets,
+    )
     package_manifest_path = output_root / "aoi_hazard_map_package_manifest.json"
     pilot_gis_package_manifest_path = output_root / pilot_manifest_path.name
     summary_path = output_root / "aoi_hazard_map_package_summary.txt"
@@ -210,6 +219,7 @@ def package_aoi_hazard_map(
             "Source-frequency records remain deferred and are not included here.",
         ),
         "vector_overlays": [source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
+        "qgis_style_assets": qgis_style_assets,
         "inventory": [
             *raster_package["inventory"],
             source_zone_overlay,
@@ -258,6 +268,103 @@ def package_aoi_hazard_map(
         pilot_manifest=pilot_manifest,
     )
     return report
+
+
+def copy_qgis_style_assets(output_root: Path) -> dict[str, Any]:
+    style_dir = output_root / "styles"
+    style_dir.mkdir(parents=True, exist_ok=True)
+    bundle = load_json(QGIS_STYLE_BUNDLE_INDEX)
+    styles: list[dict[str, Any]] = []
+    copied_paths: list[Path] = []
+    for spec in list(bundle.get("styles") or []):
+        if not isinstance(spec, dict):
+            continue
+        filename = str(spec.get("filename") or "")
+        if not filename:
+            continue
+        source_path = QGIS_STYLE_ROOT / filename
+        output_path = style_dir / filename
+        shutil.copy2(source_path, output_path)
+        copied_paths.append(output_path)
+        entry = output_manifest_entry(output_path, "qgis_style_asset", "qml")
+        entry.update(
+            {
+                "style_id": spec.get("style_id"),
+                "display_name": spec.get("display_name"),
+                "geometry_type": spec.get("geometry_type"),
+                "source_path": str(source_path),
+                "applies_to_layer_names": list(spec.get("applies_to_layer_names") or []),
+                "applies_to_layer_name_prefixes": list(spec.get("applies_to_layer_name_prefixes") or []),
+                "applies_to_overlay_roles": list(spec.get("applies_to_overlay_roles") or []),
+                "claim_boundary": bundle.get("claim_boundary"),
+            }
+        )
+        styles.append(entry)
+    index_output_path = style_dir / QGIS_STYLE_BUNDLE_INDEX.name
+    shutil.copy2(QGIS_STYLE_BUNDLE_INDEX, index_output_path)
+    copied_paths.append(index_output_path)
+    index_entry = output_manifest_entry(index_output_path, "qgis_style_bundle_manifest", "json")
+    index_entry.update({"source_path": str(QGIS_STYLE_BUNDLE_INDEX)})
+    return {
+        "schema_version": QGIS_STYLE_BUNDLE_SCHEMA_VERSION,
+        "status": "ready" if styles else "empty",
+        "claim_boundary": bundle.get("claim_boundary"),
+        "style_manifest": index_entry,
+        "styles": styles,
+        "style_count": len(styles),
+        "copied_paths": [str(path) for path in copied_paths],
+    }
+
+
+def apply_qgis_style_references(
+    raster_entries: list[dict[str, Any]],
+    vector_entries: list[dict[str, Any]],
+    qgis_style_assets: dict[str, Any],
+) -> None:
+    styles = [entry for entry in list(qgis_style_assets.get("styles") or []) if isinstance(entry, dict)]
+    for entry in raster_entries:
+        layer_name = str(entry.get("layer_name") or "")
+        style = match_qgis_style(layer_name, None, styles)
+        entry["qgis_style"] = qgis_style_reference(style) if style else no_qgis_style_match(layer_name=layer_name)
+    for entry in vector_entries:
+        layer_name = Path(str(entry.get("path") or "")).stem
+        overlay_role = str(entry.get("overlay_role") or "")
+        style = match_qgis_style(layer_name, overlay_role, styles)
+        entry["qgis_style"] = qgis_style_reference(style) if style else no_qgis_style_match(layer_name=layer_name, overlay_role=overlay_role)
+
+
+def match_qgis_style(layer_name: str, overlay_role: str | None, styles: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for style in styles:
+        if overlay_role and overlay_role in list(style.get("applies_to_overlay_roles") or []):
+            return style
+    for style in styles:
+        if layer_name in list(style.get("applies_to_layer_names") or []):
+            return style
+    for style in styles:
+        for prefix in list(style.get("applies_to_layer_name_prefixes") or []):
+            if layer_name.startswith(str(prefix)):
+                return style
+    return None
+
+
+def qgis_style_reference(style: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": "ready",
+        "style_id": style.get("style_id"),
+        "display_name": style.get("display_name"),
+        "path": style.get("path"),
+        "format": style.get("format"),
+        "sha256": style.get("sha256"),
+        "claim_boundary": style.get("claim_boundary"),
+    }
+
+
+def no_qgis_style_match(*, layer_name: str, overlay_role: str | None = None) -> dict[str, Any]:
+    return {
+        "status": "no_tracked_style_match",
+        "layer_name": layer_name,
+        "overlay_role": overlay_role,
+    }
 
 
 def package_rasters(output_root: Path, raster_outputs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -754,6 +861,7 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "layer_inventory": report["inventory"],
         "raster_outputs": report["raster_outputs"],
         "vector_overlays": report["vector_overlays"],
+        "qgis_style_assets": report["qgis_style_assets"],
         "diagnostic_hazard_outputs": report["diagnostic_hazard_outputs"],
         "observed_evidence_overlay_hook": report["observed_evidence_overlay_hook"],
         "observed_evidence_overlays": report["observed_evidence_overlays"],
@@ -844,6 +952,7 @@ def write_pilot_gis_package_manifest(
     manifest["review_surface_first_blocker"] = report.get("review_surface_first_blocker")
     manifest["review_surface_next_recommended_command"] = report.get("review_surface_next_recommended_command")
     manifest["review_surface_paths"] = report.get("review_surface_paths", {})
+    manifest["qgis_style_assets"] = report.get("qgis_style_assets", {})
     manifest["package_status"] = report["status"]
     manifest["map_product_id"] = map_manifest.get("map_product_id")
     manifest["map_product_version"] = map_manifest.get("map_product_version")
@@ -879,6 +988,7 @@ def write_summary(path: Path, report: dict[str, Any]) -> None:
         f"package_byte_count\t{report['package_byte_count']}",
         f"raster_count\t{len(report['raster_outputs'])}",
         f"vector_overlay_count\t{len(report['vector_overlays'])}",
+        f"qgis_style_count\t{(report.get('qgis_style_assets') or {}).get('style_count', 0)}",
         f"cog_blockers\t{report['cog_blockers']}",
         f"missing_hazard_outputs\t{report['missing_hazard_outputs']}",
         f"claim_boundary\t{report['claim_boundary']}",

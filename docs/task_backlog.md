@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-421: Add Candidate And Hazard QGIS Style Bundle
-
-Goal: Provide reusable QGIS style files for source candidates, accepted/rejected review zones, release points, scenario families, and conditional hazard rasters.
-
-Capability gap reduced: GIS review usability for AOI and Balfrin demonstrations.
-
-Why this outranks alternatives: OpenNHM learnings favor QGIS-compatible map review before heavier plugin work; styles make current outputs inspectable without changing science.
-
-Inspect first:
-
-- `scripts/generate_aoi_map_qa_review.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/hazard_layers.md`
-- `docs/opennhm_learnings_report.md`
-
-Deliverables:
-
-- Tracked QGIS style assets or templates for candidate overlays, release points, scenario families, and key hazard rasters.
-- Map-package manifest references to the style assets.
-- A fixture-backed package or test proving styles are discoverable without generated artifacts.
-
-Definition of done:
-
-- A reviewer can open an AOI package in QGIS and apply consistent visual styling without relying on screenshots or ad hoc layer naming.
-
-Boundaries: No QGIS plugin yet, no operational map symbology claim, no generated raster commits.
-
 ### TB-422: Build Conditional Statistics Surfaces From Trajectory Samples
 
 Goal: Add reusable per-cell conditional statistics surfaces for count, reach fraction, Q90/Q95/Q99, median, and maximum where the underlying samples support them.

@@ -131,6 +131,17 @@ only. It does not create a QGIS project, GeoPackage, Cloud-Optimized GeoTIFF,
 annual intensity-frequency product, return-period map, risk map, or operational
 hazard map.
 
+AOI map review packages produced by `scripts/package_aoi_hazard_map.py` include
+a tracked diagnostic QGIS style bundle copied from `qgis/styles/` into the
+package `styles/` directory. The package and pilot GIS manifests expose
+`qgis_style_assets`, and each packaged raster/vector inventory item records its
+matching `.qml` style where one is available. These styles cover candidate
+source zones, accepted/rejected review zones, release points, scenario families,
+reach/deposition diagnostics, maximum kinetic energy, maximum jump height, and
+conditional exceedance rasters. The styles are review symbology only; they do
+not upgrade conditional outputs to operational, annual-frequency, physical
+probability, or risk products.
+
 For production-style tile experiments, provide an explicit reference grid. When
 all explicit-grid arguments are supplied, they override `--cell-size` for grid
 construction and the metadata/manifest record `source: explicit`:

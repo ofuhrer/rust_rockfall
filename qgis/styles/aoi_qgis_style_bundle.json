@@ -1,0 +1,73 @@
+{
+  "schema_version": "aoi_qgis_style_bundle_v1",
+  "claim_boundary": "Diagnostic QGIS symbology only; not an operational hazard-map, risk, annual-frequency, or physical-probability legend.",
+  "styles": [
+    {
+      "style_id": "candidate_source_zone",
+      "filename": "candidate_source_zone.qml",
+      "display_name": "Candidate source zone",
+      "geometry_type": "polygon",
+      "applies_to_overlay_roles": ["source_zone_release_geometry"],
+      "applies_to_layer_names": ["release_zone"]
+    },
+    {
+      "style_id": "review_zone_status",
+      "filename": "review_zone_status.qml",
+      "display_name": "Accepted and rejected review zones",
+      "geometry_type": "polygon",
+      "applies_to_overlay_roles": ["release_zone_provenance"],
+      "applies_to_layer_names": ["release_zone_provenance"]
+    },
+    {
+      "style_id": "release_points",
+      "filename": "release_points.qml",
+      "display_name": "Release points",
+      "geometry_type": "point",
+      "applies_to_overlay_roles": ["release_points"],
+      "applies_to_layer_names": ["release_points"]
+    },
+    {
+      "style_id": "scenario_families",
+      "filename": "scenario_families.qml",
+      "display_name": "Scenario families",
+      "geometry_type": "polygon",
+      "applies_to_overlay_roles": ["scenario_table"],
+      "applies_to_layer_names": ["scenario_table"]
+    },
+    {
+      "style_id": "conditional_reach_probability",
+      "filename": "conditional_reach_probability.qml",
+      "display_name": "Conditional reach probability",
+      "geometry_type": "raster",
+      "applies_to_layer_names": ["reach_probability", "weighted_reach_probability"]
+    },
+    {
+      "style_id": "conditional_deposition_density",
+      "filename": "conditional_deposition_density.qml",
+      "display_name": "Conditional deposition density",
+      "geometry_type": "raster",
+      "applies_to_layer_names": ["deposition_density", "weighted_deposition_density", "significant_impact_density", "weighted_significant_impact_density"]
+    },
+    {
+      "style_id": "conditional_kinetic_energy",
+      "filename": "conditional_kinetic_energy.qml",
+      "display_name": "Maximum kinetic energy",
+      "geometry_type": "raster",
+      "applies_to_layer_names": ["max_kinetic_energy"]
+    },
+    {
+      "style_id": "conditional_jump_height",
+      "filename": "conditional_jump_height.qml",
+      "display_name": "Maximum jump height",
+      "geometry_type": "raster",
+      "applies_to_layer_names": ["max_jump_height"]
+    },
+    {
+      "style_id": "conditional_intensity_exceedance",
+      "filename": "conditional_intensity_exceedance.qml",
+      "display_name": "Conditional intensity exceedance",
+      "geometry_type": "raster",
+      "applies_to_layer_name_prefixes": ["kinetic_energy_exceedance_", "weighted_kinetic_energy_exceedance_", "jump_height_exceedance_", "weighted_jump_height_exceedance_", "velocity_exceedance_", "weighted_velocity_exceedance_"]
+    }
+  ]
+}
