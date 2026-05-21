@@ -5190,3 +5190,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no Swiss-wide run, no distributed execution, no operational claim, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability semantics.
 - Next task: backlog refill needed
+
+### TB-414: Freeze The AOI Conditional Map Workflow Contract
+
+- Date: 2026-05-21
+- Commit: `f5f9bec`; never leave `pending` in a pushed commit.
+- Objective: freeze the canonical AOI conditional-map workflow as one named contract so new workers can discover the phase model from the front door instead of scattered helper commands.
+- Files changed: `docs/README.md`, `docs/aoi_conditional_workflow_contract.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a compact `docs/aoi_conditional_workflow_contract.md` phase model covering prepare, review, scenario generation, bounded execution, post-processing, GIS packaging, and interpretation.
+  - Wired `scripts/run_aoi_hazard_workflow.py` to surface the same contract in `--help`, `status`, and `workflow` output via a machine-readable `workflow_contract` block.
+  - Updated the AOI preparation guide and docs index to point at the new canonical contract, added focused regression coverage for discoverability, and removed TB-414 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_status_main_renders_concise_text_and_json_for_ready_report tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_main_renders_compact_text_summary_for_copy_paste tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_help_includes_the_simple_bounds_to_review_example`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new simulation, no operational claims, no scale-up authorization, no physical-probability or annual-frequency semantics, and no risk/exposure/vulnerability upgrade.
+- Next task: `TB-415`
