@@ -1201,6 +1201,69 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(semantics["numerator"], "estimated standard error of trajectory-level probability")
             self.assertEqual(semantics["denominator"], "supplied trajectory count")
 
+    def test_conditional_statistics_surfaces_record_sample_support(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            self.assertEqual(
+                hazard.main_with_args(
+                    [
+                        "--case",
+                        str(FIXTURE / "plane_case.yaml"),
+                        "--diagnostics",
+                        str(FIXTURE / "diagnostics.json"),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "1.0",
+                        "--conditional-statistics-surfaces",
+                        "--conditional-statistics-min-samples",
+                        "3",
+                        "--no-plots",
+                    ]
+                ),
+                0,
+            )
+
+            sample_count = read_layer(
+                output_dir / "hazard_fixture_plane_kinetic_energy_sample_count.csv",
+                "kinetic_energy_sample_count",
+            )
+            insufficient = read_layer(
+                output_dir / "hazard_fixture_plane_kinetic_energy_insufficient_samples.csv",
+                "kinetic_energy_insufficient_samples",
+            )
+            q90 = read_layer(output_dir / "hazard_fixture_plane_kinetic_energy_q90.csv", "kinetic_energy_q90")
+            q99 = read_layer(output_dir / "hazard_fixture_plane_kinetic_energy_q99.csv", "kinetic_energy_q99")
+            maximum = read_layer(
+                output_dir / "hazard_fixture_plane_kinetic_energy_maximum.csv",
+                "kinetic_energy_maximum",
+            )
+
+            self.assertGreater(max(sample_count.values()), 0.0)
+            self.assertIn(1.0, set(insufficient.values()))
+            for cell, value in q99.items():
+                if value != hazard.NODATA:
+                    self.assertLessEqual(q90[cell], value)
+                    self.assertLessEqual(value, maximum[cell])
+
+            metadata = json.loads((output_dir / "hazard_fixture_plane_metadata.json").read_text())
+            manifest = json.loads((output_dir / "hazard_fixture_plane_manifest.json").read_text())
+            surfaces = manifest["conditional_statistics_surfaces"]
+            self.assertTrue(surfaces["enabled"])
+            self.assertTrue(surfaces["generated"])
+            self.assertEqual(surfaces["support_metadata"]["minimum_supported_sample_count"], 3)
+            self.assertFalse(surfaces["annualized"])
+            self.assertFalse(surfaces["risk_or_exposure"])
+            self.assertIn("kinetic_energy_q99", surfaces["generated_layer_names"])
+            self.assertEqual(metadata["conditional_statistics_surfaces"], surfaces)
+            self.assertIn("kinetic_energy_q99", manifest["hazard_statistics"]["generated_layer_names"])
+            q99_cellwise = next(
+                layer for layer in manifest["cellwise_layers"] if layer["layer_name"] == "kinetic_energy_q99"
+            )
+            self.assertTrue(q99_cellwise["conditional_statistics_surface"])
+            self.assertEqual(q99_cellwise["sample_support_metadata_layer"], "kinetic_energy_sample_count")
+            self.assertEqual(q99_cellwise["insufficient_sample_flag_layer"], "kinetic_energy_insufficient_samples")
+
     def test_conditional_curve_summary_only_suppresses_large_curve_table(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)

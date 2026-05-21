@@ -187,6 +187,8 @@ class HazardStatisticConfig:
     jump_height_exceedance_m: tuple[float, ...] = ()
     velocity_exceedance_mps: tuple[float, ...] = ()
     probability_standard_error: bool = False
+    conditional_statistics_surfaces: bool = False
+    conditional_statistics_min_samples: int = 10
 
     @property
     def enabled(self) -> bool:
@@ -195,6 +197,7 @@ class HazardStatisticConfig:
             or self.jump_height_exceedance_m
             or self.velocity_exceedance_mps
             or self.probability_standard_error
+            or self.conditional_statistics_surfaces
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -203,6 +206,8 @@ class HazardStatisticConfig:
             "jump_height_exceedance_m": list(self.jump_height_exceedance_m),
             "velocity_exceedance_mps": list(self.velocity_exceedance_mps),
             "probability_standard_error": self.probability_standard_error,
+            "conditional_statistics_surfaces": self.conditional_statistics_surfaces,
+            "conditional_statistics_min_samples": self.conditional_statistics_min_samples,
         }
 
 
@@ -1892,6 +1897,9 @@ class HazardAccumulator:
         self.weighted_reach = zeros(grid) if probability else None
         self.max_ke = nodata_grid(grid)
         self.max_jump = nodata_grid(grid)
+        self.kinetic_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
+        self.jump_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
+        self.velocity_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
         self.kinetic_exceedance = {
             threshold: zeros(grid) for threshold in statistics.kinetic_energy_exceedance_j
         }
@@ -1990,11 +1998,15 @@ class HazardAccumulator:
         kinetic = sample.kinetic_j
         if kinetic is not None:
             self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
+            if self.kinetic_samples is not None:
+                self.kinetic_samples[row][col].append(kinetic)
             for threshold in kinetic_exceeded:
                 if kinetic >= threshold:
                     kinetic_exceeded[threshold].add(cell)
         speed = sample.speed_mps
         if speed is not None:
+            if self.velocity_samples is not None:
+                self.velocity_samples[row][col].append(speed)
             for threshold in velocity_exceeded:
                 if speed >= threshold:
                     velocity_exceeded[threshold].add(cell)
@@ -2004,6 +2016,8 @@ class HazardAccumulator:
             self.terrain_warning_emitted = True
         elif jump is not None:
             self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
+            if self.jump_samples is not None:
+                self.jump_samples[row][col].append(jump)
             for threshold in jump_exceeded:
                 if jump >= threshold:
                     jump_exceeded[threshold].add(cell)
@@ -2106,6 +2120,9 @@ class HazardAccumulator:
         add_grid_into(self.reach, other.reach)
         merge_max_grid_into(self.max_ke, other.max_ke)
         merge_max_grid_into(self.max_jump, other.max_jump)
+        merge_sample_value_grid_into(self.kinetic_samples, other.kinetic_samples)
+        merge_sample_value_grid_into(self.jump_samples, other.jump_samples)
+        merge_sample_value_grid_into(self.velocity_samples, other.velocity_samples)
         add_threshold_grids_into(self.kinetic_exceedance, other.kinetic_exceedance)
         add_threshold_grids_into(self.jump_exceedance, other.jump_exceedance)
         add_threshold_grids_into(self.velocity_exceedance, other.velocity_exceedance)
@@ -2181,6 +2198,7 @@ class HazardAccumulator:
                     nodata=True,
                 )
             )
+            layers.extend(self.conditional_statistics_layers())
             if self.probability is not None:
                 denominator = self.probability.total_filtered_weight
                 if denominator <= 0.0:
@@ -2415,6 +2433,34 @@ class HazardAccumulator:
 
         return layers, warnings
 
+    def conditional_statistics_layers(self) -> list[RasterLayer]:
+        if not self.statistics.conditional_statistics_surfaces:
+            return []
+        min_samples = self.statistics.conditional_statistics_min_samples
+        return [
+            *conditional_value_statistics_layers(
+                "kinetic_energy",
+                "Kinetic energy",
+                "J",
+                self.kinetic_samples,
+                min_samples=min_samples,
+            ),
+            *conditional_value_statistics_layers(
+                "jump_height",
+                "Jump height",
+                "m above terrain plus block radius",
+                self.jump_samples,
+                min_samples=min_samples,
+            ),
+            *conditional_value_statistics_layers(
+                "velocity",
+                "Velocity",
+                "m/s",
+                self.velocity_samples,
+                min_samples=min_samples,
+            ),
+        ]
+
 
 def main_with_args(argv: list[str] | None = None) -> int:
     total_started = time.perf_counter()
@@ -2481,6 +2527,19 @@ def main_with_args(argv: list[str] | None = None) -> int:
             "add binomial standard-error rasters for unweighted trajectory-level "
             "reach and exceedance probability layers"
         ),
+    )
+    parser.add_argument(
+        "--conditional-statistics-surfaces",
+        action="store_true",
+        help=(
+            "add per-cell conditional sample statistics surfaces for count, "
+            "median, Q90/Q95/Q99, maximum, and insufficient-sample flags"
+        ),
+    )
+    parser.add_argument(
+        "--conditional-statistics-min-samples",
+        type=int,
+        help="minimum finite sample count before high-quantile statistics are considered supported",
     )
     parser.add_argument(
         "--conditional-curve-export",
@@ -4395,6 +4454,25 @@ def serialize_threshold_grids(threshold_grids: dict[float, list[list[float]]]) -
     return {str(threshold): serialize_grid(grid) for threshold, grid in threshold_grids.items()}
 
 
+def serialize_sample_value_grid(grid: list[list[list[float]]] | None) -> list[list[list[float]]] | None:
+    if grid is None:
+        return None
+    return [[list(values) for values in row] for row in grid]
+
+
+def deserialize_sample_value_grid(raw: Any) -> list[list[list[float]]] | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        raise ValueError("serialized sample-value grid must be a list of rows")
+    grid: list[list[list[float]]] = []
+    for row in raw:
+        if not isinstance(row, list):
+            raise ValueError("serialized sample-value grid row must be a list")
+        grid.append([[float(value) for value in values] if isinstance(values, list) else [] for values in row])
+    return grid
+
+
 def deserialize_threshold_grids(raw: Any) -> dict[float, list[list[float]]]:
     if not isinstance(raw, dict):
         raise ValueError("serialized threshold grids must be a dict")
@@ -4432,6 +4510,9 @@ def serialize_chunk_accumulator_state(
             "reach": serialize_grid(accumulator.reach),
             "max_ke": serialize_grid(accumulator.max_ke),
             "max_jump": serialize_grid(accumulator.max_jump),
+            "kinetic_samples": serialize_sample_value_grid(accumulator.kinetic_samples),
+            "jump_samples": serialize_sample_value_grid(accumulator.jump_samples),
+            "velocity_samples": serialize_sample_value_grid(accumulator.velocity_samples),
             "kinetic_exceedance": serialize_threshold_grids(accumulator.kinetic_exceedance),
             "weighted_kinetic_exceedance": serialize_threshold_grids(accumulator.weighted_kinetic_exceedance),
             "jump_exceedance": serialize_threshold_grids(accumulator.jump_exceedance),
@@ -4484,6 +4565,9 @@ def load_chunk_accumulator_state(
     accumulator.reach = deserialize_grid(grids.get("reach"))
     accumulator.max_ke = deserialize_grid(grids.get("max_ke"))
     accumulator.max_jump = deserialize_grid(grids.get("max_jump"))
+    accumulator.kinetic_samples = deserialize_sample_value_grid(grids.get("kinetic_samples"))
+    accumulator.jump_samples = deserialize_sample_value_grid(grids.get("jump_samples"))
+    accumulator.velocity_samples = deserialize_sample_value_grid(grids.get("velocity_samples"))
     accumulator.deposition = deserialize_grid(grids.get("deposition"))
     accumulator.impact_density = deserialize_grid(grids.get("impact_density"))
     accumulator.kinetic_exceedance = deserialize_threshold_grids(grids.get("kinetic_exceedance"))
@@ -4527,6 +4611,13 @@ def load_chunk_accumulator_state(
 def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> HazardStatisticConfig:
     configured = case.get("hazard_layers") or {}
     statistics = configured.get("statistics") or configured
+    min_samples = int(
+        args.conditional_statistics_min_samples
+        if args.conditional_statistics_min_samples is not None
+        else statistics.get("conditional_statistics_min_samples", 10)
+    )
+    if min_samples < 1:
+        raise SystemExit("conditional_statistics_min_samples must be at least 1")
     return HazardStatisticConfig(
         kinetic_energy_exceedance_j=validated_thresholds(
             list_from_config(statistics.get("kinetic_energy_exceedance_j"))
@@ -4546,6 +4637,10 @@ def parse_hazard_statistics(case: dict[str, Any], args: argparse.Namespace) -> H
         probability_standard_error=bool(
             args.probability_standard_error or statistics.get("probability_standard_error") is True
         ),
+        conditional_statistics_surfaces=bool(
+            args.conditional_statistics_surfaces or statistics.get("conditional_statistics_surfaces") is True
+        ),
+        conditional_statistics_min_samples=min_samples,
     )
 
 
@@ -5240,6 +5335,10 @@ def nodata_grid(grid: GridSpec) -> list[list[float]]:
     return [[NODATA for _ in range(grid.ncols)] for _ in range(grid.nrows)]
 
 
+def sample_value_grid(grid: GridSpec) -> list[list[list[float]]]:
+    return [[[] for _ in range(grid.ncols)] for _ in range(grid.nrows)]
+
+
 def scale_grid(values: list[list[float]], factor: float) -> None:
     for row_index, row in enumerate(values):
         for col_index, value in enumerate(row):
@@ -5272,6 +5371,18 @@ def merge_max_grid_into(target: list[list[float]], source: list[list[float]]) ->
                 target[row_index][col_index] = value
 
 
+def merge_sample_value_grid_into(
+    target: list[list[list[float]]] | None,
+    source: list[list[list[float]]] | None,
+) -> None:
+    if target is None or source is None:
+        return
+    for row_index, row in enumerate(source):
+        for col_index, values in enumerate(row):
+            if values:
+                target[row_index][col_index].extend(values)
+
+
 def add_threshold_grids_into(
     target: dict[float, list[list[float]]],
     source: dict[float, list[list[float]]],
@@ -5293,6 +5404,108 @@ def binomial_standard_error_grid(counts: list[list[float]], trajectory_count: in
             result_row.append(math.sqrt(variance))
         result.append(result_row)
     return result
+
+
+def sample_count_grid(samples: list[list[list[float]]]) -> list[list[float]]:
+    return [[float(len(values)) for values in row] for row in samples]
+
+
+def insufficient_sample_grid(samples: list[list[list[float]]], min_samples: int) -> list[list[float]]:
+    return [
+        [1.0 if 0 < len(values) < min_samples else 0.0 for values in row]
+        for row in samples
+    ]
+
+
+def quantile(values: list[float], probability: float) -> float:
+    if not values:
+        return NODATA
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = probability * (len(ordered) - 1)
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    fraction = position - lower
+    return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
+
+
+def sample_quantile_grid(samples: list[list[list[float]]], probability: float) -> list[list[float]]:
+    return [[quantile(values, probability) for values in row] for row in samples]
+
+
+def conditional_value_statistics_layers(
+    prefix: str,
+    title: str,
+    units: str,
+    samples: list[list[list[float]]] | None,
+    *,
+    min_samples: int,
+) -> list[RasterLayer]:
+    if samples is None:
+        return []
+    support_note = (
+        "Conditional per-cell sample statistic from supplied trajectory sample rows; "
+        "not an annual-frequency, return-period, risk, or operational design-quantile layer."
+    )
+    return [
+        RasterLayer(
+            f"{prefix}_sample_count",
+            f"{title} sample count",
+            "sample rows",
+            sample_count_grid(samples),
+            note="Count of trajectory sample rows with finite values in each cell.",
+        ),
+        RasterLayer(
+            f"{prefix}_insufficient_samples",
+            f"{title} insufficient sample flag",
+            "0/1 flag",
+            insufficient_sample_grid(samples, min_samples),
+            note=f"Cells with 1 have fewer than {min_samples:g} finite samples and nonzero support.",
+        ),
+        RasterLayer(
+            f"{prefix}_median",
+            f"{title} median",
+            units,
+            sample_quantile_grid(samples, 0.50),
+            nodata=True,
+            note=support_note,
+        ),
+        RasterLayer(
+            f"{prefix}_q90",
+            f"{title} Q90",
+            units,
+            sample_quantile_grid(samples, 0.90),
+            nodata=True,
+            note=support_note,
+        ),
+        RasterLayer(
+            f"{prefix}_q95",
+            f"{title} Q95",
+            units,
+            sample_quantile_grid(samples, 0.95),
+            nodata=True,
+            note=support_note,
+        ),
+        RasterLayer(
+            f"{prefix}_q99",
+            f"{title} Q99",
+            units,
+            sample_quantile_grid(samples, 0.99),
+            nodata=True,
+            note=support_note,
+        ),
+        RasterLayer(
+            f"{prefix}_maximum",
+            f"{title} maximum",
+            units,
+            sample_quantile_grid(samples, 1.0),
+            nodata=True,
+            note=support_note,
+        ),
+    ]
 
 
 def increment_exceedance_grids(
@@ -6031,6 +6244,66 @@ def summarize_conditional_curve_contract(
     }
 
 
+CONDITIONAL_STATISTIC_PREFIXES = ("kinetic_energy", "jump_height", "velocity")
+CONDITIONAL_STATISTIC_SUFFIXES = (
+    "sample_count",
+    "insufficient_samples",
+    "median",
+    "q90",
+    "q95",
+    "q99",
+    "maximum",
+)
+
+
+def conditional_statistic_parts(layer_key: str) -> tuple[str, str] | None:
+    for prefix in CONDITIONAL_STATISTIC_PREFIXES:
+        marker = f"{prefix}_"
+        if layer_key.startswith(marker):
+            suffix = layer_key[len(marker) :]
+            if suffix in CONDITIONAL_STATISTIC_SUFFIXES:
+                return prefix, suffix
+    return None
+
+
+def is_conditional_statistic_layer(layer_key: str) -> bool:
+    return conditional_statistic_parts(layer_key) is not None
+
+
+def is_conditional_statistic_value_layer(layer_key: str) -> bool:
+    parts = conditional_statistic_parts(layer_key)
+    return parts is not None and parts[1] in {"median", "q90", "q95", "q99", "maximum"}
+
+
+def summarize_conditional_statistics_surfaces(
+    layers: list[RasterLayer],
+    statistic_config: HazardStatisticConfig,
+    stats: InputStats,
+) -> dict[str, Any]:
+    statistic_layers = [layer for layer in layers if is_conditional_statistic_layer(layer.key)]
+    variables = sorted({conditional_statistic_parts(layer.key)[0] for layer in statistic_layers})
+    return {
+        "enabled": statistic_config.conditional_statistics_surfaces,
+        "schema_version": "conditional_statistics_surfaces_v1",
+        "generated": bool(statistic_layers),
+        "variables": variables,
+        "statistics": list(CONDITIONAL_STATISTIC_SUFFIXES),
+        "generated_layer_names": [layer.key for layer in statistic_layers],
+        "support_metadata": {
+            "sample_count_layer_suffix": "sample_count",
+            "insufficient_sample_flag_suffix": "insufficient_samples",
+            "minimum_supported_sample_count": statistic_config.conditional_statistics_min_samples,
+            "trajectory_count": stats.trajectory_count,
+            "trajectory_sample_count": stats.trajectory_sample_count,
+        },
+        "quantile_method": "linear interpolation over sorted finite per-cell trajectory sample values",
+        "annualized": False,
+        "physical_probability": False,
+        "risk_or_exposure": False,
+        "operational_design_quantile": False,
+    }
+
+
 def build_metadata(
     case: dict[str, Any],
     diagnostics: dict[str, Any],
@@ -6075,6 +6348,11 @@ def build_metadata(
         "hazard_statistics": statistic_config.as_dict(),
         "hazard_probability": probability.as_manifest(weighted_layer_names) if probability else None,
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "conditional_statistics_surfaces": summarize_conditional_statistics_surfaces(
+            layers,
+            statistic_config,
+            stats,
+        ),
         "conditional_intensity_exceedance_curves": summarize_conditional_curve_rows(
             conditional_curve_rows,
             conditional_curve_export,
@@ -6148,6 +6426,12 @@ def layer_semantic_numerator(layer_key: str, weighted: bool) -> str:
         return "deposition points in cell"
     if layer_key == "significant_impact_density" or layer_key == "weighted_significant_impact_density":
         return "significant impact events in cell"
+    if layer_key.endswith("_sample_count"):
+        return "finite trajectory sample rows in cell"
+    if layer_key.endswith("_insufficient_samples"):
+        return "sample-support flag for conditional high-quantile interpretation"
+    if is_conditional_statistic_value_layer(layer_key):
+        return "finite trajectory sample values in cell"
     if layer_key.startswith("max_"):
         return "maximum sampled value in cell"
     return "cell value"
@@ -6173,6 +6457,8 @@ def layer_semantic_denominator(
         return "deposition point count"
     if layer_key == "significant_impact_density" or layer_key == "weighted_significant_impact_density":
         return "significant impact event count"
+    if is_conditional_statistic_layer(layer_key):
+        return "finite cell sample count; support flag records cells below configured minimum"
     return None
 
 
@@ -6548,7 +6834,11 @@ def build_hazard_manifest(
         "hazard_statistics": {
             "configured": statistic_config.as_dict(),
             "generated_layer_names": [
-                layer.key for layer in layers if "exceedance" in layer.key or layer.key.endswith("_standard_error")
+                layer.key
+                for layer in layers
+                if "exceedance" in layer.key
+                or layer.key.endswith("_standard_error")
+                or is_conditional_statistic_layer(layer.key)
             ],
         },
         "hazard_probability": (
@@ -6557,6 +6847,7 @@ def build_hazard_manifest(
             else None
         ),
         "hazard_map_package": hazard_map_package_manifest_section(map_package, probability) if map_package else None,
+        "conditional_statistics_surfaces": metadata.get("conditional_statistics_surfaces", {}),
         "conditional_intensity_exceedance_curves": metadata.get("conditional_intensity_exceedance_curves", {}),
         "layer_semantics": layer_semantics,
         "cellwise_layers": cellwise_layers_from_outputs(outputs),
@@ -6632,6 +6923,7 @@ def update_conditional_execution_manifest(
             "unweighted_diagnostic",
             "sampling_weighted_conditional",
             "conditional_intensity_exceedance",
+            "conditional_statistics_surfaces",
         ],
         "annualized": False,
         "physical_probability": False,
@@ -6662,6 +6954,9 @@ def update_conditional_execution_manifest(
         "convergence_diagnostics": {
             "probability_standard_error_layers_present": any(
                 output.get("path", "").endswith("_standard_error.csv") for output in outputs
+            ),
+            "conditional_statistics_surfaces_present": bool(
+                (manifest.get("conditional_statistics_surfaces") or {}).get("generated")
             ),
             "requires_trajectory_count_sensitivity_before_scale_up": True,
             "requires_worker_count_reducer_parity_before_scale_up": True,
@@ -6787,7 +7082,7 @@ def cellwise_layers_from_outputs(outputs: list[dict[str, Any]]) -> list[dict[str
             continue
         parsed = parse_exceedance_layer_key(layer_name)
         thresholds = [parsed[1]] if parsed is not None else []
-        cellwise_layers[layer_name] = {
+        entry = {
             "key": layer_name,
             "layer_name": layer_name,
             "grid_path": path,
@@ -6795,6 +7090,15 @@ def cellwise_layers_from_outputs(outputs: list[dict[str, Any]]) -> list[dict[str
             "kind": output.get("kind"),
             "thresholds": thresholds,
         }
+        statistic_parts = conditional_statistic_parts(layer_name)
+        if statistic_parts is not None:
+            variable, statistic = statistic_parts
+            entry["conditional_statistics_surface"] = True
+            entry["statistic_variable"] = variable
+            entry["statistic"] = statistic
+            entry["sample_support_metadata_layer"] = f"{variable}_sample_count"
+            entry["insufficient_sample_flag_layer"] = f"{variable}_insufficient_samples"
+        cellwise_layers[layer_name] = entry
     return [cellwise_layers[key] for key in sorted(cellwise_layers)]
 
 
@@ -6877,6 +7181,8 @@ def input_artifact_collection(paths: list[str], kind: str, format_name: str) -> 
 
 
 def layer_source(layer_key: str) -> str:
+    if is_conditional_statistic_layer(layer_key):
+        return "trajectory_csv"
     if layer_key in {
         "reach_probability",
         "weighted_reach_probability",

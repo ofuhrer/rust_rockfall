@@ -33,6 +33,17 @@ Current layers:
   `hazard_layers.statistics.probability_standard_error: true` is configured:
   - `reach_probability_standard_error`
   - `<exceedance_layer>_standard_error`
+- opt-in conditional statistics surfaces when `--conditional-statistics-surfaces`
+  or `hazard_layers.statistics.conditional_statistics_surfaces: true` is
+  configured. For each supported trajectory sample variable (`kinetic_energy`,
+  `jump_height`, and `velocity`) the builder writes:
+  - `<variable>_sample_count`
+  - `<variable>_insufficient_samples`
+  - `<variable>_median`
+  - `<variable>_q90`
+  - `<variable>_q95`
+  - `<variable>_q99`
+  - `<variable>_maximum`
 - opt-in sampling-weighted conditional layers when `hazard_probability` is
   configured with `probability_model: sampling_weighted`:
   - `weighted_reach_probability`
@@ -248,6 +259,24 @@ equal to the supplied trajectory count. They are Monte Carlo convergence
 diagnostics for reach and trajectory-level exceedance fractions. They are not
 weighted uncertainty estimates, confidence intervals, physical probability
 validation, annual-frequency uncertainty, or risk metrics.
+
+Conditional statistics surfaces are also opt-in:
+
+```yaml
+hazard_layers:
+  statistics:
+    conditional_statistics_surfaces: true
+    conditional_statistics_min_samples: 10
+```
+
+The statistics are computed per grid cell from finite trajectory sample rows for
+the supported variable. Quantiles use deterministic linear interpolation over
+sorted cell values. The companion `sample_count` and `insufficient_samples`
+layers are required support metadata: high quantile layers such as Q95 and Q99
+must be interpreted together with the finite sample count, and cells flagged as
+insufficient are under the configured support threshold. These are conditional
+diagnostic surfaces only; they are not annual-frequency, return-period, risk, or
+operational design-quantile products.
 
 ## Sampling-Weighted Conditional Maps
 
@@ -484,9 +513,10 @@ debug export.
 Exceedance layers are also streaming-friendly. During each trajectory pass, the
 builder only stores the set of cells where that one trajectory exceeded each
 configured threshold; it does not retain all per-cell kinetic-energy,
-jump-height, or velocity samples. Percentile rasters remain future work because
-exact per-cell percentiles require heavier state or approximate streaming
-quantile sketches.
+jump-height, or velocity samples. Conditional statistics surfaces are therefore
+opt-in: when enabled, the builder retains finite per-cell sample values for the
+supported variables so exact median and Q90/Q95/Q99 rasters can be written with
+sample-support companion layers.
 
 The workflow supports analytic plane/paraboloid/step terrain and ESRI ASCII DEM
 terrain for jump-height estimation. Unsupported terrain metadata leaves

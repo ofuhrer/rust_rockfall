@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-422: Build Conditional Statistics Surfaces From Trajectory Samples
-
-Goal: Add reusable per-cell conditional statistics surfaces for count, reach fraction, Q90/Q95/Q99, median, and maximum where the underlying samples support them.
-
-Capability gap reduced: Scientific interpretation and hazard-product comparability.
-
-Why this outranks alternatives: RAMMS statistics mode makes cellwise count/quantile surfaces central; the Rust workflow should expose equivalent conditional diagnostic products before larger demonstrations.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `docs/hazard_layers.md`
-- `tests/test_hazard_layers.py`
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-
-Deliverables:
-
-- Deterministic statistics layer definitions and manifest entries for supported variables.
-- Explicit sample-count and insufficient-sample flags so high quantiles are not overinterpreted.
-- Focused tests using fixture trajectories.
-
-Definition of done:
-
-- Hazard packages can include conditional statistics surfaces and sample-support metadata without changing closure or physical-credibility status.
-
-Boundaries: No annual probability, no risk/exposure/vulnerability semantics, no operational design quantile claim.
-
 ### TB-423: Add Target-Line Conditional Impact Diagnostics
 
 Goal: Compute conditional target-line diagnostics for roads or protection lines from existing trajectory/hazard outputs.
