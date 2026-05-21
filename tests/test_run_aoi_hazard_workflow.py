@@ -600,6 +600,202 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertFalse(parsed["local_state_dependency"]["downloads"])
         self.assertFalse(parsed["local_state_dependency"]["simulations"])
 
+    def test_clean_checkout_aoi_front_door_smoke_paths_use_tracked_inputs_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as smoke_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            workflow_output_root = Path(smoke_tmp) / "workflow"
+            candidate_review_output_root = Path(smoke_tmp) / "candidate_review"
+
+            describe_report = workflow.build_describe_config_report(
+                site_config=config_path,
+                repo_root=repo_root,
+                release_polygon=None,
+                acquisition_package_path=ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+                artifact_root=ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
+                bounds=None,
+                site_id=None,
+                site_name=None,
+                workflow_output_root=workflow_output_root,
+                smoke_case_path=workflow.DEFAULT_LOCAL_SMOKE_CASE,
+                smoke_output_root=Path(smoke_tmp) / "smoke",
+                candidate_review_output_root=candidate_review_output_root,
+                orthophoto_background_root=None,
+                package_output_root=Path(smoke_tmp) / "package",
+                review_output_root=Path(smoke_tmp) / "review",
+                prepared_pilot_report_path=None,
+                prepared_pilot_output_root=None,
+                validation_case_path=workflow.DEFAULT_PREPARED_PILOT_VALIDATION_CASE,
+                overwrite=False,
+                execute_safe_local_steps=False,
+            )
+            prepare_report = workflow.build_prepare_report(site_config=config_path, repo_root=repo_root)
+            missing_artifact_root = repo_root / "missing_hazard_root"
+
+            with mock.patch.object(
+                workflow,
+                "build_aoi_workflow_report",
+                return_value={
+                    "schema_version": "aoi_workflow_stub_v1",
+                    "workflow_classification": "ready_for_next_step",
+                    "prepared_pilot_input_classification": "ready",
+                    "first_missing_real_input_category": "",
+                    "first_missing_real_input_classification": "",
+                    "workflow_steps": [],
+                    "ready_for_next_step": {
+                        "status": "ready",
+                        "next_action": "submit-balfrin",
+                        "permission_note": "",
+                    },
+                    "claim_boundaries": workflow.default_claim_boundaries(),
+                },
+            ), mock.patch.object(
+                workflow.COMMAND_PLAN,
+                "build_report",
+                return_value={
+                    "schema_version": "portable_pilot_command_plan_v1",
+                    "command_plan_status": "ready",
+                    "blocked_template_commands": [],
+                    "ignored_output_paths": [],
+                },
+            ):
+                package_report = workflow.build_report(
+                    command="package-map",
+                    site_config=config_path,
+                    repo_root=repo_root,
+                    artifact_root=missing_artifact_root,
+                )
+
+        self.assertEqual(describe_report["status"], "ready")
+        self.assertFalse(describe_report["local_state_dependency"]["checks_staged_file_existence"])
+        self.assertFalse(describe_report["local_state_dependency"]["downloads"])
+        self.assertEqual(describe_report["generated_roots"]["candidate_review_output_root"], str(candidate_review_output_root))
+        self.assertTrue(describe_report["generated_manifest_locations"]["candidate_review_manifest"].startswith(str(candidate_review_output_root)))
+        self.assertEqual(prepare_report["status"], "blocked_missing_inputs")
+        self.assertEqual(prepare_report["first_blocker"]["step_id"], "product_resolution")
+        self.assertTrue(prepare_report["expected_paths"]["source_zone_metadata"].startswith(str(repo_root)))
+        self.assertIn("plan_swisstopo_aoi_acquisition.py", prepare_report["next_command"])
+        self.assertEqual(package_report["command"], "package-map")
+        self.assertEqual(package_report["status"], "blocked_missing_inputs")
+        self.assertEqual(package_report["next_action"], "package-map")
+        self.assertEqual(package_report["first_blocker"]["step_id"], "package-map")
+        self.assertEqual(package_report["expected_paths"]["artifact_root"], [str(missing_artifact_root)])
+        self.assertFalse(package_report["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_clean_checkout_candidate_review_and_workflow_front_doors_fail_closed_without_ignored_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as smoke_tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            candidate_review_output_root = Path(smoke_tmp) / "candidate_review"
+            workflow_output_root = Path(smoke_tmp) / "workflow"
+
+            with mock.patch.object(
+                workflow.RELEASE_CANDIDATES,
+                "build_report",
+                return_value={
+                    "candidate_metrics_status": "ready",
+                    "candidate_site_id": "chant_sura_fluelapass_portability_example_v1",
+                    "candidate_site_name": "Chant Sura / Flüelapass portability example",
+                    "claim_boundaries": workflow.default_claim_boundaries(),
+                },
+            ), mock.patch.object(
+                workflow.RELEASE_CANDIDATES,
+                "build_candidate_review_overlay_report",
+                return_value={
+                    "candidate_review_overlay_status": "blocked_missing_evidence",
+                    "overlay_manifest_path": str(candidate_review_output_root / "candidate_review_overlays" / "candidate_review_overlay_manifest.json"),
+                    "overlay_images": [],
+                    "first_blocker": {
+                        "step_id": "candidate-review",
+                        "status": "blocked_missing_evidence",
+                        "blocked_reason": "missing review background",
+                    },
+                    "non_operational_warnings": [],
+                },
+            ), mock.patch.object(
+                workflow.QA_REVIEW,
+                "build_review_surface",
+                return_value={
+                    "status": "review_ready_with_warnings",
+                    "review_surface_paths": {
+                        "manifest": str(candidate_review_output_root / "aoi_map_qa_review_manifest.json"),
+                        "html": str(candidate_review_output_root / "index.html"),
+                    },
+                    "first_blocker": {
+                        "code": "review_warnings",
+                        "message": "QA review surface is ready with warnings",
+                    },
+                    "next_recommended_command": {
+                        "command": "inspect review surface",
+                    },
+                },
+            ):
+                candidate_review_report = workflow.build_candidate_review_report(
+                    site_config=config_path,
+                    repo_root=repo_root,
+                    candidate_review_output_root=candidate_review_output_root,
+                )
+
+            with mock.patch.object(
+                workflow,
+                "build_status_report",
+                return_value={
+                    "schema_version": workflow.SCHEMA_VERSION,
+                    "command": "status",
+                    "workflow_status": "blocked_missing_inputs",
+                    "next_action": "prepare",
+                    "first_blocker": {
+                        "step_id": "public_context_readiness",
+                        "status": "blocked_missing_inputs",
+                        "blocked_reason": "missing public geodata cache manifest",
+                    },
+                    "expected_paths": {"required_inputs": [str(config_path)]},
+                    "claim_boundaries": workflow.default_claim_boundaries(),
+                },
+            ), mock.patch.object(
+                workflow,
+                "build_prepare_report",
+                return_value={
+                    "schema_version": workflow.PREPARE_SCHEMA_VERSION,
+                    "command": "prepare",
+                    "status": "blocked_missing_inputs",
+                    "next_step": "public_geodata_cache_verification",
+                    "next_command": "PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --format json",
+                    "first_blocker": {
+                        "step_id": "public_geodata_cache_verification",
+                        "status": "blocked_missing_inputs",
+                        "blocked_reason": "missing public geodata cache manifest",
+                    },
+                    "expected_paths": {"source_zone_metadata": str(repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml")},
+                    "workflow_steps": [],
+                    "workflow_summary": {"blocked_step_count": 1},
+                    "claim_boundaries": workflow.default_claim_boundaries(),
+                },
+            ):
+                workflow_report = workflow.build_workflow_report(
+                    site_config=config_path,
+                    bounds=None,
+                    site_id=None,
+                    site_name=None,
+                    workflow_output_root=workflow_output_root,
+                    repo_root=repo_root,
+                    execute_safe_local_steps=False,
+                )
+
+        self.assertEqual(candidate_review_report["status"], "blocked_missing_evidence")
+        self.assertEqual(candidate_review_report["candidate_review_output_root"], str(candidate_review_output_root))
+        self.assertEqual(candidate_review_report["next_action"], "stage missing review background and rerun")
+        self.assertEqual(candidate_review_report["first_blocker"]["step_id"], "candidate-review")
+        self.assertEqual(candidate_review_report["candidate_review_overlay_paths"], {})
+        self.assertTrue(candidate_review_report["candidate_review_manifest_path"].startswith(str(candidate_review_output_root)))
+        self.assertEqual(workflow_report["status"], "blocked_missing_inputs")
+        self.assertEqual(workflow_report["current_stage"], "status")
+        self.assertEqual(workflow_report["next_action"], "prepare")
+        self.assertEqual(workflow_report["first_blocker"]["step_id"], "public_context_readiness")
+        self.assertTrue(workflow_report["generated_artifact_paths"]["workflow_output_root"].startswith(str(workflow_output_root)))
+        self.assertTrue(workflow_report["generated_artifact_paths"]["bootstrap_output_root"].startswith(str(workflow_output_root)))
+        self.assertFalse(workflow_report["claim_boundaries"]["operational_claims_allowed"])
+
     def test_status_build_report_marks_unsupported_command_state_as_invalid_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
