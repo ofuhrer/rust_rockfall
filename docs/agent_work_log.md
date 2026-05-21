@@ -5234,3 +5234,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no downloads, no simulations, no operational claims, no scale-up authorization, no annual-frequency semantics, no physical-probability claim, and no risk/exposure/vulnerability or distributed-execution semantics.
 - Next task: `TB-416`
+
+### TB-416: Add Terrain Resolution And Domain QA To AOI Preparation
+
+- Date: 2026-05-21
+- Commit: `43a5dfa`; never leave `pending` in a pushed commit.
+- Objective: add deterministic terrain QA so AOI preparation reports CRS, resolution, nodata, crop-domain containment, and the next unblock action before candidate generation.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `terrain_domain_qa` with CRS, resolution class, nodata metadata/coverage, AOI containment, domain margin, warning/blocking reasons, and next-unblock guidance.
+  - Wired terrain-domain QA into terrain preprocessing status, prepared-input status, provenance blockers, materialized QA summaries, and generated terrain packages.
+  - Added focused fixture-backed tests for ready terrain, AOI-not-contained blocking, coarse-resolution warnings, missing nodata metadata reporting, and real-staged provenance with a contained AOI.
+  - Removed TB-416 from the active backlog after completing the implementation.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_terrain_preprocessing.py tests/test_aoi_terrain_preprocessing.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --format json >/tmp/tb416_terrain_qa.json` expected exit `2` for the default oversized fixture AOI, followed by JSON assertions on `blocked_terrain_qa`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no terrain resampling implementation, no physical validation claim for a specific resolution, no operational claim, no scale-up authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
+- Next task: `TB-417`
