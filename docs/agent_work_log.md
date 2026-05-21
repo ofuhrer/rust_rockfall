@@ -5100,3 +5100,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live network in tests, no operational release-zone claim, no field validation, no generated image commits, and no Balfrin submission.
 - Next task: `TB-410`
+
+### TB-410: Measure Adjacent-Candidate Stability Against Heuristic Variants
+
+- Date: 2026-05-21
+- Commit: `decfd31`
+- Objective: measure whether the selected Prau Mulins adjacent candidate remains stable under bounded slope, smoothing, resolution, and AOI-boundary perturbations, and fail closed with a replacement-candidate recommendation when it does not.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/summarize_balfrin_target_area_candidate_stability.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a derived selected-candidate assessment to the terrain candidate planner so the top-ranked component is labeled with a workflow-facing `stable` / `sensitive` / `rejected` verdict and an explicit bounded-probe recommendation.
+  - Surfaced the selected-candidate verdict and recommendation through the Balfrin target-area stability summary and text report, while preserving the existing persistence metrics, ranking, and bounded-selection outputs.
+  - Updated the focused tests to pin the new selected-candidate assessment, the current deterministic bundle counts, and the fail-closed fallback mapping for sensitive and rejected inputs.
+  - Removed TB-410 from the active backlog so the queue now advances to the next task.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_balfrin_target_area_candidate_stability -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/summarize_balfrin_target_area_candidate_stability.py tests/test_plan_terrain_release_zone_candidates.py tests/test_balfrin_target_area_candidate_stability.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no Balfrin execution, no field-validation claim, no physical-probability claim, no operational claim, and no tuning to force stability.
+- Next task: `TB-411`
