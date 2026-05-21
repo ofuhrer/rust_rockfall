@@ -113,6 +113,9 @@ starting context for implementation unless a task explicitly asks for them.
 - `balfrin_multi_zone_hazard_run_tb407.md`: TB-407 completed one bounded
   smallest multi-zone `postproc` run with measured metrics and a ready
   preservation gate.
+- `balfrin_regional_split_probe_gate_tb428.md`: TB-428 failed closed before
+  `sbatch` because the regional split package exceeded the reviewed
+  manifest-size budget.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

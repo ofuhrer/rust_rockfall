@@ -5537,3 +5537,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no Balfrin job was submitted, no non-`postproc` partition was introduced, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-428`
+
+### TB-428: Execute Bounded Regional Split Balfrin Probe
+
+- Date: 2026-05-21
+- Commit: `1dcf66b`; work-log entry recorded in the follow-up commit.
+- Objective: attempt the bounded regional split Balfrin `postproc` probe only if the reviewed package and repository gates allowed submission.
+- Files changed: `docs/balfrin_regional_split_probe_gate_tb428.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rebuilt the regional split submission package under `/tmp/rust_rockfall/tb428_gate_package` and treated its fail-closed status as the authoritative pre-submit gate.
+  - Recorded that the package status is `failed_closed_output_budget`, with `ready_for_bounded_postproc_submission=false`, `authorization_preflight_status=blocked_reducer_budget`, and no `sbatch` attempt.
+  - Preserved the exact first blocker: `manifest_size_bytes=14550` exceeds `next_larger_four_zone_review_only_probe.max_manifest_size_bytes=14000`.
+  - Confirmed the regional split/merge contract itself is ready with 12 splits, so the next unblock action is package/manifest compaction or a justified budget revision before another live regional split probe.
+  - Removed TB-428 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/rust_rockfall/tb428_gate_package --format json >/tmp/tb428_package_check.json` (expected fail-closed exit `2`)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: failed_closed_no_submit
+- Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-429`
