@@ -33,19 +33,11 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 DEFERRAL_SCHEMA_VERSION = "release_candidate_zero_result_diagnostic_v1"
-DEFAULT_CANDIDATE_METRICS_MANIFEST = (
-    ROOT
-    / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability/"
-    / "tschamut_public_pilot_release_zone_candidates_manifest.json"
-)
-DEFAULT_CANDIDATE_REVIEW_MANIFEST = (
-    ROOT
-    / "validation/private/chant_sura_fluelapass_portability_example_v1/tb377_candidate_stability/"
-    / "tschamut_public_pilot_release_zone_candidate_review_manifest.json"
-)
+DEFAULT_CANDIDATE_METRICS_MANIFEST = ROOT / "validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json"
+DEFAULT_CANDIDATE_REVIEW_MANIFEST = ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
-DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb378_management_aoi_scenario_pressure")
-DEFAULT_SCENARIO_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb390_management_aoi_scenario_table")
+DEFAULT_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb404_management_aoi_scenario_pressure")
+DEFAULT_SCENARIO_OUTPUT_ROOT = Path("/tmp/rust_rockfall/tb404_management_aoi_scenario_table")
 DEFAULT_DEFERRAL_TERRAIN_CROP = ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
 DEFAULT_DEFERRAL_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
 DEFAULT_DEFERRAL_SOURCE_ZONE_METADATA = (

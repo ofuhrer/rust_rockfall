@@ -39,44 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-404: Regenerate Scenario Tables From The Accepted Adjacent Candidate
-
-Goal: Generate deterministic conditional scenario rows from the frozen adjacent
-Prau Mulins candidate and prove the previous zero-row blocker is removed.
-
-Capability gap reduced: The prepared-pilot and Balfrin handoff paths are
-currently blocked because the management-AOI scenario pressure report has zero
-current scenario rows.
-
-Why this outranks alternatives: Scenario rows are the immediate dependency for
-the prepared-pilot compiler and the smallest multi-zone Balfrin handoff.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `scripts/validate_source_scenario_policy.py`
-- `tests/test_candidate_source_zone_freezer.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-
-Deliverables:
-
-- A deterministic ignored-root scenario table and manifest for the adjacent
-  candidate.
-- Scenario-pressure metrics covering row count, block-family composition,
-  table bytes, and first bottleneck.
-- A regression showing the non-overlapping candidate path returns a positive
-  scenario count while preserving conditional-only weights.
-
-Definition of done:
-
-- The scenario-pressure helper reports a ready or next-stage status for the
-  selected adjacent candidate, not `blocked_source_zone_footprint_overlap` or
-  `blocked_empty_candidate_set`.
-
-Boundaries: No source-frequency semantics, no annual probability, no physics
-changes, no generated heavy artifact commits, and no operational claim.
-
 ### TB-405: Compile Prepared-Pilot Package From Adjacent Candidate
 
 Goal: Rebuild the management-AOI prepared-pilot chain using the adjacent

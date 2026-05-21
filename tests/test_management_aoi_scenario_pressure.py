@@ -12,6 +12,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "summarize_management_aoi_scenario_pressure.py"
 POLICY_PATH = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+ADJACENT_CANDIDATE_METRICS_PATH = ROOT / "validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json"
+ADJACENT_CANDIDATE_REVIEW_PATH = ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
 
 
 def load_module(path: Path, name: str):
@@ -210,6 +212,47 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
         self.assertEqual(report["command_plan_implications"][1]["status"], "ready")
         self.assertFalse(report["unblock_guidance"]["scenario_generation_should_remain_blocked"])
+
+    def test_adjacent_candidate_bundle_reports_ready_pressure_with_positive_scenario_rows(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            report = MODULE.build_report(
+                candidate_metrics_manifest_path=ADJACENT_CANDIDATE_METRICS_PATH,
+                candidate_review_manifest_path=ADJACENT_CANDIDATE_REVIEW_PATH,
+                policy_path=POLICY_PATH,
+                output_root=tmp_root / "scenario_pressure_adjacent",
+                scenario_output_root=tmp_root / "scenario_table_adjacent",
+            )
+
+        self.assertEqual(report["scenario_pressure_status"], "ready")
+        self.assertEqual(report["candidate_evidence"]["review_summary"]["candidate_count"], 1)
+        self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 3)
+        self.assertEqual(report["scenario_generation_pressure"]["scenario_table_file_count"], 5)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)
+        self.assertGreater(report["scenario_generation_pressure"]["scenario_table_total_bytes"], 0)
+        self.assertEqual(report["first_blocker"]["status"], "candidates_present")
+        self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
+        self.assertEqual(report["scenario_table_generation"]["accepted_candidate_count"], 1)
+        self.assertEqual(report["scenario_table_generation"]["scenario_row_count"], 3)
+        self.assertEqual(report["scenario_table_generation"]["file_count"], 5)
+        self.assertEqual(report["scenario_table_generation"]["scenario_table_manifest"]["conditional_weight_semantics"], "conditional_sampling_only")
+        self.assertTrue(report["scenario_table_generation"]["scenario_table_manifest"]["conditional_weight_semantics"] == "conditional_sampling_only")
+        self.assertEqual(
+            [row["row_count"] for row in report["scenario_generation_pressure"]["scenario_family_cardinality"]],
+            [1, 1, 1],
+        )
+        self.assertEqual(
+            [row["row_count"] for row in report["scenario_generation_pressure"]["release_zone_cardinality"]],
+            [3],
+        )
+        self.assertEqual(
+            [row["row_count"] for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]],
+            [3, 3, 3],
+        )
+        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["conditional_weight"], 3.0)
+        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["annual_frequency_per_year"], "")
+        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["scenario_probability"], "")
 
 
 if __name__ == "__main__":

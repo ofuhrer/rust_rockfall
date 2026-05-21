@@ -4966,3 +4966,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: heuristic expansion and diagnostic reporting only; no calibration, no operational source-zone claim, no field validation, no annual-frequency semantics, and no Balfrin execution.
 - Next task: `TB-404`
+
+### TB-404: Regenerate Scenario Tables From The Accepted Adjacent Candidate
+
+- Date: 2026-05-21
+- Commit: `local`
+- Objective: point the management-AOI scenario-pressure helper at the accepted adjacent Prau Mulins candidate bundle and prove the generated scenario table is non-empty while staying conditional-only.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`, `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_management_aoi_scenario_pressure.py`
+- Implementation summary:
+  - Redirected the scenario-pressure helper defaults to the current adjacent-candidate review bundle under `validation/private/source_zone_review`, which is already validated and review-applied.
+  - Added a regression that exercises the adjacent candidate bundle end-to-end and checks the ready-path scenario count, block-family pressure, table bytes, and conditional-only weighting contract.
+  - Kept the zero-candidate deferral regression intact so the stale blocker path is still documented when the pool is empty.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json --json-output /tmp/tb404_pressure_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: deterministic scenario-pressure reporting only; no source-frequency semantics, no annual probability, no physics changes, no heavy artifact commits, and no operational claim.
+- Next task: `TB-405`
