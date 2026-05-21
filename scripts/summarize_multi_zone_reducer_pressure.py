@@ -21,6 +21,7 @@ from typing import Any
 
 
 SCHEMA_VERSION = "multi_zone_reducer_pressure_probe_v1"
+REGIONAL_SPLIT_PLAN_SCHEMA_VERSION = "regional_split_execution_plan_v1"
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
 DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_manifest_pressure_ladder_v1")
 DEFAULT_RELEASE_ZONE_COUNT = 12
@@ -46,6 +47,7 @@ BOUNDED_OUTPUT_FAMILY_MIX = (
 )
 DEFAULT_OUTPUT_FAMILY_MIX = BOUNDED_OUTPUT_FAMILY_MIX
 VALIDATION_OUTPUT_MODE = "rebuildable_reduced_output"
+REGIONAL_SPLIT_PLAN_FILENAME = "regional_split_execution_plan.json"
 REPLAY_CRITICAL_OUTPUT_FAMILIES = (
     "trajectory_csv",
     "deposition_csv",
@@ -238,6 +240,12 @@ def materialize_probe_root(
     reducer_chunks = build_reducer_chunks(release_zones, reducer_chunk_count=reducer_chunk_count)
     trajectory_execution = build_trajectory_execution(trajectory_chunks)
     reducer_execution = build_reducer_execution(reducer_chunks, reducer_worker_count=reducer_worker_count)
+    regional_split_plan = build_regional_split_plan(
+        probe_root=probe_root,
+        release_zones=release_zones,
+        scenario_rows=scenario_rows,
+        reducer_chunks=reducer_chunks,
+    )
     probe_manifest = build_probe_manifest(
         probe_root=probe_root,
         release_zones=release_zones,
@@ -245,6 +253,7 @@ def materialize_probe_root(
         trajectory_execution=trajectory_execution,
         reducer_execution=reducer_execution,
         output_family_mix=output_family_mix,
+        regional_split_plan=regional_split_plan,
     )
     command_plan = build_command_plan(
         probe_root=probe_root,
@@ -252,13 +261,16 @@ def materialize_probe_root(
         reducer_worker_count=reducer_worker_count,
         reducer_chunk_count=reducer_chunk_count,
         output_family_mix=output_family_mix,
+        regional_split_plan=regional_split_plan,
     )
 
     probe_manifest_path = input_root / "multi_zone_reducer_pressure_probe_manifest.json"
+    regional_split_plan_path = input_root / REGIONAL_SPLIT_PLAN_FILENAME
     command_plan_path = probe_root / "command_plan.json"
     output_manifest_path = output_root / "validation_multi_zone_reducer_pressure_manifest.json"
 
     write_json(probe_manifest_path, probe_manifest)
+    write_json(regional_split_plan_path, regional_split_plan)
     write_json(command_plan_path, command_plan)
     materialize_input_tables(input_root, release_zones, scenario_rows)
 
@@ -305,13 +317,19 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         raise MultiZoneReducerPressureError(f"probe root does not exist: {probe_root}")
 
     probe_manifest_path = probe_root / "input" / "multi_zone_reducer_pressure_probe_manifest.json"
+    regional_split_plan_path = probe_root / "input" / REGIONAL_SPLIT_PLAN_FILENAME
     command_plan_path = probe_root / "command_plan.json"
     output_manifest_path = probe_root / "output" / "validation_multi_zone_reducer_pressure_manifest.json"
-    missing_paths = [str(path) for path in (probe_manifest_path, command_plan_path, output_manifest_path) if not path.exists()]
+    missing_paths = [
+        str(path)
+        for path in (probe_manifest_path, regional_split_plan_path, command_plan_path, output_manifest_path)
+        if not path.exists()
+    ]
     if missing_paths:
         raise MultiZoneReducerPressureError("missing probe artifacts: " + ", ".join(missing_paths))
 
     probe_manifest = load_json(probe_manifest_path)
+    regional_split_plan = load_json(regional_split_plan_path)
     command_plan = load_json(command_plan_path)
     output_manifest = canonicalize_output_manifest(load_json(output_manifest_path), probe_root)
     manifest_mode = "compact" if dict(output_manifest.get("manifest_encoding") or {}).get("mode") == "compact_v1" else "full"
@@ -361,7 +379,11 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "probe_root": str(probe_root),
         "command_plan_path": str(command_plan_path),
         "probe_manifest_path": str(probe_manifest_path),
+        "regional_split_plan_path": str(regional_split_plan_path),
         "output_manifest_path": str(output_manifest_path),
+        "regional_split_plan_schema_version": regional_split_plan.get("schema_version"),
+        "regional_split_plan_status": regional_split_plan.get("status"),
+        "regional_split_plan": regional_split_plan,
         "manifest_mode": manifest_mode,
         "release_zone_count": len(release_zones),
         "output_family_mix": list(output_family_mix),
@@ -725,6 +747,7 @@ def build_probe_manifest(
     trajectory_execution: dict[str, Any],
     reducer_execution: dict[str, Any],
     output_family_mix: tuple[str, ...],
+    regional_split_plan: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -738,6 +761,15 @@ def build_probe_manifest(
         "merge_order": reducer_execution["merge_order"],
         "merge_order_independent": reducer_execution["merge_order_independent"],
         "output_family_mix": list(output_family_mix),
+        "regional_split_plan": {
+            "schema_version": regional_split_plan["schema_version"],
+            "status": regional_split_plan["status"],
+            "path": str(probe_root / "input" / REGIONAL_SPLIT_PLAN_FILENAME),
+            "split_count": regional_split_plan["split_count"],
+            "execution_key_count": regional_split_plan["execution_key_count"],
+            "duplicate_execution_keys": regional_split_plan["duplicate_execution_keys"],
+            "merge_key_policy": regional_split_plan["merge_key_policy"],
+        },
     }
 
 
@@ -748,11 +780,19 @@ def build_command_plan(
     reducer_worker_count: int,
     reducer_chunk_count: int,
     output_family_mix: tuple[str, ...],
+    regional_split_plan: dict[str, Any],
 ) -> dict[str, Any]:
     output_family_mix = normalize_output_family_mix(output_family_mix)
     return {
         "schema_version": "multi_zone_reducer_pressure_command_plan_v1",
         "probe_root": str(probe_root),
+        "regional_split_plan": {
+            "schema_version": regional_split_plan["schema_version"],
+            "path": str(probe_root / "input" / REGIONAL_SPLIT_PLAN_FILENAME),
+            "split_count": regional_split_plan["split_count"],
+            "execution_key_count": regional_split_plan["execution_key_count"],
+            "merge_key_policy": regional_split_plan["merge_key_policy"],
+        },
         "commands": [
             {
                 "name": "multi_zone_reducer_pressure_probe",
@@ -777,6 +817,76 @@ def build_command_plan(
                 ],
             }
         ],
+    }
+
+
+def build_regional_split_plan(
+    *,
+    probe_root: Path,
+    release_zones: list[dict[str, Any]],
+    scenario_rows: list[dict[str, Any]],
+    reducer_chunks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    output_root = probe_root / "output"
+    scenario_by_zone = {str(row["source_zone_id"]): row for row in scenario_rows}
+    reducer_chunk_by_zone = {
+        str(zone_id): str(chunk["chunk_id"])
+        for chunk in reducer_chunks
+        for zone_id in chunk.get("source_zone_ids", [])
+    }
+    splits: list[dict[str, Any]] = []
+    for index, zone in enumerate(release_zones):
+        zone_id = str(zone["source_zone_id"])
+        scenario = scenario_by_zone[zone_id]
+        reducer_chunk_id = reducer_chunk_by_zone[zone_id]
+        scenario_id = str(scenario["scenario_id"])
+        merge_key = f"{reducer_chunk_id}/{zone_id}/{scenario_id}"
+        splits.append(
+            {
+                "group": reducer_chunk_id,
+                "zone_id": zone_id,
+                "source_zone_id": zone_id,
+                "scenario_id": scenario_id,
+                "sampling_weight": scenario.get("sampling_weight", ""),
+                "chunk_id": reducer_chunk_id,
+                "trajectory_chunk_id": str(zone["trajectory_chunk_id"]),
+                "expected_output_root": str(output_root / "chunks" / reducer_chunk_id),
+                "merge_key": merge_key,
+                "execution_key": merge_key,
+                "execution_order": index,
+            }
+        )
+    execution_keys = [str(split["execution_key"]) for split in splits]
+    duplicate_execution_keys = sorted({key for key in execution_keys if execution_keys.count(key) > 1})
+    chunk_ids = sorted({str(split["chunk_id"]) for split in splits})
+    return {
+        "schema_version": REGIONAL_SPLIT_PLAN_SCHEMA_VERSION,
+        "status": "ready" if not duplicate_execution_keys else "blocked_duplicate_execution_keys",
+        "plan_id": "multi_zone_reducer_pressure_regional_split_plan_v1",
+        "plan_scope": "local_scratch_probe_contract",
+        "probe_root": str(probe_root),
+        "expected_output_root": str(output_root),
+        "merge_key_policy": "chunk_id/zone_id/scenario_id",
+        "ordering_policy": "release_zone_input_order_then_sorted_chunk_merge",
+        "chunk_order": chunk_ids,
+        "required_fields": [
+            "group",
+            "zone_id",
+            "scenario_id",
+            "sampling_weight",
+            "chunk_id",
+            "expected_output_root",
+            "merge_key",
+        ],
+        "split_count": len(splits),
+        "execution_key_count": len(execution_keys),
+        "duplicate_execution_keys": duplicate_execution_keys,
+        "splits": splits,
+        "claim_boundaries": {
+            "distributed_execution_authorized": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+        },
     }
 
 

@@ -14,6 +14,29 @@ PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure
   --format json
 ```
 
+## Regional Split Execution Contract
+
+The materialized probe now writes
+`input/regional_split_execution_plan.json` with schema
+`regional_split_execution_plan_v1`. This is a local scratch-plan contract for
+partitioning a multi-zone AOI into deterministic execution chunks and reducer
+merge keys; it is not a distributed execution launcher.
+
+Each split entry carries the required replay fields:
+
+- `group`: the source group used for reducer assignment.
+- `zone_id`: the stable source-zone id.
+- `scenario_id`: the scenario-table row id assigned to the zone.
+- `sampling_weight`: the conditional sampling weight when present.
+- `chunk_id`: the reducer execution chunk.
+- `expected_output_root`: the expected chunk output root.
+- `merge_key`: the explicit reducer merge key, using
+  `chunk_id/zone_id/scenario_id`.
+
+The same manifest is referenced from `command_plan.json`, the probe manifest,
+and the JSON summary. Fixture tests enforce stable ordering and reject duplicate
+execution keys so later split/merge work does not rely on implicit file naming.
+
 ## Measured Summary
 
 - Probe root: `/tmp/rust_rockfall/multi_zone_reducer_pressure_tb336_probe`

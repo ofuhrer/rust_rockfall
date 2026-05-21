@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-424: Define Regional Split Execution Contract
-
-Goal: Define a compact regional split contract that maps AOI candidates into source groups, scenario IDs, execution chunks, and reducer merge keys.
-
-Capability gap reduced: Multi-zone execution scalability and orchestration simplicity.
-
-Why this outranks alternatives: OpenNHM’s regional splitting pattern directly addresses the next scaling bottleneck without requiring distributed execution or a framework rewrite.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- A deterministic split-plan schema or manifest emitted by existing front-door commands.
-- Required fields for `group`, `zone_id`, `scenario_id`, optional sampling weight, chunk ID, expected output root, and merge key.
-- Fixture tests proving stable ordering and no duplicate execution keys.
-
-Definition of done:
-
-- A multi-zone AOI can be partitioned into reproducible execution chunks and later merged without relying on implicit file naming.
-
-Boundaries: No distributed execution, no Balfrin submission, no scale-up claim.
-
 ### TB-425: Run Fixture Regional Split And Merge Dry Run
 
 Goal: Exercise the regional split contract on a small fixture AOI with multiple source groups and merge the resulting reduced outputs.

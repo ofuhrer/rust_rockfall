@@ -54,6 +54,8 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report, second_report)
             self.assertEqual(first_report["probe_status"], "measured_scratch_root")
             self.assertEqual(first_report["manifest_mode"], "full")
+            self.assertEqual(first_report["regional_split_plan_schema_version"], "regional_split_execution_plan_v1")
+            self.assertEqual(first_report["regional_split_plan_status"], "ready")
             self.assertEqual(first_report["release_zone_count"], 12)
             self.assertEqual(first_report["trajectory_chunk_count"], 12)
             self.assertEqual(first_report["reducer_chunk_count"], 2)
@@ -81,6 +83,61 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             )
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
+
+    def test_regional_split_plan_has_stable_ordering_and_unique_execution_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            probe_root = Path(tmpdir) / "probe"
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=6,
+                reducer_worker_count=2,
+                reducer_chunk_count=3,
+            )
+            first_plan = json.loads(
+                (probe_root / "input" / "regional_split_execution_plan.json").read_text(encoding="utf-8")
+            )
+
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=6,
+                reducer_worker_count=2,
+                reducer_chunk_count=3,
+            )
+            second_plan = json.loads(
+                (probe_root / "input" / "regional_split_execution_plan.json").read_text(encoding="utf-8")
+            )
+
+            self.assertEqual(first_plan, second_plan)
+            self.assertEqual(first_plan["schema_version"], "regional_split_execution_plan_v1")
+            self.assertEqual(first_plan["status"], "ready")
+            self.assertEqual(first_plan["merge_key_policy"], "chunk_id/zone_id/scenario_id")
+            self.assertEqual(first_plan["split_count"], 6)
+            self.assertEqual(first_plan["duplicate_execution_keys"], [])
+            execution_keys = [split["execution_key"] for split in first_plan["splits"]]
+            self.assertEqual(len(execution_keys), len(set(execution_keys)))
+            self.assertEqual(
+                [split["zone_id"] for split in first_plan["splits"]],
+                [f"source_zone_{index:02d}" for index in range(6)],
+            )
+            self.assertEqual(
+                [split["chunk_id"] for split in first_plan["splits"]],
+                [
+                    "reducer_chunk_00",
+                    "reducer_chunk_01",
+                    "reducer_chunk_02",
+                    "reducer_chunk_00",
+                    "reducer_chunk_01",
+                    "reducer_chunk_02",
+                ],
+            )
+            for split in first_plan["splits"]:
+                self.assertIn("group", split)
+                self.assertIn("zone_id", split)
+                self.assertIn("scenario_id", split)
+                self.assertIn("sampling_weight", split)
+                self.assertIn("chunk_id", split)
+                self.assertIn("expected_output_root", split)
+                self.assertIn("merge_key", split)
 
     def test_manifest_pressure_ladder_recommends_compact_mode(self) -> None:
         report = MODULE.build_manifest_pressure_ladder_report(release_zone_counts=(2, 4, 8, 12))
