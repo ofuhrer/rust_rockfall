@@ -119,6 +119,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/diagnose_release_candidate_zero_result.py`
 - `scripts/estimate_large_scale_execution.py`
 - `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/measure_scenario_storage_output_tier_pressure.py`
 - `scripts/preview_aoi_scenario_cost_estimate.py`
 - `scripts/map_physical_credibility_evidence_requirements.py`
 - `scripts/prototype_cog_conversion.py`

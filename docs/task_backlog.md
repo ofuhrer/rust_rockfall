@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-426: Measure Scenario Storage And Output Tier Pressure
-
-Goal: Quantify scenario-table, release-plan, trajectory, statistics, GIS, and reduced-output storage pressure for candidate expansion.
-
-Capability gap reduced: Output/runtime sustainability at larger AOIs.
-
-Why this outranks alternatives: RAMMS explicitly optimizes scenario/trajectory storage; the Rust workflow needs measured tier pressure before management can trust Swiss-scale feasibility projections.
-
-Inspect first:
-
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/derive_hazard_rebuild_reduced_profile.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Measured file/byte/cardinality summary for at least one fixture and one current real-AOI candidate bundle when available.
-- Comparison of minimal, rebuildable-reduced, GIS, and research-full output tiers.
-- A deterministic recommendation for the smallest tier suitable for Balfrin demonstration replay.
-
-Definition of done:
-
-- Scenario and output tier pressure is measured in a reusable helper and the next scale bottleneck is explicit.
-
-Boundaries: No large production ensemble, no deletion of existing outputs, no scale-up authorization.
-
 ### TB-427: Build Balfrin Regional Split Submission Package
 
 Goal: Generate a no-submit Balfrin `postproc` submission package from the regional split/merge contract and current accepted source candidates.

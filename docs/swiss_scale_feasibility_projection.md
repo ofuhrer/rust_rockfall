@@ -27,6 +27,8 @@ The adjacent-candidate branch moved the first blocker away from source-zone
 automation and onto the remaining planning bottlenecks:
 
 1. Scenario cardinality and manifest size.
+1. GIS/research-full output growth after the measured scenario table remains
+   compact.
 1. Reducer pressure and replay/metadata growth.
 1. Hazard throughput, because no larger measured multi-zone hazard execution
    exists yet.
@@ -141,6 +143,14 @@ Measured:
   to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
   and matches layer inventory parity; that is demonstration evidence only and
   does not authorize operational GIS claims.
+- `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
+  current real-AOI candidate scenario table at 3 rows, the fixture scenario
+  table at 3 rows, the minimal tier at 5 files / 27,675 bytes, the
+  rebuildable-reduced tier at 17 files / 3,953,602 bytes, the GIS tier at
+  56 files / 79,160,991 bytes, and the research-full tier at 2,716 files /
+  764,598,283 bytes in this checkout. It recommends `rebuildable_reduced` as
+  the smallest Balfrin demonstration replay tier because the minimal tier omits
+  builder-facing trajectory outputs.
 
 Extrapolated:
 
@@ -154,8 +164,9 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no-go for regional and Swiss-wide
 execution under the current single-node/postproc boundary. The key separator is
-now the adjacent-candidate bottleneck ranking: scenario cardinality first,
-then reducer pressure, then hazard throughput, GIS packaging, and Balfrin
-access. The repository has measured single-job, four-zone postproc, and
+now the adjacent-candidate bottleneck ranking: scenario cardinality is measured
+and compact for the current candidate, then GIS/research-full output growth,
+reducer pressure, hazard throughput, GIS packaging completeness, and Balfrin
+access remain. The repository has measured single-job, four-zone postproc, and
 smallest multi-zone probe evidence, but not measured larger multi-zone hazard
 execution.

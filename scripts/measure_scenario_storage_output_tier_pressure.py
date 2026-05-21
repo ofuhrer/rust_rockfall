@@ -1,0 +1,537 @@
+#!/usr/bin/env python3
+"""Measure scenario storage and output-tier pressure for expansion planning.
+
+This helper is read-only except for scratch scenario-table materialization
+under /tmp. It measures existing fixture and current real-AOI candidate
+bundles, compares minimal, rebuildable-reduced, GIS, and research-full output
+tiers, and recommends the smallest tier suitable for Balfrin demonstration
+replay. It does not run ensembles, delete outputs, submit jobs, or authorize
+scale-up.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts import generate_candidate_source_zone_scenarios as SCENARIO_FREEZER  # noqa: E402
+from scripts import summarize_management_aoi_scenario_pressure as MANAGEMENT_PRESSURE  # noqa: E402
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_VERSION = "scenario_storage_output_tier_pressure_v1"
+DEFAULT_FIXTURE_REVIEW_PACKAGE = ROOT / "tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml"
+DEFAULT_FIXTURE_RUN_ROOT = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
+DEFAULT_REAL_CANDIDATE_METRICS = (
+    ROOT / "validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json"
+)
+DEFAULT_REAL_CANDIDATE_REVIEW = (
+    ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
+)
+DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+DEFAULT_REDUCED_ROOT = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced"
+DEFAULT_FULL_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/target_gate_v1"
+DEFAULT_GIS_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
+DEFAULT_FIXTURE_TRAJECTORY_COUNT = 6
+
+REBUILD_REQUIRED_FAMILIES = (
+    "trajectory",
+    "deposition",
+    "impact_events",
+    "diagnostics",
+    "trajectory_metadata",
+)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fixture-review-package", type=Path, default=DEFAULT_FIXTURE_REVIEW_PACKAGE)
+    parser.add_argument("--fixture-run-root", type=Path, default=DEFAULT_FIXTURE_RUN_ROOT)
+    parser.add_argument("--candidate-metrics-manifest", type=Path, default=DEFAULT_REAL_CANDIDATE_METRICS)
+    parser.add_argument("--candidate-review-manifest", type=Path, default=DEFAULT_REAL_CANDIDATE_REVIEW)
+    parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
+    parser.add_argument("--rebuildable-reduced-root", type=Path, default=DEFAULT_REDUCED_ROOT)
+    parser.add_argument("--full-validation-root", type=Path, default=DEFAULT_FULL_VALIDATION_ROOT)
+    parser.add_argument("--gis-root", type=Path, default=DEFAULT_GIS_ROOT)
+    parser.add_argument("--format", choices=("text", "json"), default="text")
+    parser.add_argument("--json-output", type=Path, default=None)
+    return parser.parse_args(argv)
+
+
+def build_report(
+    *,
+    fixture_review_package: Path = DEFAULT_FIXTURE_REVIEW_PACKAGE,
+    fixture_run_root: Path = DEFAULT_FIXTURE_RUN_ROOT,
+    candidate_metrics_manifest: Path = DEFAULT_REAL_CANDIDATE_METRICS,
+    candidate_review_manifest: Path = DEFAULT_REAL_CANDIDATE_REVIEW,
+    policy_path: Path = DEFAULT_POLICY,
+    rebuildable_reduced_root: Path = DEFAULT_REDUCED_ROOT,
+    full_validation_root: Path = DEFAULT_FULL_VALIDATION_ROOT,
+    gis_root: Path = DEFAULT_GIS_ROOT,
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="scenario_tier_pressure_") as tmp:
+        scratch = Path(tmp)
+        fixture_scenario = build_fixture_scenario_measurement(
+            review_package_path=fixture_review_package,
+            output_root=scratch / "fixture_scenario_table",
+        )
+        real_candidate = build_real_candidate_measurement(
+            candidate_metrics_manifest=candidate_metrics_manifest,
+            candidate_review_manifest=candidate_review_manifest,
+            policy_path=policy_path,
+            scratch_root=scratch / "real_aoi",
+        )
+
+    output_families = {
+        "fixture_run_root": measure_root(
+            fixture_run_root,
+            label="fixture_run_root",
+            evidence_label="fixture_backed",
+        ),
+        "rebuildable_reduced": measure_root(
+            rebuildable_reduced_root,
+            label="rebuildable_reduced",
+            evidence_label=evidence_label_for_path(rebuildable_reduced_root),
+        ),
+        "full_validation": measure_root(
+            full_validation_root,
+            label="full_validation",
+            evidence_label=evidence_label_for_path(full_validation_root),
+        ),
+        "gis": measure_root(
+            gis_root,
+            label="gis",
+            evidence_label=evidence_label_for_path(gis_root),
+        ),
+    }
+    tier_comparison = build_tier_comparison(
+        fixture_scenario=fixture_scenario,
+        real_candidate=real_candidate,
+        output_families=output_families,
+    )
+    recommendation = recommend_balfrin_replay_tier(tier_comparison)
+    next_bottleneck = determine_next_bottleneck(real_candidate=real_candidate, tier_comparison=tier_comparison)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "measurement_status": "ready",
+        "read_only": True,
+        "scratch_outputs_committed": False,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+        "fixture_measurement": fixture_scenario,
+        "real_aoi_candidate_measurement": real_candidate,
+        "output_family_measurements": output_families,
+        "tier_comparison": tier_comparison,
+        "balfrin_demonstration_replay_recommendation": recommendation,
+        "next_scale_bottleneck": next_bottleneck,
+        "claim_boundaries": claim_boundaries(),
+    }
+
+
+def build_fixture_scenario_measurement(*, review_package_path: Path, output_root: Path) -> dict[str, Any]:
+    if not review_package_path.exists():
+        return blocked_measurement(
+            label="fixture_scenario_table",
+            path=review_package_path,
+            blocked_reason="fixture review package is missing",
+            evidence_label="fixture_backed",
+        )
+    report = SCENARIO_FREEZER.build_freezer_report(
+        review_package_path=review_package_path,
+        accepted_candidate_ids=None,
+        output_root=output_root,
+        trajectory_count=DEFAULT_FIXTURE_TRAJECTORY_COUNT,
+        seed=SCENARIO_FREEZER.DEFAULT_FREEZER_SEED,
+    )
+    bundle = measure_root(output_root, label="fixture_scenario_table", evidence_label="fixture_backed")
+    manifest_path = Path(str(report["output_paths"]["manifest"]))
+    manifest = load_json(manifest_path) if manifest_path.exists() else {}
+    return {
+        "measurement_status": "ready",
+        "evidence_label": "fixture_backed",
+        "review_package_path": display_path(review_package_path),
+        "trajectory_count": DEFAULT_FIXTURE_TRAJECTORY_COUNT,
+        "scenario_row_count": int(report.get("scenario_row_count") or 0),
+        "accepted_candidate_count": int(report.get("accepted_candidate_count") or 0),
+        "block_family_count": len(report.get("block_family_ids", []) or []),
+        "scenario_table_csv_bytes": safe_path_bytes(Path(str(report["output_paths"]["scenario_table"]))),
+        "scenario_manifest_bytes": safe_path_bytes(manifest_path),
+        "scenario_bundle": bundle,
+        "scenario_family_cardinality": list(manifest.get("block_family_cardinality") or []),
+    }
+
+
+def build_real_candidate_measurement(
+    *,
+    candidate_metrics_manifest: Path,
+    candidate_review_manifest: Path,
+    policy_path: Path,
+    scratch_root: Path,
+) -> dict[str, Any]:
+    if not candidate_metrics_manifest.exists() or not candidate_review_manifest.exists() or not policy_path.exists():
+        missing = [
+            display_path(path)
+            for path in (candidate_metrics_manifest, candidate_review_manifest, policy_path)
+            if not path.exists()
+        ]
+        return {
+            "measurement_status": "blocked_missing_inputs",
+            "evidence_label": "measured_existing_artifacts",
+            "missing_inputs": missing,
+            "scenario_row_count": 0,
+            "scenario_table_total_bytes": 0,
+            "candidate_bundle": measure_root(candidate_metrics_manifest.parent, label="real_candidate_bundle"),
+        }
+    candidate_metrics = load_json(candidate_metrics_manifest)
+    candidate_review = load_json(candidate_review_manifest)
+    generated = MANAGEMENT_PRESSURE.build_generated_scenario_table_report(
+        candidate_review_manifest_path=candidate_review_manifest,
+        policy_path=policy_path,
+        output_root=scratch_root / "management_pressure",
+        scenario_output_root=scratch_root / "scenario_table",
+    )
+    scenario_generation = dict(generated.get("scenario_table_generation") or {})
+    scenario_rows = [row for row in scenario_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
+    scenario_family_counts: dict[str, int] = {}
+    release_zone_counts: dict[str, int] = {}
+    for row in scenario_rows:
+        block_family_id = str(row.get("block_family_id") or "")
+        release_zone_id = str(row.get("candidate_release_zone_id") or "")
+        if block_family_id:
+            scenario_family_counts[block_family_id] = scenario_family_counts.get(block_family_id, 0) + 1
+        if release_zone_id:
+            release_zone_counts[release_zone_id] = release_zone_counts.get(release_zone_id, 0) + 1
+    review_summary = dict(candidate_review.get("review_summary") or {})
+    candidate_summary = dict(candidate_metrics.get("candidate_summary") or {})
+    status = "ready" if generated.get("scenario_table_status") == "ready" else str(generated.get("scenario_table_status") or "unknown")
+    return {
+        "measurement_status": status,
+        "evidence_label": "measured_existing_artifacts",
+        "candidate_metrics_manifest_path": display_path(candidate_metrics_manifest),
+        "candidate_review_manifest_path": display_path(candidate_review_manifest),
+        "policy_path": display_path(policy_path),
+        "candidate_count": int(candidate_summary.get("candidate_cell_count") or review_summary.get("candidate_count") or 0),
+        "candidate_review_count": int(review_summary.get("candidate_count") or 0),
+        "scenario_row_count": int(scenario_generation.get("scenario_row_count") or 0),
+        "scenario_table_file_count": int(scenario_generation.get("file_count") or 0),
+        "scenario_table_csv_bytes": int(scenario_generation.get("csv_bytes") or 0),
+        "scenario_manifest_bytes": int(scenario_generation.get("manifest_bytes") or 0),
+        "scenario_table_total_bytes": int(scenario_generation.get("total_bytes") or 0),
+        "release_plan_root": scenario_generation.get("review_application_output_root", ""),
+        "scenario_table_output_root": scenario_generation.get("scenario_table_output_root", ""),
+        "candidate_bundle": measure_root(candidate_metrics_manifest.parent, label="real_candidate_bundle"),
+        "scenario_family_cardinality": [
+            {"scenario_family_id": family_id, "row_count": count}
+            for family_id, count in sorted(scenario_family_counts.items())
+        ],
+        "release_zone_cardinality": [
+            {"release_zone_id": release_zone_id, "row_count": count}
+            for release_zone_id, count in sorted(release_zone_counts.items())
+        ],
+        "blocked_reason": generated.get("blocked_reason", ""),
+    }
+
+
+def measure_root(path: Path, *, label: str, evidence_label: str | None = None) -> dict[str, Any]:
+    root = Path(path)
+    if not root.exists():
+        return {
+            "label": label,
+            "root": display_path(root),
+            "measurement_status": "blocked_missing_root",
+            "evidence_label": evidence_label or evidence_label_for_path(root),
+            "file_count": 0,
+            "total_bytes": 0,
+            "manifest_bytes": 0,
+            "family_counts": {},
+            "family_bytes": {},
+            "csv_row_counts": {},
+        }
+    files = sorted(file for file in root.rglob("*") if file.is_file())
+    family_counts: dict[str, int] = {}
+    family_bytes: dict[str, int] = {}
+    csv_row_counts: dict[str, int] = {}
+    for file in files:
+        family = classify_file_family(file)
+        size = file.stat().st_size
+        family_counts[family] = family_counts.get(family, 0) + 1
+        family_bytes[family] = family_bytes.get(family, 0) + size
+        if file.suffix.lower() == ".csv":
+            csv_row_counts[display_path(file)] = count_csv_data_rows(file)
+    return {
+        "label": label,
+        "root": display_path(root),
+        "measurement_status": "ready",
+        "evidence_label": evidence_label or evidence_label_for_path(root),
+        "file_count": len(files),
+        "total_bytes": sum(file.stat().st_size for file in files),
+        "manifest_bytes": sum(file.stat().st_size for file in files if "manifest" in file.name),
+        "family_counts": dict(sorted(family_counts.items())),
+        "family_bytes": dict(sorted(family_bytes.items())),
+        "csv_row_counts": csv_row_counts,
+    }
+
+
+def build_tier_comparison(
+    *,
+    fixture_scenario: dict[str, Any],
+    real_candidate: dict[str, Any],
+    output_families: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    minimal_bytes = int(real_candidate.get("scenario_table_total_bytes") or 0)
+    if minimal_bytes <= 0:
+        minimal_bytes = int(((fixture_scenario.get("scenario_bundle") or {}).get("total_bytes")) or 0)
+    minimal_files = int(real_candidate.get("scenario_table_file_count") or 0)
+    if minimal_files <= 0:
+        minimal_files = int(((fixture_scenario.get("scenario_bundle") or {}).get("file_count")) or 0)
+    reduced = output_families["rebuildable_reduced"]
+    gis = output_families["gis"]
+    full = output_families["full_validation"]
+    return [
+        {
+            "tier_id": "minimal",
+            "tier_role": "scenario table plus release-plan manifest only",
+            "measurement_status": "ready" if minimal_files > 0 else "blocked_no_scenario_table",
+            "file_count": minimal_files,
+            "total_bytes": minimal_bytes,
+            "required_for_balfrin_replay": False,
+            "replay_suitability": "insufficient_missing_trajectory_outputs",
+            "omitted_families": list(REBUILD_REQUIRED_FAMILIES),
+        },
+        {
+            "tier_id": "rebuildable_reduced",
+            "tier_role": "smallest builder-facing validation outputs needed to replay or rebuild hazard layers",
+            "measurement_status": reduced["measurement_status"],
+            "file_count": reduced["file_count"],
+            "total_bytes": reduced["total_bytes"],
+            "required_for_balfrin_replay": True,
+            "replay_suitability": classify_rebuildable_reduced(reduced),
+            "family_counts": reduced["family_counts"],
+        },
+        {
+            "tier_id": "gis",
+            "tier_role": "map package, rasters, vectors, and GIS manifests for QGIS review",
+            "measurement_status": gis["measurement_status"],
+            "file_count": gis["file_count"],
+            "total_bytes": gis["total_bytes"],
+            "required_for_balfrin_replay": False,
+            "replay_suitability": "sufficient_for_review_not_minimal_replay"
+            if gis["measurement_status"] == "ready"
+            else "blocked_missing_gis_root",
+            "family_counts": gis["family_counts"],
+        },
+        {
+            "tier_id": "research_full",
+            "tier_role": "full validation output with full trajectory/history products where present",
+            "measurement_status": full["measurement_status"],
+            "file_count": full["file_count"],
+            "total_bytes": full["total_bytes"],
+            "required_for_balfrin_replay": False,
+            "replay_suitability": "sufficient_but_not_smallest"
+            if full["measurement_status"] == "ready"
+            else "blocked_missing_full_root",
+            "family_counts": full["family_counts"],
+        },
+    ]
+
+
+def recommend_balfrin_replay_tier(tier_comparison: list[dict[str, Any]]) -> dict[str, Any]:
+    by_id = {row["tier_id"]: row for row in tier_comparison}
+    reduced = by_id["rebuildable_reduced"]
+    if reduced["replay_suitability"] == "sufficient":
+        return {
+            "recommended_tier": "rebuildable_reduced",
+            "recommendation_status": "ready",
+            "reason": "minimal omits trajectory outputs; rebuildable_reduced is the smallest measured tier preserving builder-facing replay inputs",
+            "required_followup": "keep GIS and research-full outputs optional unless QGIS review or trajectory research inspection is requested",
+        }
+    return {
+        "recommended_tier": "research_full",
+        "recommendation_status": "fallback_required",
+        "reason": "rebuildable_reduced is not complete in the measured roots, so full validation output is the smallest available replay fallback",
+        "required_followup": "restore the missing rebuildable-reduced output families before using it as the Balfrin replay tier",
+    }
+
+
+def determine_next_bottleneck(*, real_candidate: dict[str, Any], tier_comparison: list[dict[str, Any]]) -> dict[str, Any]:
+    if real_candidate.get("measurement_status") != "ready":
+        return {
+            "bottleneck_id": "real_aoi_candidate_scenario_generation",
+            "status": real_candidate.get("measurement_status", "unknown"),
+            "summary": real_candidate.get("blocked_reason") or "current real-AOI candidate scenario table is not ready",
+        }
+    largest = max(tier_comparison, key=lambda row: int(row.get("total_bytes") or 0))
+    return {
+        "bottleneck_id": "gis_and_research_full_output_growth",
+        "status": "measured_existing_artifacts",
+        "summary": (
+            f"scenario table pressure is measured at {real_candidate.get('scenario_row_count')} rows; "
+            f"the largest measured tier is {largest['tier_id']} with {largest['file_count']} files and "
+            f"{largest['total_bytes']} bytes, so GIS/research-full output growth is the next storage bottleneck."
+        ),
+    }
+
+
+def classify_rebuildable_reduced(measurement: dict[str, Any]) -> str:
+    if measurement.get("measurement_status") != "ready":
+        return "blocked_missing_reduced_root"
+    family_counts = dict(measurement.get("family_counts") or {})
+    missing = [family for family in REBUILD_REQUIRED_FAMILIES if family_counts.get(family, 0) <= 0]
+    return "sufficient" if not missing else "insufficient_missing_" + "_".join(missing)
+
+
+def classify_file_family(path: Path) -> str:
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    if "scenario_table" in name:
+        return "scenario_table"
+    if "release" in name or "source_zone_metadata" in name or "source_scenario_policy" in name:
+        return "release_plan"
+    if "trajectory_metadata" in name:
+        return "trajectory_metadata"
+    if "trajectory" in name:
+        return "trajectory"
+    if "deposition" in name:
+        return "deposition"
+    if "impact" in name:
+        return "impact_events"
+    if "metrics" in name or "scaling_summary" in name or "diagnostic" in name:
+        return "diagnostics"
+    if "manifest" in name:
+        return "manifest"
+    if suffix in {".tif", ".tiff", ".asc", ".geojson", ".gpkg", ".qml", ".sld"}:
+        return "gis"
+    if "chunk" in name:
+        return "chunk_metadata"
+    return suffix.lstrip(".") or "other"
+
+
+def count_csv_data_rows(path: Path) -> int:
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            return max(0, sum(1 for _ in csv.reader(handle)) - 1)
+    except UnicodeDecodeError:
+        return 0
+
+
+def blocked_measurement(*, label: str, path: Path, blocked_reason: str, evidence_label: str) -> dict[str, Any]:
+    return {
+        "measurement_status": "blocked_missing_inputs",
+        "label": label,
+        "path": display_path(path),
+        "blocked_reason": blocked_reason,
+        "evidence_label": evidence_label,
+        "scenario_row_count": 0,
+    }
+
+
+def evidence_label_for_path(path: Path) -> str:
+    try:
+        parts = path.resolve(strict=False).relative_to(ROOT).parts
+    except ValueError:
+        return "scratch_local"
+    if len(parts) >= 2 and parts[0] == "tests" and parts[1] == "fixtures":
+        return "fixture_backed"
+    return "measured_existing_artifacts"
+
+
+def safe_path_bytes(path: Path) -> int:
+    return path.stat().st_size if path.exists() else 0
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def display_path(path: Path) -> str:
+    resolved = path.resolve(strict=False)
+    try:
+        return str(resolved.relative_to(ROOT))
+    except ValueError:
+        return str(resolved)
+
+
+def claim_boundaries() -> dict[str, bool]:
+    return {
+        "operational_claims_allowed": False,
+        "physical_probability_claims_allowed": False,
+        "annual_frequency_claims_allowed": False,
+        "risk_exposure_vulnerability_claims_allowed": False,
+        "scale_up_authorized": False,
+        "distributed_execution_authorized": False,
+    }
+
+
+def render_text_report(report: dict[str, Any]) -> str:
+    recommendation = report["balfrin_demonstration_replay_recommendation"]
+    bottleneck = report["next_scale_bottleneck"]
+    lines = [
+        "Scenario Storage And Output-Tier Pressure",
+        f"schema_version: {report['schema_version']}",
+        f"measurement_status: {report['measurement_status']}",
+        f"fixture_scenario_rows: {report['fixture_measurement'].get('scenario_row_count', 0)}",
+        f"real_aoi_scenario_rows: {report['real_aoi_candidate_measurement'].get('scenario_row_count', 0)}",
+        "tier_comparison:",
+    ]
+    for tier in report["tier_comparison"]:
+        lines.append(
+            f"  - {tier['tier_id']}: status={tier['measurement_status']} files={tier['file_count']} "
+            f"bytes={tier['total_bytes']} replay={tier['replay_suitability']}"
+        )
+    lines.extend(
+        [
+            "recommendation:",
+            f"  tier: {recommendation['recommended_tier']}",
+            f"  status: {recommendation['recommendation_status']}",
+            f"  reason: {recommendation['reason']}",
+            "next_scale_bottleneck:",
+            f"  id: {bottleneck['bottleneck_id']}",
+            f"  status: {bottleneck['status']}",
+            f"  summary: {bottleneck['summary']}",
+            "claim_boundaries:",
+        ]
+    )
+    for key, value in report["claim_boundaries"].items():
+        lines.append(f"  {key}: {value}")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        report = build_report(
+            fixture_review_package=args.fixture_review_package,
+            fixture_run_root=args.fixture_run_root,
+            candidate_metrics_manifest=args.candidate_metrics_manifest,
+            candidate_review_manifest=args.candidate_review_manifest,
+            policy_path=args.policy,
+            rebuildable_reduced_root=args.rebuildable_reduced_root,
+            full_validation_root=args.full_validation_root,
+            gis_root=args.gis_root,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"scenario storage pressure error: {exc}", file=sys.stderr)
+        return 2
+
+    if args.json_output is not None:
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    if args.format == "json":
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        print(render_text_report(report))
+    return 0 if report["measurement_status"] == "ready" else 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
