@@ -464,6 +464,18 @@ def apply_review_decisions_to_package(
                 "needs_field_review": needs_field_review,
                 "review_application_source": "explicit" if explicit_review else "retained",
                 "review_validation_status": "validated" if accepted else "not_accepted",
+                "candidate_review_status_summary": build_candidate_review_status_summary(
+                    review_decision=decision,
+                    accepted=accepted,
+                    rejected=rejected,
+                    needs_field_review=needs_field_review,
+                ),
+                "candidate_review_decision": decision,
+                "candidate_review_flags": {
+                    "accepted": accepted,
+                    "rejected": rejected,
+                    "needs_field_review": needs_field_review,
+                },
             }
         )
         applied_rows.append(row)
@@ -651,6 +663,9 @@ def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, An
                         "needs_field_review": row.get("needs_field_review"),
                         "review_application_source": row.get("review_application_source"),
                         "review_validation_status": row.get("review_validation_status"),
+                        "candidate_review_status_summary": row.get("candidate_review_status_summary"),
+                        "candidate_review_decision": row.get("candidate_review_decision"),
+                        "candidate_review_flags": row.get("candidate_review_flags"),
                         "provenance_label": row.get("provenance_label"),
                         "candidate_stability_label": row.get("candidate_stability_label"),
                         "candidate_stability_class": row.get("candidate_stability_class"),
@@ -659,6 +674,32 @@ def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, An
                         "candidate_minimum_retention_fraction": row.get("candidate_minimum_retention_fraction"),
                         "candidate_mean_retention_fraction": row.get("candidate_mean_retention_fraction"),
                         "candidate_variant_presence_fraction": row.get("candidate_variant_presence_fraction"),
+                        "candidate_slope_band_min_deg": row.get("candidate_slope_band_min_deg"),
+                        "candidate_slope_band_max_deg": row.get("candidate_slope_band_max_deg"),
+                        "candidate_slope_band_summary": row.get("candidate_slope_band_summary"),
+                        "candidate_slope_summary": row.get("candidate_slope_summary"),
+                        "candidate_local_relief_available": row.get("candidate_local_relief_available"),
+                        "candidate_local_relief_threshold_m": row.get("candidate_local_relief_threshold_m"),
+                        "candidate_local_relief_min_m": row.get("candidate_local_relief_min_m"),
+                        "candidate_local_relief_max_m": row.get("candidate_local_relief_max_m"),
+                        "candidate_local_relief_mean_m": row.get("candidate_local_relief_mean_m"),
+                        "candidate_local_relief_median_m": row.get("candidate_local_relief_median_m"),
+                        "candidate_local_relief_summary": row.get("candidate_local_relief_summary"),
+                        "candidate_size_min_cells": row.get("candidate_size_min_cells"),
+                        "candidate_size_cell_count": row.get("candidate_size_cell_count"),
+                        "candidate_size_area_m2": row.get("candidate_size_area_m2"),
+                        "candidate_size_summary": row.get("candidate_size_summary"),
+                        "candidate_frozen_footprint_overlap_cell_count": row.get(
+                            "candidate_frozen_footprint_overlap_cell_count"
+                        ),
+                        "candidate_frozen_footprint_overlap_area_m2": row.get(
+                            "candidate_frozen_footprint_overlap_area_m2"
+                        ),
+                        "candidate_separation_summary": row.get("candidate_separation_summary"),
+                        "candidate_context_exclusion_summary": row.get("candidate_context_exclusion_summary"),
+                        "candidate_context_exclusion_flags": row.get("candidate_context_exclusion_flags"),
+                        "candidate_explanation_summary": row.get("candidate_explanation_summary"),
+                        "candidate_context_exclusion_reasons": row.get("candidate_context_exclusion_reasons"),
                     }
                     features.append(new_feature)
                 geojson["features"] = features
@@ -2093,6 +2134,7 @@ def emit_candidate_products(
             terrain=terrain,
             terrain_masks=terrain_masks,
             source_zone_metadata=source_zone_metadata,
+            screening=report["screening_criteria"],
             component=cells,
             index=index,
             width=width,
@@ -2684,6 +2726,9 @@ def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
         "accepted": properties["accepted"],
         "rejected": properties["rejected"],
         "needs_field_review": properties["needs_field_review"],
+        "candidate_review_status_summary": properties.get("candidate_review_status_summary"),
+        "candidate_review_decision": properties.get("candidate_review_decision"),
+        "candidate_review_flags": properties.get("candidate_review_flags"),
         "provenance_label": properties["provenance_label"],
         "candidate_stability_label": properties.get("candidate_stability_label"),
         "candidate_stability_class": properties.get("candidate_stability_class"),
@@ -2701,6 +2746,28 @@ def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
         "component_slope_max_deg": properties["component_slope_max_deg"],
         "component_slope_mean_deg": properties["component_slope_mean_deg"],
         "component_slope_median_deg": properties["component_slope_median_deg"],
+        "candidate_slope_band_min_deg": properties.get("candidate_slope_band_min_deg"),
+        "candidate_slope_band_max_deg": properties.get("candidate_slope_band_max_deg"),
+        "candidate_slope_band_summary": properties.get("candidate_slope_band_summary"),
+        "candidate_slope_summary": properties.get("candidate_slope_summary"),
+        "candidate_local_relief_available": properties.get("candidate_local_relief_available"),
+        "candidate_local_relief_threshold_m": properties.get("candidate_local_relief_threshold_m"),
+        "candidate_local_relief_min_m": properties.get("candidate_local_relief_min_m"),
+        "candidate_local_relief_max_m": properties.get("candidate_local_relief_max_m"),
+        "candidate_local_relief_mean_m": properties.get("candidate_local_relief_mean_m"),
+        "candidate_local_relief_median_m": properties.get("candidate_local_relief_median_m"),
+        "candidate_local_relief_summary": properties.get("candidate_local_relief_summary"),
+        "candidate_size_min_cells": properties.get("candidate_size_min_cells"),
+        "candidate_size_cell_count": properties.get("candidate_size_cell_count"),
+        "candidate_size_area_m2": properties.get("candidate_size_area_m2"),
+        "candidate_size_summary": properties.get("candidate_size_summary"),
+        "candidate_frozen_footprint_overlap_cell_count": properties.get("candidate_frozen_footprint_overlap_cell_count"),
+        "candidate_frozen_footprint_overlap_area_m2": properties.get("candidate_frozen_footprint_overlap_area_m2"),
+        "candidate_separation_summary": properties.get("candidate_separation_summary"),
+        "candidate_context_exclusion_summary": properties.get("candidate_context_exclusion_summary"),
+        "candidate_context_exclusion_flags": properties.get("candidate_context_exclusion_flags"),
+        "candidate_context_exclusion_reasons": properties.get("candidate_context_exclusion_reasons"),
+        "candidate_explanation_summary": properties.get("candidate_explanation_summary"),
     }
 
 
@@ -2821,6 +2888,12 @@ def candidate_review_map_overlays(
                 "candidate_sensitivity_label",
                 "provenance_label",
                 "review_decision",
+                "candidate_slope_band_summary",
+                "candidate_local_relief_summary",
+                "candidate_size_summary",
+                "candidate_separation_summary",
+                "candidate_context_exclusion_summary",
+                "candidate_review_status_summary",
             ],
             "review_decision_options": list(REVIEW_DECISION_OPTIONS),
             "traceability": "candidate ids, stability labels, sensitivity labels, and provenance stay attached to each feature",
@@ -2883,6 +2956,9 @@ def build_candidate_selection_manifest(
         {
             "candidate_release_zone_id": candidate_id,
             "review_decision": text_value(rows_by_id[candidate_id].get("review_decision")),
+            "candidate_review_status_summary": rows_by_id[candidate_id].get("candidate_review_status_summary"),
+            "candidate_review_decision": rows_by_id[candidate_id].get("candidate_review_decision"),
+            "candidate_review_flags": rows_by_id[candidate_id].get("candidate_review_flags"),
             "provenance_label": text_value(rows_by_id[candidate_id].get("provenance_label")),
             "candidate_stability_label": text_value(rows_by_id[candidate_id].get("candidate_stability_label")),
             "candidate_stability_class": text_value(rows_by_id[candidate_id].get("candidate_stability_class")),
@@ -2891,6 +2967,12 @@ def build_candidate_selection_manifest(
             "component_cell_count": rows_by_id[candidate_id].get("component_cell_count"),
             "component_area_m2": rows_by_id[candidate_id].get("component_area_m2"),
             "release_cell_count": rows_by_id[candidate_id].get("release_cell_count"),
+            "candidate_slope_band_summary": rows_by_id[candidate_id].get("candidate_slope_band_summary"),
+            "candidate_local_relief_summary": rows_by_id[candidate_id].get("candidate_local_relief_summary"),
+            "candidate_size_summary": rows_by_id[candidate_id].get("candidate_size_summary"),
+            "candidate_separation_summary": rows_by_id[candidate_id].get("candidate_separation_summary"),
+            "candidate_context_exclusion_summary": rows_by_id[candidate_id].get("candidate_context_exclusion_summary"),
+            "candidate_explanation_summary": rows_by_id[candidate_id].get("candidate_explanation_summary"),
             "selection_traceability": "selected" if candidate_id in selected_ids else "unselected",
         }
         for candidate_id in candidate_ids
@@ -3265,6 +3347,7 @@ def build_candidate_component_feature(
     terrain: dict[str, Any],
     terrain_masks: dict[str, np.ndarray],
     source_zone_metadata: dict[str, Any],
+    screening: dict[str, Any],
     component: list[tuple[int, int]],
     index: int,
     width: int,
@@ -3306,6 +3389,18 @@ def build_candidate_component_feature(
         "candidate_sensitivity_label": candidate_sensitivity_label,
         "review_editable": True,
     }
+    properties.update(
+        build_candidate_feature_explanation_fields(
+            terrain=terrain,
+            terrain_masks=terrain_masks,
+            component=component,
+            screening=screening,
+            review_decision="needs_field_review",
+            accepted=False,
+            rejected=False,
+            needs_field_review=True,
+        )
+    )
     geometry = component_multipolygon_geometry(component, terrain)
     bbox = component_bbox(component, terrain)
     properties["component_bbox_lv95_m"] = bbox
@@ -3360,6 +3455,143 @@ def component_bbox(component: list[tuple[int, int]], terrain: dict[str, Any]) ->
         "ymin": ymin,
         "xmax": xmax,
         "ymax": ymax,
+    }
+
+
+def build_candidate_review_status_summary(
+    *,
+    review_decision: str,
+    accepted: bool,
+    rejected: bool,
+    needs_field_review: bool,
+) -> str:
+    return (
+        f"review_decision={review_decision}; accepted={str(bool(accepted)).lower()}; "
+        f"rejected={str(bool(rejected)).lower()}; needs_field_review={str(bool(needs_field_review)).lower()}"
+    )
+
+
+def format_decimal(value: float | None, digits: int = 1) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.{digits}f}"
+
+
+def build_candidate_feature_explanation_fields(
+    *,
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    component: list[tuple[int, int]],
+    screening: dict[str, Any],
+    review_decision: str,
+    accepted: bool,
+    rejected: bool,
+    needs_field_review: bool,
+) -> dict[str, Any]:
+    component_mask = np.zeros_like(terrain_masks["candidate_mask"], dtype=bool)
+    for row, col in component:
+        component_mask[row, col] = True
+
+    cell_area_m2 = terrain["cellsize"] ** 2
+    slope_deg = terrain_masks["slope_deg"][component_mask]
+    smoothed_slope_deg = terrain_masks["smoothed_slope_deg"][component_mask]
+    local_relief_m = terrain_masks["local_relief_m"][component_mask]
+    finite_local_relief_m = local_relief_m[np.isfinite(local_relief_m)]
+    footprint_overlap_count = int((component_mask & terrain_masks["footprint_mask"]).sum())
+    minimum_connected_component_cells = int(
+        screening.get("minimum_connected_component_cells", MIN_COMPONENT_CELLS)
+    )
+    minimum_local_relief_m = float(screening.get("minimum_local_relief_m", MIN_LOCAL_RELIEF_M))
+    slope_band_min_deg = float(screening.get("candidate_slope_min_deg", MIN_CANDIDATE_SLOPE_DEG))
+    slope_band_max_deg = float(screening.get("candidate_slope_max_deg", MAX_CANDIDATE_SLOPE_DEG))
+    raw_slope_min_deg = float(np.min(slope_deg)) if slope_deg.size else None
+    raw_slope_max_deg = float(np.max(slope_deg)) if slope_deg.size else None
+    raw_slope_mean_deg = float(np.mean(slope_deg)) if slope_deg.size else None
+    raw_slope_median_deg = float(np.median(slope_deg)) if slope_deg.size else None
+    smoothed_slope_min_deg = float(np.min(smoothed_slope_deg)) if smoothed_slope_deg.size else None
+    smoothed_slope_max_deg = float(np.max(smoothed_slope_deg)) if smoothed_slope_deg.size else None
+    smoothed_slope_mean_deg = float(np.mean(smoothed_slope_deg)) if smoothed_slope_deg.size else None
+    smoothed_slope_median_deg = float(np.median(smoothed_slope_deg)) if smoothed_slope_deg.size else None
+    local_relief_min_m = float(np.min(finite_local_relief_m)) if finite_local_relief_m.size else None
+    local_relief_max_m = float(np.max(finite_local_relief_m)) if finite_local_relief_m.size else None
+    local_relief_mean_m = float(np.mean(finite_local_relief_m)) if finite_local_relief_m.size else None
+    local_relief_median_m = float(np.median(finite_local_relief_m)) if finite_local_relief_m.size else None
+    candidate_cell_count = len(component)
+    candidate_area_m2 = candidate_cell_count * cell_area_m2
+    context_exclusion_reasons = [
+        "frozen_release_zone_footprint_excluded",
+        "nodata_excluded",
+        "incomplete_neighborhood_excluded",
+        "local_relief_threshold_applied",
+        "minimum_component_size_applied",
+    ]
+    return {
+        "candidate_slope_band_min_deg": slope_band_min_deg,
+        "candidate_slope_band_max_deg": slope_band_max_deg,
+        "candidate_slope_band_summary": (
+            f"smoothed slope range {format_decimal(smoothed_slope_min_deg)}-{format_decimal(smoothed_slope_max_deg)} degrees "
+            f"within candidate band [{format_decimal(slope_band_min_deg)}, {format_decimal(slope_band_max_deg)}] degrees"
+        ),
+        "candidate_slope_summary": (
+            f"raw slope range {format_decimal(raw_slope_min_deg)}-{format_decimal(raw_slope_max_deg)} degrees "
+            f"(mean {format_decimal(raw_slope_mean_deg)} degrees, median {format_decimal(raw_slope_median_deg)} degrees); "
+            f"smoothed slope mean {format_decimal(smoothed_slope_mean_deg)} degrees, median "
+            f"{format_decimal(smoothed_slope_median_deg)} degrees"
+        ),
+        "candidate_local_relief_available": bool(finite_local_relief_m.size),
+        "candidate_local_relief_threshold_m": minimum_local_relief_m,
+        "candidate_local_relief_min_m": local_relief_min_m,
+        "candidate_local_relief_max_m": local_relief_max_m,
+        "candidate_local_relief_mean_m": local_relief_mean_m,
+        "candidate_local_relief_median_m": local_relief_median_m,
+        "candidate_local_relief_summary": (
+            f"3x3 local relief range {format_decimal(local_relief_min_m)}-{format_decimal(local_relief_max_m)} m "
+            f"(mean {format_decimal(local_relief_mean_m)} m, median {format_decimal(local_relief_median_m)} m) "
+            f"against minimum {format_decimal(minimum_local_relief_m)} m"
+        ),
+        "candidate_size_min_cells": minimum_connected_component_cells,
+        "candidate_size_cell_count": candidate_cell_count,
+        "candidate_size_area_m2": candidate_area_m2,
+        "candidate_size_summary": (
+            f"{candidate_cell_count} connected cells covering {format_decimal(candidate_area_m2)} m² "
+            f"against minimum {minimum_connected_component_cells} cells"
+        ),
+        "candidate_frozen_footprint_overlap_cell_count": footprint_overlap_count,
+        "candidate_frozen_footprint_overlap_area_m2": footprint_overlap_count * cell_area_m2,
+        "candidate_separation_summary": (
+            f"{footprint_overlap_count} cells overlap the frozen source-zone footprint; "
+            f"{'separated from' if footprint_overlap_count == 0 else 'intersects'} the frozen release-zone footprint"
+        ),
+        "candidate_context_exclusion_summary": (
+            "candidate screening excluded nodata cells, incomplete 3x3 neighborhoods, and the frozen "
+            "source-zone footprint before component assembly"
+        ),
+        "candidate_context_exclusion_flags": {
+            "frozen_release_zone_footprint_excluded": True,
+            "nodata_excluded": True,
+            "incomplete_neighborhood_excluded": True,
+            "local_relief_threshold_applied": True,
+            "minimum_component_size_applied": True,
+        },
+        "candidate_review_status_summary": build_candidate_review_status_summary(
+            review_decision=review_decision,
+            accepted=accepted,
+            rejected=rejected,
+            needs_field_review=needs_field_review,
+        ),
+        "candidate_review_decision": review_decision,
+        "candidate_review_flags": {
+            "accepted": accepted,
+            "rejected": rejected,
+            "needs_field_review": needs_field_review,
+        },
+        "candidate_explanation_summary": (
+            f"{format_decimal(slope_band_min_deg)}-{format_decimal(slope_band_max_deg)} degree slope band; "
+            f"{format_decimal(local_relief_min_m)}-{format_decimal(local_relief_max_m)} m local relief; "
+            f"{candidate_cell_count} cells; {footprint_overlap_count} footprint-overlap cells; "
+            f"review_decision={review_decision}"
+        ),
+        "candidate_context_exclusion_reasons": context_exclusion_reasons,
     }
 
 

@@ -68,7 +68,10 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
 
    This writes the bounded candidate-review package under `/tmp` and records
    the overlay manifest, review paths, and first blocker when inputs are still
-   missing.
+   missing. The candidate GeoJSON features carry deterministic slope-band,
+   local-relief, size, separation, context-exclusion, and review-status
+   attributes so QGIS identify/label tools can explain why each candidate was
+   kept in the review set.
 
 5. Generate the diagnostic package.
 

@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-437: Make Release-Zone Candidate Heuristic Explainable Per Candidate
-
-Goal: Add per-candidate feature summaries explaining why each release-zone candidate was selected or rejected.
-
-Capability gap reduced: Release-zone automation remains difficult to review scientifically and visually.
-
-Why this outranks alternatives: The next Balfrin demonstration needs defensible automated candidates, not opaque slope masks or hand-picked polygons.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `docs/aoi_user_manual.md`
-- `qgis/styles/aoi_qgis_style_bundle.json`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- Candidate-level summaries for slope band, local relief/roughness when available, size, separation, context exclusions, and review status.
-- GeoJSON properties suitable for QGIS inspection.
-- Focused tests using fixture terrain/candidate data.
-
-Definition of done:
-
-- Candidate overlays carry enough deterministic feature evidence for a reviewer to understand why the heuristic selected or rejected each zone.
-
-Boundaries: No tuning to match a desired result, no operational source-zone claim, no physical release probability semantics.
-
 ### TB-438: Add Release-Zone Candidate Search-Area Expansion Modes
 
 Goal: Make source-zone candidate generation support explicit local, expanded, and full-AOI search domains with stable metadata.

@@ -5739,3 +5739,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no generated terrain was committed, no synthetic evidence was promoted, no simulation or source-zone acceptance claim was added, and the report remains non-operational.
 - Next task: `TB-437`
+
+### TB-437: Make Release-Zone Candidate Heuristic Explainable Per Candidate
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: add deterministic per-candidate feature evidence to the release-zone candidate GeoJSON and review-package outputs so reviewers can inspect the slope band, local relief, size, separation, context exclusions, and review status for each candidate.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added flat candidate-evidence fields to the generated component features and review rows, including slope-band, local-relief, size, separation, context-exclusion, and review-status summaries suitable for QGIS inspection.
+  - Preserved the new evidence fields through the review-apply path and exposed them in the candidate review overlay label fields and selection-manifest rows.
+  - Documented the candidate-review attribute bundle in the AOI user manual and added focused regression assertions over the emitted GeoJSON and review-applied GeoJSON.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_committed_tschamut_inputs_produce_deterministic_candidate_metrics tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_review_apply_edits_candidates_and_validates_provenance -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: no operational source-zone claim was added, no physical release probability semantics were introduced, and the candidate overlays remain diagnostic review artifacts only.
+- Next task: `TB-438`
