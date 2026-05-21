@@ -153,8 +153,10 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_plan["merge_key_policy"], "chunk_id/zone_id/scenario_id")
             self.assertEqual(first_plan["split_count"], 6)
             self.assertEqual(first_plan["duplicate_execution_keys"], [])
-            execution_keys = [split["execution_key"] for split in first_plan["splits"]]
-            self.assertEqual(len(execution_keys), len(set(execution_keys)))
+            merge_keys = [split["merge_key"] for split in first_plan["splits"]]
+            self.assertEqual(len(merge_keys), len(set(merge_keys)))
+            for split in first_plan["splits"]:
+                self.assertNotIn("execution_key", split)
             self.assertEqual(
                 [split["zone_id"] for split in first_plan["splits"]],
                 [f"source_zone_{index:02d}" for index in range(6)],
@@ -215,9 +217,11 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_merge, second_merge)
             output_order = [(entry["kind"], entry["path"]) for entry in first_merge["outputs"]]
             self.assertEqual(output_order, sorted(output_order))
-            self.assertEqual(first_merge["sample_support_summary"]["source_zone_count"], 6)
-            self.assertEqual(first_merge["sample_support_summary"]["chunk_count"], 3)
-            self.assertEqual(first_merge["sample_support_summary"]["trajectory_sample_rows"], 36)
+            self.assertEqual(set(first_merge["merged_output_summary"]), {"file_count", "byte_count"})
+            self.assertGreater(first_merge["merged_output_summary"]["file_count"], 0)
+            self.assertGreater(first_merge["merged_output_summary"]["byte_count"], 0)
+            self.assertNotIn("sample_support_summary", first_merge)
+            self.assertNotIn("rebuild_compatible_output_families", first_merge)
 
     def test_manifest_pressure_ladder_recommends_compact_mode(self) -> None:
         report = MODULE.build_manifest_pressure_ladder_report(release_zone_counts=(2, 4, 8, 12))

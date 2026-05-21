@@ -50,9 +50,9 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
             )
 
         self.assertEqual(report["schema_version"], "balfrin_regional_split_submission_package_v1")
-        self.assertEqual(report["submission_package_status"], "failed_closed_output_budget")
+        self.assertEqual(report["submission_package_status"], "failed_closed_preflight")
         self.assertFalse(report["ready_for_bounded_postproc_submission"])
-        self.assertEqual(report["authorization_preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(report["authorization_preflight_status"], "blocked_access")
         self.assertEqual(
             report["authorization_preflight"]["balfrin_access_status"],
             "blocked_balfrin_access_not_checked",
@@ -60,7 +60,7 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertEqual(report["regional_split_merge_contract"]["status"], "ready")
         self.assertEqual(report["regional_split_merge_contract"]["split_count"], 12)
         self.assertEqual(report["writable_remote_roots"]["status"], "ready")
-        self.assertEqual(report["output_budget"]["status"], "blocked_output_budget")
+        self.assertEqual(report["output_budget"]["status"], "ready")
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
         self.assertFalse(report["no_submit_semantics"]["submit_command_executed"])
         self.assertFalse(report["command_contract"]["contains_generate_only_flag"])
@@ -82,17 +82,17 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
                     balfrin_access_preflight_source="fixture",
                 )
 
-        self.assertEqual(report["submission_package_status"], "failed_closed_output_budget")
-        self.assertFalse(report["ready_for_bounded_postproc_submission"])
-        self.assertEqual(report["first_blocker"]["gate"], "output_budget")
-        self.assertEqual(report["authorization_preflight_status"], "blocked_reducer_budget")
+        self.assertEqual(report["submission_package_status"], "ready_for_bounded_postproc_submission")
+        self.assertTrue(report["ready_for_bounded_postproc_submission"])
+        self.assertIsNone(report["first_blocker"])
+        self.assertEqual(report["authorization_preflight_status"], "ready_for_authorization_review")
         self.assertEqual(
             report["writable_remote_roots"]["run_root"],
             "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
         )
         self.assertEqual(report["writable_remote_roots"]["writability_status"], "reviewed_balfrin_scratch_root")
-        self.assertEqual(report["output_budget"]["status"], "blocked_output_budget")
-        self.assertEqual(report["output_budget"]["acceptance_status"], "blocked_threshold_exceeded")
+        self.assertEqual(report["output_budget"]["status"], "ready")
+        self.assertEqual(report["output_budget"]["acceptance_status"], "accepted")
         self.assertEqual(report["output_budget"]["threshold_profile_id"], "smallest_live_two_zone_probe")
         self.assertIn("scripts/submit_balfrin_probe.py", report["exact_bounded_postproc_command"])
         self.assertIn("--partition postproc", report["exact_bounded_postproc_command"])

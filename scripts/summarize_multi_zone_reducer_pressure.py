@@ -354,6 +354,39 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     scenario_rows = load_csv_rows(probe_root / "input" / "scenario_table.csv")
     outputs = ensure_list_of_mappings(output_manifest.get("outputs"), "output_manifest.outputs")
     output_family_file_counts, output_family_bytes = aggregate_output_families(outputs)
+    merge_output_summary = dict(merge_manifest.get("merged_output_summary") or {})
+    if not merge_output_summary:
+        merge_output_summary = {
+            "file_count": sum(number_or_zero(entry.get("file_count")) for entry in outputs),
+            "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in outputs),
+        }
+    merge_output_summary.setdefault("output_family_file_counts", output_family_file_counts)
+    merge_output_summary.setdefault("output_family_bytes", output_family_bytes)
+    merge_output_summary.setdefault("output_manifest_case_id", output_manifest.get("case_id"))
+    sample_support_summary = dict(merge_manifest.get("sample_support_summary") or {})
+    if not sample_support_summary:
+        sample_support_summary = build_sample_support_summary(
+            regional_split_plan=regional_split_plan,
+            outputs=outputs,
+        )
+    rebuild_compatible_output_families = list(merge_manifest.get("rebuild_compatible_output_families") or [])
+    if not rebuild_compatible_output_families:
+        rebuild_compatible_output_families = [
+            family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family in set(output_family_mix)
+        ]
+    missing_rebuild_compatible_output_families = list(
+        merge_manifest.get("missing_rebuild_compatible_output_families") or []
+    )
+    if not missing_rebuild_compatible_output_families:
+        expected_rebuild_families = [
+            family for family in REPLAY_CRITICAL_OUTPUT_FAMILIES if family not in DIAGNOSTIC_DEBUG_OUTPUT_FAMILIES
+        ]
+        missing_rebuild_compatible_output_families = [
+            family for family in expected_rebuild_families if family not in rebuild_compatible_output_families
+        ]
+    rebuild_compatible_output_family_status = merge_manifest.get("rebuild_compatible_output_family_status") or (
+        "ready" if not missing_rebuild_compatible_output_families else "missing_rebuild_families"
+    )
     reducer_execution = ensure_mapping(output_manifest.get("reducer_execution"), "output_manifest.reducer_execution")
     trajectory_execution = ensure_mapping(output_manifest.get("trajectory_execution"), "output_manifest.trajectory_execution")
     probe_status = "measured_scratch_root" if command_plan.get("command") else "measured_scratch_root"
@@ -437,10 +470,10 @@ def build_report(probe_root: Path) -> dict[str, Any]:
             output_family_file_counts=output_family_file_counts,
             output_family_bytes=output_family_bytes,
         ),
-        "sample_support_summary": merge_manifest.get("sample_support_summary", {}),
-        "merged_output_summary": merge_manifest.get("merged_output_summary", {}),
-        "rebuild_compatible_output_families": merge_manifest.get("rebuild_compatible_output_families", []),
-        "rebuild_compatible_output_family_status": merge_manifest.get("rebuild_compatible_output_family_status", ""),
+        "sample_support_summary": sample_support_summary,
+        "merged_output_summary": merge_output_summary,
+        "rebuild_compatible_output_families": rebuild_compatible_output_families,
+        "rebuild_compatible_output_family_status": rebuild_compatible_output_family_status,
         "largest_output_families_by_bytes": largest_families(output_family_bytes, output_family_file_counts),
         "bottleneck_classification": bottleneck_labels["probe_blocker"]["label"],
         "bottleneck_labels": bottleneck_labels,
@@ -874,11 +907,10 @@ def build_regional_split_plan(
                 "trajectory_chunk_id": str(zone["trajectory_chunk_id"]),
                 "expected_output_root": str(output_root / "chunks" / reducer_chunk_id),
                 "merge_key": merge_key,
-                "execution_key": merge_key,
                 "execution_order": index,
             }
         )
-    execution_keys = [str(split["execution_key"]) for split in splits]
+    execution_keys = [str(split["merge_key"]) for split in splits]
     duplicate_execution_keys = sorted({key for key in execution_keys if execution_keys.count(key) > 1})
     chunk_ids = sorted({str(split["chunk_id"]) for split in splits})
     return {
@@ -1340,23 +1372,15 @@ def build_merge_manifest(
         "status": "merged_fixture_outputs",
         "probe_root": str(probe_root),
         "manifest_path": str(merge_manifest_path),
-        "regional_split_plan_schema_version": regional_split_plan.get("schema_version"),
         "split_count": regional_split_plan.get("split_count"),
         "merge_key_policy": regional_split_plan.get("merge_key_policy"),
         "merge_order": "sorted_chunk_id_then_output_family_then_path",
         "merge_order_independent": True,
         "chunk_order": sorted(str(chunk_id) for chunk_id in regional_split_plan.get("chunk_order") or []),
-        "rebuild_compatible_output_families": rebuild_compatible_families,
-        "rebuild_compatible_output_family_status": "ready" if not missing_rebuild_families else "missing_rebuild_families",
-        "missing_rebuild_compatible_output_families": missing_rebuild_families,
         "merged_output_summary": {
             "file_count": sum(number_or_zero(entry.get("file_count")) for entry in sorted_outputs),
             "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in sorted_outputs),
-            "output_family_file_counts": output_family_file_counts,
-            "output_family_bytes": output_family_bytes,
-            "output_manifest_case_id": output_manifest.get("case_id"),
         },
-        "sample_support_summary": sample_support_summary,
         "outputs": [
             {
                 "kind": str(entry.get("kind") or ""),

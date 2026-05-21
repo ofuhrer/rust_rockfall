@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-431: Compact Regional Split Submission Package
-
-Goal: Reduce the regional split Balfrin submission package below the reviewed manifest-size budget so the next live probe can pass pre-submit gates.
-
-Capability gap reduced: Regional multi-zone Balfrin execution blocked by package/manifest pressure.
-
-Why this outranks alternatives: TB-428 identified an exact blocker (`14550` bytes versus `14000` allowed), so a small compaction task directly unblocks the next measured run.
-
-Inspect first:
-
-- `docs/balfrin_regional_split_probe_gate_tb428.md`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_balfrin_regional_split_submission_package.py`
-
-Deliverables:
-
-- A compacted package/manifest representation or redundant-field removal that preserves all required submission, preservation, and split/merge evidence.
-- Focused regression coverage proving the package remains readable and falls within the reviewed `next_larger_four_zone_review_only_probe` manifest-size budget.
-- A regenerated no-submit package smoke result under `/tmp` showing `ready_for_bounded_postproc_submission=true` or the next exact blocker.
-
-Definition of done:
-
-- The regional split submission package no longer fails on the TB-428 manifest-size budget, or the task records the smallest remaining package-size blocker with a concrete next-byte target.
-
-Boundaries: No Balfrin submission, no loss of required provenance, no scale-up or operational claim, and no budget loosening without measured justification.
-
 ### TB-432: Execute Regional Split Balfrin Probe After Package Compaction
 
 Goal: Submit and actively monitor one bounded regional split `postproc` probe after TB-431 makes the reviewed package pass all gates.

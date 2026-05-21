@@ -5606,3 +5606,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no full QGIS plugin, no GUI work, no new execution framework, and no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was added.
 - Next task: backlog refill needed
+
+### TB-431: Compact Regional Split Submission Package
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: compact the regional split Balfrin submission package below the reviewed manifest-size budget without dropping required submission, preservation, or split/merge evidence.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Removed redundant `execution_key` storage from the regional split plan and compacted the merge manifest summary payload so the 4-zone compact gate fits under the reviewed `next_larger_four_zone_review_only_probe` manifest-size budget.
+  - Kept the runtime report readable by reconstructing the removed summary fields when loading the compact manifest, so existing report consumers still see the merge evidence they need.
+  - Updated focused regression coverage to validate the compact raw files, the reconstructed report surface, and the now-ready regional split submission package path.
+  - Verified the regenerated no-submit package smoke path under `/tmp` now reports `ready_for_bounded_postproc_submission=true` with `manifest_size_bytes=16920` for the wrapper package and `manifest_size_bytes=13597` for the compact gate projection.
+  - Removed TB-431 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_balfrin_regional_split_submission_package`
+  - `PYENV_VERSION=system uv run python - <<'PY'` (no-submit package smoke with ready access fixture; reported `ready_for_bounded_postproc_submission=true`)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: no Balfrin job was submitted, no non-`postproc` partition was used, and no distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-432`
