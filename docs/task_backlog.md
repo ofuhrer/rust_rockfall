@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-415: Add AOI Config Describe And Precedence Mode
-
-Goal: Make AOI workflow configuration inspectable before execution, including defaults, site config, source/scenario policy, generated manifests, and CLI overrides.
-
-Capability gap reduced: Hidden configuration coupling and reproducibility risk.
-
-Why this outranks alternatives: Both OpenNHM-style workflows and RAMMS scenario reproducibility depend on transparent configuration state before running expensive trajectories.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A compact `describe-config` or equivalent dry-run mode for the AOI front door.
-- Machine-readable output that identifies config layers, effective values, unknown fields, and generated-root locations without running simulations.
-- Focused tests for precedence and missing-field behavior.
-
-Definition of done:
-
-- A worker can run one command to see the effective AOI workflow configuration and verify it does not depend on untracked local state.
-
-Boundaries: No new config framework, no downloads, no simulations, no operational semantics.
-
 ### TB-416: Add Terrain Resolution And Domain QA To AOI Preparation
 
 Goal: Add deterministic terrain QA to AOI preparation so DEM resolution, CRS, nodata, crop extent, and domain margins are reported before release-zone or hazard generation.

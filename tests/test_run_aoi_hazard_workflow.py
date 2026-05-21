@@ -528,6 +528,78 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(parsed["first_blocker"]["step_id"], "site_config")
         self.assertTrue(parsed["next_command"])
 
+    def test_describe_config_reports_precedence_unknown_fields_and_generated_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root, candidate_site_id="aoi_describe_fixture")
+            config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            config_data["unexpected_local_hint"] = "/untracked/local/path"
+            config_data["expected_processed_input_root"] = "relative/input"
+            config_data["path_layout"] = "site_root_relative"
+            config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+
+            report = workflow.build_describe_config_report(
+                site_config=config_path,
+                repo_root=repo_root,
+                release_polygon=None,
+                acquisition_package_path=ROOT / "docs/chant_sura_fluelapass_public_context_acquisition_package.yaml",
+                artifact_root=ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1",
+                bounds=None,
+                site_id=None,
+                site_name=None,
+                workflow_output_root=Path("describe_workflow_root"),
+                smoke_case_path=workflow.DEFAULT_LOCAL_SMOKE_CASE,
+                smoke_output_root=workflow.DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT,
+                candidate_review_output_root=workflow.DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT,
+                orthophoto_background_root=None,
+                package_output_root=None,
+                review_output_root=None,
+                prepared_pilot_report_path=None,
+                prepared_pilot_output_root=None,
+                validation_case_path=workflow.DEFAULT_PREPARED_PILOT_VALIDATION_CASE,
+                overwrite=False,
+                execute_safe_local_steps=False,
+            )
+
+        site_layer = next(layer for layer in report["config_layers"] if layer["layer"] == "site_config")
+        cli_layer = next(layer for layer in report["config_layers"] if layer["layer"] == "cli_overrides")
+        self.assertEqual(report["schema_version"], workflow.DESCRIBE_CONFIG_SCHEMA_VERSION)
+        self.assertEqual(report["status"], "ready")
+        self.assertIn("unexpected_local_hint", site_layer["unknown_fields"])
+        self.assertEqual(site_layer["missing_required_fields"], [])
+        self.assertIn("workflow_output_root", cli_layer["overridden_keys"])
+        self.assertEqual(report["effective_values"]["path_layout"], "site_root_relative")
+        self.assertTrue(report["effective_values"]["paths"]["processed_input_root"].endswith("/relative/input"))
+        self.assertIn("source_scenario_policy", report["generated_roots"])
+        self.assertIn("candidate_review_manifest", report["generated_manifest_locations"])
+        self.assertFalse(report["local_state_dependency"]["checks_staged_file_existence"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
+    def test_describe_config_main_reports_missing_required_fields_without_running_steps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = repo_root / "site_config.yaml"
+            config_path.write_text("candidate_site_name: Missing fields fixture\n", encoding="utf-8")
+
+            code, output = self._run_main([
+                "describe-config",
+                "--site-config",
+                str(config_path),
+                "--repo-root",
+                str(repo_root),
+                "--format",
+                "json",
+            ])
+
+        self.assertEqual(code, 2)
+        parsed = json.loads(output)
+        site_layer = next(layer for layer in parsed["config_layers"] if layer["layer"] == "site_config")
+        self.assertEqual(parsed["status"], "blocked_missing_inputs")
+        self.assertIn("candidate_site_id", site_layer["missing_required_fields"])
+        self.assertIn("site_extent", site_layer["missing_required_fields"])
+        self.assertFalse(parsed["local_state_dependency"]["downloads"])
+        self.assertFalse(parsed["local_state_dependency"]["simulations"])
+
     def test_status_build_report_marks_unsupported_command_state_as_invalid_input(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)

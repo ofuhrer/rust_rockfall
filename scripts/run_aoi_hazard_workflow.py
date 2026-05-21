@@ -43,6 +43,7 @@ DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.y
 DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
 DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT = Path("/tmp/tb409_aoi_candidate_review")
 SUPPORTED_COMMANDS = (
+    "describe-config",
     "status",
     "prepare",
     "workflow",
@@ -55,6 +56,7 @@ SUPPORTED_COMMANDS = (
     "package-map",
 )
 PREPARE_SCHEMA_VERSION = "aoi_hazard_prepare_front_door_v1"
+DESCRIBE_CONFIG_SCHEMA_VERSION = "aoi_hazard_config_describe_v1"
 DEFAULT_PREPARED_PILOT_VALIDATION_CASE = DEFAULT_LOCAL_SMOKE_CASE
 STATUS_READY = "ready"
 STATUS_BLOCKED = "blocked_missing_inputs"
@@ -118,7 +120,31 @@ PREPARED_PILOT_COMPILER = _load_module(
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command == "status":
+    if args.command == "describe-config":
+        report = build_describe_config_report(
+            site_config=args.site_config,
+            repo_root=args.repo_root,
+            release_polygon=args.release_polygon,
+            acquisition_package_path=args.acquisition_package_path,
+            artifact_root=args.artifact_root,
+            bounds=args.bounds,
+            site_id=args.site_id,
+            site_name=args.site_name,
+            workflow_output_root=args.workflow_output_root,
+            smoke_case_path=args.smoke_case_path,
+            smoke_output_root=args.smoke_output_root,
+            candidate_review_output_root=args.candidate_review_output_root,
+            orthophoto_background_root=args.orthophoto_background_root,
+            package_output_root=args.package_output_root,
+            review_output_root=args.review_output_root,
+            prepared_pilot_report_path=args.prepared_pilot_report_path,
+            prepared_pilot_output_root=args.prepared_pilot_output_root,
+            validation_case_path=args.validation_case_path,
+            overwrite=args.overwrite,
+            execute_safe_local_steps=args.execute_safe_local_steps,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_describe_config_text_report(report)
+    elif args.command == "status":
         report = build_status_report(
             command=args.command,
             site_config=args.site_config,
@@ -178,6 +204,8 @@ def main(argv: list[str] | None = None) -> int:
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
     print(output)
+    if args.command == "describe-config":
+        return status_exit_code({"workflow_status": report["status"]})
     if args.command == "status":
         return status_exit_code(report)
     return 0 if not str(report["status"]).startswith("blocked") else 2
@@ -278,6 +306,280 @@ def build_workflow_contract() -> dict[str, Any]:
             "bounded execution, packaging, and interpretation stay non-operational",
         ],
     }
+
+
+SITE_CONFIG_KNOWN_FIELDS = {
+    "schema_version",
+    "manifest_type",
+    "manifest_id",
+    "candidate_site_id",
+    "candidate_site_name",
+    "candidate_selection_rationale",
+    "bootstrap_status",
+    "path_layout",
+    "input_source",
+    "site_extent",
+    "aoi_geometry",
+    "local_layout",
+    "expected_processed_input_root",
+    "expected_processed_context_root",
+    "expected_terrain_crop_path",
+    "expected_aoi_tile_catalog_path",
+    "expected_terrain_metadata_path",
+    "expected_source_zone_metadata_path",
+    "expected_scenario_table_path",
+    "expected_source_scenario_policy_path",
+    "expected_validation_private_root",
+    "expected_hazard_results_root",
+    "expected_swissimage_context_root",
+    "expected_swisstlm3d_context_root",
+    "expected_swisstlm3d_metadata_path",
+    "expected_swisssurface3d_context_root",
+    "expected_swisssurface3d_raster_context_root",
+    "expected_swissbuildings3d_context_root",
+    "expected_barrier_inventory_root",
+    "expected_validation_observations_root",
+    "acquisition_manifest_path",
+    "source_zone_scenario_contract",
+    "product_policy",
+    "claim_boundary",
+    "bootstrap_artifacts",
+}
+
+DESCRIBE_CLI_DEFAULTS = {
+    "site_config": DEFAULT_SITE_CONFIG,
+    "repo_root": ROOT,
+    "release_polygon": None,
+    "acquisition_package_path": DEFAULT_ACQUISITION_PACKAGE,
+    "artifact_root": DEFAULT_ARTIFACT_ROOT,
+    "bounds": None,
+    "site_id": None,
+    "site_name": None,
+    "workflow_output_root": None,
+    "smoke_case_path": DEFAULT_LOCAL_SMOKE_CASE,
+    "smoke_output_root": DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT,
+    "candidate_review_output_root": DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT,
+    "orthophoto_background_root": None,
+    "package_output_root": None,
+    "review_output_root": None,
+    "prepared_pilot_report_path": None,
+    "prepared_pilot_output_root": None,
+    "validation_case_path": DEFAULT_PREPARED_PILOT_VALIDATION_CASE,
+    "overwrite": False,
+    "execute_safe_local_steps": False,
+}
+
+
+def build_describe_config_report(
+    *,
+    site_config: Path,
+    repo_root: Path,
+    release_polygon: Path | None,
+    acquisition_package_path: Path | None,
+    artifact_root: Path | None,
+    bounds: list[float] | None,
+    site_id: str | None,
+    site_name: str | None,
+    workflow_output_root: Path | None,
+    smoke_case_path: Path,
+    smoke_output_root: Path,
+    candidate_review_output_root: Path,
+    orthophoto_background_root: Path | None,
+    package_output_root: Path | None,
+    review_output_root: Path | None,
+    prepared_pilot_report_path: Path | None,
+    prepared_pilot_output_root: Path | None,
+    validation_case_path: Path,
+    overwrite: bool,
+    execute_safe_local_steps: bool,
+) -> dict[str, Any]:
+    site_config_status = "ready"
+    config: dict[str, Any] = {}
+    parse_error = ""
+    if site_config.exists():
+        try:
+            parsed = yaml.safe_load(site_config.read_text(encoding="utf-8"))
+            if parsed is None:
+                config = {}
+            elif isinstance(parsed, dict):
+                config = parsed
+            else:
+                site_config_status = STATUS_INVALID_INPUT
+                parse_error = f"site config must be a mapping: {site_config}"
+        except (OSError, yaml.YAMLError) as exc:
+            site_config_status = STATUS_INVALID_INPUT
+            parse_error = f"invalid site config: {site_config}: {exc}"
+    else:
+        site_config_status = STATUS_BLOCKED
+        parse_error = f"site config does not exist: {site_config}"
+
+    unknown_fields = sorted(str(key) for key in config if str(key) not in SITE_CONFIG_KNOWN_FIELDS)
+    candidate_site_id = PREFLIGHT.text_value(config.get("candidate_site_id")) or site_id or "unspecified_second_site"
+    candidate_site_name = PREFLIGHT.text_value(config.get("candidate_site_name")) or site_name or "unspecified"
+    site_extent = config.get("site_extent") if isinstance(config.get("site_extent"), dict) else {}
+    missing_fields = describe_missing_config_fields(config)
+
+    path_layout = PREFLIGHT.text_value(config.get("path_layout"))
+    path_base = site_config.parent if path_layout == "site_root_relative" else repo_root
+    with patched_preflight_root(repo_root):
+        paths = PREFLIGHT.build_paths(candidate_site_id, config, base=path_base) if site_config_status != STATUS_INVALID_INPUT else {}
+    resolved_workflow_root = resolve_workflow_output_root(workflow_output_root, candidate_site_id)
+    resolved_package_root = package_output_root or resolved_workflow_root / "package"
+    resolved_review_root = review_output_root or resolved_workflow_root / "review"
+    resolved_prepared_pilot_root = (
+        prepared_pilot_output_root
+        if prepared_pilot_output_root is not None
+        else resolved_workflow_root / "prepared_pilot"
+    )
+    acquisition_manifest = resolve_acquisition_manifest_path(site_config, config, repo_root) if config else (acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE)
+
+    status = "ready"
+    if site_config_status != "ready":
+        status = site_config_status
+    elif missing_fields:
+        status = STATUS_BLOCKED
+
+    effective_paths = {key: str(value) for key, value in sorted(paths.items())}
+    generated_roots = {
+        "workflow_output_root": str(resolved_workflow_root),
+        "bootstrap_output_root": str(resolved_workflow_root / "bootstrap"),
+        "prepared_pilot_output_root": str(resolved_prepared_pilot_root),
+        "candidate_review_output_root": str(candidate_review_output_root),
+        "smoke_output_root": str(smoke_output_root),
+        "package_output_root": str(resolved_package_root),
+        "review_output_root": str(resolved_review_root),
+        "validation_private_root": effective_paths.get("validation_case_root", ""),
+        "hazard_results_root": effective_paths.get("hazard_results_root", str(artifact_root or DEFAULT_ARTIFACT_ROOT)),
+        "processed_input_root": effective_paths.get("processed_input_root", ""),
+        "processed_context_root": effective_paths.get("processed_context_root", ""),
+        "source_scenario_policy": effective_paths.get("source_scenario_policy", ""),
+        "scenario_table": effective_paths.get("scenario_table", ""),
+        "acquisition_manifest": str(acquisition_manifest),
+    }
+
+    cli_values = {
+        "site_config": site_config,
+        "repo_root": repo_root,
+        "release_polygon": release_polygon,
+        "acquisition_package_path": acquisition_package_path or DEFAULT_ACQUISITION_PACKAGE,
+        "artifact_root": artifact_root or DEFAULT_ARTIFACT_ROOT,
+        "bounds": bounds,
+        "site_id": site_id,
+        "site_name": site_name,
+        "workflow_output_root": workflow_output_root,
+        "smoke_case_path": smoke_case_path,
+        "smoke_output_root": smoke_output_root,
+        "candidate_review_output_root": candidate_review_output_root,
+        "orthophoto_background_root": orthophoto_background_root,
+        "package_output_root": package_output_root,
+        "review_output_root": review_output_root,
+        "prepared_pilot_report_path": prepared_pilot_report_path,
+        "prepared_pilot_output_root": prepared_pilot_output_root,
+        "validation_case_path": validation_case_path,
+        "overwrite": overwrite,
+        "execute_safe_local_steps": execute_safe_local_steps,
+    }
+
+    return {
+        "schema_version": DESCRIBE_CONFIG_SCHEMA_VERSION,
+        "command": "describe-config",
+        "status": status,
+        "config_layers": [
+            {
+                "layer": "defaults",
+                "description": "built-in AOI front-door defaults",
+                "values": serialize_config_values(DESCRIBE_CLI_DEFAULTS),
+            },
+            {
+                "layer": "site_config",
+                "path": str(site_config),
+                "status": site_config_status,
+                "parse_error": parse_error,
+                "path_base": str(path_base),
+                "path_layout": path_layout or "repo_root_relative",
+                "provided_keys": sorted(str(key) for key in config),
+                "unknown_fields": unknown_fields,
+                "missing_required_fields": missing_fields,
+            },
+            {
+                "layer": "cli_overrides",
+                "description": "values supplied to this invocation or defaulted by argparse",
+                "values": serialize_config_values(cli_values),
+                "overridden_keys": describe_cli_overrides(cli_values),
+            },
+        ],
+        "effective_values": {
+            "candidate_site_id": candidate_site_id,
+            "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
+            "site_extent": site_extent if site_extent else "missing",
+            "source_zone_scenario_contract": config.get("source_zone_scenario_contract", {}),
+            "product_policy": config.get("product_policy", {}),
+            "acquisition_manifest_path": str(acquisition_manifest),
+            "path_layout": path_layout or "repo_root_relative",
+            "path_base": str(path_base),
+            "paths": effective_paths,
+        },
+        "generated_roots": generated_roots,
+        "generated_manifest_locations": {
+            "bootstrap_site_config": str(resolved_workflow_root / "bootstrap" / "aoi_manifest.yaml"),
+            "bootstrap_aoi_tile_catalog": str(resolved_workflow_root / "bootstrap" / "input" / "aoi_tile_catalog.yaml"),
+            "bootstrap_acquisition_manifest": str(resolved_workflow_root / "bootstrap" / "input" / "public_geodata_acquisition.yaml"),
+            "prepared_pilot_run_manifest": str(resolved_prepared_pilot_root / "prepared_pilot_run_manifest.json"),
+            "candidate_review_manifest": str(candidate_review_output_root / "candidate_review_overlays" / "candidate_review_overlay_manifest.json"),
+            "map_package_manifest": str(resolved_package_root / "aoi_hazard_map_package_manifest.json"),
+            "qa_review_manifest": str(resolved_review_root / "aoi_map_qa_review_manifest.json"),
+        },
+        "precedence": [
+            "CLI arguments override argparse defaults for this invocation.",
+            "Site-config expected_* paths override derived repository path defaults.",
+            "path_layout=site_root_relative resolves relative expected_* paths from the site config directory; otherwise they resolve from repo_root.",
+            "describe-config reports effective metadata only and does not check staged file existence.",
+        ],
+        "local_state_dependency": {
+            "checks_staged_file_existence": False,
+            "downloads": False,
+            "simulations": False,
+            "writes_outputs": False,
+        },
+        "claim_boundaries": default_claim_boundaries(),
+    }
+
+
+def describe_missing_config_fields(config: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+    for key in ("candidate_site_id", "site_extent"):
+        if key not in config or config.get(key) in (None, ""):
+            missing.append(key)
+    site_extent = config.get("site_extent")
+    if isinstance(site_extent, dict):
+        for key in ("crs", "xmin", "ymin", "xmax", "ymax"):
+            if key not in site_extent or site_extent.get(key) in (None, ""):
+                missing.append(f"site_extent.{key}")
+    return missing
+
+
+def describe_cli_overrides(values: dict[str, Any]) -> list[str]:
+    overridden: list[str] = []
+    for key, default in DESCRIBE_CLI_DEFAULTS.items():
+        if serialize_config_value(values.get(key)) != serialize_config_value(default):
+            overridden.append(key)
+    return overridden
+
+
+def serialize_config_values(values: dict[str, Any]) -> dict[str, Any]:
+    return {key: serialize_config_value(value) for key, value in values.items()}
+
+
+def serialize_config_value(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, list):
+        return [serialize_config_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [serialize_config_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): serialize_config_value(item) for key, item in value.items()}
+    return value
 
 
 def build_report(
@@ -2424,6 +2726,27 @@ def render_candidate_review_text_report(report: dict[str, Any]) -> str:
         lines.append("overlay_paths:")
         for key, value in sorted(overlay_paths.items()):
             lines.append(f"- {key}: {value}")
+    return "\n".join(lines)
+
+
+def render_describe_config_text_report(report: dict[str, Any]) -> str:
+    effective = report.get("effective_values", {})
+    site_layer = next((layer for layer in report.get("config_layers", []) if layer.get("layer") == "site_config"), {})
+    cli_layer = next((layer for layer in report.get("config_layers", []) if layer.get("layer") == "cli_overrides"), {})
+    lines = [
+        f"schema_version: {report.get('schema_version', '')}",
+        "command: describe-config",
+        f"status: {report.get('status', '')}",
+        f"candidate_site_id: {effective.get('candidate_site_id', '')}",
+        f"site_config_status: {site_layer.get('status', '')}",
+        f"unknown_fields: {', '.join(site_layer.get('unknown_fields') or [])}",
+        f"missing_required_fields: {', '.join(site_layer.get('missing_required_fields') or [])}",
+        f"cli_overrides: {', '.join(cli_layer.get('overridden_keys') or [])}",
+        f"workflow_output_root: {report.get('generated_roots', {}).get('workflow_output_root', '')}",
+        f"processed_input_root: {report.get('generated_roots', {}).get('processed_input_root', '')}",
+        f"hazard_results_root: {report.get('generated_roots', {}).get('hazard_results_root', '')}",
+        "local_state_dependency: checks_staged_file_existence=False, downloads=False, simulations=False, writes_outputs=False",
+    ]
     return "\n".join(lines)
 
 
