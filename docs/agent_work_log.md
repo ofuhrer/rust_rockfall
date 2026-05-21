@@ -5869,3 +5869,19 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no generated artifacts were committed, no ignored local artifact dependence was introduced, no operational claim was added, and the workflow remains a bounded AOI smoke path.
 - Next task: `TB-443`
+
+### TB-443: Connect QGIS Connector Manifest To AOI Smoke Coverage
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: keep the QGIS Processing connector manifest synchronized with the documented AOI front-door command path and tracked style bundle.
+- Files changed: `tests/test_qgis_processing_connector_manifest.py`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the manifest regression test to parse the documented AOI command names from `docs/aoi_user_manual.md` and the supported CLI subcommands from `scripts/run_aoi_hazard_workflow.py`.
+  - Added explicit rename-detection assertions for included and deferred manifest commands, the front-door script paths, and the tracked QGIS style bundle entries so drift fails with a direct message.
+  - Added a short manual note that the manifest action names and style asset names are smoke-checked against the manual and front-door subcommands.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_qgis_processing_connector_manifest -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: no plugin, GUI, execution layer, or operational map claim was added; the change is a static synchronization guard only.
+- Next task: `TB-444`

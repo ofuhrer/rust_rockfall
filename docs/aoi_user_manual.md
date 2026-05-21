@@ -124,7 +124,9 @@ The package command is the style-application entry point. A manifest-only QGIS
 Processing bridge prototype is tracked at
 `tests/fixtures/qgis_processing_connector_manifest_v1.json`; it maps future
 QGIS actions onto the existing CLI front doors and is covered by
-`tests/test_qgis_processing_connector_manifest.py`.
+`tests/test_qgis_processing_connector_manifest.py`. The manifest action names
+and tracked style asset names are smoke-checked against this manual and the
+`scripts/run_aoi_hazard_workflow.py` subcommands, so rename them together.
 
 ## Interpretation Boundaries
 

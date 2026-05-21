@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-443: Connect QGIS Connector Manifest To AOI Smoke Coverage
-
-Goal: Ensure the QGIS Processing connector manifest remains synchronized with the AOI front-door commands and style bundle as they evolve.
-
-Capability gap reduced: Prototype UI contract drift.
-
-Why this outranks alternatives: TB-430 introduced the bridge specification; a small sync test prevents it from becoming stale while avoiding a full plugin.
-
-Inspect first:
-
-- `tests/fixtures/qgis_processing_connector_manifest_v1.json`
-- `tests/test_qgis_processing_connector_manifest.py`
-- `docs/aoi_user_manual.md`
-- `qgis/styles/aoi_qgis_style_bundle.json`
-
-Deliverables:
-
-- Extended static or smoke test coverage comparing manifest actions to AOI manual command names and available CLI subcommands.
-- Clear failure messages when a command or style asset is renamed without updating the manifest.
-- Optional concise note in `docs/aoi_user_manual.md` if the synchronization contract changes.
-
-Definition of done:
-
-- The QGIS connector manifest cannot silently drift from the documented AOI command path or tracked style assets.
-
-Boundaries: No plugin, no GUI, no new execution layer, no operational map claim.
-
 ### TB-444: Rank Next Balfrin Probe Candidates From Measured Bottlenecks
 
 Goal: Generate a compact, deterministic next-probe ranking from the latest measured and failed-closed Balfrin evidence.
