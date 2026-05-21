@@ -5258,3 +5258,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no terrain resampling implementation, no physical validation claim for a specific resolution, no operational claim, no scale-up authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
 - Next task: `TB-417`
+
+### TB-417: Derive Public-Context Ground Material Prior Layers
+
+- Date: 2026-05-21
+- Commit: `6272e10`; never leave `pending` in a pushed commit.
+- Objective: derive deterministic public-context ground-material priors for AOI scenario metadata and GIS review without adding calibrated terrain parameters.
+- Files changed: `scripts/plan_aoi_terrain_preprocessing.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an AOI `material_prior_manifest` with deterministic class ids for unknown, road, water/swamp, forest, and talus/rock.
+  - Linked each non-unknown category to public context source categories, ready source products and tile ids when staged, metadata paths, and explicit fallback rules.
+  - Materialized `qa/material_prior_manifest.json` from prepared-input mode and documented that the manifest is for scenario metadata and GIS review only.
+  - Added focused tests proving missing public context remains explicit unknown and that the manifest carries no calibrated friction, restitution, RAMMS-transfer, or operational terrain-material claim.
+  - Removed TB-417 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_aoi_terrain_preprocessing.py tests/test_aoi_terrain_preprocessing.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_terrain_preprocessing -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no calibration, no physics changes, no RAMMS parameter transfer, no operational terrain-material claim, no scale-up authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
+- Next task: `TB-418`
