@@ -5007,3 +5007,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: adjacent-candidate dry-run reporting only; no live Balfrin job, no heavy artifact commit, no operational claim, no source-frequency semantics, and no scale-up authorization.
 - Next task: `TB-406`
+
+### TB-406: Repair Smallest Multi-Zone Balfrin Handoff From Current Inputs
+
+- Date: 2026-05-21
+- Commit: `610c671da98d0a2ce61cc4dc14621167d0e4bc62`
+- Objective: regenerate the smallest multi-zone Balfrin handoff from the current adjacent-candidate path and expose gate-clean no-submit status before any live job.
+- Files changed: `docs/task_backlog.md`, `scripts/build_management_aoi_balfrin_handoff.py`, `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`, `tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`, `tests/test_execute_management_aoi_balfrin_run.py`, `tests/test_management_aoi_balfrin_handoff.py`
+- Implementation summary:
+  - Added machine-readable TB-406 gate results to the smallest multi-zone authorization preflight for reviewed handoff package, submit contract, writable run root, reduced output profile, output budget, preservation plan, authorization record, Balfrin access, and no-submit semantics.
+  - Normalized the handoff status to `ready_for_live_postproc_submission` when all repository gates pass, while keeping `live_submission_authorized=false` and `sbatch_attempted=false`.
+  - Fixed direct CLI execution for the management-AOI Balfrin handoff helper and updated inspected tests away from the stale source-zone-footprint blocker to the current prepared-pilot-input blocker.
+  - Regenerated the TB-406 handoff/preflight evidence under `/tmp/rust_rockfall/tb406_repaired_handoff` and confirmed no first blocker remains.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/build_management_aoi_balfrin_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py tests/test_management_aoi_balfrin_handoff.py tests/test_execute_management_aoi_balfrin_run.py tests/test_balfrin_smallest_multi_zone_authorization_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight tests.test_balfrin_multi_release_zone_demo_handoff tests.test_management_aoi_balfrin_handoff tests.test_execute_management_aoi_balfrin_run`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb406_repaired_handoff --requested-release-zone-batch-size 2 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb406_repaired_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb406_repaired_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb406_repaired_access_preflight.json --json-output /tmp/tb406_repaired_authorization_preflight.json --text-output /tmp/tb406_repaired_authorization_preflight.txt --format json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'test -d /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo && test -w /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo && test -x /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo'`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: no `sbatch`, no live Balfrin job, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no risk/exposure/vulnerability claim, and no physical-probability or annual-frequency claim.
+- Next task: `TB-407`
