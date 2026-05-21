@@ -71,7 +71,9 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
    missing. The candidate GeoJSON features carry deterministic slope-band,
    local-relief, size, separation, context-exclusion, and review-status
    attributes so QGIS identify/label tools can explain why each candidate was
-   kept in the review set.
+   kept in the review set. Use `--search-domain-mode` to switch between the
+   explicit `local`, `expanded`, and `full_aoi` sweep domains; the emitted
+   search-domain GeoJSON layer records the exact bounds used for the sweep.
 
 5. Generate the diagnostic package.
 

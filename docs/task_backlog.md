@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-438: Add Release-Zone Candidate Search-Area Expansion Modes
-
-Goal: Make source-zone candidate generation support explicit local, expanded, and full-AOI search domains with stable metadata.
-
-Capability gap reduced: Candidate generation can miss plausible terrain when search extent is too narrow.
-
-Why this outranks alternatives: Recent review showed the search domain itself can dominate candidate discovery, so the domain choice must be explicit and reproducible.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/aoi_user_manual.md`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- Search-domain modes with deterministic bounds metadata, candidate counts, and output paths.
-- GPX or GeoJSON extent output suitable for map review.
-- Tests proving each mode is stable and reported in the candidate manifest.
-
-Definition of done:
-
-- A candidate sweep records exactly which search area was used and can widen beyond the original local footprint without ad hoc edits.
-
-Boundaries: No candidate acceptance claim, no operational hazard semantics, no unbounded national sweep.
-
 ### TB-439: Stress Scenario Generation From Expanded Candidate Sets
 
 Goal: Measure scenario-table cardinality, file size, and family distribution from expanded release-zone candidate sets.

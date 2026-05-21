@@ -127,7 +127,17 @@ def build_report(
         else None,
     )
     screening.update(PLANNER.build_screening_criteria_from_terrain_package(terrain_preprocessing))
-    candidate_mask, terrain_masks = PLANNER.compute_candidate_masks(terrain, source_zone_metadata, screening)
+    _search_domain, search_domain_mask = PLANNER.build_candidate_search_domain(
+        terrain=terrain,
+        source_zone_metadata=source_zone_metadata,
+        search_domain_mode="full_aoi",
+    )
+    candidate_mask, terrain_masks = PLANNER.compute_candidate_masks(
+        terrain,
+        source_zone_metadata,
+        screening,
+        search_domain_mask=search_domain_mask,
+    )
 
     candidate_count = int(candidate_mask.sum())
     first_blocker = classify_first_blocker(terrain_masks, screening, candidate_count)

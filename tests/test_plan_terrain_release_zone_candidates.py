@@ -135,7 +135,11 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 65)
             self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 0)
             self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], [])
-            self.assertEqual(first["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertEqual(first["candidate_search_domain"]["search_domain_mode"], "full_aoi")
+            self.assertEqual(first["candidate_search_domain"]["search_domain_output_mode"], "geojson")
+            self.assertGreater(first["candidate_search_domain"]["search_domain_cell_count"], 0)
+            self.assertEqual(first["candidate_search_domain"]["search_domain_candidate_cell_count"], first["candidate_summary"]["candidate_cell_count"])
+            self.assertEqual(first["candidate_sweep_measurements"]["output_file_count"], 8)
             self.assertGreater(first["candidate_sweep_measurements"]["runtime_seconds"], 0.0)
             self.assertGreater(first["candidate_sweep_measurements"]["output_total_bytes"], 0)
             self.assertEqual(first["candidate_sensitivity_report"]["sensitivity_status"], "ready")
@@ -254,6 +258,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_products"]["component_count"], 65)
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
             self.assertEqual(first["candidate_review_package"]["review_package_status"], "emitted")
             self.assertEqual(first["candidate_review_package"]["review_decision_options"], ["accepted", "rejected", "needs_field_review"])
@@ -272,6 +277,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["mask"]).exists())
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["csv"]).exists())
+            self.assertTrue(Path(first["candidate_review_package"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(first["candidate_review_package"]["outputs"]["manifest"]).exists())
 
             geojson = json.loads(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).read_text(encoding="utf-8"))
@@ -321,8 +327,12 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(manifest["candidate_excludes_frozen_footprint"], True)
             self.assertEqual(manifest["component_count"], first["candidate_release_zone_products"]["component_count"])
             self.assertEqual(manifest["candidate_release_zone_ids"], first["candidate_release_zone_products"]["candidate_release_zone_ids"])
+            self.assertEqual(manifest["candidate_search_domain"]["search_domain_mode"], "full_aoi")
+            self.assertEqual(manifest["candidate_search_domain"]["search_domain_candidate_cell_count"], first["candidate_summary"]["candidate_cell_count"])
+            self.assertEqual(manifest["outputs"]["search_domain"], first["candidate_release_zone_products"]["outputs"]["search_domain"])
             self.assertEqual(first_polygon_text, Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).read_text(encoding="utf-8"))
             self.assertEqual(first_mask_text, Path(first["candidate_release_zone_products"]["outputs"]["mask"]).read_text(encoding="utf-8"))
+            self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
             self.assertEqual(first_manifest_text, Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
 
             review_manifest = json.loads(Path(first["candidate_review_package"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
@@ -332,6 +342,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(review_manifest["review_summary"]["provenance_label_counts"]["workflow_generated"], review_manifest["review_summary"]["candidate_count"])
             self.assertEqual(review_manifest["candidate_review_rows"][0]["review_decision"], "needs_field_review")
             self.assertIn("candidate_slope_band_summary", review_manifest["candidate_review_rows"][0])
+            self.assertEqual(review_manifest["candidate_search_domain"]["search_domain_mode"], "full_aoi")
             self.assertIn("candidate_review_status_summary", review_manifest["candidate_review_rows"][0])
 
             text_report = planner.render_text_report(first)
@@ -428,6 +439,10 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             terrain_metadata = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
             source_zone_metadata = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml"
 
+            def resolve_output_path(value: str) -> Path:
+                path = Path(value)
+                return path if path.is_absolute() else repo_root / path
+
             report = planner.build_report(
                 repo_root=repo_root,
                 terrain_crop_path=terrain_crop,
@@ -457,6 +472,92 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             {"stable", "sensitive", "unstable"},
         )
 
+    def test_search_domain_modes_record_stable_bounds_and_extent_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            terrain_crop = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
+            terrain_metadata = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+            source_zone_metadata = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml"
+
+            def resolve_output_path(value: str) -> Path:
+                path = Path(value)
+                return path if path.is_absolute() else repo_root / path
+
+            reports: dict[str, dict[str, object]] = {}
+            for mode in ("local", "expanded", "full_aoi"):
+                output_root = repo_root / f"candidate_products_{mode}"
+                first = planner.build_report(
+                    repo_root=repo_root,
+                    terrain_crop_path=terrain_crop,
+                    terrain_metadata_path=terrain_metadata,
+                    source_zone_metadata_path=source_zone_metadata,
+                    search_domain_mode=mode,
+                    output_root=output_root,
+                )
+                second = planner.build_report(
+                    repo_root=repo_root,
+                    terrain_crop_path=terrain_crop,
+                    terrain_metadata_path=terrain_metadata,
+                    source_zone_metadata_path=source_zone_metadata,
+                    search_domain_mode=mode,
+                    output_root=output_root,
+                )
+
+                first_sanitized = copy.deepcopy(first)
+                second_sanitized = copy.deepcopy(second)
+                first_sanitized["candidate_sweep_measurements"]["runtime_seconds"] = 0.0
+                second_sanitized["candidate_sweep_measurements"]["runtime_seconds"] = 0.0
+                self.assertEqual(first_sanitized, second_sanitized)
+
+                self.assertEqual(first["candidate_search_domain"]["search_domain_mode"], mode)
+                self.assertEqual(first["candidate_search_domain"]["search_domain_output_mode"], "geojson")
+                self.assertTrue(resolve_output_path(first["candidate_search_domain"]["search_domain_output_path"]).exists())
+                self.assertTrue(resolve_output_path(first["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
+                self.assertTrue(resolve_output_path(first["candidate_review_package"]["outputs"]["search_domain"]).exists())
+                self.assertEqual(
+                    first["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                    first["candidate_summary"]["candidate_cell_count"],
+                )
+                self.assertEqual(first["candidate_sweep_measurements"]["output_file_count"], 8)
+
+                product_manifest = json.loads(resolve_output_path(first["candidate_release_zone_products"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
+                review_manifest = json.loads(resolve_output_path(first["candidate_review_package"]["outputs"]["manifest"]).read_text(encoding="utf-8"))
+                self.assertEqual(product_manifest["candidate_search_domain"]["search_domain_mode"], mode)
+                self.assertEqual(review_manifest["candidate_search_domain"]["search_domain_mode"], mode)
+                self.assertEqual(
+                    product_manifest["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                    first["candidate_summary"]["candidate_cell_count"],
+                )
+                self.assertEqual(
+                    review_manifest["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                    first["candidate_summary"]["candidate_cell_count"],
+                )
+
+                reports[mode] = first
+
+            self.assertLessEqual(
+                reports["local"]["candidate_search_domain"]["search_domain_cell_count"],
+                reports["expanded"]["candidate_search_domain"]["search_domain_cell_count"],
+            )
+            self.assertLessEqual(
+                reports["expanded"]["candidate_search_domain"]["search_domain_cell_count"],
+                reports["full_aoi"]["candidate_search_domain"]["search_domain_cell_count"],
+            )
+            self.assertLessEqual(
+                reports["local"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                reports["expanded"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+            )
+            self.assertLessEqual(
+                reports["expanded"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                reports["full_aoi"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+            )
+
     def test_real_chant_sura_fluelapass_inputs_emit_gis_ready_candidate_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_root = Path(tmp) / "candidate_products"
@@ -479,13 +580,16 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(report["candidate_summary"]["candidate_cell_count"], 0)
             self.assertEqual(report["candidate_summary"]["candidate_area_m2"], 0.0)
             self.assertTrue(report["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"])
-            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertEqual(report["candidate_search_domain"]["search_domain_mode"], "full_aoi")
+            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 8)
             self.assertGreater(report["candidate_sweep_measurements"]["output_total_bytes"], 0)
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["manifest"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["csv"]).exists())
             self.assertIn("candidate_polygons", [entry["overlay_id"] for entry in report["candidate_review_package"]["map_overlays"]])
@@ -554,16 +658,47 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertTrue(report["candidate_release_zone_products"]["candidate_excludes_frozen_footprint"])
             self.assertEqual(report["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 169)
             self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_ready")
-            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 7)
+            self.assertEqual(report["candidate_search_domain"]["search_domain_mode"], "full_aoi")
+            self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 8)
             self.assertGreater(report["candidate_sweep_measurements"]["runtime_seconds"], 0.0)
             self.assertGreater(report["candidate_sweep_measurements"]["output_total_bytes"], 0)
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(report["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["manifest"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["mask"]).exists())
+            self.assertTrue(Path(report["candidate_review_package"]["outputs"]["search_domain"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["csv"]).exists())
+
+            mode_reports: dict[str, dict[str, object]] = {}
+            for mode in ("local", "expanded", "full_aoi"):
+                mode_report = planner.build_report(
+                    repo_root=ROOT,
+                    terrain_crop_path=Path(restage_report["terrain_crop_path"]),
+                    terrain_metadata_path=Path(restage_report["terrain_metadata_path"]),
+                    source_zone_metadata_path=Path(restage_report["source_zone_metadata_path"]),
+                    search_domain_mode=mode,
+                    output_root=workdir / f"candidate_products_{mode}",
+                )
+                self.assertEqual(mode_report["candidate_search_domain"]["search_domain_mode"], mode)
+                self.assertTrue(Path(mode_report["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
+                self.assertTrue(Path(mode_report["candidate_review_package"]["outputs"]["search_domain"]).exists())
+                self.assertEqual(
+                    mode_report["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                    mode_report["candidate_summary"]["candidate_cell_count"],
+                )
+                mode_reports[mode] = mode_report
+
+            self.assertLessEqual(
+                mode_reports["local"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                mode_reports["expanded"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+            )
+            self.assertLessEqual(
+                mode_reports["expanded"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+                mode_reports["full_aoi"]["candidate_search_domain"]["search_domain_candidate_cell_count"],
+            )
 
     def test_candidate_review_overlay_bundle_writes_topographic_and_orthophoto_images(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

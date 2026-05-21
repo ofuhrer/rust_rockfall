@@ -42,10 +42,12 @@ REVIEW_PACKAGE_SCHEMA_VERSION = "terrain_release_zone_candidate_review_package_v
 REVIEW_APPLICATION_SCHEMA_VERSION = "terrain_release_zone_candidate_review_application_v1"
 SELECTION_MANIFEST_SCHEMA_VERSION = "terrain_release_zone_candidate_selection_manifest_v1"
 REVIEW_OVERLAY_SCHEMA_VERSION = "terrain_release_zone_candidate_review_overlay_v1"
+SEARCH_DOMAIN_SCHEMA_VERSION = "terrain_release_zone_candidate_search_domain_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
 DEFAULT_OUTPUT_MODE = "both"
+DEFAULT_SEARCH_DOMAIN_MODE = "full_aoi"
 DEFAULT_REVIEW_OVERLAY_OUTPUT_ROOT = Path("/tmp/tb409_candidate_review_overlays")
 REVIEW_DECISION_OPTIONS = ("accepted", "rejected", "needs_field_review")
 PROVENANCE_LABELS = (
@@ -54,6 +56,24 @@ PROVENANCE_LABELS = (
     "mixed_provenance",
     "blocked_missing_provenance",
 )
+SEARCH_DOMAIN_MODES = ("local", "expanded", "full_aoi")
+SEARCH_DOMAIN_MODE_SPECS = {
+    "local": {
+        "search_domain_label": "local source-zone footprint bbox",
+        "search_domain_source": "source_zone_footprint_bbox",
+        "search_domain_buffer_cells": 0,
+    },
+    "expanded": {
+        "search_domain_label": "expanded source-zone footprint bbox",
+        "search_domain_source": "source_zone_footprint_bbox",
+        "search_domain_buffer_cells": 12,
+    },
+    "full_aoi": {
+        "search_domain_label": "full-AOI terrain extent",
+        "search_domain_source": "terrain_extent",
+        "search_domain_buffer_cells": None,
+    },
+}
 
 EXPANDED_STEEP_TERRAIN_SCREENING_MODE = "expanded_steep_terrain_source_zone_v1"
 WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG = 45.0
@@ -101,6 +121,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--terrain-crop", type=Path, default=None)
     parser.add_argument("--terrain-metadata", type=Path, default=None)
     parser.add_argument("--source-zone-metadata", type=Path, default=None)
+    parser.add_argument(
+        "--search-domain-mode",
+        choices=SEARCH_DOMAIN_MODES,
+        default=DEFAULT_SEARCH_DOMAIN_MODE,
+        help="candidate search domain to sweep before screening for release-zone candidates",
+    )
     parser.add_argument("--review-package", type=Path, default=None, help="candidate review package to edit")
     parser.add_argument(
         "--candidate-review-decision",
@@ -133,6 +159,7 @@ def main(argv: list[str] | None = None) -> int:
                 terrain_crop_path=args.terrain_crop,
                 terrain_metadata_path=args.terrain_metadata,
                 source_zone_metadata_path=args.source_zone_metadata,
+                search_domain_mode=args.search_domain_mode,
                 output_root=args.output_root,
                 output_mode=args.output_mode,
             )
@@ -180,6 +207,7 @@ def build_report(
     terrain_crop_path: Path | None = None,
     terrain_metadata_path: Path | None = None,
     source_zone_metadata_path: Path | None = None,
+    search_domain_mode: str = DEFAULT_SEARCH_DOMAIN_MODE,
     output_root: Path | None = None,
     output_mode: str = DEFAULT_OUTPUT_MODE,
 ) -> dict[str, Any]:
@@ -204,6 +232,11 @@ def build_report(
     terrain = read_esri_ascii_grid(terrain_crop_path)
     terrain_metadata = load_yaml(terrain_metadata_path)
     source_zone_metadata = load_yaml(source_zone_metadata_path)
+    search_domain, search_domain_mask = build_candidate_search_domain(
+        terrain=terrain,
+        source_zone_metadata=source_zone_metadata,
+        search_domain_mode=search_domain_mode,
+    )
     terrain_preprocessing = build_terrain_preprocessing_report(
         repo_root=repo_root,
         terrain_crop_path=terrain_crop_path,
@@ -220,8 +253,19 @@ def build_report(
 
     screening = build_screening_criteria(terrain_metadata, source_zone_metadata)
     screening.update(build_screening_criteria_from_terrain_package(terrain_preprocessing))
-    candidate_mask, terrain_masks = compute_candidate_masks(terrain, source_zone_metadata, screening)
+    candidate_mask, terrain_masks = compute_candidate_masks(
+        terrain,
+        source_zone_metadata,
+        screening,
+        search_domain_mask=search_domain_mask,
+    )
     terrain_summary = build_terrain_summary(terrain)
+    search_domain.update(
+        {
+            "search_domain_screenable_cell_count": int(terrain_masks["screenable_mask"].sum()),
+            "search_domain_candidate_cell_count": int(candidate_mask.sum()),
+        }
+    )
     candidate_summary = build_candidate_summary(terrain, candidate_mask, terrain_masks, screening)
     candidate_sensitivity_report = build_candidate_sensitivity_report(
         terrain=terrain,
@@ -235,6 +279,7 @@ def build_report(
     candidate_footprint_comparison = build_candidate_footprint_comparison(terrain, terrain_masks)
     provenance = build_provenance(terrain_crop_path, terrain_metadata_path, source_zone_metadata_path, terrain_metadata, source_zone_metadata)
     candidate_review_package = candidate_review_package_stub(repo_root=repo_root)
+    candidate_review_package["candidate_search_domain"] = search_domain
     candidate_release_zone_separation_summary = build_candidate_release_zone_separation_summary(
         candidate_count=0,
         candidate_review_package=candidate_review_package,
@@ -275,6 +320,7 @@ def build_report(
         "terrain_preprocessing": terrain_preprocessing,
         "source_zone_inputs": build_source_zone_inputs(source_zone_metadata_path, source_zone_metadata, repo_root),
         "terrain_summary": terrain_summary,
+        "candidate_search_domain": search_domain,
         "candidate_summary": candidate_summary,
         "candidate_sensitivity_report": candidate_sensitivity_report,
         "excluded_area_summary": excluded_area_summary,
@@ -330,6 +376,7 @@ def build_report(
         report["candidate_release_zone_set_status"] = "emitted"
         report["candidate_release_zone_products"] = candidate_products
         report["candidate_review_package"] = candidate_review_package
+        report["candidate_search_domain"] = candidate_products.get("candidate_search_domain", report["candidate_search_domain"])
         report["candidate_release_zone_separation_summary"] = build_candidate_release_zone_separation_summary(
             candidate_count=candidate_products.get("component_count", 0),
             candidate_review_package=candidate_review_package,
@@ -570,6 +617,7 @@ def apply_review_decisions_to_package(
     reviewed_package["editable_acceptance_fields"] = ["review_decision", "accepted", "rejected", "needs_field_review"]
     reviewed_package["provenance_label_legend"] = provenance_label_legend()
     reviewed_package["claim_boundaries"] = review_package.get("claim_boundaries", {})
+    reviewed_package["candidate_search_domain"] = review_package.get("candidate_search_domain", {})
     reviewed_package["map_overlays"] = review_package.get("map_overlays", [])
     reviewed_package["non_operational_warnings"] = review_package.get("non_operational_warnings", candidate_review_non_operational_warnings())
     reviewed_package["candidate_sensitivity_summary"] = review_package.get("candidate_sensitivity_summary", {})
@@ -767,6 +815,7 @@ def blocked_report(
         },
         "terrain_preprocessing": terrain_preprocessing,
         "terrain_summary": {},
+        "candidate_search_domain": {},
         "candidate_summary": {},
         "candidate_sensitivity_report": candidate_sensitivity_report_stub(),
         "excluded_area_summary": [],
@@ -955,6 +1004,20 @@ def build_terrain_summary(terrain: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def bounds_to_polygon_vertices(bounds: dict[str, float]) -> list[tuple[float, float]]:
+    xmin = float(bounds["xmin"])
+    ymin = float(bounds["ymin"])
+    xmax = float(bounds["xmax"])
+    ymax = float(bounds["ymax"])
+    return [
+        (xmin, ymin),
+        (xmax, ymin),
+        (xmax, ymax),
+        (xmin, ymax),
+        (xmin, ymin),
+    ]
+
+
 def build_source_zone_inputs(
     source_zone_metadata_path: Path,
     source_zone_metadata: dict[str, Any],
@@ -980,6 +1043,64 @@ def build_source_zone_inputs(
             "vertices": vertices,
         },
     }
+
+
+def build_candidate_search_domain(
+    *,
+    terrain: dict[str, Any],
+    source_zone_metadata: dict[str, Any],
+    search_domain_mode: str,
+) -> tuple[dict[str, Any], np.ndarray]:
+    if search_domain_mode not in SEARCH_DOMAIN_MODE_SPECS:
+        raise TerrainReleaseZoneCandidateMetricsError(
+            f"search-domain-mode must be one of {list(SEARCH_DOMAIN_MODE_SPECS)}"
+        )
+
+    terrain_extent = {
+        "xmin": float(terrain["xllcorner"]),
+        "ymin": float(terrain["yllcorner"]),
+        "xmax": float(terrain["xllcorner"] + terrain["ncols"] * terrain["cellsize"]),
+        "ymax": float(terrain["yllcorner"] + terrain["nrows"] * terrain["cellsize"]),
+    }
+    source_vertices = extract_polygon_vertices(source_zone_metadata)
+    source_bounds = polygon_bbox(source_vertices)
+    spec = SEARCH_DOMAIN_MODE_SPECS[search_domain_mode]
+    if search_domain_mode == "full_aoi":
+        bounds = dict(terrain_extent)
+    else:
+        buffer_cells = int(spec["search_domain_buffer_cells"] or 0)
+        buffer_m = float(buffer_cells * terrain["cellsize"])
+        bounds = {
+            "xmin": max(terrain_extent["xmin"], source_bounds["xmin"] - buffer_m),
+            "ymin": max(terrain_extent["ymin"], source_bounds["ymin"] - buffer_m),
+            "xmax": min(terrain_extent["xmax"], source_bounds["xmax"] + buffer_m),
+            "ymax": min(terrain_extent["ymax"], source_bounds["ymax"] + buffer_m),
+        }
+    vertices = bounds_to_polygon_vertices(bounds)
+    search_domain_mask = point_in_polygon_mask(terrain, vertices)
+    search_domain = {
+        "schema_version": SEARCH_DOMAIN_SCHEMA_VERSION,
+        "search_domain_mode": search_domain_mode,
+        "search_domain_label": spec["search_domain_label"],
+        "search_domain_source": spec["search_domain_source"],
+        "search_domain_buffer_cells": spec["search_domain_buffer_cells"],
+        "search_domain_bounds_lv95_m": bounds,
+        "search_domain_vertex_coordinates": [[x, y] for x, y in vertices],
+        "search_domain_area_m2": polygon_area(vertices),
+        "search_domain_cell_count": int(search_domain_mask.sum()),
+        "search_domain_valid_cell_count": int((search_domain_mask & terrain["valid_mask"]).sum()),
+        "search_domain_screenable_cell_count": 0,
+        "search_domain_candidate_cell_count": 0,
+        "search_domain_output_path": None,
+        "search_domain_output_mode": "geojson",
+        "search_domain_clipped_to_terrain_extent": bounds != {
+            "xmin": source_bounds["xmin"] - float((spec["search_domain_buffer_cells"] or 0) * terrain["cellsize"]),
+            "ymin": source_bounds["ymin"] - float((spec["search_domain_buffer_cells"] or 0) * terrain["cellsize"]),
+            "xmax": source_bounds["xmax"] + float((spec["search_domain_buffer_cells"] or 0) * terrain["cellsize"]),
+            "ymax": source_bounds["ymax"] + float((spec["search_domain_buffer_cells"] or 0) * terrain["cellsize"]),
+        },
+    }
+    return search_domain, search_domain_mask
 
 
 def build_candidate_summary(
@@ -1222,6 +1343,8 @@ def compute_candidate_masks(
     terrain: dict[str, Any],
     source_zone_metadata: dict[str, Any],
     screening: dict[str, Any],
+    *,
+    search_domain_mask: np.ndarray,
 ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     values = terrain["values"]
     valid_mask = terrain["valid_mask"]
@@ -1246,7 +1369,7 @@ def compute_candidate_masks(
             if not np.isfinite(neighborhood).all():
                 continue
             valid_interior_mask[row, col] = True
-    screenable_mask = valid_interior_mask & ~footprint_mask
+    screenable_mask = valid_interior_mask & search_domain_mask & ~footprint_mask
     finite_screenable_mask = (
         screenable_mask
         & np.isfinite(slope_deg)
@@ -1295,6 +1418,7 @@ def compute_candidate_masks(
         "nodata_mask": nodata_mask,
         "incomplete_neighborhood_mask": incomplete_neighborhood_mask,
         "footprint_mask": footprint_mask,
+        "search_domain_mask": search_domain_mask,
         "screenable_mask": screenable_mask,
         "finite_screenable_mask": finite_screenable_mask,
         "workflow_generated_candidate_raw_mask": workflow_generated_raw_mask,
@@ -1481,6 +1605,7 @@ def build_candidate_sensitivity_report(
                 variant_terrain,
                 source_zone_metadata,
                 variant_screening,
+                search_domain_mask=baseline_terrain_masks["search_domain_mask"],
             )
         variant_masks[spec["variant_id"]] = candidate_mask
         summary = build_candidate_summary(variant_terrain, candidate_mask, terrain_masks, variant_screening)
@@ -2127,6 +2252,13 @@ def emit_candidate_products(
     output_root = Path(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
     source_zone_id = source_zone_metadata.get("source_zone_id") or report["candidate_site_id"]
+    search_domain_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_search_domain_{report['candidate_search_domain']['search_domain_mode']}.geojson"
+    write_candidate_search_domain_geojson(
+        search_domain_path=search_domain_path,
+        report=report,
+        terrain=terrain,
+        repo_root=repo_root,
+    )
     components = connected_candidate_components(terrain_masks["candidate_mask"])
     width = max(3, len(str(max(0, len(components) - 1))))
     component_features = [
@@ -2165,10 +2297,15 @@ def emit_candidate_products(
         "outputs": {},
         "candidate_footprint_comparison": report["candidate_footprint_comparison"],
         "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
+        "candidate_search_domain": {
+            **report["candidate_search_domain"],
+            "search_domain_output_path": display_path(search_domain_path, repo_root),
+        },
         "candidate_summary": report["candidate_summary"],
         "provenance": report["provenance"],
         "component_area_distribution_m2": summarize_distribution(component_area_values),
     }
+    product_bundle["outputs"]["search_domain"] = display_path(search_domain_path, repo_root)
 
     if output_mode in {"polygon", "both"}:
         polygon_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates.geojson"
@@ -2212,6 +2349,7 @@ def emit_candidate_products(
         component_features=component_features,
         repo_root=repo_root,
         output_root=output_root,
+        search_domain_path=search_domain_path,
     )
     return product_bundle, candidate_review_package
 
@@ -2225,6 +2363,7 @@ def build_candidate_review_package(
     component_features: list[dict[str, Any]],
     repo_root: Path,
     output_root: Path,
+    search_domain_path: Path,
 ) -> dict[str, Any]:
     geojson_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.geojson"
     csv_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.csv"
@@ -2266,7 +2405,17 @@ def build_candidate_review_package(
         "candidate_sensitivity_summary": candidate_review_sensitivity_summary(report["candidate_sensitivity_report"]),
         "candidate_footprint_comparison": report["candidate_footprint_comparison"],
         "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
-        "map_overlays": candidate_review_map_overlays(geojson_path, mask_path, review_summary, repo_root),
+        "candidate_search_domain": {
+            **report["candidate_search_domain"],
+            "search_domain_output_path": display_path(search_domain_path, repo_root),
+        },
+        "map_overlays": candidate_review_map_overlays(
+            geojson_path,
+            mask_path,
+            search_domain_path,
+            review_summary,
+            repo_root,
+        ),
         "non_operational_warnings": candidate_review_non_operational_warnings(),
         "claim_boundaries": report["claim_boundaries"],
         "outputs": {
@@ -2274,6 +2423,7 @@ def build_candidate_review_package(
             "mask": display_path(mask_path, repo_root),
             "csv": display_path(csv_path, repo_root),
             "manifest": display_path(manifest_path, repo_root),
+            "search_domain": display_path(search_domain_path, repo_root),
         },
         "output_root": display_path(output_root, repo_root),
         "repo_root": str(repo_root),
@@ -2873,6 +3023,7 @@ def provenance_label_legend() -> list[dict[str, str]]:
 def candidate_review_map_overlays(
     geojson_path: Path,
     mask_path: Path,
+    search_domain_path: Path,
     review_summary: dict[str, Any],
     repo_root: Path,
 ) -> list[dict[str, Any]]:
@@ -2897,6 +3048,21 @@ def candidate_review_map_overlays(
             ],
             "review_decision_options": list(REVIEW_DECISION_OPTIONS),
             "traceability": "candidate ids, stability labels, sensitivity labels, and provenance stay attached to each feature",
+        },
+        {
+            "overlay_id": "candidate_search_domain",
+            "overlay_kind": "vector",
+            "label": "Candidate search domain",
+            "path": display_path(search_domain_path, repo_root),
+            "label_fields": [
+                "search_domain_mode",
+                "search_domain_label",
+                "search_domain_source",
+                "search_domain_bounds_lv95_m",
+                "search_domain_cell_count",
+                "search_domain_candidate_cell_count",
+            ],
+            "traceability": "the search-domain extent makes the candidate sweep footprint explicit and reproducible",
         },
         {
             "overlay_id": "candidate_mask",
@@ -2930,6 +3096,73 @@ def candidate_review_non_operational_warnings() -> list[str]:
         "selection may be used to choose a bounded scenario-generation subset, but it does not change claim boundaries",
         "unselected candidates remain traceable and must be preserved in the review package for auditability",
     ]
+
+
+def write_candidate_search_domain_geojson(
+    *,
+    search_domain_path: Path,
+    report: dict[str, Any],
+    terrain: dict[str, Any],
+    repo_root: Path,
+) -> None:
+    search_domain = report["candidate_search_domain"]
+    search_domain_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema_version": SEARCH_DOMAIN_SCHEMA_VERSION,
+        "type": "FeatureCollection",
+        "candidate_site_id": report["candidate_site_id"],
+        "candidate_site_name": report["candidate_site_name"],
+        "source_zone_id": report.get("source_zone_inputs", {}).get("source_zone_id"),
+        "search_domain_mode": search_domain["search_domain_mode"],
+        "search_domain_label": search_domain["search_domain_label"],
+        "search_domain_source": search_domain["search_domain_source"],
+        "search_domain_buffer_cells": search_domain["search_domain_buffer_cells"],
+        "search_domain_bounds_lv95_m": search_domain["search_domain_bounds_lv95_m"],
+        "search_domain_cell_count": search_domain["search_domain_cell_count"],
+        "search_domain_valid_cell_count": search_domain["search_domain_valid_cell_count"],
+        "search_domain_screenable_cell_count": search_domain["search_domain_screenable_cell_count"],
+        "search_domain_candidate_cell_count": search_domain["search_domain_candidate_cell_count"],
+        "candidate_release_zone_set_status": report["candidate_release_zone_set_status"],
+        "candidate_summary": report["candidate_summary"],
+        "terrain_extent_lv95_m": {
+            "xmin": float(terrain["xllcorner"]),
+            "ymin": float(terrain["yllcorner"]),
+            "xmax": float(terrain["xllcorner"] + terrain["ncols"] * terrain["cellsize"]),
+            "ymax": float(terrain["yllcorner"] + terrain["nrows"] * terrain["cellsize"]),
+        },
+        "features": [
+            {
+                "type": "Feature",
+                "id": f"{report['candidate_site_id']}_search_domain_{search_domain['search_domain_mode']}",
+                "properties": {
+                    "candidate_site_id": report["candidate_site_id"],
+                    "candidate_site_name": report["candidate_site_name"],
+                    "source_zone_id": report.get("source_zone_inputs", {}).get("source_zone_id"),
+                    "search_domain_mode": search_domain["search_domain_mode"],
+                    "search_domain_label": search_domain["search_domain_label"],
+                    "search_domain_source": search_domain["search_domain_source"],
+                    "search_domain_buffer_cells": search_domain["search_domain_buffer_cells"],
+                    "search_domain_bounds_lv95_m": search_domain["search_domain_bounds_lv95_m"],
+                    "search_domain_cell_count": search_domain["search_domain_cell_count"],
+                    "search_domain_valid_cell_count": search_domain["search_domain_valid_cell_count"],
+                    "search_domain_screenable_cell_count": search_domain["search_domain_screenable_cell_count"],
+                    "search_domain_candidate_cell_count": search_domain["search_domain_candidate_cell_count"],
+                    "candidate_release_zone_set_status": report["candidate_release_zone_set_status"],
+                    "candidate_cell_count": report["candidate_summary"]["candidate_cell_count"],
+                    "candidate_area_m2": report["candidate_summary"]["candidate_area_m2"],
+                    "candidate_search_domain_output_mode": search_domain["search_domain_output_mode"],
+                    "search_domain_output_path": display_path(search_domain_path, repo_root),
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[x, y] for x, y in search_domain["search_domain_vertex_coordinates"]],
+                    ],
+                },
+            }
+        ],
+    }
+    search_domain_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def build_candidate_selection_manifest(
@@ -3870,6 +4103,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append("terrain_summary:")
     lines.extend(render_mapping(report["terrain_summary"]))
+    lines.append("")
+    lines.append("candidate_search_domain:")
+    lines.extend(render_mapping(report["candidate_search_domain"]))
     lines.append("")
     lines.append("candidate_summary:")
     lines.extend(render_mapping(report["candidate_summary"]))

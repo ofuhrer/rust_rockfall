@@ -290,7 +290,8 @@ steps for you.
 The terrain candidate planner uses the same review-first pattern for bounded
 release-zone selection. `scripts/plan_terrain_release_zone_candidates.py`
 emits a review package with candidate ids, stable/sensitive labels, map
-overlays, a selection-manifest template, and explicit non-operational warnings
+overlays, a selection-manifest template, an explicit search-domain mode
+(`local`, `expanded`, or `full_aoi`), and a GeoJSON search-area extent output
 so a reviewer can choose a bounded scenario-generation subset without editing
 hidden state or changing claim boundaries.
 

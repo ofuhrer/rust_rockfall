@@ -5761,3 +5761,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no operational source-zone claim was added, no physical release probability semantics were introduced, and the candidate overlays remain diagnostic review artifacts only.
 - Next task: `TB-438`
+
+### TB-438: Add Release-Zone Candidate Search-Area Expansion Modes
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: make source-zone candidate generation support explicit local, expanded, and full-AOI search domains with stable metadata and a reviewable extent artifact.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/diagnose_release_candidate_zero_result.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `docs/public_real_site_geodata_preparation.md`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit `--search-domain-mode` switch with deterministic `local`, `expanded`, and `full_aoi` search domains, each recorded in the candidate manifest with bounds, cell counts, and output-path metadata.
+  - Emitted a GeoJSON search-domain extent layer for map review and carried the search-domain metadata through the candidate product bundle, review package, and review overlays.
+  - Updated the dependent zero-result diagnostic helper and added regression coverage for stable mode reporting, search-domain output paths, and monotonic widening across the restaged AOI candidate sweep.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/diagnose_release_candidate_zero_result.py tests/test_plan_terrain_release_zone_candidates.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no candidate acceptance claim was added, no operational hazard semantics were introduced, no unbounded national sweep was authorized, and the new extent artifact remains diagnostic review output only.
+- Next task: `TB-439`
