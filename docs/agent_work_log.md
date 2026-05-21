@@ -5282,3 +5282,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no calibration, no physics changes, no RAMMS parameter transfer, no operational terrain-material claim, no scale-up authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
 - Next task: `TB-418`
+
+### TB-418: Add Forest Context Intake And Realization Planning
+
+- Date: 2026-05-21
+- Commit: `813b89d`; never leave `pending` in a pushed commit.
+- Objective: add optional forest-context intake and deterministic realization planning so mapped forest presence, missing DBH/stem-density evidence, and scenario variants are explicit.
+- Files changed: `docs/swisstopo_data_strategy.md`, `docs/task_backlog.md`, `scripts/check_second_site_public_geodata_preflight.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_aoi_to_prepared_pilot_dry_run.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_second_site_public_geodata_preflight.py`
+- Implementation summary:
+  - Added `forest_context_intake` and `forest_realization_plan` records to the second-site public geodata preflight, including staged/deferred/intentionally-excluded context states.
+  - Propagated forest intake and realization planning into prepared-pilot summaries, case skeletons, and run manifests, with deterministic fallback records when wrapper acquisition reports do not yet include the new fields.
+  - Added scenario-manifest forest realization planning for stress and freezer scenario tables, with `forest_deferred` as the selected record-only default and `forest_context_on_after_evidence` deferred until mapped presence, stem-density, and DBH evidence exist.
+  - Added focused tests proving missing forest context is a bounded deferral rather than a silent omission, and that physical model behavior remains unchanged.
+  - Removed TB-418 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_second_site_public_geodata_preflight.py scripts/plan_aoi_to_prepared_pilot_dry_run.py scripts/generate_candidate_source_zone_scenarios.py tests/test_second_site_public_geodata_preflight.py tests/test_aoi_to_prepared_pilot_dry_run.py tests/test_candidate_source_zone_scenario_stress.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight tests.test_aoi_to_prepared_pilot_dry_run tests.test_candidate_source_zone_scenario_stress tests.test_candidate_source_zone_freezer`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no tree-impact physics, no calibrated forest parameters, no operational forest-protection claim, no scale-up authorization, no distributed-execution authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
+- Next task: `TB-419`
