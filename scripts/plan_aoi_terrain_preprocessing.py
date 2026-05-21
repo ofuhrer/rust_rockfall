@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         output = render_text_report(report)
     print(output)
-    return 0 if report_status == "ready" else 2
+    return 0 if report_status in {"ready", "ready_with_warnings"} else 2
 
 
 def build_report(
@@ -192,16 +192,27 @@ def build_report(
         terrain_audit = build_terrain_audit_summary(terrain_summary, terrain_metadata, source_tile_plan)
         terrain_derivative_inventory = build_terrain_derivative_inventory(terrain)
         terrain_nodata_summary = build_terrain_nodata_summary(terrain)
+        terrain_domain_qa = build_terrain_domain_qa(
+            terrain_summary=terrain_summary,
+            terrain_metadata=terrain_metadata,
+            terrain_nodata_summary=terrain_nodata_summary,
+            site_extent=site_extent,
+        )
         terrain_provenance = build_terrain_provenance_summary(
             terrain_metadata=terrain_metadata,
             terrain_summary=terrain_summary,
             source_tile_plan=source_tile_plan,
             metadata_mismatches=metadata_mismatches,
+            terrain_domain_qa=terrain_domain_qa,
         )
         if source_tile_plan["missing_tile_ids"]:
             preprocessing_status = "blocked_missing_tile"
         elif metadata_mismatches:
             preprocessing_status = "metadata_mismatch"
+        elif terrain_domain_qa["qa_status"] == "blocked":
+            preprocessing_status = "blocked_terrain_qa"
+        elif terrain_domain_qa["qa_status"] == "warning":
+            preprocessing_status = "ready_with_warnings"
         else:
             preprocessing_status = "ready"
 
@@ -218,6 +229,7 @@ def build_report(
             terrain_metadata=terrain_metadata,
             source_tile_plan=source_tile_plan,
             terrain_provenance=terrain_provenance,
+            terrain_domain_qa=terrain_domain_qa,
             metadata_mismatches=metadata_mismatches,
             preprocessing_status=preprocessing_status,
         )
@@ -226,6 +238,8 @@ def build_report(
             blocked_reason = "missing AOI tile catalog coverage for tile ids: " + ", ".join(source_tile_plan["missing_tile_ids"])
         elif preprocessing_status == "metadata_mismatch":
             blocked_reason = "terrain metadata does not match staged crop: " + ", ".join(metadata_mismatches)
+        elif preprocessing_status == "blocked_terrain_qa":
+            blocked_reason = terrain_domain_qa["next_unblock_action"]
 
         report = {
             "schema_version": SCHEMA_VERSION,
@@ -235,6 +249,8 @@ def build_report(
                 if preprocessing_status in {"blocked_missing_inputs", "blocked_missing_tile"}
                 else "metadata_mismatch"
                 if preprocessing_status == "metadata_mismatch"
+                else "blocked_terrain_qa"
+                if preprocessing_status == "blocked_terrain_qa"
                 else terrain_provenance["classification"]
             ),
             "candidate_site_id": candidate_site_id,
@@ -260,6 +276,7 @@ def build_report(
             "metadata_mismatches": metadata_mismatches,
             "terrain_provenance": terrain_provenance,
             "terrain_audit": terrain_audit,
+            "terrain_domain_qa": terrain_domain_qa,
             "terrain_nodata_summary": terrain_nodata_summary,
             "terrain_derivative_inventory": terrain_derivative_inventory,
             "qa_blockers": list(terrain_provenance.get("qa_blockers") or missing_inputs),
@@ -281,7 +298,7 @@ def build_report(
             "operational_claims_allowed": False,
         }
 
-        if output_root is not None and preprocessing_status == "ready":
+        if output_root is not None and preprocessing_status in {"ready", "ready_with_warnings"}:
             output_root = resolve_path(output_root, base=repo_root)
             materialize_terrain_output_root(
                 output_root=output_root,
@@ -373,6 +390,8 @@ def build_prepared_input_report(
             prepared_status = "blocked_missing_terrain"
         elif terrain_status == "metadata_mismatch":
             prepared_status = "blocked_metadata_mismatch"
+        elif terrain_status == "blocked_terrain_qa":
+            prepared_status = "blocked_terrain_qa"
         else:
             prepared_status = "ready" if context_summary["missing_context_count"] == 0 else "partial_context"
 
@@ -387,6 +406,7 @@ def build_prepared_input_report(
             if isinstance(base_report.get("terrain_nodata_summary"), dict)
             else None,
             terrain_audit=base_report.get("terrain_audit") if isinstance(base_report.get("terrain_audit"), dict) else None,
+            terrain_domain_qa=base_report.get("terrain_domain_qa") if isinstance(base_report.get("terrain_domain_qa"), dict) else None,
         )
         preprocessing_gate_classification = classify_prepared_input_gate(
             terrain_status=terrain_status,
@@ -649,6 +669,7 @@ def build_terrain_qa_summary(
     terrain_derivative_inventory: dict[str, Any] | None = None,
     terrain_nodata_summary: dict[str, Any] | None = None,
     terrain_audit: dict[str, Any] | None = None,
+    terrain_domain_qa: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     terrain_summary = base_report.get("terrain_summary") if isinstance(base_report.get("terrain_summary"), dict) else {}
     terrain_provenance = base_report.get("terrain_provenance") if isinstance(base_report.get("terrain_provenance"), dict) else {}
@@ -668,6 +689,7 @@ def build_terrain_qa_summary(
             "aspect_convention": "clockwise_from_north",
             "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
             "terrain_audit": terrain_audit or {},
+            "terrain_domain_qa": terrain_domain_qa or build_empty_terrain_domain_qa(),
             "terrain_nodata_summary": terrain_nodata_summary or {
                 "cell_count": 0,
                 "valid_cell_count": 0,
@@ -696,6 +718,7 @@ def build_terrain_qa_summary(
             "aspect_convention": "clockwise_from_north",
             "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
             "terrain_audit": terrain_audit or {},
+            "terrain_domain_qa": terrain_domain_qa or build_empty_terrain_domain_qa(),
             "terrain_nodata_summary": terrain_nodata_summary or {
                 "cell_count": int(terrain_summary.get("cell_count", 0)),
                 "valid_cell_count": 0,
@@ -713,6 +736,7 @@ def build_terrain_qa_summary(
     terrain_derivative_inventory = terrain_derivative_inventory or build_terrain_derivative_inventory(terrain)
     terrain_nodata_summary = terrain_nodata_summary or build_terrain_nodata_summary(terrain)
     terrain_audit = terrain_audit or {}
+    terrain_domain_qa = terrain_domain_qa or base_report.get("terrain_domain_qa") or build_empty_terrain_domain_qa()
     valid_mask = np.isfinite(terrain["values"]) & (terrain["values"] != terrain["nodata"])
     valid_values = terrain["values"][valid_mask]
     slope_stats_deg = terrain_derivative_inventory.get("slope", {}).get("stats", {}) if isinstance(terrain_derivative_inventory.get("slope"), dict) else {}
@@ -735,6 +759,7 @@ def build_terrain_qa_summary(
         "aspect_convention": "clockwise_from_north",
         "hillshade_parameters_deg": {"azimuth": 315.0, "altitude": 45.0},
         "terrain_audit": terrain_audit,
+        "terrain_domain_qa": terrain_domain_qa,
         "terrain_nodata_summary": terrain_nodata_summary,
         "terrain_derivative_inventory": terrain_derivative_inventory,
         "slope_stats_deg": slope_stats_deg,
@@ -920,6 +945,7 @@ def materialize_terrain_output_root(
         json.dumps(
             {
                 "terrain_audit": terrain_audit,
+                "terrain_domain_qa": report.get("terrain_domain_qa") or build_empty_terrain_domain_qa(),
                 "terrain_nodata_summary": terrain_nodata_summary,
                 "terrain_derivative_inventory": terrain_derivative_inventory,
                 "preprocessing_status": preprocessing_status,
@@ -1368,10 +1394,15 @@ def build_terrain_provenance_summary(
     terrain_summary: dict[str, Any],
     source_tile_plan: dict[str, Any],
     metadata_mismatches: list[str],
+    terrain_domain_qa: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     crs = terrain_metadata.get("coordinate_reference_system") if isinstance(terrain_metadata.get("coordinate_reference_system"), dict) else {}
     preprocessing = terrain_metadata.get("preprocessing") if isinstance(terrain_metadata.get("preprocessing"), dict) else {}
     provenance = terrain_metadata.get("provenance") if isinstance(terrain_metadata.get("provenance"), dict) else {}
+    qa_blockers = list(metadata_mismatches)
+    if terrain_domain_qa:
+        qa_blockers.extend(terrain_domain_qa.get("blocking_reasons") or [])
+        qa_blockers.extend(terrain_domain_qa.get("warning_reasons") or [])
     return {
         "classification": classify_terrain_provenance(terrain_metadata=terrain_metadata, metadata_mismatches=metadata_mismatches),
         "source_dataset": PREFLIGHT.text_value(terrain_metadata.get("source_dataset")),
@@ -1393,9 +1424,152 @@ def build_terrain_provenance_summary(
         "extent_lv95_m": terrain_summary["extent_lv95_m"],
         "resolution_m": terrain_summary["resolution_m"],
         "nodata": terrain_summary["nodata"],
-        "qa_blockers": list(metadata_mismatches),
+        "qa_blockers": dedupe_text(qa_blockers),
         "intended_use": PREFLIGHT.text_value(provenance.get("intended_use")),
         "provenance_notes": provenance.get("notes") if isinstance(provenance.get("notes"), list) else [],
+    }
+
+
+def build_empty_terrain_domain_qa() -> dict[str, Any]:
+    return {
+        "qa_status": "blocked",
+        "resolution_class": "unknown",
+        "crs_status": "unknown",
+        "nodata_metadata_status": "unknown",
+        "nodata_coverage_status": "unknown",
+        "aoi_containment_status": "unknown",
+        "terrain_extent_lv95_m": {},
+        "site_extent_lv95_m": {},
+        "domain_margin_m": {},
+        "minimum_domain_margin_m": None,
+        "blocking_reasons": ["missing_terrain_domain_qa"],
+        "warning_reasons": [],
+        "next_unblock_action": "stage a terrain crop and metadata sidecar before AOI preparation can run",
+    }
+
+
+def build_terrain_domain_qa(
+    *,
+    terrain_summary: dict[str, Any],
+    terrain_metadata: dict[str, Any],
+    terrain_nodata_summary: dict[str, Any],
+    site_extent: dict[str, Any],
+) -> dict[str, Any]:
+    raster = terrain_metadata.get("raster") if isinstance(terrain_metadata.get("raster"), dict) else {}
+    crs = terrain_metadata.get("coordinate_reference_system") if isinstance(terrain_metadata.get("coordinate_reference_system"), dict) else {}
+    terrain_extent = terrain_summary.get("extent_lv95_m") if isinstance(terrain_summary.get("extent_lv95_m"), dict) else {}
+    blocking_reasons: list[str] = []
+    warning_reasons: list[str] = []
+
+    crs_epsg = PREFLIGHT.text_value(crs.get("epsg"))
+    if crs_epsg in {"2056", "EPSG:2056"}:
+        crs_status = "ready"
+    else:
+        crs_status = "blocked_wrong_or_missing_crs"
+        blocking_reasons.append("terrain_crs_must_be_epsg_2056")
+
+    resolution_m = PREFLIGHT.normalize_resolution_m(terrain_summary.get("resolution_m"))
+    if resolution_m is None or resolution_m <= 0:
+        resolution_class = "unknown"
+        blocking_reasons.append("missing_or_invalid_grid_resolution")
+    elif resolution_m <= 2.0:
+        resolution_class = "high_resolution_2m_or_better"
+    elif resolution_m <= 5.0:
+        resolution_class = "moderate_resolution_warning"
+        warning_reasons.append("terrain_resolution_coarser_than_2m")
+    elif resolution_m <= 10.0:
+        resolution_class = "coarse_resolution_warning"
+        warning_reasons.append("terrain_resolution_coarser_than_5m")
+    else:
+        resolution_class = "blocked_too_coarse"
+        blocking_reasons.append("terrain_resolution_coarser_than_10m")
+
+    metadata_nodata = raster.get("nodata")
+    nodata_metadata_status = "ready" if metadata_nodata is not None else "missing_nodata_metadata"
+    if metadata_nodata is None:
+        warning_reasons.append("missing_nodata_metadata")
+
+    nodata_fraction = float(terrain_nodata_summary.get("nodata_fraction", 0.0) or 0.0)
+    if nodata_fraction >= 0.25:
+        nodata_coverage_status = "blocked_high_nodata_fraction"
+        blocking_reasons.append("terrain_nodata_fraction_at_or_above_25_percent")
+    elif nodata_fraction > 0.05:
+        nodata_coverage_status = "warning_nodata_fraction"
+        warning_reasons.append("terrain_nodata_fraction_above_5_percent")
+    else:
+        nodata_coverage_status = "ready"
+
+    site_extent_lv95 = normalize_lv95_extent(site_extent)
+    terrain_extent_lv95 = normalize_lv95_extent(terrain_extent)
+    domain_margin = build_domain_margin(terrain_extent_lv95, site_extent_lv95)
+    if not site_extent_lv95:
+        aoi_containment_status = "missing_site_extent"
+        warning_reasons.append("missing_site_extent")
+        minimum_domain_margin_m: float | None = None
+    elif not terrain_extent_lv95:
+        aoi_containment_status = "missing_terrain_extent"
+        blocking_reasons.append("missing_terrain_extent")
+        minimum_domain_margin_m = None
+    elif any(value < -1.0e-6 for value in domain_margin.values()):
+        aoi_containment_status = "blocked_aoi_not_contained"
+        blocking_reasons.append("configured_site_extent_exceeds_terrain_crop")
+        minimum_domain_margin_m = min(domain_margin.values()) if domain_margin else None
+    elif min(domain_margin.values()) < float(resolution_m or 0.0):
+        aoi_containment_status = "warning_minimal_domain_margin"
+        warning_reasons.append("terrain_crop_has_less_than_one_cell_margin_around_site_extent")
+        minimum_domain_margin_m = min(domain_margin.values())
+    else:
+        aoi_containment_status = "ready"
+        minimum_domain_margin_m = min(domain_margin.values()) if domain_margin else None
+
+    blocking_reasons = dedupe_text(blocking_reasons)
+    warning_reasons = dedupe_text(warning_reasons)
+    qa_status = "blocked" if blocking_reasons else "warning" if warning_reasons else "ready"
+    if blocking_reasons:
+        next_unblock_action = "stage a terrain crop whose CRS, resolution, nodata metadata, and extent satisfy AOI preparation QA"
+    elif warning_reasons:
+        next_unblock_action = "review terrain QA warnings before using this AOI preparation for candidate generation"
+    else:
+        next_unblock_action = ""
+
+    return {
+        "qa_status": qa_status,
+        "resolution_m": resolution_m,
+        "resolution_class": resolution_class,
+        "crs_epsg": crs_epsg,
+        "crs_status": crs_status,
+        "nodata_metadata_status": nodata_metadata_status,
+        "nodata_fraction": nodata_fraction,
+        "nodata_coverage_status": nodata_coverage_status,
+        "aoi_containment_status": aoi_containment_status,
+        "terrain_extent_lv95_m": terrain_extent_lv95,
+        "site_extent_lv95_m": site_extent_lv95,
+        "domain_margin_m": domain_margin,
+        "minimum_domain_margin_m": minimum_domain_margin_m,
+        "blocking_reasons": blocking_reasons,
+        "warning_reasons": warning_reasons,
+        "next_unblock_action": next_unblock_action,
+    }
+
+
+def normalize_lv95_extent(extent: dict[str, Any]) -> dict[str, float]:
+    normalized: dict[str, float] = {}
+    for key in ("xmin", "ymin", "xmax", "ymax"):
+        try:
+            normalized[key] = float(extent[key])
+        except (KeyError, TypeError, ValueError):
+            return {}
+    return normalized
+
+
+def build_domain_margin(terrain_extent: dict[str, float], site_extent: dict[str, float]) -> dict[str, float]:
+    if not terrain_extent or not site_extent:
+        return {}
+    return {
+        "west": site_extent["xmin"] - terrain_extent["xmin"],
+        "east": terrain_extent["xmax"] - site_extent["xmax"],
+        "south": site_extent["ymin"] - terrain_extent["ymin"],
+        "north": terrain_extent["ymax"] - site_extent["ymax"],
     }
 
 
@@ -1646,6 +1820,7 @@ def build_package(
     terrain_metadata: dict[str, Any],
     source_tile_plan: dict[str, Any],
     terrain_provenance: dict[str, Any],
+    terrain_domain_qa: dict[str, Any],
     metadata_mismatches: list[str],
     preprocessing_status: str,
 ) -> dict[str, Any]:
@@ -1692,9 +1867,16 @@ def build_package(
         "metadata_mismatches": metadata_mismatches,
         "terrain_provenance": terrain_provenance,
         "terrain_audit": terrain_audit,
+        "terrain_domain_qa": terrain_domain_qa,
         "terrain_nodata_summary": terrain_nodata_summary,
         "terrain_derivative_inventory": terrain_derivative_inventory,
-        "qa_blockers": list(metadata_mismatches),
+        "qa_blockers": dedupe_text(
+            [
+                *metadata_mismatches,
+                *(terrain_domain_qa.get("blocking_reasons") or []),
+                *(terrain_domain_qa.get("warning_reasons") or []),
+            ]
+        ),
         "processing_steps": [
             "inspect staged terrain crop header",
             "read terrain metadata sidecar",

@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-416: Add Terrain Resolution And Domain QA To AOI Preparation
-
-Goal: Add deterministic terrain QA to AOI preparation so DEM resolution, CRS, nodata, crop extent, and domain margins are reported before release-zone or hazard generation.
-
-Capability gap reduced: Real-terrain preprocessing robustness.
-
-Why this outranks alternatives: RAMMS guidance makes DEM quality and resolution a first-order setup check; a bad terrain crop invalidates every downstream candidate and scenario table.
-
-Inspect first:
-
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/test_aoi_terrain_preprocessing.py`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- Terrain QA fields for CRS, grid spacing, nodata coverage, AOI containment, and result-grid resolution class.
-- A warning or blocked status for obviously unsuitable terrain domains.
-- Fixture-backed tests covering valid terrain, missing nodata metadata, and resolution/domain warnings.
-
-Definition of done:
-
-- AOI preparation emits deterministic terrain QA before source-zone candidate generation and explains the next unblock action when QA fails.
-
-Boundaries: No terrain resampling implementation unless already supported locally, no claim that one resolution is physically validated, no operational claims.
-
 ### TB-417: Derive Public-Context Ground Material Prior Layers
 
 Goal: Generate deterministic, provenance-tagged ground material prior layers from available public context products for use in scenario metadata and GIS review.

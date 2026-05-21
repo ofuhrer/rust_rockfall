@@ -39,7 +39,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_fixture_terrain_reports_deterministic_package(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -53,6 +53,9 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertEqual(report, second)
             self.assertEqual(report["terrain_preprocessing_status"], "ready")
             self.assertEqual(report["preprocessing_gate_classification"], "fixture_backed")
+            self.assertEqual(report["terrain_domain_qa"]["qa_status"], "ready")
+            self.assertEqual(report["terrain_domain_qa"]["aoi_containment_status"], "ready")
+            self.assertEqual(report["terrain_domain_qa"]["resolution_class"], "high_resolution_2m_or_better")
             self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["xmin"], 2793000.0)
             self.assertEqual(report["terrain_preprocessing_package"]["crop_extent_lv95_m"]["ymax"], 1180208.0)
             self.assertEqual(report["terrain_preprocessing_package"]["resolution_m"], 2.0)
@@ -77,10 +80,91 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue(report["output_roots"]["processed_input_root"].endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input"))
             self.assertEqual(report["blocked_reason"], "")
 
-    def test_missing_tile_blocks_preprocessing(self) -> None:
+    def test_domain_qa_blocks_when_configured_aoi_exceeds_crop(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
             config_path = self._write_candidate_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=PREPARED_FIXTURE_ROOT,
+            )
+
+            report = helper.build_report(repo_root=repo_root, site_config=config_path)
+
+        self.assertEqual(report["terrain_preprocessing_status"], "blocked_terrain_qa")
+        self.assertEqual(report["preprocessing_gate_classification"], "blocked_terrain_qa")
+        self.assertEqual(report["terrain_domain_qa"]["qa_status"], "blocked")
+        self.assertEqual(report["terrain_domain_qa"]["aoi_containment_status"], "blocked_aoi_not_contained")
+        self.assertIn("configured_site_extent_exceeds_terrain_crop", report["terrain_domain_qa"]["blocking_reasons"])
+        self.assertIn("stage a terrain crop", report["blocked_reason"])
+
+    def test_domain_qa_reports_coarse_resolution_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(
+                repo_root,
+                site_extent={
+                    "crs": "EPSG:2056",
+                    "xmin": 2793000.0,
+                    "ymin": 1180200.0,
+                    "xmax": 2793010.0,
+                    "ymax": 1180210.0,
+                },
+            )
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=PREPARED_FIXTURE_ROOT,
+            )
+            terrain_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc"
+            lines = terrain_path.read_text(encoding="utf-8").splitlines()
+            lines[4] = "cellsize 6.0"
+            terrain_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+            metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
+            metadata["raster"]["resolution_m"] = 6.0
+            metadata["extent_lv95_m"] = {
+                "xmin": 2793000.0,
+                "ymin": 1180200.0,
+                "xmax": 2793024.0,
+                "ymax": 1180224.0,
+            }
+            metadata["preprocessing"]["crop_extent_lv95_m"] = dict(metadata["extent_lv95_m"])
+            metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+
+            report = helper.build_report(repo_root=repo_root, site_config=config_path)
+
+        self.assertEqual(report["terrain_preprocessing_status"], "ready_with_warnings")
+        self.assertEqual(report["terrain_domain_qa"]["qa_status"], "warning")
+        self.assertEqual(report["terrain_domain_qa"]["resolution_class"], "coarse_resolution_warning")
+        self.assertIn("terrain_resolution_coarser_than_5m", report["terrain_domain_qa"]["warning_reasons"])
+
+    def test_missing_nodata_metadata_is_reported_in_domain_qa(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=PREPARED_FIXTURE_ROOT,
+            )
+            metadata_path = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml"
+            metadata = yaml.safe_load(metadata_path.read_text(encoding="utf-8"))
+            metadata["raster"].pop("nodata")
+            metadata_path.write_text(yaml.safe_dump(metadata, sort_keys=False), encoding="utf-8")
+
+            report = helper.build_report(repo_root=repo_root, site_config=config_path)
+
+        self.assertEqual(report["terrain_preprocessing_status"], "metadata_mismatch")
+        self.assertIn("nodata", report["metadata_mismatches"])
+        self.assertEqual(report["terrain_domain_qa"]["nodata_metadata_status"], "missing_nodata_metadata")
+        self.assertIn("missing_nodata_metadata", report["terrain_domain_qa"]["warning_reasons"])
+
+    def test_missing_tile_blocks_preprocessing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -103,7 +187,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_missing_staged_terrain_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -129,7 +213,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_metadata_mismatch_blocks_preprocessing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -154,7 +238,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_prepared_input_builder_writes_ready_root_and_qa_summaries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -214,6 +298,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertEqual(roads_mask["mask_provenance"]["context_provenance_classification"], "real_staged")
             self.assertEqual(report["context_availability_summary"]["context_provenance_classification"], "real_staged")
             self.assertEqual(report["terrain_qa_summary"]["summary_status"], "ready")
+            self.assertEqual(report["terrain_qa_summary"]["terrain_domain_qa"]["qa_status"], "ready")
             self.assertGreater(report["terrain_qa_summary"]["slope_stats_deg"]["count"], 0)
             self.assertLessEqual(report["terrain_qa_summary"]["hillshade_stats"]["max"], 255.0)
             self.assertEqual(report["terrain_qa_summary"]["terrain_audit"]["resolution_match"], True)
@@ -221,25 +306,28 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertGreater(report["terrain_qa_summary"]["terrain_derivative_inventory"]["roughness"]["stats"]["count"], 0)
 
     def test_repo_root_real_staged_terrain_metadata_is_not_fixture_backed(self) -> None:
-        report = helper.build_report(
-            repo_root=ROOT,
-            site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
-            terrain_crop_path=ROOT
-            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
-            terrain_metadata_path=ROOT
-            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
-            aoi_tile_catalog_path=ROOT
-            / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml",
-        )
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = self._write_candidate_config(Path(tmp), fixture_sized_extent=True)
+            report = helper.build_report(
+                repo_root=ROOT,
+                site_config=config_path,
+                terrain_crop_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                terrain_metadata_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                aoi_tile_catalog_path=ROOT
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/aoi_tile_catalog.yaml",
+            )
 
         self.assertEqual(report["terrain_preprocessing_status"], "ready")
+        self.assertEqual(report["terrain_domain_qa"]["qa_status"], "ready")
         self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
         self.assertEqual(report["terrain_provenance"]["source_product"], "swissALTI3D")
 
     def test_prepared_input_builder_reports_partial_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -270,7 +358,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_prepared_input_builder_blocks_on_missing_terrain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -297,7 +385,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_prepared_input_builder_blocks_on_metadata_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,
@@ -324,12 +412,29 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
             self.assertFalse((prepared_root / "input" / "terrain.asc").exists())
 
-    def _write_candidate_config(self, repo_root: Path) -> Path:
+    def _write_candidate_config(
+        self,
+        repo_root: Path,
+        *,
+        fixture_sized_extent: bool = False,
+        site_extent: dict[str, float | str] | None = None,
+    ) -> Path:
         config_data = yaml.safe_load(PREPARED_CONFIG_PATH.read_text(encoding="utf-8"))
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
         )
+        if fixture_sized_extent:
+            config_data["site_extent"] = {
+                "crs": "EPSG:2056",
+                "xmin": 2793002.0,
+                "ymin": 1180202.0,
+                "xmax": 2793006.0,
+                "ymax": 1180206.0,
+            }
+        if site_extent is not None:
+            config_data["site_extent"] = site_extent
         config_path = repo_root / "site_config.yaml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
         return config_path
 
