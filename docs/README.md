@@ -54,6 +54,8 @@ starting context for implementation unless a task explicitly asks for them.
   denominator rules, and hazard-versus-risk boundary.
 - `hazard_layers.md`: hazard-layer builder behavior, raster outputs, and
   current layer semantics.
+- `opennhm_learnings_report.md`: OpenNHM/AvaFrame/DebrisFrame workflow lessons
+  relevant to future user-facing GIS and AOI workflow design.
 - `hazard_output_profile_contract.md`: `full_debug`,
   `scalable_conditional`, and `provenance_audit` output profiles.
 - `stochastic_sampling_rng_stream_audit.md`: stochastic stream audit and

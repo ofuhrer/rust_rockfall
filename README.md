@@ -169,6 +169,7 @@ backlog-refill pass before launching implementation workers.
 - `docs/target_area_physical_evidence_acquisition_pack.md` - physical-evidence acquisition and claim-boundary pack.
 - `docs/orchestration_strategy.md` - sequential worker orchestration and log-monitoring strategy.
 - `docs/validation_maturity_framework.md` - claim levels and validation maturity.
+- `docs/opennhm_learnings_report.md` - OpenNHM/AvaFrame/DebrisFrame workflow lessons relevant to future user-facing GIS and AOI workflow design.
 
 ## Local Git Hooks
 
