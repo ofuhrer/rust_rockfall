@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-430: Prototype Minimal QGIS Processing Connector Manifest
-
-Goal: Define a minimal QGIS Processing connector manifest for the AOI front-door commands without building a full plugin.
-
-Capability gap reduced: Future user-interface integration path.
-
-Why this outranks alternatives: The OpenNHM comparison suggests QGIS integration is valuable, but a manifest/prototype avoids premature plugin complexity while validating command boundaries.
-
-Inspect first:
-
-- `docs/opennhm_learnings_report.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/script_inventory.md`
-
-Deliverables:
-
-- A small tracked prototype manifest or design fixture mapping QGIS actions to existing CLI commands and expected inputs/outputs.
-- A smoke test or static check that the named commands and style assets exist.
-- A clear deferral note for full plugin implementation.
-
-Definition of done:
-
-- The repo has a concrete, testable bridge specification for QGIS integration that reuses existing front doors and does not add a second workflow layer.
-
-Boundaries: No full QGIS plugin, no GUI development, no new execution framework, no operational map claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

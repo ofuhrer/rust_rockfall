@@ -5583,3 +5583,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no new wrapper, no new claim surface, no operational or scale-up language, and no generated artifact commits.
 - Next task: `TB-430`
+
+### TB-430: Prototype Minimal QGIS Processing Connector Manifest
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: define a manifest-only QGIS Processing bridge for the AOI front doors without introducing a plugin or execution framework.
+- Files changed: `tests/fixtures/qgis_processing_connector_manifest_v1.json`, `tests/test_qgis_processing_connector_manifest.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a tracked prototype manifest fixture that maps QGIS-facing actions to the existing `scripts/run_aoi_hazard_workflow.py` front doors and the `scripts/package_aoi_hazard_map.py` packaging front door.
+  - Included explicit expected inputs, expected outputs, and claim-boundary notes for `describe-config`, `prepare`, `candidate-review`, `package-map`, and `workflow` so the bridge stays on the current CLI surface.
+  - Recorded a clear deferral note that full QGIS plugin work remains out of scope until the command contract and style bundle stabilize.
+  - Added a static smoke test that checks the named commands, front-door scripts, and tracked QGIS style assets all exist.
+  - Removed TB-430 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_qgis_processing_connector_manifest`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no full QGIS plugin, no GUI work, no new execution framework, and no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was added.
+- Next task: backlog refill needed

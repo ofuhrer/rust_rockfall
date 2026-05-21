@@ -1,0 +1,223 @@
+{
+  "schema_version": "aoi_qgis_processing_connector_manifest_v1",
+  "status": "prototype_only",
+  "bridge_name": "AOI QGIS Processing bridge",
+  "front_door": "scripts/run_aoi_hazard_workflow.py",
+  "package_front_door": "scripts/package_aoi_hazard_map.py",
+  "deferred_full_plugin_note": "This manifest is intentionally plugin-free. Full QGIS plugin work is deferred until the existing AOI front-door command contract and style bundle are stable, so the bridge stays manifest-only and does not add a second workflow layer.",
+  "included_actions": [
+    {
+      "action_id": "describe-config",
+      "qgis_label": "Describe AOI configuration",
+      "command_name": "describe-config",
+      "cli_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config --site-config <site-config> --format json",
+      "entrypoint": "scripts/run_aoi_hazard_workflow.py",
+      "expected_inputs": [
+        {
+          "name": "site_config",
+          "kind": "path",
+          "required": true,
+          "description": "AOI site manifest or candidate site config passed to the existing front door."
+        }
+      ],
+      "expected_outputs": [
+        {
+          "name": "describe_config_report",
+          "kind": "json",
+          "description": "Resolved configuration layers, generated manifest paths, and claim-boundary metadata."
+        }
+      ],
+      "style_usage": "none",
+      "claim_boundary": "Read-only status and configuration discovery only; no simulation, no package generation, and no operational claim."
+    },
+    {
+      "action_id": "prepare",
+      "qgis_label": "Prepare AOI inputs",
+      "command_name": "prepare",
+      "cli_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json",
+      "entrypoint": "scripts/run_aoi_hazard_workflow.py",
+      "expected_inputs": [
+        {
+          "name": "site_config",
+          "kind": "path",
+          "required": true,
+          "description": "Candidate AOI site config used to bootstrap public geodata and manifest paths."
+        }
+      ],
+      "expected_outputs": [
+        {
+          "name": "bootstrap_manifest",
+          "kind": "yaml",
+          "description": "Bootstrap AOI manifest written under the workflow output root."
+        },
+        {
+          "name": "tile_catalog",
+          "kind": "yaml",
+          "description": "Bootstrap tile catalog and acquisition manifest surfaces."
+        }
+      ],
+      "style_usage": "none",
+      "claim_boundary": "Pre-simulation preparation only; no hazard map is produced."
+    },
+    {
+      "action_id": "candidate-review",
+      "qgis_label": "Review candidate release zones",
+      "command_name": "candidate-review",
+      "cli_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review --site-config <site-config> --candidate-review-output-root <output-root> --format json",
+      "entrypoint": "scripts/run_aoi_hazard_workflow.py",
+      "expected_inputs": [
+        {
+          "name": "site_config",
+          "kind": "path",
+          "required": true,
+          "description": "AOI site config used to derive the candidate review overlays."
+        },
+        {
+          "name": "candidate_review_output_root",
+          "kind": "path",
+          "required": true,
+          "description": "Writable review root where the overlay bundle is staged."
+        }
+      ],
+      "expected_outputs": [
+        {
+          "name": "candidate_review_overlay_manifest",
+          "kind": "json",
+          "description": "Overlay manifest and preview bundle for QGIS inspection."
+        },
+        {
+          "name": "candidate_review_overlay_images",
+          "kind": "png_or_html",
+          "description": "Overlay previews for the candidate release-zone review surface."
+        }
+      ],
+      "style_usage": "review symbology only; no raster styling claim is introduced here.",
+      "claim_boundary": "Candidate review only; still diagnostic and non-operational."
+    },
+    {
+      "action_id": "package-map",
+      "qgis_label": "Package AOI hazard map",
+      "command_name": "package-map",
+      "cli_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map --input-root <hazard-output-root> --output-root <package-root> --overwrite --format json",
+      "entrypoint": "scripts/run_aoi_hazard_workflow.py",
+      "expected_inputs": [
+        {
+          "name": "hazard_output_root",
+          "kind": "path",
+          "required": true,
+          "description": "Existing AOI hazard output root produced by the existing front door."
+        },
+        {
+          "name": "package_output_root",
+          "kind": "path",
+          "required": true,
+          "description": "Writable destination for the review bundle."
+        }
+      ],
+      "expected_outputs": [
+        {
+          "name": "aoi_hazard_map_package_manifest",
+          "kind": "json",
+          "description": "Map package manifest with QGIS style references and claim boundaries."
+        },
+        {
+          "name": "aoi_hazard_map_package_summary",
+          "kind": "text",
+          "description": "Compact summary of the packaged diagnostic review bundle."
+        },
+        {
+          "name": "styles_directory",
+          "kind": "directory",
+          "description": "Copied QGIS style bundle and per-layer QML assets."
+        }
+      ],
+      "style_usage": "copies qgis/styles/ into the package styles/ directory and applies the matching QML references.",
+      "claim_boundary": "Diagnostic QGIS symbology only; not an operational hazard map, risk map, annual-frequency map, or physical-probability product."
+    },
+    {
+      "action_id": "workflow",
+      "qgis_label": "Open AOI workflow status",
+      "command_name": "workflow",
+      "cli_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow --site-config <site-config> --format json",
+      "entrypoint": "scripts/run_aoi_hazard_workflow.py",
+      "expected_inputs": [
+        {
+          "name": "site_config",
+          "kind": "path",
+          "required": true,
+          "description": "Site config used to resolve the existing front-door status report."
+        }
+      ],
+      "expected_outputs": [
+        {
+          "name": "workflow_report",
+          "kind": "json",
+          "description": "Front-door status, next action, first blocker, and expected-path summary."
+        }
+      ],
+      "style_usage": "none",
+      "claim_boundary": "Read-only interpretation surface that reports blockers and next steps."
+    }
+  ],
+  "deferred_commands": [
+    {
+      "command_name": "run-local-smoke",
+      "reason": "Execution-oriented smoke runs belong to the CLI front door, not the QGIS Processing bridge."
+    },
+    {
+      "command_name": "run-prepared-pilot-local",
+      "reason": "Prepared-pilot execution is a separate workflow phase and remains outside the manifest-only bridge."
+    },
+    {
+      "command_name": "submit-balfrin",
+      "reason": "Balfrin submission is explicitly out of scope for a QGIS connector prototype."
+    },
+    {
+      "command_name": "collect",
+      "reason": "Post-submit collection is not part of the front-door review bridge."
+    }
+  ],
+  "style_bundle": {
+    "schema_version": "aoi_qgis_style_bundle_v1",
+    "path": "qgis/styles/aoi_qgis_style_bundle.json",
+    "claim_boundary": "Diagnostic QGIS symbology only; the bundle does not upgrade outputs to operational, annual-frequency, physical-probability, or risk products.",
+    "style_assets": [
+      {
+        "style_id": "candidate_source_zone",
+        "path": "qgis/styles/candidate_source_zone.qml"
+      },
+      {
+        "style_id": "review_zone_status",
+        "path": "qgis/styles/review_zone_status.qml"
+      },
+      {
+        "style_id": "release_points",
+        "path": "qgis/styles/release_points.qml"
+      },
+      {
+        "style_id": "scenario_families",
+        "path": "qgis/styles/scenario_families.qml"
+      },
+      {
+        "style_id": "conditional_reach_probability",
+        "path": "qgis/styles/conditional_reach_probability.qml"
+      },
+      {
+        "style_id": "conditional_deposition_density",
+        "path": "qgis/styles/conditional_deposition_density.qml"
+      },
+      {
+        "style_id": "conditional_kinetic_energy",
+        "path": "qgis/styles/conditional_kinetic_energy.qml"
+      },
+      {
+        "style_id": "conditional_jump_height",
+        "path": "qgis/styles/conditional_jump_height.qml"
+      },
+      {
+        "style_id": "conditional_intensity_exceedance",
+        "path": "qgis/styles/conditional_intensity_exceedance.qml"
+      }
+    ]
+  }
+}
