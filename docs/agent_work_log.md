@@ -5358,3 +5358,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: candidate geometries remain workflow inputs only, no validated source-zone claim, no tuning to Tschamut, no new simulations, no operational claim, no scale-up or distributed-execution claim, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
 - Next task: `TB-421`
+
+### TB-421: Add Candidate And Hazard QGIS Style Bundle
+
+- Date: 2026-05-21
+- Commit: `e023df9`; work-log entry recorded in the follow-up commit.
+- Objective: provide reusable diagnostic QGIS styles for AOI review packages and expose them through package manifests.
+- Files changed: `docs/hazard_layers.md`, `docs/task_backlog.md`, `qgis/styles/aoi_qgis_style_bundle.json`, `qgis/styles/candidate_source_zone.qml`, `qgis/styles/conditional_deposition_density.qml`, `qgis/styles/conditional_intensity_exceedance.qml`, `qgis/styles/conditional_jump_height.qml`, `qgis/styles/conditional_kinetic_energy.qml`, `qgis/styles/conditional_reach_probability.qml`, `qgis/styles/release_points.qml`, `qgis/styles/review_zone_status.qml`, `qgis/styles/scenario_families.qml`, `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`
+- Implementation summary:
+  - Added a tracked `qgis/styles/` bundle with QML styles for candidate source zones, accepted/rejected review zones, release points, scenario families, reach/deposition diagnostics, maximum kinetic energy, maximum jump height, and conditional exceedance rasters.
+  - Updated AOI map packaging to copy the tracked style bundle into each package `styles/` directory and expose `qgis_style_assets` in both the map package and pilot GIS manifests.
+  - Added per-raster and per-vector `qgis_style` references so reviewers can apply matching QGIS styles without relying on screenshots or ad hoc layer naming.
+  - Documented the style bundle in `docs/hazard_layers.md` with explicit diagnostic-only claim boundaries.
+  - Added fixture-backed package assertions proving style assets are discoverable in generated package manifests and package directories without committing generated rasters.
+  - Removed TB-421 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager tests.test_aoi_map_qa_review -v`
+  - `PYENV_VERSION=system uv run python - <<'PY' ... style JSON/QML parse check ... PY`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/package_aoi_hazard_map.py tests/test_aoi_hazard_map_packager.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: QGIS styles are diagnostic review symbology only; no QGIS plugin, no generated raster commits, no operational map symbology claim, no annual-frequency or physical-probability claim, no scale-up or distributed-execution claim, and no risk/exposure/vulnerability semantics.
+- Next task: `TB-422`
