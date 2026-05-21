@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-442: Add Clean-Checkout AOI Workflow Smoke Test
-
-Goal: Prove the documented AOI front-door commands fail closed or pass using only tracked fixtures and no ignored local artifacts.
-
-Capability gap reduced: Hidden local-state dependence in the user-facing AOI workflow.
-
-Why this outranks alternatives: User-facing documentation is only useful if its core commands behave predictably on a clean checkout.
-
-Inspect first:
-
-- `docs/aoi_user_manual.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/package_aoi_hazard_map.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- Focused tests for `describe-config`, `prepare`, `candidate-review`, `package-map`, and `workflow` using tracked fixtures or explicit blocked states.
-- Assertions that ignored Tschamut/Balfrin artifacts are not required for the smoke path.
-- Documentation correction if any command in the AOI manual is not clean-checkout safe.
-
-Definition of done:
-
-- The compact AOI user path has clean-checkout regression coverage or explicit fail-closed behavior for missing artifacts.
-
-Boundaries: No broad full-suite rewrite, no generated artifact commits, no reliance on local ignored roots.
-
 ### TB-443: Connect QGIS Connector Manifest To AOI Smoke Coverage
 
 Goal: Ensure the QGIS Processing connector manifest remains synchronized with the AOI front-door commands and style bundle as they evolve.

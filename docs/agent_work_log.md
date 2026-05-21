@@ -5847,3 +5847,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no operational hazard claim was added, no distributed execution or scale-up was authorized, and the batched fixture path remains scratch-only.
 - Next task: `TB-442`
+
+### TB-442: Add Clean-Checkout AOI Workflow Smoke Test
+
+- Date: 2026-05-22
+- Commit: `8049a45`, follow-up fix `c8a881e`
+- Objective: add clean-checkout-safe AOI workflow regression coverage for the user-facing front door and repair the prepared-pilot warning path exposed by the full focused test module.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added focused AOI workflow smoke coverage that exercises tracked-fixture and fail-closed paths without relying on ignored Tschamut or Balfrin artifacts.
+  - Reworked the fixture AOI bounds used by the regression tests so the tiny tracked terrain fixture can pass the prepare path deterministically.
+  - Treated `ready_with_warnings` terrain preprocessing as a ready AOI workflow step while preserving warning details, which fixed the full `tests.test_run_aoi_hazard_workflow` module after the initial worker commit.
+  - Removed TB-442 from the active backlog after verifying the focused module and repository hygiene checks.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: no generated artifacts were committed, no ignored local artifact dependence was introduced, no operational claim was added, and the workflow remains a bounded AOI smoke path.
+- Next task: `TB-443`
