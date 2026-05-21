@@ -458,6 +458,15 @@ extent, resolution, CRS, nodata policy, source tile ids, and deterministic
 output roots, then feeds those fields into the release-zone candidate planner
 when a local AOI tile catalog is present.
 
+The prepared-input mode also writes
+`qa/material_prior_manifest.json`. That manifest encodes deterministic
+public-context material-prior categories for road, water/swamp, forest,
+talus/rock, and unknown; each category records its source product categories,
+source tile ids when available, and fallback rule. Missing public context stays
+explicitly unknown, and the manifest is limited to scenario metadata and GIS
+review. It does not encode calibrated friction, restitution, RAMMS parameter
+transfer, or an operational terrain-material claim.
+
 The same helper now also emits a gate classification and QA blockers so the
 guided `scripts/run_aoi_hazard_workflow.py workflow` front door can distinguish
 fixture-backed, real-staged, missing, and metadata-mismatched preprocessing

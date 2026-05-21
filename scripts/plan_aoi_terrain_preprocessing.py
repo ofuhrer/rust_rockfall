@@ -61,6 +61,44 @@ CONTEXT_MASK_ROLE_BY_CATEGORY = {
         "mask_targets": ["barriers_or_protection"],
     },
 }
+MATERIAL_PRIOR_SCHEMA_VERSION = "aoi_public_context_material_prior_manifest_v1"
+MATERIAL_PRIOR_CATEGORY_RULES = [
+    {
+        "material_category": "road",
+        "material_class_id": 1,
+        "source_context_categories": ["swisstlm3d_context"],
+        "source_feature_groups": ["roads_or_transport"],
+        "fallback_rule": "if swissTLM3D transport context is missing or blocked, keep road cells unknown instead of inferring from terrain",
+    },
+    {
+        "material_category": "water_swamp",
+        "material_class_id": 2,
+        "source_context_categories": ["swisstlm3d_context"],
+        "source_feature_groups": ["water_or_channel", "wetland_or_swamp"],
+        "fallback_rule": "if swissTLM3D hydrography or wetland context is missing or blocked, keep water/swamp cells unknown",
+    },
+    {
+        "material_category": "forest",
+        "material_class_id": 3,
+        "source_context_categories": ["swisssurface3d_raster_context", "swisssurface3d_context"],
+        "source_feature_groups": ["forest_or_canopy", "surface_context"],
+        "fallback_rule": "if swissSURFACE3D raster or point context is missing or blocked, keep forest cells unknown",
+    },
+    {
+        "material_category": "talus_rock",
+        "material_class_id": 4,
+        "source_context_categories": ["geocover_context", "geological_atlas_context"],
+        "source_feature_groups": ["superficial_deposits", "rock_or_talus"],
+        "fallback_rule": "if public geology context is not staged, keep talus/rock cells unknown rather than deriving material from slope alone",
+    },
+]
+UNKNOWN_MATERIAL_PRIOR = {
+    "material_category": "unknown",
+    "material_class_id": 0,
+    "source_context_categories": [],
+    "source_feature_groups": [],
+    "fallback_rule": "all cells not covered by a ready public-context source remain explicit unknown",
+}
 
 
 def _load_preflight_module():
@@ -386,6 +424,14 @@ def build_prepared_input_report(
             terrain_audit=base_report.get("terrain_audit") if isinstance(base_report.get("terrain_audit"), dict) else {},
             terrain_provenance=terrain_provenance,
         )
+        material_prior_manifest = build_material_prior_manifest(
+            candidate_site_id=candidate_site_id,
+            context_summary=context_summary,
+            context_preprocessing_report=context_preprocessing_report,
+            terrain_summary=base_report.get("terrain_summary") if isinstance(base_report.get("terrain_summary"), dict) else {},
+            terrain_audit=base_report.get("terrain_audit") if isinstance(base_report.get("terrain_audit"), dict) else {},
+            terrain_provenance=terrain_provenance,
+        )
         if terrain_status in {"blocked_missing_inputs", "blocked_missing_tile"}:
             prepared_status = "blocked_missing_terrain"
         elif terrain_status == "metadata_mismatch":
@@ -422,6 +468,7 @@ def build_prepared_input_report(
                 terrain_qa_summary=terrain_qa_summary,
                 context_summary=context_summary,
                 context_preprocessing_report=context_preprocessing_report,
+                material_prior_manifest=material_prior_manifest,
                 repo_root=repo_root,
             )
         report = {
@@ -444,6 +491,8 @@ def build_prepared_input_report(
             "context_availability_summary_path": str(qa_root / "context_availability_summary.json"),
             "context_preprocessing_report": context_preprocessing_report,
             "context_preprocessing_report_path": str(qa_root / "context_preprocessing_summary.json"),
+            "material_prior_manifest": material_prior_manifest,
+            "material_prior_manifest_path": str(qa_root / "material_prior_manifest.json"),
             "output_roots": {
                 "prepared_input_root": str(prepared_input_root),
                 "terrain_output_root": str(terrain_output_root),
@@ -458,6 +507,7 @@ def build_prepared_input_report(
                     "prepared-input builder mode is deterministic and fixture-backed only",
                     "terrain and QA summaries are preparation evidence only",
                     "context availability does not imply hazard validation or operational readiness",
+                    "material priors are source-context categories for GIS/scenario review, not calibrated terrain parameters",
                 ],
             },
             "scale_up_authorized": False,
@@ -1017,6 +1067,7 @@ def materialize_prepared_input_root(
     terrain_qa_summary: dict[str, Any],
     context_summary: dict[str, Any],
     context_preprocessing_report: dict[str, Any],
+    material_prior_manifest: dict[str, Any],
     repo_root: Path,
 ) -> None:
     prepared_input_root.mkdir(parents=True, exist_ok=True)
@@ -1037,6 +1088,10 @@ def materialize_prepared_input_root(
     )
     (qa_root / "context_preprocessing_summary.json").write_text(
         json.dumps(context_preprocessing_report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (qa_root / "material_prior_manifest.json").write_text(
+        json.dumps(material_prior_manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -1087,6 +1142,13 @@ def render_prepared_input_report(report: dict[str, Any]) -> str:
     )
     for key, value in report["terrain_qa_summary"].items():
         lines.append(f"- {key}: {value}")
+    lines.append("")
+    lines.append("material_prior_manifest:")
+    material_prior = report.get("material_prior_manifest") or {}
+    lines.append(f"- material_prior_status: {material_prior.get('material_prior_status', '')}")
+    lines.append(f"- unknown_category_explicit: {material_prior.get('unknown_category_explicit', '')}")
+    for entry in material_prior.get("material_prior_categories", []):
+        lines.append(f"  - {entry.get('material_category', '')}: {entry.get('prior_status', '')}")
     lines.append("")
     lines.append("context_availability_summary:")
     for key, value in report["context_availability_summary"].items():
@@ -1766,6 +1828,184 @@ def build_context_preprocessing_report(
                 "gis_package_preparation",
             ],
             "mask_inventory_state": "aligned" if preprocessing_status == "ready" else "deferred_or_blocked",
+        },
+    }
+
+
+def build_material_prior_manifest(
+    *,
+    candidate_site_id: str,
+    context_summary: dict[str, Any],
+    context_preprocessing_report: dict[str, Any],
+    terrain_summary: dict[str, Any],
+    terrain_audit: dict[str, Any],
+    terrain_provenance: dict[str, Any],
+) -> dict[str, Any]:
+    entries = [entry for entry in context_summary.get("context_entries", []) if isinstance(entry, dict)]
+    entry_by_category = {PREFLIGHT.text_value(entry.get("category")): entry for entry in entries}
+    prior_rows = [
+        build_material_prior_category_row(rule, entry_by_category)
+        for rule in MATERIAL_PRIOR_CATEGORY_RULES
+    ]
+    unknown_row = {
+        **UNKNOWN_MATERIAL_PRIOR,
+        "prior_status": "explicit_unknown",
+        "ready_source_categories": [],
+        "missing_source_categories": sorted(
+            {
+                category
+                for row in prior_rows
+                for category in row.get("missing_source_categories", [])
+            }
+        ),
+        "blocked_source_categories": sorted(
+            {
+                category
+                for row in prior_rows
+                for category in row.get("blocked_source_categories", [])
+            }
+        ),
+        "source_products": [],
+        "source_tile_ids": [],
+        "provenance": {
+            "source_rule": UNKNOWN_MATERIAL_PRIOR["fallback_rule"],
+            "context_provenance_classification": context_summary.get("context_provenance_classification"),
+            "fallback_explicit": True,
+        },
+    }
+    prior_rows.append(unknown_row)
+
+    blocked_rows = [
+        row
+        for row in prior_rows
+        if row["material_category"] != "unknown" and row["prior_status"] != "ready"
+    ]
+    ready_rows = [
+        row
+        for row in prior_rows
+        if row["material_category"] != "unknown" and row["prior_status"] == "ready"
+    ]
+    if context_summary.get("metadata_mismatch_context_count", 0):
+        manifest_status = "blocked_context_metadata_mismatch"
+    elif blocked_rows:
+        manifest_status = "partial_with_explicit_unknown"
+    else:
+        manifest_status = "ready"
+
+    return {
+        "schema_version": MATERIAL_PRIOR_SCHEMA_VERSION,
+        "material_prior_status": manifest_status,
+        "candidate_site_id": candidate_site_id,
+        "material_prior_kind": "deterministic_public_context_manifest",
+        "material_class_encoding": {
+            str(row["material_class_id"]): row["material_category"]
+            for row in sorted(prior_rows, key=lambda row: int(row["material_class_id"]))
+        },
+        "material_prior_categories": prior_rows,
+        "ready_material_category_count": len(ready_rows),
+        "blocked_or_unknown_material_category_count": len(blocked_rows) + 1,
+        "unknown_category_explicit": True,
+        "unknown_fallback_rule": UNKNOWN_MATERIAL_PRIOR["fallback_rule"],
+        "context_preprocessing_status": context_preprocessing_report.get("context_preprocessing_status"),
+        "context_provenance_classification": context_summary.get("context_provenance_classification"),
+        "terrain_alignment": {
+            "terrain_extent_lv95_m": terrain_summary.get("extent_lv95_m", {}),
+            "terrain_resolution_m": terrain_summary.get("resolution_m"),
+            "terrain_nodata": terrain_summary.get("nodata"),
+            "terrain_source_tile_ids": list(terrain_audit.get("source_tile_ids") or []),
+            "terrain_provenance_classification": PREFLIGHT.text_value(terrain_provenance.get("classification")),
+        },
+        "consumer_targets": ["scenario_metadata", "gis_review"],
+        "claim_boundaries": {
+            **PREFLIGHT.claim_boundaries(),
+            "calibrated_friction_or_restitution": False,
+            "ramms_parameter_transfer": False,
+            "operational_terrain_material_claim": False,
+            "notes": [
+                "material priors are deterministic source-context labels only",
+                "unknown and missing public context remain explicit",
+                "no calibrated friction, restitution, or operational terrain-parameter claim is encoded",
+            ],
+        },
+    }
+
+
+def build_material_prior_category_row(
+    rule: dict[str, Any],
+    entry_by_category: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    source_categories = list(rule["source_context_categories"])
+    source_entries = [entry_by_category.get(category) for category in source_categories]
+    ready_entries = [
+        entry
+        for entry in source_entries
+        if entry is not None
+        and entry.get("context_readiness_status") == "ready"
+        and entry.get("context_provenance_classification") != "metadata_mismatch"
+    ]
+    missing_categories = [
+        category
+        for category, entry in zip(source_categories, source_entries)
+        if entry is None or entry.get("context_readiness_status") != "ready"
+    ]
+    blocked_categories = [
+        category
+        for category, entry in zip(source_categories, source_entries)
+        if entry is not None and entry.get("context_provenance_classification") == "metadata_mismatch"
+    ]
+    if ready_entries and not blocked_categories:
+        prior_status = "ready"
+    elif blocked_categories:
+        prior_status = "blocked_context_metadata_mismatch"
+    else:
+        prior_status = "explicit_unknown_missing_context"
+
+    return {
+        "material_category": rule["material_category"],
+        "material_class_id": rule["material_class_id"],
+        "prior_status": prior_status,
+        "source_context_categories": source_categories,
+        "ready_source_categories": [
+            PREFLIGHT.text_value(entry.get("category"))
+            for entry in ready_entries
+            if PREFLIGHT.text_value(entry.get("category"))
+        ],
+        "missing_source_categories": missing_categories,
+        "blocked_source_categories": blocked_categories,
+        "source_feature_groups": list(rule["source_feature_groups"]),
+        "source_products": dedupe_text(
+            [
+                PREFLIGHT.text_value(entry.get("source_product") or entry.get("product"))
+                for entry in ready_entries
+            ]
+        ),
+        "source_tile_ids": sorted(
+            {
+                str(tile_id)
+                for entry in ready_entries
+                for tile_id in list(entry.get("source_tile_ids") or [])
+            }
+        ),
+        "fallback_rule": rule["fallback_rule"],
+        "provenance": {
+            "source_rule": rule["fallback_rule"],
+            "expected_context_categories": source_categories,
+            "ready_context_categories": [
+                PREFLIGHT.text_value(entry.get("category"))
+                for entry in ready_entries
+                if PREFLIGHT.text_value(entry.get("category"))
+            ],
+            "metadata_paths": [
+                entry.get("metadata_path")
+                for entry in ready_entries
+                if entry.get("metadata_path")
+            ],
+            "expected_staged_paths": [
+                entry.get("expected_staged_path")
+                for entry in ready_entries
+                if entry.get("expected_staged_path")
+            ],
+            "fallback_explicit": prior_status != "ready",
         },
     }
 

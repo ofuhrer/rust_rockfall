@@ -270,6 +270,7 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_preprocessing_summary.json").exists())
+            self.assertTrue((prepared_root / "qa" / "material_prior_manifest.json").exists())
             self.assertTrue((prepared_root / "prepared_input_manifest.json").exists())
             self.assertEqual(report["terrain_provenance"]["classification"], "real_staged")
             self.assertEqual(report["context_provenance"]["classification"], "real_staged")
@@ -283,6 +284,22 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             )
             self.assertGreater(report["context_availability_summary"]["context_warning_count"], 0)
             self.assertEqual(report["context_preprocessing_report"]["context_preprocessing_status"], "ready_with_optional_warnings")
+            material_prior = report["material_prior_manifest"]
+            material_by_category = {
+                entry["material_category"]: entry for entry in material_prior["material_prior_categories"]
+            }
+            self.assertEqual(material_prior["schema_version"], "aoi_public_context_material_prior_manifest_v1")
+            self.assertEqual(material_prior["material_prior_status"], "partial_with_explicit_unknown")
+            self.assertEqual(material_prior["consumer_targets"], ["scenario_metadata", "gis_review"])
+            self.assertTrue(material_prior["unknown_category_explicit"])
+            self.assertEqual(material_by_category["road"]["prior_status"], "ready")
+            self.assertEqual(material_by_category["water_swamp"]["prior_status"], "ready")
+            self.assertEqual(material_by_category["forest"]["prior_status"], "ready")
+            self.assertEqual(material_by_category["talus_rock"]["prior_status"], "explicit_unknown_missing_context")
+            self.assertEqual(material_by_category["unknown"]["prior_status"], "explicit_unknown")
+            self.assertFalse(material_prior["claim_boundaries"]["calibrated_friction_or_restitution"])
+            self.assertFalse(material_prior["claim_boundaries"]["ramms_parameter_transfer"])
+            self.assertFalse(material_prior["claim_boundaries"]["operational_terrain_material_claim"])
             self.assertCountEqual(
                 report["context_preprocessing_report"]["missing_optional_context_categories"],
                 ["barrier_inventory", "release_observation_evidence"],
@@ -351,9 +368,49 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
             self.assertIn("swissbuildings3d_context", " ".join(report["context_preprocessing_report"]["blocked_reason"].split()))
             self.assertIn("swissbuildings3d_context", " ".join(report["context_preprocessing_report"]["missing_required_context_categories"]))
             self.assertEqual(report["context_provenance"]["classification"], "missing")
+            self.assertEqual(report["material_prior_manifest"]["material_prior_status"], "partial_with_explicit_unknown")
+            self.assertTrue(report["material_prior_manifest"]["unknown_category_explicit"])
+            material_by_category = {
+                entry["material_category"]: entry
+                for entry in report["material_prior_manifest"]["material_prior_categories"]
+            }
+            self.assertEqual(material_by_category["unknown"]["prior_status"], "explicit_unknown")
             self.assertTrue((prepared_root / "qa" / "terrain_qa_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_availability_summary.json").exists())
             self.assertTrue((prepared_root / "qa" / "context_preprocessing_summary.json").exists())
+            self.assertTrue((prepared_root / "qa" / "material_prior_manifest.json").exists())
+
+    def test_material_prior_manifest_keeps_missing_context_unknown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root, fixture_sized_extent=True)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=PREPARED_FIXTURE_ROOT,
+            )
+            prepared_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/prepared_input"
+
+            report = helper.build_prepared_input_report(
+                repo_root=repo_root,
+                site_config=config_path,
+                prepared_input_root=prepared_root,
+            )
+
+            material_by_category = {
+                entry["material_category"]: entry
+                for entry in report["material_prior_manifest"]["material_prior_categories"]
+            }
+            self.assertEqual(report["prepared_input_status"], "partial_context")
+            self.assertEqual(report["material_prior_manifest"]["material_prior_status"], "partial_with_explicit_unknown")
+            self.assertEqual(material_by_category["road"]["prior_status"], "explicit_unknown_missing_context")
+            self.assertIn("swisstlm3d_context", material_by_category["road"]["missing_source_categories"])
+            self.assertEqual(material_by_category["water_swamp"]["prior_status"], "explicit_unknown_missing_context")
+            self.assertEqual(material_by_category["forest"]["prior_status"], "explicit_unknown_missing_context")
+            self.assertEqual(material_by_category["talus_rock"]["prior_status"], "explicit_unknown_missing_context")
+            self.assertEqual(material_by_category["unknown"]["prior_status"], "explicit_unknown")
+            self.assertTrue(report["material_prior_manifest"]["unknown_category_explicit"])
+            self.assertTrue((prepared_root / "qa" / "material_prior_manifest.json").exists())
 
     def test_prepared_input_builder_blocks_on_missing_terrain(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

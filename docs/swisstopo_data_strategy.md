@@ -143,6 +143,14 @@ It now exposes an explicit acquisition front door with `--mode dry-run`,
 `--mode local-copy --apply`, and `--mode download --download` so a caller must
 opt in before any local copy or network fetch happens.
 
+The AOI prepared-input helper derives a deterministic material-prior manifest
+from staged public context metadata. It carries road and water/swamp priors
+from swissTLM3D context, forest priors from swissSURFACE3D raster/point
+context, talus/rock priors only when public geology context is staged, and an
+explicit unknown category for everything missing or not source-backed. The
+manifest is provenance for scenario metadata and GIS review only; it does not
+transfer calibrated terrain parameters or operational material claims.
+
 ## Minimal Ingestion Design
 
 The first ingestion layer should not introduce heavy GIS dependencies into the

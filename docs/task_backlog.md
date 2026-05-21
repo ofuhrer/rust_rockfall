@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-417: Derive Public-Context Ground Material Prior Layers
-
-Goal: Generate deterministic, provenance-tagged ground material prior layers from available public context products for use in scenario metadata and GIS review.
-
-Capability gap reduced: Terrain/context semantics between raw swisstopo inputs and model scenario assumptions.
-
-Why this outranks alternatives: RAMMS highlights terrain category selection as a dominant modeling choice, while the current workflow still treats many context inputs as staging evidence rather than scenario-relevant priors.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-
-Deliverables:
-
-- A deterministic material-prior manifest or raster/vector layer for categories such as road, water/swamp, forest, talus/rock, and unknown.
-- Provenance fields linking each category to source public products and fallback rules.
-- Tests or fixture smoke checks proving unknown/missing context remains explicit rather than silently inferred.
-
-Definition of done:
-
-- The AOI workflow can carry a material-prior layer into review/scenario metadata without calibrated friction, restitution, or operational terrain-parameter claims.
-
-Boundaries: No calibration, no physics changes, no RAMMS parameter transfer, no operational terrain-material claim.
-
 ### TB-418: Add Forest Context Intake And Realization Planning
 
 Goal: Add an optional forest-context intake and deterministic realization plan so forest presence, missing DBH/density evidence, and scenario variants are explicit.
