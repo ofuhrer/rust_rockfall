@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-444: Rank Next Balfrin Probe Candidates From Measured Bottlenecks
-
-Goal: Generate a compact, deterministic next-probe ranking from the latest measured and failed-closed Balfrin evidence.
-
-Capability gap reduced: Ambiguity about whether to retry regional split, batch scenarios, optimize reducer pressure, or collect more local evidence next.
-
-Why this outranks alternatives: The backlog should follow measured blockers rather than accumulating unrelated wrappers.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_regional_split_probe_gate_tb428.md`
-- `docs/balfrin_multi_zone_hazard_run_tb407.md`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A deterministic ranking of the next bounded Balfrin probe candidates with blocker, expected evidence gain, and required pre-submit gates.
-- Tests or fixture assertions for the ranking logic.
-- Documentation update only if it replaces stale next-action wording.
-
-Definition of done:
-
-- The next live Balfrin action is ranked from current evidence and points to one concrete executable task, not a generic scale-up request.
-
-Boundaries: Ranking only unless another task authorizes submission; no scale-up, distributed execution, or operational claim.
-
 ### TB-445: Refresh Management Feasibility Summary After Regional And AOI Updates
 
 Goal: Update the management-facing feasibility summary after TB-431 through TB-444 clarify regional split, AOI, candidate, scenario, and QGIS readiness.

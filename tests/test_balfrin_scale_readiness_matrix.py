@@ -29,7 +29,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-432 failed closed before sbatch on regional split remote checkout hygiene", report["summary"])
-        self.assertIn("management-AOI Balfrin decision failed closed before sbatch", report["summary"])
+        self.assertIn("ranked next probe ladder", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
             [
@@ -58,6 +58,17 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             report["next_recommended_scaling_task"],
             "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
         )
+        self.assertEqual(len(report["next_probe_ranking"]), 4)
+        self.assertEqual(report["next_probe_ranking"][0]["action_id"], "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe")
+        self.assertEqual(report["next_probe_ranking"][0]["probe_scope"], "live_postproc")
+        self.assertEqual(report["next_probe_ranking"][0]["blocker"], "tb432_failed_closed_remote_checkout_hygiene_cleared_but_fresh_regenerated_package_required")
+        self.assertIn("fresh_passing_access_preflight", report["next_probe_ranking"][0]["required_pre_submit_gates"])
+        self.assertEqual(report["next_probe_ranking"][1]["action_id"], "measure_scenario_storage_output_tier_pressure")
+        self.assertIn("scenario_cardinality_and_manifest_size", report["next_probe_ranking"][1]["blocker"])
+        self.assertEqual(report["next_probe_ranking"][2]["action_id"], "summarize_multi_zone_reducer_pressure")
+        self.assertIn("reducer_pressure_and_replay_metadata_growth", report["next_probe_ranking"][2]["blocker"])
+        self.assertEqual(report["next_probe_ranking"][3]["probe_scope"], "scratch_local")
+        self.assertEqual(report["next_probe_ranking"][3]["action_id"], "summarize_balfrin_target_area_candidate_stability")
         self.assertEqual(
             report["regional_split_status"]["classification"],
             "failed_closed_remote_hygiene_preflight",
@@ -71,14 +82,13 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             [item["action_id"] for item in report["next_backlog_recommendations"]],
             [
                 "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
-                "optimize_only_from_new_measured_bottleneck",
-                "repair_four_zone_handoff_and_rerun_gate",
-                "resolve_two_zone_output_profile_blocker",
-                "stage_real_public_context_for_user_aoi",
-                "defer_physical_frequency_and_operational_claims",
+                "measure_scenario_storage_output_tier_pressure",
+                "summarize_multi_zone_reducer_pressure",
+                "summarize_balfrin_target_area_candidate_stability",
             ],
         )
         self.assertEqual(report["next_backlog_recommendations"][0]["category"], "evidence_collection")
+        self.assertEqual(report["next_backlog_recommendations"][1]["status"], "deferred_until_higher_ranked_probe_executes")
         self.assertEqual(
             report["evidence_label_order"],
             [

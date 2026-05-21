@@ -952,6 +952,113 @@ def _projection_row() -> dict[str, Any]:
     }
 
 
+def _next_probe_ranking() -> list[dict[str, Any]]:
+    return [
+        {
+            "rank": 1,
+            "candidate_id": "regional_split_postproc_retry",
+            "action_id": "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "category": "evidence_collection",
+            "probe_scope": "live_postproc",
+            "blocker": "tb432_failed_closed_remote_checkout_hygiene_cleared_but_fresh_regenerated_package_required",
+            "expected_evidence_gain": (
+                "one bounded regional split run root with measured validation/hazard output and live postproc metrics"
+            ),
+            "required_pre_submit_gates": [
+                "fresh_passing_access_preflight",
+                "regenerated_ready_package",
+                "regional_split_merge_contract_ready",
+                "output_budget_accepted",
+                "reducer_budget_ready",
+                "submit_contract_ready",
+            ],
+            "evidence_basis": [
+                "tb432_failed_closed_remote_hygiene_preflight",
+                "tb407_measured_smallest_multi_zone_probe",
+            ],
+            "summary": (
+                "Retry the bounded regional split postproc branch first because the transient hygiene blocker is now cleared "
+                "and the current evidence gap is a fresh measured run root, not another generic scale-up wrapper."
+            ),
+        },
+        {
+            "rank": 2,
+            "candidate_id": "scenario_batching_pressure_probe",
+            "action_id": "measure_scenario_storage_output_tier_pressure",
+            "category": "scenario_cardinality",
+            "probe_scope": "scratch_local_and_fixture_backed",
+            "blocker": "scenario_cardinality_and_manifest_size_are_the_first_planning_bottlenecks",
+            "expected_evidence_gain": (
+                "measured scenario-table growth, CSV/manifest bytes, and batch-count pressure for compact candidate batches"
+            ),
+            "required_pre_submit_gates": [
+                "deterministic_candidate_bundle",
+                "compact_scenario_table",
+                "fixture_or_scratch_local_measurement_root",
+                "no_live_balfrin_submission",
+            ],
+            "evidence_basis": [
+                "management_aoi_multi_zone_run_failed_closed",
+                "swiss_scale_projection_scenario_cardinality_rank",
+            ],
+            "summary": (
+                "Batch scenarios next if the regional split retry is not the immediate target, because scenario cardinality "
+                "and manifest size are the first planning bottlenecks in the projection surface."
+            ),
+        },
+        {
+            "rank": 3,
+            "candidate_id": "reducer_pressure_optimization_probe",
+            "action_id": "summarize_multi_zone_reducer_pressure",
+            "category": "reducer_pressure",
+            "probe_scope": "scratch_local_and_fixture_backed",
+            "blocker": "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
+            "expected_evidence_gain": (
+                "compact reducer manifest pressure and explicit replay-critical family budgets for larger multi-zone batches"
+            ),
+            "required_pre_submit_gates": [
+                "measured_reducer_pressure_baseline",
+                "replay_critical_families_retained",
+                "merge_order_deterministic",
+                "no_live_submission",
+            ],
+            "evidence_basis": [
+                "tb312_four_zone_postproc_probe",
+                "multi_zone_reducer_pressure_probe",
+            ],
+            "summary": (
+                "Optimize reducer pressure after scenario batching because the measured multi-zone reducer helper already "
+                "shows manifest and replay metadata pressure as the next visible bottleneck."
+            ),
+        },
+        {
+            "rank": 4,
+            "candidate_id": "local_candidate_evidence_probe",
+            "action_id": "summarize_balfrin_target_area_candidate_stability",
+            "category": "local_evidence",
+            "probe_scope": "scratch_local",
+            "blocker": "no_larger_measured_multi_zone_hazard_execution_exists_yet",
+            "expected_evidence_gain": (
+                "scratch-local candidate stability and accumulation-pressure evidence to refine the next live probe"
+            ),
+            "required_pre_submit_gates": [
+                "scratch_local_only",
+                "deterministic_inputs",
+                "placeholder_scan_clear",
+                "no_live_submission",
+            ],
+            "evidence_basis": [
+                "tb189_candidate_stability_sweep",
+                "tb181_real_terrain_candidate_sweep",
+            ],
+            "summary": (
+                "Collect more local evidence last because it can refine the next live probe, but it does not outrank a "
+                "live bounded retry or the measured scenario/reducer bottlenecks."
+            ),
+        },
+    ]
+
+
 def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
     decision_report = decision_gate.build_report()
@@ -1000,63 +1107,16 @@ def build_report() -> dict[str, Any]:
         )
     )
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
+    next_probe_ranking = _next_probe_ranking()
     next_backlog_recommendations = [
         {
-            "rank": 1,
-            "action_id": "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
-            "category": "evidence_collection",
-            "status": "recommended_next",
-            "reason": (
-                "TB-432 remains failed-closed/no-submit, but its transient remote-hygiene blocker was cleared after the task; regenerate the ready package with a fresh passing access preflight and retry one bounded regional split postproc probe."
-            ),
-        },
-        {
-            "rank": 2,
-            "action_id": "optimize_only_from_new_measured_bottleneck",
-            "category": "optimization",
-            "status": "defer_until_regional_split_probe_measured_or_failed_closed",
-            "reason": (
-                "TB-407 supplies measured smallest multi-zone evidence, but the newer regional split branch now has a cleared access blocker and should collect its bounded outcome first."
-            ),
-        },
-        {
-            "rank": 3,
-            "action_id": "repair_four_zone_handoff_and_rerun_gate",
-            "category": "execution_unblock",
-            "status": "defer_until_hypothesis_measured",
-            "reason": (
-                "The four-zone handoff and live-submit gate remain useful follow-up evidence, but they should stay behind the new measured multi-zone bottleneck."
-            ),
-        },
-        {
-            "rank": 4,
-            "action_id": "resolve_two_zone_output_profile_blocker",
-            "category": "execution_unblock",
-            "status": "ready_for_operator_choice",
-            "reason": (
-                "The current two-zone branch is blocked at output_profile_status=blocked_output_profile; repair that exact "
-                "pre-submit classification before any new live two-zone attempt."
-            ),
-        },
-        {
-            "rank": 5,
-            "action_id": "stage_real_public_context_for_user_aoi",
-            "category": "acquisition",
-            "status": "ready_for_operator_choice",
-            "reason": (
-                "The AOI review surface is fixture-backed and usable, but real AOI progress still depends on staged public geodata "
-                "through the dry-run/local-copy/download-gated acquisition driver."
-            ),
-        },
-        {
-            "rank": 6,
-            "action_id": "defer_physical_frequency_and_operational_claims",
-            "category": "explicit_deferral",
-            "status": "deferred_boundary",
-            "reason": (
-                "Observed evidence, calibration, source-frequency semantics, exposure, vulnerability, and operational approval remain absent."
-            ),
-        },
+            "rank": item["rank"],
+            "action_id": item["action_id"],
+            "category": item["category"],
+            "status": "recommended_next" if item["rank"] == 1 else "deferred_until_higher_ranked_probe_executes",
+            "reason": item["summary"],
+        }
+        for item in next_probe_ranking
     ]
     return {
         "schema_version": SCHEMA_VERSION,
@@ -1069,7 +1129,8 @@ def build_report() -> dict[str, Any]:
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-432 failed closed before sbatch on regional split remote checkout hygiene and remains no-submit evidence, while the transient hygiene blocker was later cleared for a fresh bounded retry, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
-            "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, and the larger AOI projection remains a no-go."
+            "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
+            "the ranked next probe ladder now places the regional split retry first, then scenario batching, reducer-pressure optimization, and local evidence collection, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
         "evidence_label_definitions": {
@@ -1128,8 +1189,9 @@ def build_report() -> dict[str, Any]:
             "recommended_next_action_status": recommended.get("status"),
             "blocked_reason": decision_report.get("blocked_reason"),
         },
+        "next_probe_ranking": next_probe_ranking,
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
-        "next_recommended_scaling_task_reason": "TB-432 remains failed-closed/no-submit, but the post-task cleanup cleared the remote hygiene blocker; the next scale action is one bounded regional split evidence-collection retry with a freshly regenerated ready package and passing access preflight.",
+        "next_recommended_scaling_task_reason": "TB-432 remains failed-closed/no-submit, but the post-task cleanup cleared the remote hygiene blocker; the ranked next scale action is one bounded regional split evidence-collection retry with a freshly regenerated ready package and passing access preflight.",
         "regional_split_status": {
             "classification": regional_split_row.get("classification"),
             "evidence_label": regional_split_row.get("evidence_label"),
@@ -1159,10 +1221,14 @@ def build_report() -> dict[str, Any]:
             "scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py",
             "scripts/summarize_balfrin_next_live_run_decision_gate.py",
             "scripts/estimate_swiss_wide_execution_envelope.py",
+            "scripts/measure_scenario_storage_output_tier_pressure.py",
+            "scripts/summarize_multi_zone_reducer_pressure.py",
             "docs/balfrin_postproc_microbenchmark_tb305.md",
             "docs/balfrin_two_zone_hazard_run_tb368.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
             "docs/balfrin_regional_split_probe_gate_tb432.md",
+            "docs/swiss_scale_feasibility_projection.md",
+            "docs/multi_zone_reducer_pressure_probe.md",
             "scripts/execute_management_aoi_balfrin_run.py",
         ],
     }
@@ -1177,19 +1243,37 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"next_evidence_field: {report['next_evidence_field']}",
         f"blocked_reason: {report['blocked_reason']}",
         f"next_recommended_scaling_task: {report['next_recommended_scaling_task']}",
-        f"measured_tiers: {', '.join(report.get('measured_tiers', []))}",
-        f"blocked_tiers: {', '.join(report.get('blocked_tiers', []))}",
-        f"blocked_pre_submit_tiers: {', '.join(report.get('blocked_pre_submit_tiers', []))}",
-        f"postproc_microbenchmark_tiers: {', '.join(report.get('postproc_microbenchmark_tiers', []))}",
-        f"failed_closed_tiers: {', '.join(report.get('failed_closed_tiers', []))}",
-        f"fixture_backed_tiers: {', '.join(report.get('fixture_backed_tiers', []))}",
-        f"scratch_local_tiers: {', '.join(report.get('scratch_local_tiers', []))}",
-        f"projection_only_tiers: {', '.join(report.get('projection_only_tiers', []))}",
-        f"no_go_tiers: {', '.join(report.get('no_go_tiers', []))}",
-        f"live_submission_authorized: {report['live_run_authorization_status']['live_submission_authorized']}",
-        "",
-        "tiers:",
+        "next_probe_ranking:",
     ]
+    for row in report.get("next_probe_ranking", []):
+        lines.extend(
+            [
+                f"- rank {row.get('rank', '?')}: {row.get('action_id', 'unknown')}",
+                f"  category: {row.get('category')}",
+                f"  blocker: {row.get('blocker')}",
+                f"  expected_evidence_gain: {row.get('expected_evidence_gain')}",
+                f"  required_pre_submit_gates: {', '.join(row.get('required_pre_submit_gates', []))}",
+                f"  probe_scope: {row.get('probe_scope')}",
+            ]
+        )
+        if row.get("summary"):
+            lines.append(f"  summary: {row.get('summary')}")
+    lines.extend(
+        [
+            f"measured_tiers: {', '.join(report.get('measured_tiers', []))}",
+            f"blocked_tiers: {', '.join(report.get('blocked_tiers', []))}",
+            f"blocked_pre_submit_tiers: {', '.join(report.get('blocked_pre_submit_tiers', []))}",
+            f"postproc_microbenchmark_tiers: {', '.join(report.get('postproc_microbenchmark_tiers', []))}",
+            f"failed_closed_tiers: {', '.join(report.get('failed_closed_tiers', []))}",
+            f"fixture_backed_tiers: {', '.join(report.get('fixture_backed_tiers', []))}",
+            f"scratch_local_tiers: {', '.join(report.get('scratch_local_tiers', []))}",
+            f"projection_only_tiers: {', '.join(report.get('projection_only_tiers', []))}",
+            f"no_go_tiers: {', '.join(report.get('no_go_tiers', []))}",
+            f"live_submission_authorized: {report['live_run_authorization_status']['live_submission_authorized']}",
+            "",
+            "tiers:",
+        ]
+    )
     for row in report.get("tiers", []):
         lines.extend(
             [
