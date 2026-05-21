@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -231,6 +232,31 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_total_bytes"], 0)
+        self.assertEqual(report["scenario_generation_pressure"]["candidate_expansion_counts"], [1, 2, 4, 8])
+        self.assertEqual(
+            [row["candidate_count"] for row in report["scenario_generation_pressure"]["candidate_expansion_ladder"]],
+            [1, 2, 4, 8],
+        )
+        self.assertEqual(
+            [row["scenario_row_count"] for row in report["scenario_generation_pressure"]["candidate_expansion_ladder"]],
+            [3, 6, 12, 24],
+        )
+        self.assertTrue(
+            all(
+                row["scenario_table_csv_bytes"] > 0
+                and row["scenario_table_manifest_bytes"] > 0
+                and row["scenario_table_total_bytes"] >= row["scenario_table_csv_bytes"] + row["scenario_table_manifest_bytes"]
+                and row["output_pressure_labels"]["target"] in {"local_smoke", "balfrin_postproc", "blocked"}
+                for row in report["scenario_generation_pressure"]["candidate_expansion_ladder"]
+            )
+        )
+        self.assertEqual(report["scenario_generation_pressure"]["candidate_expansion_ladder_summary"]["smallest_useful_candidate_count"], 1)
+        self.assertEqual(report["scenario_generation_pressure"]["candidate_expansion_threshold"]["status"], "blocked_output_budget_exceeded")
+        self.assertEqual(report["scenario_generation_pressure"]["candidate_expansion_threshold"]["threshold_candidate_count"], 4)
+        self.assertEqual(
+            report["scenario_generation_pressure"]["candidate_expansion_threshold"]["search_counts"],
+            [1, 2, 4],
+        )
         self.assertEqual(report["first_blocker"]["status"], "candidates_present")
         self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
         self.assertEqual(report["scenario_table_generation"]["accepted_candidate_count"], 1)
@@ -253,6 +279,91 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["conditional_weight"], 3.0)
         self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["annual_frequency_per_year"], "")
         self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["scenario_probability"], "")
+
+    def test_candidate_expansion_threshold_fail_closes_when_budget_search_overruns(self) -> None:
+        candidate_review = {
+            "candidate_release_zone_ids": ["candidate_a"],
+            "candidate_review_rows": [
+                {
+                    "candidate_release_zone_id": "candidate_a",
+                    "accepted": True,
+                    "rejected": False,
+                    "review_decision": "accepted",
+                    "candidate_sensitivity_label": "workflow_generated",
+                    "provenance_label": "workflow_generated",
+                    "release_cell_count": 1,
+                    "release_cell_ids": "candidate_a__cell_000",
+                    "component_bbox_lv95_m": {
+                        "xmin": 2600000.0,
+                        "ymin": 1200000.0,
+                        "xmax": 2600002.0,
+                        "ymax": 1200002.0,
+                    },
+                }
+            ],
+            "review_application": {
+                "validation_status": "validated",
+                "accepted_candidate_ids": ["candidate_a"],
+            },
+            "review_summary": {
+                "candidate_count": 1,
+                "review_row_count": 1,
+            },
+        }
+        budget_summary = {
+            "current_pressure": {},
+            "output_budget_gate": {
+                "validation_output_budget": {"file_count": 1, "bytes": 1},
+                "hazard_output_budget": {"file_count": 1, "bytes": 1},
+            },
+        }
+        output_profile_policy = MODULE.AOI_PREVIEW.default_output_profile_policy()
+
+        with mock.patch.object(
+            MODULE.AOI_PREVIEW,
+            "estimate_output_pressure",
+            return_value={
+                "projected_files": {"low": 1, "nominal": 1, "high": 1},
+                "projected_bytes": {"low": 1, "nominal": 1, "high": 1},
+                "estimated_runtime_seconds": {"low": 0.1, "nominal": 0.1, "high": 0.1},
+            },
+        ), mock.patch.object(MODULE.AOI_PREVIEW, "recommend_execution_target") as recommend:
+            recommend.side_effect = [
+                {
+                    "target_status": "local_smoke",
+                    "target": "local_smoke",
+                    "blocked_reason": "",
+                    "local_assessment": {"status": "safe"},
+                    "balfrin_assessment": {"status": "not_required"},
+                },
+                {
+                    "target_status": "local_smoke",
+                    "target": "local_smoke",
+                    "blocked_reason": "",
+                    "local_assessment": {"status": "safe"},
+                    "balfrin_assessment": {"status": "not_required"},
+                },
+                {
+                    "target_status": MODULE.AOI_PREVIEW.BLOCKED_TARGET,
+                    "target": MODULE.AOI_PREVIEW.BLOCKED_TARGET,
+                    "blocked_reason": "projected files or bytes exceed the preview budget ceiling",
+                    "local_assessment": {"status": "output_budget_exceeded"},
+                    "balfrin_assessment": {"status": "output_budget_exceeded"},
+                },
+            ]
+            threshold = MODULE.build_candidate_expansion_threshold(
+                candidate_review=candidate_review,
+                policy=MODULE.load_yaml(POLICY_PATH),
+                trajectory_count=1,
+                output_profile_policy=output_profile_policy,
+                budget_summary=budget_summary,
+            )
+
+        self.assertEqual(threshold["status"], "blocked_output_budget_exceeded")
+        self.assertEqual(threshold["blocking_label"], MODULE.AOI_PREVIEW.BLOCKED_OUTPUT_BUDGET_EXCEEDED)
+        self.assertEqual(threshold["threshold_candidate_count"], 4)
+        self.assertEqual(threshold["last_ready_candidate_count"], 2)
+        self.assertEqual(threshold["search_counts"], [1, 2, 4])
 
 
 if __name__ == "__main__":

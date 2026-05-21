@@ -39,44 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-411: Stress Scenario Cardinality For Candidate Expansion
-
-Goal: Estimate scenario-row, manifest, and output-pressure growth if the
-adjacent-candidate path is expanded from one extra candidate to a small
-multi-candidate set.
-
-Capability gap reduced: The next scale question is not only whether one
-additional candidate runs, but whether candidate-driven scenario growth remains
-bounded.
-
-Why this outranks alternatives: Scenario cardinality can become the first
-practical bottleneck before trajectory runtime or GIS export does.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_aoi_scenario_preview.py`
-
-Deliverables:
-
-- A 1/2/4/8-candidate scenario-cardinality ladder using deterministic candidate
-  rows or fixture-backed equivalents.
-- Estimated manifest bytes, scenario-table bytes, and output-pressure labels.
-- A hard fail-closed threshold for over-budget candidate expansion.
-
-Definition of done:
-
-- The scenario generator and preview helper report the smallest useful
-  candidate expansion that remains within current reduced-output and
-  postproc-boundary assumptions.
-
-Boundaries: No large production ensemble, no annual/source-frequency
-semantics, no physical-probability claim, no Balfrin submission, and no
-operational claim.
-
 ### TB-412: Collapse Stale Management-AOI Blocker Surfaces
 
 Goal: Remove or update stale references that still imply the active blocker is

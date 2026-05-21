@@ -18,6 +18,7 @@ import importlib.util
 import json
 import sys
 import time
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +60,12 @@ def _load_module(module_name: str, filename: str):
 DIAGNOSTIC = _load_module("management_aoi_scenario_pressure_deferral_diagnostic", "diagnose_release_candidate_zero_result.py")
 REVIEW_PLANNER = _load_module("management_aoi_scenario_pressure_review_planner", "plan_terrain_release_zone_candidates.py")
 SCENARIO_FREEZER = _load_module("management_aoi_scenario_pressure_freezer", "generate_candidate_source_zone_scenarios.py")
+AOI_PREVIEW = _load_module("management_aoi_scenario_pressure_aoi_preview", "preview_aoi_scenario_cost_estimate.py")
+OUTPUT_BUDGET = _load_module("management_aoi_scenario_pressure_output_budget", "summarize_bounded_validation_output_profile.py")
+
+
+CANDIDATE_EXPANSION_COUNTS = (1, 2, 4, 8)
+FAIL_CLOSED_SEARCH_LIMIT = 4096
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -139,6 +146,7 @@ def build_report(
     bundle_root = candidate_metrics_manifest_path.parent
     bundle_measurements = measure_bundle_pressure(bundle_root)
     generated_table_report: dict[str, Any] | None = None
+    candidate_expansion_report: dict[str, Any] | None = None
 
     if candidate_count <= 0:
         deferral_report = load_management_aoi_deferral_report()
@@ -255,6 +263,15 @@ def build_report(
             },
         )
 
+    candidate_expansion_report = build_candidate_expansion_pressure_report(
+        candidate_review_manifest_path=candidate_review_manifest_path,
+        candidate_review=candidate_review,
+        policy=policy,
+        trajectory_count=int((generated_table_report.get("scenario_table_generation") or {}).get("trajectory_count") or 60),
+        output_root=output_root,
+        scenario_output_root=scenario_output_root,
+    )
+
     scenario_table_generation = dict(generated_table_report.get("scenario_table_generation") or {})
     scenario_table_bundle_measurements = dict(scenario_table_generation.get("bundle_measurements") or {})
     scenario_table_manifest = dict(scenario_table_generation.get("scenario_table_manifest") or {})
@@ -335,6 +352,10 @@ def build_report(
                 "candidate_bundle_manifest_bytes": bundle_measurements["manifest_bytes"],
                 "candidate_bundle_total_bytes": bundle_measurements["total_bytes"],
             },
+            "candidate_expansion_counts": list(CANDIDATE_EXPANSION_COUNTS),
+            "candidate_expansion_ladder": candidate_expansion_report.get("candidate_expansion_ladder", []),
+            "candidate_expansion_ladder_summary": candidate_expansion_report.get("candidate_expansion_ladder_summary", {}),
+            "candidate_expansion_threshold": candidate_expansion_report.get("candidate_expansion_threshold", {}),
         },
         "command_plan_implications": [
             {
@@ -345,7 +366,11 @@ def build_report(
             {
                 "command_id": "second_site_release_plan_execution_template",
                 "status": "ready",
-                "implication": f"prepared-pilot compilation can proceed against the generated {scenario_row_count}-row scenario table",
+                "implication": (
+                    f"prepared-pilot compilation can proceed against the generated {scenario_row_count}-row scenario table; "
+                    f"the smallest useful candidate expansion stays within the current reduced-output assumptions at "
+                    f"{candidate_expansion_report.get('candidate_expansion_ladder_summary', {}).get('smallest_useful_candidate_count', 0)} candidates"
+                ),
             },
             {
                 "command_id": "second_site_aoi_to_prepared_pilot_dry_run",
@@ -538,6 +563,7 @@ def build_generated_scenario_table_report(
             "review_application_output_root": display_path(review_application_root),
             "review_application_manifest": review_application["outputs"]["manifest"],
             "scenario_table_output_root": display_path(scenario_table_output_root),
+            "trajectory_count": 60,
             "scenario_table_csv": freezer_report["output_paths"]["scenario_table"],
             "scenario_table_manifest": freezer_report["output_paths"]["manifest"],
             "scenario_row_count": int(freezer_report.get("scenario_row_count") or 0),
@@ -559,6 +585,267 @@ def build_generated_scenario_table_report(
         },
     }
     return scenario_generation
+
+
+def build_candidate_expansion_pressure_report(
+    *,
+    candidate_review_manifest_path: Path,
+    candidate_review: dict[str, Any],
+    policy: dict[str, Any],
+    trajectory_count: int,
+    output_root: Path,
+    scenario_output_root: Path,
+) -> dict[str, Any]:
+    reviewed_ids = list(candidate_review.get("candidate_release_zone_ids") or [])
+    review_rows = [row for row in (candidate_review.get("candidate_review_rows") or []) if isinstance(row, dict)]
+    if not review_rows and not reviewed_ids:
+        return {
+            "candidate_expansion_ladder": [],
+            "candidate_expansion_ladder_summary": {
+                "smallest_useful_candidate_count": 0,
+                "smallest_useful_output_pressure_label": "",
+                "first_blocked_candidate_count": 0,
+                "first_blocked_output_pressure_label": "",
+                "candidate_expansion_counts": list(CANDIDATE_EXPANSION_COUNTS),
+            },
+            "candidate_expansion_threshold": {
+                "status": "blocked_missing_inputs",
+                "blocked_reason": "candidate review manifest does not contain any candidate rows",
+                "blocking_label": "blocked_missing_inputs",
+                "threshold_candidate_count": 0,
+            },
+        }
+
+    output_profile_policy = AOI_PREVIEW.default_output_profile_policy()
+    budget_summary = OUTPUT_BUDGET.build_summary()
+    block_family_count = max(1, len(summarize_policy_block_families(policy)))
+    ladder: list[dict[str, Any]] = []
+    smallest_useful: dict[str, Any] | None = None
+    first_blocked: dict[str, Any] | None = None
+
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="management_aoi_candidate_expansion_") as tmpdir:
+        tmp_root = Path(tmpdir)
+        for candidate_count in CANDIDATE_EXPANSION_COUNTS:
+            synthetic_package = build_synthetic_review_package_for_candidate_count(
+                candidate_review=candidate_review,
+                candidate_count=candidate_count,
+            )
+            synthetic_package_path = tmp_root / f"candidate_expansion_{candidate_count:02d}.yaml"
+            synthetic_package_path.write_text(yaml.safe_dump(synthetic_package, sort_keys=False), encoding="utf-8")
+            selected_ids = list((synthetic_package.get("review_application") or {}).get("accepted_candidate_ids") or [])
+            if not selected_ids:
+                continue
+
+            freezer_report = SCENARIO_FREEZER.build_freezer_report(
+                review_package_path=synthetic_package_path,
+                accepted_candidate_ids=selected_ids,
+                output_root=tmp_root / f"freeze_{candidate_count:02d}",
+                trajectory_count=trajectory_count,
+                seed=SCENARIO_FREEZER.DEFAULT_FREEZER_SEED + candidate_count,
+            )
+            output_paths = {
+                name: Path(path)
+                for name, path in (freezer_report.get("output_paths") or {}).items()
+            }
+            csv_path = output_paths.get("scenario_table")
+            manifest_path = output_paths.get("manifest")
+            if csv_path is None or manifest_path is None:
+                continue
+
+            csv_bytes = csv_path.stat().st_size
+            manifest_bytes = manifest_path.stat().st_size
+            total_bytes = sum(path.stat().st_size for path in output_paths.values())
+            row_units = max(1, int(freezer_report.get("accepted_candidate_count") or 0)) * max(1, trajectory_count) * max(1, block_family_count)
+            pressure = AOI_PREVIEW.estimate_output_pressure(row_units)
+            execution_target = AOI_PREVIEW.recommend_execution_target(
+                profile_policy=output_profile_policy,
+                projected_files=pressure["projected_files"],
+                projected_bytes=pressure["projected_bytes"],
+                budget_summary=budget_summary,
+            )
+            output_pressure_labels = {
+                "target": execution_target["target"],
+                "target_status": execution_target["target_status"],
+                "local": execution_target["local_assessment"]["status"],
+                "balfrin": execution_target["balfrin_assessment"]["status"],
+                "budget_exceeded": execution_target["target_status"] == AOI_PREVIEW.BLOCKED_TARGET,
+            }
+            row = {
+                "candidate_count": candidate_count,
+                "candidate_release_zone_record_count": int(freezer_report.get("accepted_candidate_count") or 0),
+                "candidate_release_zone_ids": selected_ids,
+                "scenario_row_count": int(freezer_report.get("scenario_row_count") or 0),
+                "scenario_table_csv_bytes": csv_bytes,
+                "scenario_table_manifest_bytes": manifest_bytes,
+                "scenario_table_total_bytes": total_bytes,
+                "scenario_table_file_count": len(output_paths),
+                "output_pressure_labels": output_pressure_labels,
+                "output_pressure_estimate": {
+                    "projected_files": pressure["projected_files"],
+                    "projected_bytes": pressure["projected_bytes"],
+                    "estimated_runtime_seconds": pressure["estimated_runtime_seconds"],
+                },
+                "execution_target": execution_target,
+                "output_budget_assessment": {
+                    "local": execution_target["local_assessment"],
+                    "balfrin": execution_target["balfrin_assessment"],
+                    "budget_exceeded": execution_target["target_status"] == AOI_PREVIEW.BLOCKED_TARGET,
+                },
+                "scenario_cardinality": {
+                    "source_zone_count": int(freezer_report.get("accepted_candidate_count") or 0),
+                    "scenario_family_count": block_family_count,
+                    "row_count": int(freezer_report.get("scenario_row_count") or 0),
+                },
+            }
+            ladder.append(row)
+            if smallest_useful is None and not row["output_budget_assessment"]["budget_exceeded"]:
+                smallest_useful = row
+            if first_blocked is None and row["output_budget_assessment"]["budget_exceeded"]:
+                first_blocked = row
+
+    threshold = build_candidate_expansion_threshold(
+        candidate_review=candidate_review,
+        policy=policy,
+        trajectory_count=trajectory_count,
+        output_profile_policy=output_profile_policy,
+        budget_summary=budget_summary,
+    )
+    ladder_summary = {
+        "candidate_expansion_counts": list(CANDIDATE_EXPANSION_COUNTS),
+        "smallest_useful_candidate_count": int((smallest_useful or {}).get("candidate_count") or 0),
+        "smallest_useful_output_pressure_label": text_value((smallest_useful or {}).get("output_pressure_labels", {}).get("target")),
+        "first_blocked_candidate_count": int((first_blocked or {}).get("candidate_count") or 0),
+        "first_blocked_output_pressure_label": text_value((first_blocked or {}).get("output_pressure_labels", {}).get("target")),
+    }
+    return {
+        "candidate_expansion_ladder": ladder,
+        "candidate_expansion_ladder_summary": ladder_summary,
+        "candidate_expansion_threshold": threshold,
+    }
+
+
+def build_candidate_expansion_threshold(
+    *,
+    candidate_review: dict[str, Any],
+    policy: dict[str, Any],
+    trajectory_count: int,
+    output_profile_policy: dict[str, Any],
+    budget_summary: dict[str, Any],
+) -> dict[str, Any]:
+    review_rows = [row for row in (candidate_review.get("candidate_review_rows") or []) if isinstance(row, dict)]
+    if not review_rows:
+        return {
+            "status": "blocked_missing_inputs",
+            "blocked_reason": "candidate review manifest does not contain any candidate rows",
+            "blocking_label": "blocked_missing_inputs",
+            "threshold_candidate_count": 0,
+            "last_ready_candidate_count": 0,
+            "search_counts": [],
+        }
+
+    block_family_count = max(1, len(summarize_policy_block_families(policy)))
+    search_counts: list[int] = []
+    candidate_count = 1
+    last_ready: dict[str, Any] | None = None
+    while candidate_count <= FAIL_CLOSED_SEARCH_LIMIT:
+        search_counts.append(candidate_count)
+        row_units = max(1, candidate_count) * max(1, trajectory_count) * max(1, block_family_count)
+        pressure = AOI_PREVIEW.estimate_output_pressure(row_units)
+        execution_target = AOI_PREVIEW.recommend_execution_target(
+            profile_policy=output_profile_policy,
+            projected_files=pressure["projected_files"],
+            projected_bytes=pressure["projected_bytes"],
+            budget_summary=budget_summary,
+        )
+        if execution_target["target_status"] == AOI_PREVIEW.BLOCKED_TARGET:
+            return {
+                "status": "blocked_output_budget_exceeded",
+                "blocked_reason": execution_target["blocked_reason"],
+                "blocking_label": AOI_PREVIEW.BLOCKED_OUTPUT_BUDGET_EXCEEDED,
+                "threshold_candidate_count": candidate_count,
+                "last_ready_candidate_count": int((last_ready or {}).get("candidate_count") or 0),
+                "last_ready_output_pressure_label": text_value((last_ready or {}).get("execution_target", {}).get("target")),
+                "search_counts": search_counts,
+            }
+        last_ready = {
+            "candidate_count": candidate_count,
+            "execution_target": execution_target,
+        }
+        candidate_count *= 2
+
+    return {
+        "status": "ready",
+        "blocked_reason": "",
+        "blocking_label": "",
+        "threshold_candidate_count": 0,
+        "last_ready_candidate_count": int((last_ready or {}).get("candidate_count") or 0),
+        "last_ready_output_pressure_label": text_value((last_ready or {}).get("execution_target", {}).get("target")),
+        "search_counts": search_counts,
+    }
+
+
+def build_synthetic_review_package_for_candidate_count(
+    *,
+    candidate_review: dict[str, Any],
+    candidate_count: int,
+) -> dict[str, Any]:
+    if candidate_count < 1:
+        raise ManagementAoiScenarioPressureError("candidate-count must be at least 1")
+
+    review_rows = [row for row in (candidate_review.get("candidate_review_rows") or []) if isinstance(row, dict)]
+    if not review_rows:
+        raise ManagementAoiScenarioPressureError("candidate review manifest does not contain any candidate rows")
+
+    accepted_rows = [row for row in review_rows if bool(row.get("accepted")) or text_value(row.get("review_decision")) == "accepted"]
+    template_rows = accepted_rows or review_rows
+    synthetic_ids: list[str] = []
+    synthetic_rows: list[dict[str, Any]] = []
+    for index in range(candidate_count):
+        template_row = dict(template_rows[index % len(template_rows)])
+        base_id = text_value(template_row.get("candidate_release_zone_id")) or f"candidate_{index + 1:03d}"
+        synthetic_id = base_id if candidate_count == 1 and index == 0 else f"{base_id}__expansion_{index + 1:03d}"
+        synthetic_ids.append(synthetic_id)
+        template_row["candidate_release_zone_id"] = synthetic_id
+        template_row["accepted"] = True
+        template_row["rejected"] = False
+        template_row["review_decision"] = "accepted"
+        template_row["candidate_sensitivity_label"] = text_value(template_row.get("candidate_sensitivity_label")) or "reviewed"
+        template_row["provenance_label"] = text_value(template_row.get("provenance_label")) or "workflow_generated"
+        template_row["release_cell_count"] = int(template_row.get("release_cell_count") or 1)
+        template_row["release_cell_ids"] = text_value(template_row.get("release_cell_ids")) or f"{synthetic_id}__cell_000"
+        bbox = template_row.get("component_bbox_lv95_m")
+        if isinstance(bbox, dict):
+            offset = float(index) * 2.0
+            template_row["component_bbox_lv95_m"] = {
+                **bbox,
+                "xmin": float(bbox.get("xmin", 0.0)) + offset,
+                "ymin": float(bbox.get("ymin", 0.0)) + offset,
+                "xmax": float(bbox.get("xmax", 0.0)) + offset,
+                "ymax": float(bbox.get("ymax", 0.0)) + offset,
+            }
+        synthetic_rows.append(template_row)
+
+    review_application = dict(candidate_review.get("review_application") or {})
+    review_application["validation_status"] = "validated"
+    review_application["accepted_candidate_ids"] = synthetic_ids
+    review_application["accepted_candidate_count"] = len(synthetic_ids)
+    review_application["validated_candidate_count"] = len(synthetic_ids)
+
+    review_summary = dict(candidate_review.get("review_summary") or {})
+    review_summary["candidate_count"] = len(synthetic_ids)
+    review_summary["review_row_count"] = len(synthetic_rows)
+    review_summary["accepted_candidate_count"] = len(synthetic_ids)
+    review_summary["rejected_candidate_count"] = 0
+
+    return {
+        **candidate_review,
+        "review_package_status": "review_applied",
+        "review_application": review_application,
+        "review_summary": review_summary,
+        "candidate_release_zone_ids": synthetic_ids,
+        "candidate_review_rows": synthetic_rows,
+        "candidate_count": len(synthetic_ids),
+    }
 
 
 def load_management_aoi_deferral_report() -> dict[str, Any]:
@@ -676,8 +963,29 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- scenario_table_runtime_seconds: `{report['scenario_generation_pressure'].get('scenario_table_runtime_seconds', 0.0)}`",
         f"- manifest_pressure: `{report['scenario_generation_pressure']['manifest_pressure']['scenario_table_manifest_pressure']}`",
         "",
-        "Policy Block Families",
+        "Candidate Expansion Ladder",
+        f"- candidate_expansion_counts: `{report['scenario_generation_pressure'].get('candidate_expansion_counts', [])}`",
     ]
+    for row in report["scenario_generation_pressure"].get("candidate_expansion_ladder", []):
+        lines.append(
+            f"- candidate_count: `{row.get('candidate_count', '')}` scenario_row_count: `{row.get('scenario_row_count', '')}` "
+            f"csv_bytes: `{row.get('scenario_table_csv_bytes', '')}` manifest_bytes: `{row.get('scenario_table_manifest_bytes', '')}` "
+            f"pressure_target: `{row.get('output_pressure_labels', {}).get('target', '')}`"
+        )
+    ladder_summary = report["scenario_generation_pressure"].get("candidate_expansion_ladder_summary", {})
+    if ladder_summary:
+        lines.append(
+            f"- smallest_useful_candidate_count: `{ladder_summary.get('smallest_useful_candidate_count', 0)}` "
+            f"first_blocked_candidate_count: `{ladder_summary.get('first_blocked_candidate_count', 0)}`"
+        )
+    threshold = report["scenario_generation_pressure"].get("candidate_expansion_threshold", {})
+    if threshold:
+        lines.append(
+            f"- threshold_status: `{threshold.get('status', '')}` "
+            f"threshold_candidate_count: `{threshold.get('threshold_candidate_count', 0)}` "
+            f"last_ready_candidate_count: `{threshold.get('last_ready_candidate_count', 0)}`"
+        )
+    lines.extend(["", "Policy Block Families"])
     for family in report["scenario_generation_pressure"].get("policy_block_family_cardinality", []):
         lines.append(
             f"- {family.get('block_family_id', '')}: block_scenario_id=`{family.get('block_scenario_id', '')}` "
