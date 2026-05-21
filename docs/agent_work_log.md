@@ -5306,3 +5306,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no tree-impact physics, no calibrated forest parameters, no operational forest-protection claim, no scale-up authorization, no distributed-execution authorization, and no annual-frequency / physical-probability / risk / exposure / vulnerability semantics.
 - Next task: `TB-419`
+
+### TB-419: Add Rock Shape And Block-Volume Scenario Families
+
+- Date: 2026-05-21
+- Commit: `2e4db83`; work-log entry recorded in the follow-up commit.
+- Objective: make deterministic block-volume and passive rock-shape scenario families first-class inputs to scenario-table generation.
+- Files changed: `docs/probabilistic_scenario_model_design.md`, `docs/task_backlog.md`, `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/generate_tschamut_block_scenario_tables.py`, `scripts/validate_source_scenario_policy.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_tschamut_block_scenario_table_generation.py`, `validation/policies/tschamut_public_source_scenario_policy_v1.yaml`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added deterministic block-volume families for small, medium, and large Tschamut representative blocks and passive equant, platy, and elongated shape families in the source/scenario policy.
+  - Expanded policy-driven scenario-table generation to produce stable block-volume by shape-family rows, with release geometry, block family, shape family, and deterministic orientation/repetition provenance fields.
+  - Propagated the same provenance fields through candidate stress/freezer scenario tables and updated policy validation to allow only passive metadata-only non-spherical shape labels.
+  - Added focused fixture tests proving stable IDs/cardinality for the 3x3 family expansion and kept annual-frequency, physical-probability, operational, and risk/exposure semantics absent.
+  - Removed TB-419 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_candidate_source_zone_scenarios.py scripts/generate_tschamut_block_scenario_tables.py scripts/validate_source_scenario_policy.py tests/test_candidate_source_zone_scenario_stress.py tests/test_tschamut_block_scenario_table_generation.py tests/test_source_scenario_policy.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation tests.test_candidate_source_zone_scenario_stress tests.test_source_scenario_policy`
+  - `PYENV_VERSION=system uv run python scripts/generate_tschamut_block_scenario_tables.py --template policy_block_family_v1 --csv-output /tmp/tb419_scenario_table.csv --manifest-json /tmp/tb419_scenario_manifest.json --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py --candidate-repeat-count 2 --template-ids candidate_release_point_summary_v1,policy_block_family_v1 --output-root /tmp/tb419_candidate_scenarios --format json`
+  - `PYENV_VERSION=system uv run python scripts/validate_source_scenario_policy.py validation/policies/tschamut_public_source_scenario_policy_v1.yaml`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_fixture_backed
+- Boundaries: no new physics, no calibrated block population, no annual-frequency or physical-probability claims, no operational claim, no scale-up or distributed-execution claim, and no risk/exposure/vulnerability semantics.
+- Next task: `TB-420`
