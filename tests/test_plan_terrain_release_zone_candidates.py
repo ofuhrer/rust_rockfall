@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 
@@ -478,6 +479,83 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(report["candidate_review_package"]["outputs"]["csv"]).exists())
 
+    def test_candidate_review_overlay_bundle_writes_topographic_and_orthophoto_images(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            candidate_output_root = repo_root / "candidate_products"
+            overlay_root = repo_root / "candidate_review_overlays"
+            orthophoto_root = repo_root / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage"
+            orthophoto_root.mkdir(parents=True, exist_ok=True)
+            self._write_fake_png(orthophoto_root / "orthophoto.png")
+
+            candidate_report = planner.build_report(
+                repo_root=repo_root,
+                terrain_crop_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                terrain_metadata_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                source_zone_metadata_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml",
+                output_root=candidate_output_root,
+            )
+            overlay_report = planner.build_candidate_review_overlay_report(
+                candidate_report=candidate_report,
+                repo_root=repo_root,
+                output_root=overlay_root,
+                orthophoto_background_root=orthophoto_root,
+                overwrite=True,
+            )
+            self.assertEqual(overlay_report["candidate_review_overlay_status"], "ready")
+            self.assertEqual(overlay_report["backgrounds"][0]["background_id"], "topographic_map")
+            self.assertEqual(overlay_report["backgrounds"][0]["status"], "ready")
+            self.assertEqual(overlay_report["backgrounds"][1]["background_id"], "orthophoto")
+            self.assertEqual(overlay_report["backgrounds"][1]["status"], "ready")
+            self.assertEqual(len(overlay_report["overlay_images"]), 2)
+            self.assertTrue(Path(overlay_report["overlay_manifest_path"]).exists())
+            self.assertTrue(Path(overlay_report["overlay_images"][0]["path"]).exists())
+            self.assertTrue(Path(overlay_report["overlay_images"][1]["path"]).exists())
+
+    def test_candidate_review_overlay_bundle_reports_blocked_missing_orthophoto_background(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_site_config(repo_root)
+            staging.stage_minimal_inputs(
+                repo_root=repo_root,
+                site_config=config_path,
+                fixture_root=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_minimal_staging",
+            )
+            candidate_output_root = repo_root / "candidate_products"
+            overlay_root = repo_root / "candidate_review_overlays"
+            candidate_report = planner.build_report(
+                repo_root=repo_root,
+                terrain_crop_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain.asc",
+                terrain_metadata_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml",
+                source_zone_metadata_path=repo_root
+                / "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/source_zone_metadata.yaml",
+                output_root=candidate_output_root,
+            )
+            overlay_report = planner.build_candidate_review_overlay_report(
+                candidate_report=candidate_report,
+                repo_root=repo_root,
+                output_root=overlay_root,
+                orthophoto_background_root=repo_root / "missing_swissimage_root",
+                overwrite=True,
+            )
+            self.assertEqual(overlay_report["candidate_review_overlay_status"], "blocked_missing_backgrounds")
+            self.assertEqual(overlay_report["first_blocker"]["code"], "missing_orthophoto_background")
+            self.assertEqual(overlay_report["backgrounds"][0]["status"], "ready")
+            self.assertEqual(len(overlay_report["overlay_images"]), 1)
+            self.assertTrue(Path(overlay_report["overlay_manifest_path"]).exists())
+            self.assertTrue(Path(overlay_report["overlay_images"][0]["path"]).exists())
+
     def test_review_apply_edits_candidates_and_validates_provenance(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             workdir = Path(tmp)
@@ -580,6 +658,15 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                     candidate_review_decisions={"cand_accept": "rejected", "cand_reject": "rejected", "cand_hold": "needs_field_review"},
                     output_root=workdir / "reviewed_empty",
                 )
+
+    def _write_fake_png(self, path: Path) -> None:
+        from PIL import Image  # type: ignore
+
+        grid = np.linspace(0.15, 0.85, 16, dtype=float).reshape(4, 4)
+        image = np.dstack([grid, grid[::-1], np.full_like(grid, 0.55)])
+        rgba = np.clip(np.round(image * 255.0), 0, 255).astype(np.uint8)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(rgba, mode="RGB").save(path)
 
     def _write_review_package(self, workdir: Path, rows: list[dict[str, object]] | None = None) -> Path:
         rows = rows or [

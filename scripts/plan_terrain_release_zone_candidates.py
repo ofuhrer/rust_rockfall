@@ -19,6 +19,8 @@ import hashlib
 import importlib.util
 import json
 import math
+import tempfile
+import shutil
 import sys
 from itertools import combinations
 from time import perf_counter
@@ -39,10 +41,12 @@ PRODUCT_SCHEMA_VERSION = "terrain_release_zone_candidate_products_v1"
 REVIEW_PACKAGE_SCHEMA_VERSION = "terrain_release_zone_candidate_review_package_v1"
 REVIEW_APPLICATION_SCHEMA_VERSION = "terrain_release_zone_candidate_review_application_v1"
 SELECTION_MANIFEST_SCHEMA_VERSION = "terrain_release_zone_candidate_selection_manifest_v1"
+REVIEW_OVERLAY_SCHEMA_VERSION = "terrain_release_zone_candidate_review_overlay_v1"
 DEFAULT_TERRAIN_CROP = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc"
 DEFAULT_TERRAIN_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_metadata.yaml"
 DEFAULT_SOURCE_ZONE_METADATA = ROOT / "data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml"
 DEFAULT_OUTPUT_MODE = "both"
+DEFAULT_REVIEW_OVERLAY_OUTPUT_ROOT = Path("/tmp/tb409_candidate_review_overlays")
 REVIEW_DECISION_OPTIONS = ("accepted", "rejected", "needs_field_review")
 PROVENANCE_LABELS = (
     "workflow_generated",
@@ -2146,6 +2150,414 @@ def build_candidate_review_package(
     return review_package
 
 
+def build_candidate_review_overlay_report(
+    *,
+    candidate_report: dict[str, Any],
+    repo_root: Path,
+    output_root: Path,
+    orthophoto_background_root: Path | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    output_root = Path(output_root)
+    if not is_allowed_output_root(output_root):
+        raise TerrainReleaseZoneCandidateMetricsError(
+            f"output-root must stay under /tmp or an ignored repo root: {output_root}"
+        )
+    if output_root.exists() and overwrite:
+        shutil.rmtree(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    candidate_status = text_value(candidate_report.get("candidate_metrics_status"))
+    if candidate_status != "ready":
+        report = blocked_candidate_review_overlay_report(
+            candidate_report=candidate_report,
+            repo_root=repo_root,
+            output_root=output_root,
+            reason=str(candidate_report.get("blocked_reason") or "candidate review inputs are not ready"),
+            code="candidate_inputs_not_ready",
+        )
+        write_candidate_review_overlay_manifest(output_root, report)
+        return report
+
+    review_package = candidate_report.get("candidate_review_package") or {}
+    review_package_status = text_value(review_package.get("review_package_status"))
+    if review_package_status != "emitted":
+        report = blocked_candidate_review_overlay_report(
+            candidate_report=candidate_report,
+            repo_root=repo_root,
+            output_root=output_root,
+            reason="candidate review package is not emitted",
+            code="missing_candidate_review_package",
+        )
+        write_candidate_review_overlay_manifest(output_root, report)
+        return report
+
+    terrain_crop_path = package_path(candidate_report, candidate_report["terrain_inputs"]["terrain_crop_path"])
+    if not terrain_crop_path.exists():
+        report = blocked_candidate_review_overlay_report(
+            candidate_report=candidate_report,
+            repo_root=repo_root,
+            output_root=output_root,
+            reason=f"missing terrain crop: {display_path(terrain_crop_path, repo_root)}",
+            code="missing_terrain_crop",
+        )
+        write_candidate_review_overlay_manifest(output_root, report)
+        return report
+
+    terrain = read_esri_ascii_grid(terrain_crop_path)
+    review_geojson_path = package_path(review_package, review_package.get("outputs", {}).get("polygon"))
+    if not review_geojson_path.exists():
+        report = blocked_candidate_review_overlay_report(
+            candidate_report=candidate_report,
+            repo_root=repo_root,
+            output_root=output_root,
+            reason=f"missing candidate review polygon: {display_path(review_geojson_path, repo_root)}",
+            code="missing_candidate_review_polygon",
+        )
+        write_candidate_review_overlay_manifest(output_root, report)
+        return report
+
+    review_geojson = load_yaml_or_json(review_geojson_path)
+    features = [feature for feature in list(review_geojson.get("features") or []) if isinstance(feature, dict)]
+    extent = candidate_report.get("terrain_summary", {}).get("extent_lv95_m") or {}
+    extent_tuple = (
+        float(extent.get("xmin", 0.0)),
+        float(extent.get("xmax", 0.0)),
+        float(extent.get("ymin", 0.0)),
+        float(extent.get("ymax", 0.0)),
+    )
+
+    topographic_background = build_topographic_review_background(terrain)
+    orthophoto_background = resolve_orthophoto_review_background(
+        repo_root=repo_root,
+        candidate_site_id=text_value(candidate_report.get("candidate_site_id")) or terrain_crop_path.parent.name,
+        orthophoto_background_root=orthophoto_background_root,
+    )
+    background_reports = [topographic_background, orthophoto_background]
+    background_metadata = [sanitize_review_background(background) for background in background_reports]
+
+    overlay_images: list[dict[str, Any]] = []
+    blockers: list[dict[str, Any]] = []
+    for background in background_reports:
+        if background["status"] != "ready":
+            blockers.append(background["first_blocker"])
+            continue
+        overlay_path = output_root / f"{candidate_report['candidate_site_id']}_{background['background_id']}_review_overlay.png"
+        render_candidate_review_overlay_png(
+            overlay_path=overlay_path,
+            background=background,
+            features=features,
+            extent=extent_tuple,
+            repo_root=repo_root,
+            candidate_site_id=text_value(candidate_report.get("candidate_site_id")) or terrain_crop_path.parent.name,
+            candidate_site_name=text_value(candidate_report.get("candidate_site_name")) or "unknown",
+        )
+        overlay_images.append(
+            {
+                "background_id": background["background_id"],
+                "status": "written",
+                "path": str(overlay_path),
+                "sha256": sha256_file(overlay_path),
+                "label": background["label"],
+            }
+        )
+
+    status = "ready" if not blockers else "blocked_missing_backgrounds"
+    first_blocker = blockers[0] if blockers else None
+    report = {
+        "schema_version": REVIEW_OVERLAY_SCHEMA_VERSION,
+        "candidate_review_overlay_status": status,
+        "candidate_metrics_status": candidate_report.get("candidate_metrics_status"),
+        "candidate_release_zone_set_status": candidate_report.get("candidate_release_zone_set_status"),
+        "candidate_site_id": candidate_report.get("candidate_site_id"),
+        "candidate_site_name": candidate_report.get("candidate_site_name"),
+        "output_root": display_path(output_root, repo_root),
+        "candidate_review_package_status": review_package_status,
+        "candidate_review_package_manifest_path": review_package.get("outputs", {}).get("manifest"),
+        "candidate_review_package_path": review_package.get("outputs", {}).get("polygon"),
+        "backgrounds": background_metadata,
+        "overlay_images": overlay_images,
+        "first_blocker": first_blocker,
+        "next_recommended_command": {
+            "command": (
+                "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review "
+                f"--candidate-review-output-root {display_path(output_root.parent, repo_root)} --format json"
+            ),
+            "reason": "rerun after staging the missing review background input",
+        },
+        "claim_boundaries": candidate_report.get("claim_boundaries", {}),
+        "non_operational_warnings": candidate_review_non_operational_warnings(),
+    }
+    report["overlay_manifest_path"] = str(output_root / f"{candidate_report['candidate_site_id']}_candidate_review_overlay_manifest.json")
+    write_candidate_review_overlay_manifest(output_root, report)
+    return report
+
+
+def blocked_candidate_review_overlay_report(
+    *,
+    candidate_report: dict[str, Any],
+    repo_root: Path,
+    output_root: Path,
+    reason: str,
+    code: str,
+) -> dict[str, Any]:
+    blocker = {
+        "code": code,
+        "severity": "blocked",
+        "section": "Review backgrounds",
+        "message": reason,
+        "expected_input_paths": [],
+    }
+    review_package = candidate_report.get("candidate_review_package") or {}
+    return {
+        "schema_version": REVIEW_OVERLAY_SCHEMA_VERSION,
+        "candidate_review_overlay_status": "blocked_missing_backgrounds" if code != "candidate_inputs_not_ready" else "blocked_missing_candidate_inputs",
+        "candidate_metrics_status": candidate_report.get("candidate_metrics_status"),
+        "candidate_release_zone_set_status": candidate_report.get("candidate_release_zone_set_status"),
+        "candidate_site_id": candidate_report.get("candidate_site_id"),
+        "candidate_site_name": candidate_report.get("candidate_site_name"),
+        "output_root": display_path(output_root, repo_root),
+        "candidate_review_package_status": review_package.get("review_package_status", "not_emitted"),
+        "candidate_review_package_manifest_path": review_package.get("outputs", {}).get("manifest"),
+        "candidate_review_package_path": review_package.get("outputs", {}).get("polygon"),
+        "backgrounds": [],
+        "overlay_images": [],
+        "first_blocker": blocker,
+        "next_recommended_command": {
+            "command": "",
+            "reason": reason,
+        },
+        "overlay_manifest_path": str(output_root / f"{candidate_report['candidate_site_id']}_candidate_review_overlay_manifest.json"),
+        "claim_boundaries": candidate_report.get("claim_boundaries", {}),
+        "non_operational_warnings": candidate_review_non_operational_warnings(),
+    }
+
+
+def write_candidate_review_overlay_manifest(output_root: Path, report: dict[str, Any]) -> None:
+    manifest_path = output_root / f"{report['candidate_site_id']}_candidate_review_overlay_manifest.json"
+    manifest_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def sanitize_review_background(background: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in background.items()
+        if key != "image"
+    }
+
+
+def build_topographic_review_background(terrain: dict[str, Any]) -> dict[str, Any]:
+    hillshade = compute_hillshade_grid(terrain)
+    from PIL import Image  # type: ignore
+
+    image = Image.fromarray(np.nan_to_num(hillshade, nan=0.0).astype(np.uint8), mode="L").convert("RGBA")
+    return {
+        "background_id": "topographic_map",
+        "label": "Topographic map",
+        "status": "ready",
+        "kind": "derived_hillshade",
+        "image": image,
+        "alpha": 1.0,
+        "first_blocker": None,
+    }
+
+
+def resolve_orthophoto_review_background(
+    *,
+    repo_root: Path,
+    candidate_site_id: str,
+    orthophoto_background_root: Path | None = None,
+) -> dict[str, Any]:
+    default_root = orthophoto_background_root or (repo_root / "data/processed/swisstopo" / candidate_site_id / "context" / "swissimage")
+    background_root = default_root if default_root.is_absolute() else repo_root / default_root
+    candidates: list[Path] = []
+    if background_root.is_file():
+        candidates = [background_root]
+    elif background_root.exists():
+        candidates = [
+            path
+            for path in sorted(background_root.rglob("*"))
+            if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
+        ]
+    if not candidates:
+        return {
+            "background_id": "orthophoto",
+            "label": "Orthophoto",
+            "status": "blocked_missing_backgrounds",
+            "kind": "staged_orthophoto",
+            "image": None,
+            "alpha": 1.0,
+            "first_blocker": {
+                "code": "missing_orthophoto_background",
+                "severity": "blocked",
+                "section": "Review backgrounds",
+                "message": f"missing orthophoto background: {display_path(background_root, repo_root)}",
+                "expected_input_paths": [display_path(background_root, repo_root)],
+            },
+        }
+    image_path = candidates[0]
+    from PIL import Image  # type: ignore
+
+    with Image.open(image_path) as opened:
+        image = opened.convert("RGBA")
+    return {
+        "background_id": "orthophoto",
+        "label": "Orthophoto",
+        "status": "ready",
+        "kind": "staged_orthophoto",
+        "image": image,
+        "path": display_path(image_path, repo_root),
+        "alpha": 1.0,
+        "first_blocker": None,
+    }
+
+
+def compute_hillshade_grid(terrain: dict[str, Any]) -> np.ndarray:
+    values = terrain["values"]
+    hillshade = np.full_like(values, np.nan, dtype=float)
+    nrows, ncols = values.shape
+    cellsize = float(terrain["cellsize"])
+    azimuth_rad = math.radians(315.0)
+    zenith_rad = math.radians(45.0)
+    for row in range(1, nrows - 1):
+        for col in range(1, ncols - 1):
+            neighborhood = values[row - 1 : row + 2, col - 1 : col + 2]
+            if not np.isfinite(neighborhood).all():
+                continue
+            dzdx = (
+                (neighborhood[0, 2] + 2.0 * neighborhood[1, 2] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[1, 0] + neighborhood[2, 0])
+            ) / (8.0 * cellsize)
+            dzdy = (
+                (neighborhood[2, 0] + 2.0 * neighborhood[2, 1] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[0, 1] + neighborhood[0, 2])
+            ) / (8.0 * cellsize)
+            slope_rad = math.atan(math.hypot(dzdx, dzdy))
+            aspect_rad = math.atan2(dzdy, -dzdx)
+            if aspect_rad < 0.0:
+                aspect_rad += 2.0 * math.pi
+            hillshade_raw = (
+                math.cos(zenith_rad) * math.cos(slope_rad)
+                + math.sin(zenith_rad) * math.sin(slope_rad) * math.cos(azimuth_rad - aspect_rad)
+            )
+            hillshade[row, col] = max(0.0, min(255.0, 255.0 * hillshade_raw))
+    return hillshade
+
+
+def render_candidate_review_overlay_png(
+    *,
+    overlay_path: Path,
+    background: dict[str, Any],
+    features: list[dict[str, Any]],
+    extent: tuple[float, float, float, float],
+    repo_root: Path,
+    candidate_site_id: str,
+    candidate_site_name: str,
+) -> None:
+    from PIL import Image, ImageColor, ImageDraw, ImageFont  # type: ignore
+
+    overlay_path.parent.mkdir(parents=True, exist_ok=True)
+    image = background["image"]
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+    canvas = image.copy()
+    overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay, "RGBA")
+    try:
+        font = ImageFont.load_default()
+    except Exception:  # pragma: no cover - PIL font setup.
+        font = None
+
+    for feature in features:
+        geometry = feature.get("geometry") or {}
+        properties = feature.get("properties") or {}
+        review_decision = text_value(properties.get("review_decision"))
+        facecolor, edgecolor = review_decision_colors(review_decision)
+        for ring in iter_feature_rings(geometry):
+            if len(ring) < 3:
+                continue
+            polygon = [world_to_pixel(point, extent, canvas.size) for point in ring]
+            draw.polygon(
+                polygon,
+                fill=rgba_with_alpha(facecolor, 90),
+                outline=rgba_with_alpha(edgecolor, 220),
+            )
+
+    title = f"{candidate_site_name} candidate review - {background['label']}"
+    annotation = f"{candidate_site_id} candidate review overlay"
+    draw = ImageDraw.Draw(canvas, "RGBA")
+    title_bbox = draw.textbbox((0, 0), title, font=font) if font is not None else (0, 0, len(title) * 6, 12)
+    annotation_bbox = draw.textbbox((0, 0), annotation, font=font) if font is not None else (0, 0, len(annotation) * 6, 12)
+    pad = 6
+    draw.rectangle((10, 10, 10 + title_bbox[2] - title_bbox[0] + pad * 2, 10 + title_bbox[3] - title_bbox[1] + pad * 2), fill=(255, 255, 255, 220))
+    draw.rectangle((10, canvas.size[1] - annotation_bbox[3] - pad * 2 - 10, 10 + annotation_bbox[2] - annotation_bbox[0] + pad * 2, canvas.size[1] - 10), fill=(255, 255, 255, 220))
+    if font is not None:
+        draw.text((10 + pad, 10 + pad), title, fill=(17, 24, 39, 255), font=font)
+        draw.text((10 + pad, canvas.size[1] - annotation_bbox[3] - pad - 10), annotation, fill=(17, 24, 39, 255), font=font)
+    else:
+        draw.text((10 + pad, 10 + pad), title, fill=(17, 24, 39, 255))
+        draw.text((10 + pad, canvas.size[1] - annotation_bbox[3] - pad - 10), annotation, fill=(17, 24, 39, 255))
+
+    composed = Image.alpha_composite(canvas, overlay)
+    composed.save(overlay_path)
+
+
+def iter_feature_rings(geometry: dict[str, Any]) -> list[list[tuple[float, float]]]:
+    geometry_type = text_value(geometry.get("type"))
+    coordinates = geometry.get("coordinates")
+    rings: list[list[tuple[float, float]]] = []
+    if geometry_type == "Polygon" and isinstance(coordinates, list):
+        rings.extend(parse_polygon_rings(coordinates))
+    elif geometry_type == "MultiPolygon" and isinstance(coordinates, list):
+        for polygon in coordinates:
+            if isinstance(polygon, list):
+                rings.extend(parse_polygon_rings(polygon))
+    return rings
+
+
+def parse_polygon_rings(coordinates: list[Any]) -> list[list[tuple[float, float]]]:
+    rings: list[list[tuple[float, float]]] = []
+    for ring in coordinates:
+        if not isinstance(ring, list):
+            continue
+        parsed_ring: list[tuple[float, float]] = []
+        for point in ring:
+            if not isinstance(point, (list, tuple)) or len(point) < 2:
+                continue
+            parsed_ring.append((float(point[0]), float(point[1])))
+        if parsed_ring:
+            rings.append(parsed_ring)
+    return rings
+
+
+def world_to_pixel(point: tuple[float, float], extent: tuple[float, float, float, float], size: tuple[int, int]) -> tuple[int, int]:
+    xmin, xmax, ymin, ymax = extent
+    width, height = size
+    x, y = point
+    if xmax == xmin or ymax == ymin:
+        return 0, 0
+    px = int(round((x - xmin) / (xmax - xmin) * max(width - 1, 1)))
+    py = int(round((ymax - y) / (ymax - ymin) * max(height - 1, 1)))
+    return px, py
+
+
+def rgba_with_alpha(color: str, alpha: int) -> tuple[int, int, int, int]:
+    from PIL import ImageColor  # type: ignore
+
+    red, green, blue = ImageColor.getrgb(color)
+    return red, green, blue, alpha
+
+
+def review_decision_colors(review_decision: str) -> tuple[str, str]:
+    if review_decision == "accepted":
+        return "#16a34a", "#166534"
+    if review_decision == "rejected":
+        return "#dc2626", "#991b1b"
+    if review_decision == "needs_field_review":
+        return "#d97706", "#92400e"
+    return "#2563eb", "#1d4ed8"
+
+
 def summarize_distribution(values: list[float]) -> dict[str, float | None]:
     finite_values = [
         value
@@ -3078,6 +3490,7 @@ def is_allowed_output_root(output_root: Path) -> bool:
     allowed_roots = [
         Path("/tmp"),
         Path("/private/tmp"),
+        Path(tempfile.gettempdir()).resolve(),
         ROOT / "validation/private",
         ROOT / "data/processed/swisstopo",
         ROOT / "validation/policies",

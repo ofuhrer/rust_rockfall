@@ -39,45 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-409: Add Candidate Review Overlays To The AOI Front Door
-
-Goal: Make the AOI workflow front door able to emit map and SWISSIMAGE review
-overlays for candidate source zones so users can inspect what the heuristic is
-selecting.
-
-Capability gap reduced: Candidate review is currently possible but not
-well-integrated into the user-facing AOI workflow.
-
-Why this outranks alternatives: The recent manual review showed that visual
-inspection is essential for pragmatic source-zone selection; making it a
-front-door action reduces hidden local-state and ad hoc image generation.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- A bounded AOI front-door command or option that writes candidate-overlay
-  images and a small candidate-review manifest.
-- Support for topographic-map and orthophoto backgrounds when available, with a
-  clear blocked report when backgrounds cannot be fetched.
-- Tests that use fixture-backed imagery or mocked fetches rather than live
-  network access.
-
-Definition of done:
-
-- A user can run one documented command to produce candidate review overlays and
-  understand the first missing input if the overlay cannot be generated.
-
-Boundaries: No mandatory live network access in tests, no operational
-release-zone claim, no field validation, no generated image commits, and no
-Balfrin submission.
-
 ### TB-410: Measure Adjacent-Candidate Stability Against Heuristic Variants
 
 Goal: Test whether the selected Prau Mulins candidate persists under bounded

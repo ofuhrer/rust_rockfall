@@ -5077,3 +5077,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no scale-up authorization, no operational claims, no annual-frequency claims, no risk/exposure/vulnerability semantics, and no invented evidence.
 - Next task: `TB-409`
+
+### TB-409: Add Candidate Review Overlays To The AOI Front Door
+
+- Date: 2026-05-21
+- Commit: local
+- Objective: expose candidate review overlays as a bounded AOI front-door action so users can generate topographic and orthophoto review images plus a compact manifest without live network dependencies in tests.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`, `scripts/plan_terrain_release_zone_candidates.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_run_aoi_hazard_workflow.py`
+- Implementation summary:
+  - Added a `candidate-review` command to the AOI front door that stages candidate products, renders candidate-review overlays, and returns a compact JSON/text report with the overlay manifest and first missing input when backgrounds are unavailable.
+  - Implemented overlay generation in the terrain candidate planner with Pillow-based rendering, deterministic topographic hillshade backgrounds, staged orthophoto background discovery, and a small manifest describing the generated overlays and blockers.
+  - Kept the candidate-review workflow bounded by scratch output roots and explicit blockers instead of hidden local state, and preserved the non-operational boundary in the returned reports.
+  - Added fixture-backed tests for the overlay bundle, the blocked missing-background case, and the new front-door command path.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_candidate_review_overlay_bundle_writes_topographic_and_orthophoto_images tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_candidate_review_overlay_bundle_reports_blocked_missing_orthophoto_background tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_candidate_review_command_renders_overlay_report`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/run_aoi_hazard_workflow.py tests/test_plan_terrain_release_zone_candidates.py tests/test_run_aoi_hazard_workflow.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live network in tests, no operational release-zone claim, no field validation, no generated image commits, and no Balfrin submission.
+- Next task: `TB-410`

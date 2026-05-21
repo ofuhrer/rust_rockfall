@@ -39,12 +39,14 @@ DEFAULT_ARTIFACT_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate
 DEFAULT_COMMAND_PLAN_SITE = "chant_sura_fluelapass"
 DEFAULT_LOCAL_SMOKE_CASE = ROOT / "validation/cases/probabilistic_phase1_smoke.yaml"
 DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT = Path("/tmp/tb263_local_tiny_aoi_smoke")
+DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT = Path("/tmp/tb409_aoi_candidate_review")
 SUPPORTED_COMMANDS = (
     "status",
     "prepare",
     "workflow",
     "plan",
     "run-local-smoke",
+    "candidate-review",
     "run-prepared-pilot-local",
     "submit-balfrin",
     "collect",
@@ -69,6 +71,12 @@ HELP_EXAMPLE = """Examples:
       --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
       --workflow-output-root /tmp/aoi_workflow \
       --format text
+
+  Candidate-review overlay bundle:
+    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review \
+      --site-config /tmp/aoi_smoke/site/aoi_manifest.yaml \
+      --candidate-review-output-root /tmp/aoi_candidate_review \
+      --format json
 
   See docs/public_real_site_geodata_preparation.md for the full bootstrap-to-review path.
 """
@@ -134,6 +142,14 @@ def main(argv: list[str] | None = None) -> int:
             execute_safe_local_steps=args.execute_safe_local_steps,
         )
         output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_workflow_text_report(report)
+    elif args.command == "candidate-review":
+        report = build_candidate_review_report(
+            site_config=args.site_config,
+            repo_root=args.repo_root,
+            candidate_review_output_root=args.candidate_review_output_root,
+            orthophoto_background_root=args.orthophoto_background_root,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_candidate_review_text_report(report)
     else:
         report = build_report(
             command=args.command,
@@ -179,6 +195,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--workflow-output-root", type=Path, default=None)
     parser.add_argument("--smoke-case-path", type=Path, default=DEFAULT_LOCAL_SMOKE_CASE)
     parser.add_argument("--smoke-output-root", type=Path, default=DEFAULT_LOCAL_SMOKE_OUTPUT_ROOT)
+    parser.add_argument("--candidate-review-output-root", type=Path, default=DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT)
+    parser.add_argument("--orthophoto-background-root", type=Path, default=None)
     parser.add_argument("--package-output-root", type=Path, default=None)
     parser.add_argument("--review-output-root", type=Path, default=None)
     parser.add_argument("--execute-safe-local-steps", action="store_true")
@@ -261,6 +279,84 @@ def build_report(
             "portable_command_plan_schema_version": command_plan_report.get("schema_version", ""),
             "gis_cog_schema_version": package_report.get("schema_version", ""),
         },
+    }
+    return report
+
+
+def build_candidate_review_report(
+    *,
+    site_config: Path,
+    repo_root: Path,
+    candidate_review_output_root: Path,
+    orthophoto_background_root: Path | None = None,
+) -> dict[str, Any]:
+    candidate_review_output_root = resolve_candidate_review_output_root(candidate_review_output_root, repo_root)
+    candidate_products_root = candidate_review_output_root / "candidate_products"
+    overlay_root = candidate_review_output_root / "candidate_review_overlays"
+    if candidate_review_output_root.exists():
+        shutil.rmtree(candidate_review_output_root)
+
+    candidate_report = RELEASE_CANDIDATES.build_report(
+        repo_root=repo_root,
+        output_root=candidate_products_root,
+    )
+    overlay_report = RELEASE_CANDIDATES.build_candidate_review_overlay_report(
+        candidate_report=candidate_report,
+        repo_root=repo_root,
+        output_root=overlay_root,
+        orthophoto_background_root=orthophoto_background_root,
+        overwrite=True,
+    )
+
+    candidate_status = str(candidate_report.get("candidate_metrics_status") or "blocked_missing_inputs")
+    overlay_status = str(overlay_report.get("candidate_review_overlay_status") or "blocked_missing_inputs")
+    status = overlay_status if candidate_status == "ready" else candidate_status
+    first_blocker = None
+    if status != "ready":
+        first_blocker = overlay_report.get("first_blocker") or candidate_report.get("first_blocker") or {
+            "step_id": "candidate-review",
+            "status": status,
+            "blocked_reason": str(candidate_report.get("blocked_reason") or overlay_report.get("first_blocker", {}).get("message") or ""),
+        }
+    report = {
+        "schema_version": "aoi_candidate_review_front_door_v1",
+        "command": "candidate-review",
+        "status": status,
+        "candidate_site_id": candidate_report.get("candidate_site_id"),
+        "candidate_site_name": candidate_report.get("candidate_site_name"),
+        "candidate_review_output_root": str(candidate_review_output_root),
+        "candidate_product_output_root": str(candidate_products_root),
+        "candidate_review_overlay_output_root": str(overlay_root),
+        "candidate_report": candidate_report,
+        "candidate_review_overlay_report": overlay_report,
+        "candidate_review_manifest_path": overlay_report.get("overlay_manifest_path"),
+        "candidate_review_overlay_paths": {
+            image.get("background_id"): image.get("path")
+            for image in overlay_report.get("overlay_images", [])
+            if isinstance(image, dict) and image.get("path")
+        },
+        "first_blocker": first_blocker,
+        "next_action": (
+            "inspect candidate overlays"
+            if status == "ready"
+            else (
+                "stage missing review background and rerun"
+                if candidate_status == "ready"
+                else "fix candidate inputs and rerun"
+            )
+        ),
+        "next_command": (
+            "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review "
+            f"--candidate-review-output-root {candidate_review_output_root} --format json"
+        ),
+        "expected_paths": {
+            "candidate_products_root": str(candidate_products_root),
+            "candidate_review_overlay_root": str(overlay_root),
+            "candidate_review_manifest": overlay_report.get("overlay_manifest_path", ""),
+            "candidate_review_overlay_images": list((overlay_report.get("overlay_images") or [])),
+        },
+        "claim_boundaries": dict(candidate_report.get("claim_boundaries") or {}),
+        "non_operational_warnings": overlay_report.get("non_operational_warnings", []),
     }
     return report
 
@@ -1590,6 +1686,19 @@ def resolve_prepared_pilot_output_root(repo_root: Path, output_root: Path | None
     return resolved
 
 
+def resolve_candidate_review_output_root(output_root: Path, repo_root: Path) -> Path:
+    resolved = output_root if output_root.is_absolute() else repo_root / output_root
+    if not is_allowed_candidate_review_output_root(resolved):
+        raise ValueError(f"candidate-review output root must stay under /tmp: {resolved}")
+    return resolved
+
+
+def is_allowed_candidate_review_output_root(output_root: Path) -> bool:
+    resolved = output_root.resolve()
+    allowed_roots = [Path("/tmp").resolve(), Path("/private/tmp").resolve()]
+    return any(resolved == root or resolved.is_relative_to(root) for root in allowed_roots)
+
+
 def is_allowed_prepared_pilot_output_root(output_root: Path, repo_root: Path) -> bool:
     resolved = output_root.resolve()
     allowed_roots = [Path("/tmp").resolve(), (repo_root / "validation/private").resolve()]
@@ -2188,6 +2297,30 @@ def render_workflow_text_report(report: dict[str, Any]) -> str:
         f"generated_outputs: {format_inline_mapping(report.get('generated_artifact_paths'))}",
         f"claim_boundaries: {format_inline_mapping(report.get('claim_boundaries'))}",
     ]
+    return "\n".join(lines)
+
+
+def render_candidate_review_text_report(report: dict[str, Any]) -> str:
+    first_blocker = report.get("first_blocker") or {}
+    lines = [
+        f"schema_version: {report['schema_version']}",
+        f"command: {report['command']}",
+        f"status: {report['status']}",
+        f"next_action: {report['next_action']}",
+        "first_blocker:",
+        f"- step_id: {first_blocker.get('step_id', '')}",
+        f"- blocked_reason: {first_blocker.get('blocked_reason', first_blocker.get('message', ''))}",
+        "candidate_review_outputs:",
+        f"- candidate_review_output_root: {report.get('candidate_review_output_root', '')}",
+        f"- candidate_product_output_root: {report.get('candidate_product_output_root', '')}",
+        f"- candidate_review_overlay_output_root: {report.get('candidate_review_overlay_output_root', '')}",
+        f"- candidate_review_manifest_path: {report.get('candidate_review_manifest_path', '')}",
+    ]
+    overlay_paths = report.get("candidate_review_overlay_paths") or {}
+    if overlay_paths:
+        lines.append("overlay_paths:")
+        for key, value in sorted(overlay_paths.items()):
+            lines.append(f"- {key}: {value}")
     return "\n".join(lines)
 
 

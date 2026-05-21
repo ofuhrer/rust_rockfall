@@ -755,6 +755,61 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertTrue(report["generated_artifact_paths"]["review_html"].endswith("index.html"))
         self.assertEqual(len(report["command_sequence"]), 5)
 
+    def test_candidate_review_command_renders_overlay_report(self) -> None:
+        fake_report = {
+            "schema_version": "aoi_candidate_review_front_door_v1",
+            "command": "candidate-review",
+            "status": "ready",
+            "candidate_site_id": "guided_fixture",
+            "candidate_site_name": "Guided Fixture",
+            "candidate_review_output_root": "/tmp/tb409_aoi_candidate_review",
+            "candidate_product_output_root": "/tmp/tb409_aoi_candidate_review/candidate_products",
+            "candidate_review_overlay_output_root": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays",
+            "candidate_review_manifest_path": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays/guided_fixture_candidate_review_overlay_manifest.json",
+            "candidate_review_overlay_paths": {
+                "topographic_map": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays/guided_fixture_topographic_map_review_overlay.png",
+                "orthophoto": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays/guided_fixture_orthophoto_review_overlay.png",
+            },
+            "first_blocker": {
+                "step_id": "candidate-review",
+                "blocked_reason": "",
+            },
+            "next_action": "inspect candidate overlays",
+            "next_command": "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review --candidate-review-output-root /tmp/tb409_aoi_candidate_review --format json",
+            "expected_paths": {
+                "candidate_products_root": "/tmp/tb409_aoi_candidate_review/candidate_products",
+                "candidate_review_overlay_root": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays",
+            },
+            "claim_boundaries": {
+                "operational_claims_allowed": False,
+                "scale_up_authorized": False,
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+            },
+            "non_operational_warnings": [],
+        }
+
+        with mock.patch.object(workflow, "build_candidate_review_report", return_value=fake_report) as build_candidate_review_report:
+            code, output = self._run_main(
+                [
+                    "candidate-review",
+                    "--candidate-review-output-root",
+                    "/tmp/tb409_aoi_candidate_review",
+                    "--format",
+                    "json",
+                ]
+            )
+
+        self.assertEqual(code, 0)
+        build_candidate_review_report.assert_called_once()
+        parsed = json.loads(output)
+        self.assertEqual(parsed["command"], "candidate-review")
+        self.assertEqual(parsed["status"], "ready")
+        self.assertEqual(parsed["candidate_review_manifest_path"], fake_report["candidate_review_manifest_path"])
+        self.assertIn("topographic_map", parsed["candidate_review_overlay_paths"])
+        self.assertIn("orthophoto", parsed["candidate_review_overlay_paths"])
+
     def test_workflow_command_rejects_invalid_aoi_input(self) -> None:
         report = workflow.build_workflow_report(
             site_config=ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
