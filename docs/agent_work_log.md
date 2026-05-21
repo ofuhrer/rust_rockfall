@@ -5885,3 +5885,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no plugin, GUI, execution layer, or operational map claim was added; the change is a static synchronization guard only.
 - Next task: `TB-444`
+
+### TB-444: Rank Next Balfrin Probe Candidates From Measured Bottlenecks
+
+- Date: 2026-05-22
+- Commit: `2e5c8a1`
+- Objective: rank the next Balfrin probe candidates from the latest measured and failed-closed evidence so the backlog points at one concrete executable task instead of a generic scale-up wrapper.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `next_probe_ranking` surface to the Balfrin scale-readiness matrix with explicit blocker, expected evidence gain, required pre-submit gates, evidence basis, and probe scope for the regional split retry, scenario batching, reducer-pressure optimization, and local-evidence paths.
+  - Kept the live next-action recommendation anchored to the regional split retry while separating the lower-ranked batching, reducer-pressure, and local-evidence candidates into the new ordered ladder.
+  - Updated the focused regression coverage to assert the ordered ranking, blocker text, pre-submit gates, and resulting backlog recommendations, then removed TB-444 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: ranking-only synthesis; no Balfrin submission, no distributed execution, no scale-up authorization, and no operational claim was added.
+- Next task: `TB-445`
