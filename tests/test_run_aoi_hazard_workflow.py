@@ -1214,7 +1214,7 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             repo_root.mkdir(parents=True, exist_ok=True)
             site_root = work_root / "site"
             workflow_root = work_root / "workflow"
-            bounds = [2696376.0, 1167384.0, 2696476.0, 1167484.0]
+            bounds = [2793000.0, 1180200.0, 2793008.0, 1180208.0]
 
             bootstrap_code, bootstrap_output = self._run_module_main(
                 bootstrap,
@@ -1583,6 +1583,13 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         config_data = self._rewrite_strings(config_data, "Chant Sura / Flüelapass portability example", candidate_site_name)
         config_data["candidate_site_id"] = candidate_site_id
         config_data["candidate_site_name"] = candidate_site_name
+        config_data["site_extent"] = {
+            "crs": "EPSG:2056",
+            "xmin": 2793000.0,
+            "ymin": 1180200.0,
+            "xmax": 2793008.0,
+            "ymax": 1180208.0,
+        }
         config_data["acquisition_manifest_path"] = str(
             ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml"
         )

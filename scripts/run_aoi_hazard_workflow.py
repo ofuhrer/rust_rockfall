@@ -3130,7 +3130,7 @@ def build_acquisition_step(*, site_config: Path, repo_root: Path) -> dict[str, A
     return {
         "step_id": "product_resolution",
         "label": "AOI product resolution",
-        "status": "ready" if status == "ready" else status,
+        "status": "ready" if status in {"ready", "ready_with_warnings"} else status,
         "blocked_reason": "" if status == "ready" else str(report.get("blocked_reason") or "acquisition planning is not ready"),
         "expected_input_path": expected_input_path,
         "expected_input_paths": [expected_input_path] if expected_input_path else [],
@@ -3217,7 +3217,7 @@ def build_terrain_step(*, repo_root: Path, site_config: Path, paths: dict[str, P
     return {
         "step_id": "terrain_preparation",
         "label": "Terrain preparation",
-        "status": "ready" if status == "ready" else status,
+        "status": "ready" if status in {"ready", "ready_with_warnings"} else status,
         "blocked_reason": blocked_reason,
         "expected_input_path": str(terrain_crop),
         "expected_input_paths": expected_input_paths,
