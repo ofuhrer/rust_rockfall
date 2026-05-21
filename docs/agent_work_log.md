@@ -4944,3 +4944,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: review geometry and freezer wiring only; no operational release-zone claim, no field validation claim, no source-frequency semantics, no hazard run, and no Balfrin submission.
 - Next task: `TB-403`
+
+### TB-403: Encode Expanded Steep-Terrain Source-Zone Heuristic
+
+- Date: 2026-05-21
+- Commit: `local`
+- Objective: replace the narrow source-zone slope screen with a reproducible expanded steep-terrain heuristic that separates workflow-generated, reviewed, and review-only terrain while filtering local DEM artefacts.
+- Files changed: `docs/agent_work_log.md`, `docs/task_backlog.md`, `scripts/diagnose_release_candidate_zero_result.py`, `scripts/plan_terrain_release_zone_candidates.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_release_candidate_zero_result_diagnostic.py`
+- Implementation summary:
+  - Replaced the single 30-55 degree screen with a documented expanded mode that classifies smoothed slope into 45-55 degree workflow-generated cells, 55-75 degree reviewed candidate cells, and 75-88 degree review-only terrain.
+  - Added local-relief, smoothed-slope, and connected-component filters so single-cell artefacts are stripped before candidate counts are reported.
+  - Updated the planner and zero-result diagnostic to emit candidate-class counts and the workflow-generated versus reviewed distinction, while keeping review-only terrain separate from the candidate mask.
+  - Added focused regressions for the expanded heuristic, the fail-closed missing-input path, and the synthetic steep-terrain diagnostic.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_release_candidate_zero_result_diagnostic`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: heuristic expansion and diagnostic reporting only; no calibration, no operational source-zone claim, no field validation, no annual-frequency semantics, and no Balfrin execution.
+- Next task: `TB-404`

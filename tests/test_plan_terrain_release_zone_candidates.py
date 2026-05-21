@@ -112,16 +112,26 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_interpretation"], "heuristic_workflow_input_only")
             self.assertEqual(first["candidate_site_id"], "tschamut_public_pilot")
             self.assertEqual(first["candidate_site_name"], "Balfrin / Tschamut AOI")
-            self.assertEqual(first["screening_criteria"]["candidate_slope_min_deg"], 30.0)
-            self.assertEqual(first["screening_criteria"]["candidate_slope_max_deg"], 55.0)
+            self.assertEqual(first["screening_criteria"]["candidate_screening_mode"], "expanded_steep_terrain_source_zone_v1")
+            self.assertEqual(first["screening_criteria"]["candidate_slope_min_deg"], 45.0)
+            self.assertEqual(first["screening_criteria"]["candidate_slope_max_deg"], 75.0)
             self.assertEqual(first["screening_criteria"]["slope_algorithm"], "horn_3x3_cell_center_deg")
             self.assertGreater(first["candidate_summary"]["candidate_cell_count"], 0)
             self.assertGreater(first["candidate_summary"]["candidate_area_m2"], 0)
             self.assertGreater(first["candidate_summary"]["candidate_fraction_of_screenable_cells"], 0.0)
-            self.assertGreaterEqual(first["candidate_summary"]["candidate_slope_min_deg"], 30.0)
-            self.assertLessEqual(first["candidate_summary"]["candidate_slope_max_deg"], 55.0)
+            self.assertEqual(first["candidate_summary"]["workflow_generated_candidate_cell_count"], 2958)
+            self.assertEqual(first["candidate_summary"]["reviewed_candidate_cell_count"], 461)
+            self.assertEqual(first["candidate_summary"]["review_only_terrain_cell_count"], 0)
+            self.assertEqual(
+                first["candidate_summary"]["candidate_generation_class_counts"],
+                {"workflow_generated": 2958, "reviewed_candidate": 461, "review_only": 0},
+            )
+            self.assertGreaterEqual(first["candidate_summary"]["candidate_slope_min_deg"], 35.0)
+            self.assertLessEqual(first["candidate_summary"]["candidate_slope_max_deg"], 75.0)
+            self.assertGreaterEqual(first["candidate_summary"]["candidate_smoothed_slope_min_deg"], 45.0)
+            self.assertLessEqual(first["candidate_summary"]["candidate_smoothed_slope_max_deg"], 75.0)
             self.assertEqual(first["candidate_release_zone_separation_summary"]["separation_status"], "review_ready")
-            self.assertEqual(first["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 390)
+            self.assertEqual(first["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 65)
             self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 0)
             self.assertEqual(first["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], [])
             self.assertEqual(first["candidate_sweep_measurements"]["output_file_count"], 7)
@@ -141,18 +151,18 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                     "trimmed_aoi_boundary_1_cell",
                 ],
             )
-            self.assertEqual(first["candidate_sensitivity_report"]["candidate_count_range"], {"min": 22793, "max": 36751})
-            self.assertEqual(first["candidate_sensitivity_report"]["candidate_area_range_m2"], {"min": 91172.0, "max": 147004.0})
-            self.assertEqual(first["candidate_sensitivity_report"]["baseline_candidate_cell_count"], 29499)
-            self.assertEqual(first["candidate_sensitivity_report"]["union_candidate_cell_count"], 37787)
-            self.assertEqual(first["candidate_sensitivity_report"]["stable_candidate_region"]["cell_count"], 21279)
+            self.assertEqual(first["candidate_sensitivity_report"]["candidate_count_range"], {"min": 3077, "max": 3419})
+            self.assertEqual(first["candidate_sensitivity_report"]["candidate_area_range_m2"], {"min": 12308.0, "max": 13676.0})
+            self.assertEqual(first["candidate_sensitivity_report"]["baseline_candidate_cell_count"], 3419)
+            self.assertEqual(first["candidate_sensitivity_report"]["union_candidate_cell_count"], 3579)
+            self.assertEqual(first["candidate_sensitivity_report"]["stable_candidate_region"]["cell_count"], 2828)
             self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["region_class"], "unstable_across_bounded_heuristics")
-            self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["cell_count"], 16508)
+            self.assertEqual(first["candidate_sensitivity_report"]["unstable_candidate_region"]["cell_count"], 751)
             self.assertEqual(
                 first["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["region_class"],
                 "heuristic_sensitive_across_bounded_heuristics",
             )
-            self.assertEqual(first["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["cell_count"], 16508)
+            self.assertEqual(first["candidate_sensitivity_report"]["heuristic_sensitive_candidate_region"]["cell_count"], 751)
             self.assertGreater(first["candidate_sensitivity_report"]["stable_candidate_region"]["component_count"], 0)
             self.assertGreater(first["candidate_sensitivity_report"]["unstable_candidate_region"]["component_count"], 0)
             self.assertLess(first["candidate_sensitivity_report"]["stable_candidate_region"]["coverage_fraction_of_union_candidate_cells"], 1.0)
@@ -180,11 +190,11 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             )
             self.assertEqual(
                 first["candidate_sensitivity_report"]["candidate_persistence_metrics"]["stable_candidate_cell_count"],
-                21279,
+                2828,
             )
             self.assertEqual(
                 first["candidate_sensitivity_report"]["candidate_persistence_metrics"]["heuristic_sensitive_candidate_cell_count"],
-                16508,
+                751,
             )
             self.assertTrue(first["candidate_footprint_comparison"]["candidate_excludes_frozen_footprint"])
             self.assertEqual(first["candidate_footprint_comparison"]["candidate_and_frozen_footprint_intersection_cell_count"], 0)
@@ -206,8 +216,11 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                     "nodata_or_invalid",
                     "incomplete_neighborhood",
                     "frozen_release_zone_footprint",
-                    "slope_below_candidate_band",
-                    "slope_above_candidate_band",
+                    "slope_below_workflow_generated_band",
+                    "workflow_generated_candidate_band",
+                    "reviewed_candidate_band",
+                    "review_only_terrain_band",
+                    "slope_above_review_only_band",
                     "candidate_band",
                 ],
             )
@@ -220,7 +233,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_products"]["output_status"], "emitted")
             self.assertEqual(first["candidate_release_zone_products"]["output_mode"], "both")
             self.assertEqual(first["candidate_release_zone_products"]["candidate_release_zone_ids"], second["candidate_release_zone_products"]["candidate_release_zone_ids"])
-            self.assertGreater(first["candidate_release_zone_products"]["component_count"], 0)
+            self.assertEqual(first["candidate_release_zone_products"]["component_count"], 65)
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["mask"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["manifest"]).exists())
@@ -230,7 +243,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                 [row["provenance_label"] for row in first["candidate_review_package"]["provenance_label_legend"]],
                 ["workflow_generated", "field_supported", "mixed_provenance", "blocked_missing_provenance"],
             )
-            self.assertGreater(first["candidate_review_package"]["review_summary"]["candidate_count"], 0)
+            self.assertEqual(first["candidate_review_package"]["review_summary"]["candidate_count"], 65)
             self.assertEqual(first["candidate_review_package"]["review_summary"]["default_review_decision"], "needs_field_review")
             self.assertEqual(first["candidate_review_package"]["review_summary"]["review_decision_counts"]["needs_field_review"], first["candidate_review_package"]["review_summary"]["candidate_count"])
             self.assertEqual(first["candidate_review_package"]["review_summary"]["provenance_label_counts"]["workflow_generated"], first["candidate_review_package"]["review_summary"]["candidate_count"])
@@ -445,12 +458,14 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(restage_report["first_blocker"]["blocker_id"], "none")
             self.assertEqual(report["candidate_metrics_status"], "ready")
             self.assertEqual(report["candidate_release_zone_set_status"], "emitted")
-            self.assertEqual(report["candidate_summary"]["candidate_cell_count"], 88836)
-            self.assertEqual(report["candidate_summary"]["candidate_area_m2"], 355344.0)
-            self.assertEqual(report["candidate_release_zone_products"]["component_count"], 575)
-            self.assertEqual(report["candidate_release_zone_products"]["polygon_feature_count"], 575)
+            self.assertEqual(report["candidate_summary"]["candidate_cell_count"], 12312)
+            self.assertEqual(report["candidate_summary"]["candidate_area_m2"], 49248.0)
+            self.assertGreater(report["candidate_summary"]["workflow_generated_candidate_cell_count"], 0)
+            self.assertGreater(report["candidate_summary"]["reviewed_candidate_cell_count"], 0)
+            self.assertEqual(report["candidate_release_zone_products"]["component_count"], 169)
+            self.assertEqual(report["candidate_release_zone_products"]["polygon_feature_count"], 169)
             self.assertTrue(report["candidate_release_zone_products"]["candidate_excludes_frozen_footprint"])
-            self.assertEqual(report["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 575)
+            self.assertEqual(report["candidate_release_zone_separation_summary"]["deterministic_candidate_count"], 169)
             self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_ready")
             self.assertEqual(report["candidate_sweep_measurements"]["output_file_count"], 7)
             self.assertGreater(report["candidate_sweep_measurements"]["runtime_seconds"], 0.0)

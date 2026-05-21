@@ -39,47 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-403: Encode Expanded Steep-Terrain Source-Zone Heuristic
-
-Goal: Replace the overly narrow 30-55 degree source-zone screen with a
-reproducible expanded heuristic that includes steep rock-wall terrain while
-filtering local DEM artefacts.
-
-Capability gap reduced: The previous source-zone heuristic excluded plausible
-slopes above 55 degrees and was fragile to small AOI/crop choices.
-
-Why this outranks alternatives: The visual review demonstrated a plausible
-non-empty candidate field only after widening the search area and including
-steeper terrain; encoding that logic prevents a one-off manual artifact from
-becoming hidden local state.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/diagnose_release_candidate_zero_result.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_release_candidate_zero_result_diagnostic.py`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A documented candidate-screening mode with structured 45-55 degree slopes,
-  55-75 degree rock-wall candidates, and 75-88 degree review-only terrain.
-- Smoothed-slope, local-relief, and connected-component filters that reduce
-  single-cell artefacts.
-- JSON/text output that records thresholds, candidate class counts, and the
-  distinction between workflow-generated candidates and reviewed candidates.
-- Focused tests for the new heuristic and for fail-closed missing-input paths.
-
-Definition of done:
-
-- The terrain candidate helper can reproduce the expanded heuristic from
-  tracked/local terrain inputs and reports non-empty candidate classes on the
-  Tschamut expanded terrain case without upgrading any scientific claim.
-
-Boundaries: No threshold calibration, no operational source-zone claim, no
-field validation, no annual-frequency semantics, and no Balfrin execution.
-
 ### TB-404: Regenerate Scenario Tables From The Accepted Adjacent Candidate
 
 Goal: Generate deterministic conditional scenario rows from the frozen adjacent

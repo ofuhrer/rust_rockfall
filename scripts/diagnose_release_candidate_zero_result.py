@@ -165,9 +165,21 @@ def build_report(
         "candidate_cell_count": candidate_count,
         "candidate_area_m2": candidate_count * (terrain["cellsize"] ** 2),
         "screening_criteria": {
+            "candidate_screening_mode": screening.get("candidate_screening_mode"),
             "slope_algorithm": screening.get("slope_algorithm"),
+            "smoothed_slope_algorithm": screening.get("smoothed_slope_algorithm"),
+            "local_relief_algorithm": screening.get("local_relief_algorithm"),
             "candidate_slope_min_deg": screening.get("candidate_slope_min_deg"),
             "candidate_slope_max_deg": screening.get("candidate_slope_max_deg"),
+            "workflow_generated_candidate_slope_min_deg": screening.get("workflow_generated_candidate_slope_min_deg"),
+            "workflow_generated_candidate_slope_max_deg": screening.get("workflow_generated_candidate_slope_max_deg"),
+            "reviewed_candidate_slope_min_deg": screening.get("reviewed_candidate_slope_min_deg"),
+            "reviewed_candidate_slope_max_deg": screening.get("reviewed_candidate_slope_max_deg"),
+            "review_only_slope_min_deg": screening.get("review_only_slope_min_deg"),
+            "review_only_slope_max_deg": screening.get("review_only_slope_max_deg"),
+            "smoothed_slope_window_cells": screening.get("smoothed_slope_window_cells"),
+            "minimum_local_relief_m": screening.get("minimum_local_relief_m"),
+            "minimum_connected_component_cells": screening.get("minimum_connected_component_cells"),
             "exclude_frozen_release_zone_footprint": screening.get("exclude_frozen_release_zone_footprint"),
             "frozen_release_zone_footprint_buffer_cells": screening.get("frozen_release_zone_footprint_buffer_cells", 0),
         },
@@ -186,7 +198,7 @@ def build_report(
         },
         "first_blocker": first_blocker,
         "deferral_record": deferral_record,
-    "unblock_guidance": build_unblock_guidance(first_blocker, max_variant_count, deferral_record),
+        "unblock_guidance": build_unblock_guidance(first_blocker, max_variant_count, deferral_record),
         "claim_boundaries": {
             "diagnostic_only": True,
             "threshold_tuning_performed": False,
@@ -249,6 +261,12 @@ def build_screening_decomposition(terrain: dict[str, Any], terrain_masks: dict[s
     footprint = int(terrain_masks["footprint_mask"].sum())
     low = int(terrain_masks["low_slope_mask"].sum())
     high = int(terrain_masks["high_slope_mask"].sum())
+    workflow_generated_raw = int(terrain_masks["workflow_generated_candidate_raw_mask"].sum())
+    reviewed_raw = int(terrain_masks["reviewed_candidate_raw_mask"].sum())
+    review_only_raw = int(terrain_masks["review_only_terrain_raw_mask"].sum())
+    workflow_generated = int(terrain_masks["workflow_generated_candidate_mask"].sum())
+    reviewed = int(terrain_masks["reviewed_candidate_mask"].sum())
+    review_only = int(terrain_masks["review_only_terrain_mask"].sum())
     candidate = int(terrain_masks["candidate_mask"].sum())
     return {
         "valid_cell_count": int(terrain["valid_mask"].sum()),
@@ -257,11 +275,23 @@ def build_screening_decomposition(terrain: dict[str, Any], terrain_masks: dict[s
         "screenable_area_m2": screenable * cell_area,
         "frozen_footprint_cell_count": footprint,
         "frozen_footprint_area_m2": footprint * cell_area,
-        "slope_below_candidate_band_cell_count": low,
-        "slope_above_candidate_band_cell_count": high,
+        "slope_below_workflow_generated_band_cell_count": low,
+        "slope_above_review_only_band_cell_count": high,
+        "workflow_generated_candidate_band_raw_cell_count": workflow_generated_raw,
+        "reviewed_candidate_band_raw_cell_count": reviewed_raw,
+        "review_only_terrain_band_raw_cell_count": review_only_raw,
+        "workflow_generated_candidate_cell_count": workflow_generated,
+        "reviewed_candidate_cell_count": reviewed,
+        "review_only_terrain_cell_count": review_only,
         "candidate_band_cell_count": candidate,
         "candidate_slope_min_deg": screening.get("candidate_slope_min_deg"),
         "candidate_slope_max_deg": screening.get("candidate_slope_max_deg"),
+        "workflow_generated_candidate_slope_min_deg": screening.get("workflow_generated_candidate_slope_min_deg"),
+        "workflow_generated_candidate_slope_max_deg": screening.get("workflow_generated_candidate_slope_max_deg"),
+        "reviewed_candidate_slope_min_deg": screening.get("reviewed_candidate_slope_min_deg"),
+        "reviewed_candidate_slope_max_deg": screening.get("reviewed_candidate_slope_max_deg"),
+        "review_only_slope_min_deg": screening.get("review_only_slope_min_deg"),
+        "review_only_slope_max_deg": screening.get("review_only_slope_max_deg"),
         "screenable_fraction_of_valid_interior_cells": fraction(screenable, valid_interior),
         "candidate_fraction_of_screenable_cells": fraction(candidate, screenable),
     }
@@ -322,7 +352,7 @@ def classify_first_blocker(terrain_masks: dict[str, np.ndarray], screening: dict
             "status": "blocked_empty_candidate_set",
             "reason": "no valid interior cells remain after nodata, incomplete-neighborhood, and frozen-footprint exclusions",
         }
-    slope_values = terrain_masks["slope_deg"][terrain_masks["screenable_mask"]]
+    slope_values = terrain_masks["smoothed_slope_deg"][terrain_masks["screenable_mask"]]
     slope_values = slope_values[np.isfinite(slope_values)]
     if slope_values.size == 0:
         return {
@@ -330,15 +360,17 @@ def classify_first_blocker(terrain_masks: dict[str, np.ndarray], screening: dict
             "status": "blocked_empty_candidate_set",
             "reason": "screenable cells exist but no finite slope values were computed",
         }
-    min_slope = float(screening.get("candidate_slope_min_deg", PLANNER.MIN_CANDIDATE_SLOPE_DEG))
-    max_slope = float(screening.get("candidate_slope_max_deg", PLANNER.MAX_CANDIDATE_SLOPE_DEG))
+    min_slope = float(
+        screening.get("workflow_generated_candidate_slope_min_deg", PLANNER.WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG)
+    )
+    max_slope = float(screening.get("review_only_slope_max_deg", PLANNER.REVIEW_ONLY_SLOPE_MAX_DEG))
     slope_max = float(np.max(slope_values))
     slope_min = float(np.min(slope_values))
     if slope_max < min_slope:
         return {
             "blocker_id": "all_screenable_slopes_below_candidate_band",
             "status": "blocked_empty_candidate_set",
-            "reason": f"all screenable slopes are below the candidate band minimum of {min_slope} degrees",
+            "reason": f"all screenable slopes are below the workflow-generated candidate band minimum of {min_slope} degrees",
             "screenable_slope_max_deg": slope_max,
             "candidate_slope_min_deg": min_slope,
         }
@@ -346,14 +378,30 @@ def classify_first_blocker(terrain_masks: dict[str, np.ndarray], screening: dict
         return {
             "blocker_id": "all_screenable_slopes_above_candidate_band",
             "status": "blocked_empty_candidate_set",
-            "reason": f"all screenable slopes are above the candidate band maximum of {max_slope} degrees",
+            "reason": f"all screenable slopes are above the review-only band maximum of {max_slope} degrees",
             "screenable_slope_min_deg": slope_min,
+            "candidate_slope_max_deg": max_slope,
+        }
+    if int(terrain_masks["workflow_generated_candidate_raw_mask"].sum()) == 0 and int(terrain_masks["reviewed_candidate_raw_mask"].sum()) == 0:
+        if int(terrain_masks["review_only_terrain_raw_mask"].sum()) > 0:
+            return {
+                "blocker_id": "review_only_terrain_present",
+                "status": "blocked_empty_candidate_set",
+                "reason": "screenable terrain reaches the review-only steep band, but no workflow-generated or reviewed candidate cells remain after filtering",
+            }
+        return {
+            "blocker_id": "candidate_band_absent_after_combined_masks",
+            "status": "blocked_empty_candidate_set",
+            "reason": "screenable slopes enter the expanded candidate band, but the local-relief and connected-component filters remove them all",
+            "screenable_slope_min_deg": slope_min,
+            "screenable_slope_max_deg": slope_max,
+            "candidate_slope_min_deg": min_slope,
             "candidate_slope_max_deg": max_slope,
         }
     return {
         "blocker_id": "candidate_band_absent_after_combined_masks",
         "status": "blocked_empty_candidate_set",
-        "reason": "screenable slopes straddle the candidate band, but no cell satisfies all deterministic masks simultaneously",
+        "reason": "screenable slopes straddle the expanded candidate bands, but no cell satisfies all deterministic masks simultaneously",
         "screenable_slope_min_deg": slope_min,
         "screenable_slope_max_deg": slope_max,
         "candidate_slope_min_deg": min_slope,
@@ -368,9 +416,11 @@ def build_unblock_guidance(
 ) -> dict[str, Any]:
     blocker_id = first_blocker.get("blocker_id")
     if blocker_id == "all_screenable_slopes_below_candidate_band":
-        action = "inspect whether the management AOI crop is too flat/small for the current deterministic slope band before considering a separate heuristic-review task"
+        action = "inspect whether the management AOI crop is too flat/small for the workflow-generated candidate band before considering a separate heuristic-review task"
     elif blocker_id == "all_screenable_slopes_above_candidate_band":
-        action = "inspect whether the current upper slope cap excludes the whole AOI before considering a separate heuristic-review task"
+        action = "inspect whether the review-only steep band excludes the whole AOI before considering a separate heuristic-review task"
+    elif blocker_id == "review_only_terrain_present":
+        action = "keep scenario generation blocked and inspect the review-only steep terrain before any candidate freeze step"
     elif blocker_id == "no_screenable_cells":
         action = deferral_record.get("required_upstream_replacement") or "inspect AOI extent, nodata, and frozen-footprint overlap before scenario-generation work"
     elif blocker_id == "source_zone_footprint_overlap":
@@ -399,11 +449,12 @@ def build_deferral_record(
     screenable_count = int(terrain_masks["screenable_mask"].sum())
     footprint_count = int(terrain_masks["footprint_mask"].sum())
     footprint_overlap_with_valid_interior = int((terrain_masks["valid_interior_mask"] & terrain_masks["footprint_mask"]).sum())
-    slope_values = terrain_masks["slope_deg"][terrain_masks["screenable_mask"]]
+    slope_values = terrain_masks["smoothed_slope_deg"][terrain_masks["screenable_mask"]]
     slope_values = slope_values[np.isfinite(slope_values)]
     blocker_type = resolve_blocker_type(
         first_blocker=first_blocker,
         terrain=terrain,
+        terrain_masks=terrain_masks,
         valid_interior_count=valid_interior_count,
         screenable_count=screenable_count,
         footprint_overlap_with_valid_interior=footprint_overlap_with_valid_interior,
@@ -436,8 +487,13 @@ def build_deferral_record(
             "frozen_source_zone_footprint_overlap_with_valid_interior_cell_count": footprint_overlap_with_valid_interior,
             "slope_screening_reached": screenable_count > 0,
             "candidate_band_cell_count": int(terrain_masks["candidate_mask"].sum()),
+            "workflow_generated_candidate_cell_count": int(terrain_masks["workflow_generated_candidate_mask"].sum()),
+            "reviewed_candidate_cell_count": int(terrain_masks["reviewed_candidate_mask"].sum()),
+            "review_only_terrain_cell_count": int(terrain_masks["review_only_terrain_mask"].sum()),
         },
-        "slope_band_status": "not_reached" if screenable_count == 0 else ("no_candidates" if int(terrain_masks["candidate_mask"].sum()) == 0 else "has_candidates"),
+        "slope_band_status": "not_reached"
+        if screenable_count == 0
+        else ("no_candidates" if int(terrain_masks["candidate_mask"].sum()) == 0 else "has_candidates"),
         "required_upstream_replacement": required_upstream_replacement,
         "blocking_summary": build_blocking_summary(
             blocker_type=blocker_type,
@@ -451,6 +507,12 @@ def build_deferral_record(
         "slope_band_evidence": {
             "candidate_slope_min_deg": screening.get("candidate_slope_min_deg"),
             "candidate_slope_max_deg": screening.get("candidate_slope_max_deg"),
+            "workflow_generated_candidate_slope_min_deg": screening.get("workflow_generated_candidate_slope_min_deg"),
+            "workflow_generated_candidate_slope_max_deg": screening.get("workflow_generated_candidate_slope_max_deg"),
+            "reviewed_candidate_slope_min_deg": screening.get("reviewed_candidate_slope_min_deg"),
+            "reviewed_candidate_slope_max_deg": screening.get("reviewed_candidate_slope_max_deg"),
+            "review_only_slope_min_deg": screening.get("review_only_slope_min_deg"),
+            "review_only_slope_max_deg": screening.get("review_only_slope_max_deg"),
             "screenable_slope_min_deg": float(np.min(slope_values)) if slope_values.size else None,
             "screenable_slope_max_deg": float(np.max(slope_values)) if slope_values.size else None,
         },
@@ -466,6 +528,7 @@ def resolve_blocker_type(
     *,
     first_blocker: dict[str, Any],
     terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
     valid_interior_count: int,
     screenable_count: int,
     footprint_overlap_with_valid_interior: int,
@@ -482,12 +545,18 @@ def resolve_blocker_type(
         return "terrain_crop_size_or_aoi_extent"
     if slope_values.size == 0:
         return "slope_band"
-    min_slope = float(screening.get("candidate_slope_min_deg", PLANNER.MIN_CANDIDATE_SLOPE_DEG))
-    max_slope = float(screening.get("candidate_slope_max_deg", PLANNER.MAX_CANDIDATE_SLOPE_DEG))
+    min_slope = float(
+        screening.get("workflow_generated_candidate_slope_min_deg", PLANNER.WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG)
+    )
+    max_slope = float(screening.get("review_only_slope_max_deg", PLANNER.REVIEW_ONLY_SLOPE_MAX_DEG))
     slope_max = float(np.max(slope_values))
     slope_min = float(np.min(slope_values))
     if slope_max < min_slope or slope_min > max_slope:
         return "slope_band"
+    if int(terrain_masks["workflow_generated_candidate_raw_mask"].sum()) == 0 and int(terrain_masks["reviewed_candidate_raw_mask"].sum()) == 0:
+        if int(terrain_masks["review_only_terrain_raw_mask"].sum()) > 0:
+            return "review_only_terrain_present"
+        return "combined_mask_interaction"
     return "combined_mask_interaction"
 
 
@@ -515,7 +584,11 @@ def resolve_required_upstream_replacement(
         )
     if blocker_type == "slope_band":
         return (
-            "stage a real AOI crop whose screenable interior cells intersect the current deterministic slope band before any scenario-generation work"
+            "stage a real AOI crop whose screenable interior cells intersect the expanded candidate bands before any scenario-generation work"
+        )
+    if blocker_type == "review_only_terrain_present":
+        return (
+            "keep the review-only steep terrain separate from the workflow-generated and reviewed candidate bands before any scenario-generation work"
         )
     return (
         "stage a larger real AOI crop or a different source-zone footprint that leaves screenable interior cells outside the frozen footprint; "
@@ -551,7 +624,11 @@ def build_blocking_summary(
         screenable_max = float(np.max(slope_values)) if slope_values.size else None
         return (
             f"screenable cells exist but slope screening removes them all before candidate selection "
-            f"({screenable_min} to {screenable_max} degrees against {screening.get('candidate_slope_min_deg')} to {screening.get('candidate_slope_max_deg')} degrees)"
+            f"({screenable_min} to {screenable_max} degrees against {screening.get('workflow_generated_candidate_slope_min_deg')} to {screening.get('review_only_slope_max_deg')} degrees)"
+        )
+    if blocker_type == "review_only_terrain_present":
+        return (
+            "screenable cells reach the review-only steep band, but no workflow-generated or reviewed candidate cells survive the local-relief and connected-component filters"
         )
     return "screenable cells remain after the frozen-footprint mask, but no cell satisfies all deterministic masks simultaneously"
 
@@ -572,8 +649,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         "",
         "terrain_screening_decomposition:",
         f"- screenable_cell_count: `{decomposition.get('screenable_cell_count')}`",
-        f"- slope_below_candidate_band_cell_count: `{decomposition.get('slope_below_candidate_band_cell_count')}`",
-        f"- slope_above_candidate_band_cell_count: `{decomposition.get('slope_above_candidate_band_cell_count')}`",
+        f"- slope_below_workflow_generated_band_cell_count: `{decomposition.get('slope_below_workflow_generated_band_cell_count')}`",
+        f"- slope_above_review_only_band_cell_count: `{decomposition.get('slope_above_review_only_band_cell_count')}`",
+        f"- workflow_generated_candidate_cell_count: `{decomposition.get('workflow_generated_candidate_cell_count')}`",
+        f"- reviewed_candidate_cell_count: `{decomposition.get('reviewed_candidate_cell_count')}`",
+        f"- review_only_terrain_cell_count: `{decomposition.get('review_only_terrain_cell_count')}`",
         f"- candidate_band_cell_count: `{decomposition.get('candidate_band_cell_count')}`",
         "",
         "deferral_record:",

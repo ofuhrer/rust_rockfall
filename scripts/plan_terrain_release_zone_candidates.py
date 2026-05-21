@@ -51,8 +51,18 @@ PROVENANCE_LABELS = (
     "blocked_missing_provenance",
 )
 
-MIN_CANDIDATE_SLOPE_DEG = 30.0
-MAX_CANDIDATE_SLOPE_DEG = 55.0
+EXPANDED_STEEP_TERRAIN_SCREENING_MODE = "expanded_steep_terrain_source_zone_v1"
+WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG = 45.0
+WORKFLOW_GENERATED_CANDIDATE_SLOPE_MAX_DEG = 55.0
+REVIEWED_CANDIDATE_SLOPE_MIN_DEG = 55.0
+REVIEWED_CANDIDATE_SLOPE_MAX_DEG = 75.0
+REVIEW_ONLY_SLOPE_MIN_DEG = 75.0
+REVIEW_ONLY_SLOPE_MAX_DEG = 88.0
+MIN_CANDIDATE_SLOPE_DEG = WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG
+MAX_CANDIDATE_SLOPE_DEG = REVIEWED_CANDIDATE_SLOPE_MAX_DEG
+SMOOTHED_SLOPE_WINDOW_CELLS = 3
+MIN_LOCAL_RELIEF_M = 2.0
+MIN_COMPONENT_CELLS = 2
 HEURISTIC_SENSITIVITY_THRESHOLD_DELTA_DEG = 2.0
 HEURISTIC_SENSITIVITY_FOOTPRINT_BUFFER_CELLS = 1
 STABILITY_SELECTION_SIZES = (2, 4, 8)
@@ -779,13 +789,28 @@ def blocked_report(
 
 def screening_criteria_stub() -> dict[str, Any]:
     return {
+        "candidate_screening_mode": EXPANDED_STEEP_TERRAIN_SCREENING_MODE,
         "slope_algorithm": "horn_3x3_cell_center_deg",
+        "smoothed_slope_algorithm": "horn_3x3_on_3x3_mean_smoothed_terrain_deg",
+        "local_relief_algorithm": "3x3_elevation_range_m",
         "minimum_finite_neighborhood": "3x3",
         "candidate_slope_min_deg": MIN_CANDIDATE_SLOPE_DEG,
         "candidate_slope_max_deg": MAX_CANDIDATE_SLOPE_DEG,
+        "workflow_generated_candidate_slope_min_deg": WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG,
+        "workflow_generated_candidate_slope_max_deg": WORKFLOW_GENERATED_CANDIDATE_SLOPE_MAX_DEG,
+        "reviewed_candidate_slope_min_deg": REVIEWED_CANDIDATE_SLOPE_MIN_DEG,
+        "reviewed_candidate_slope_max_deg": REVIEWED_CANDIDATE_SLOPE_MAX_DEG,
+        "review_only_slope_min_deg": REVIEW_ONLY_SLOPE_MIN_DEG,
+        "review_only_slope_max_deg": REVIEW_ONLY_SLOPE_MAX_DEG,
+        "smoothed_slope_window_cells": SMOOTHED_SLOPE_WINDOW_CELLS,
+        "minimum_local_relief_m": MIN_LOCAL_RELIEF_M,
+        "minimum_connected_component_cells": MIN_COMPONENT_CELLS,
+        "connected_component_connectivity": "rook_4_connected",
         "frozen_release_zone_footprint_buffer_cells": 0,
         "exclude_nodata": True,
         "exclude_incomplete_neighborhood": True,
+        "exclude_local_relief_below_minimum": True,
+        "exclude_single_cell_components": True,
         "exclude_frozen_release_zone_footprint": True,
         "frozen_release_zone_footprint_mask": "cell_center_in_polygon",
     }
@@ -919,12 +944,18 @@ def build_candidate_summary(
     screening: dict[str, Any],
 ) -> dict[str, Any]:
     slope_deg = terrain_masks["slope_deg"]
+    smoothed_slope_deg = terrain_masks["smoothed_slope_deg"]
     candidate_values = slope_deg[candidate_mask]
+    candidate_smoothed_values = smoothed_slope_deg[candidate_mask]
     cell_area_m2 = terrain["cellsize"] ** 2
     candidate_count = int(candidate_mask.sum())
     screenable_count = int(terrain_masks["screenable_mask"].sum())
     valid_interior_count = int(terrain_masks["valid_interior_mask"].sum())
+    workflow_generated_candidate_count = int(terrain_masks["workflow_generated_candidate_mask"].sum())
+    reviewed_candidate_count = int(terrain_masks["reviewed_candidate_mask"].sum())
+    review_only_count = int(terrain_masks["review_only_terrain_mask"].sum())
     return {
+        "candidate_screening_mode": screening["candidate_screening_mode"],
         "candidate_cell_count": candidate_count,
         "candidate_area_m2": candidate_count * cell_area_m2,
         "candidate_fraction_of_screenable_cells": fraction(candidate_count, screenable_count),
@@ -934,12 +965,35 @@ def build_candidate_summary(
         "candidate_slope_mean_deg": float(np.mean(candidate_values)) if candidate_count else None,
         "candidate_slope_median_deg": float(np.median(candidate_values)) if candidate_count else None,
         "candidate_slope_p95_deg": float(np.quantile(candidate_values, 0.95)) if candidate_count else None,
+        "candidate_smoothed_slope_min_deg": float(np.min(candidate_smoothed_values)) if candidate_count else None,
+        "candidate_smoothed_slope_max_deg": float(np.max(candidate_smoothed_values)) if candidate_count else None,
+        "workflow_generated_candidate_cell_count": workflow_generated_candidate_count,
+        "workflow_generated_candidate_area_m2": workflow_generated_candidate_count * cell_area_m2,
+        "reviewed_candidate_cell_count": reviewed_candidate_count,
+        "reviewed_candidate_area_m2": reviewed_candidate_count * cell_area_m2,
+        "review_only_terrain_cell_count": review_only_count,
+        "review_only_terrain_area_m2": review_only_count * cell_area_m2,
+        "candidate_generation_class_counts": {
+            "workflow_generated": workflow_generated_candidate_count,
+            "reviewed_candidate": reviewed_candidate_count,
+            "review_only": review_only_count,
+        },
         "screenable_cell_count": screenable_count,
         "screenable_area_m2": screenable_count * cell_area_m2,
         "screenable_fraction_of_valid_cells": fraction(screenable_count, int(terrain["valid_mask"].sum())),
         "screening_summary": {
             "candidate_slope_min_deg": screening["candidate_slope_min_deg"],
             "candidate_slope_max_deg": screening["candidate_slope_max_deg"],
+            "workflow_generated_candidate_slope_min_deg": screening["workflow_generated_candidate_slope_min_deg"],
+            "workflow_generated_candidate_slope_max_deg": screening["workflow_generated_candidate_slope_max_deg"],
+            "reviewed_candidate_slope_min_deg": screening["reviewed_candidate_slope_min_deg"],
+            "reviewed_candidate_slope_max_deg": screening["reviewed_candidate_slope_max_deg"],
+            "review_only_slope_min_deg": screening["review_only_slope_min_deg"],
+            "review_only_slope_max_deg": screening["review_only_slope_max_deg"],
+            "candidate_screening_mode": screening["candidate_screening_mode"],
+            "smoothed_slope_window_cells": screening["smoothed_slope_window_cells"],
+            "minimum_local_relief_m": screening["minimum_local_relief_m"],
+            "minimum_connected_component_cells": screening["minimum_connected_component_cells"],
             "slope_algorithm": screening["slope_algorithm"],
             "frozen_release_zone_footprint_buffer_cells": screening.get("frozen_release_zone_footprint_buffer_cells", 0),
         },
@@ -990,6 +1044,50 @@ def build_candidate_footprint_comparison(
     }
 
 
+def compute_horn_slope_deg(values: np.ndarray, cellsize: float) -> np.ndarray:
+    slope_deg = np.full_like(values, np.nan, dtype=float)
+    nrows, ncols = values.shape
+    for row in range(1, nrows - 1):
+        for col in range(1, ncols - 1):
+            neighborhood = values[row - 1 : row + 2, col - 1 : col + 2]
+            if not np.isfinite(neighborhood).all():
+                continue
+            dzdx = (
+                (neighborhood[0, 2] + 2.0 * neighborhood[1, 2] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[1, 0] + neighborhood[2, 0])
+            ) / (8.0 * cellsize)
+            dzdy = (
+                (neighborhood[2, 0] + 2.0 * neighborhood[2, 1] + neighborhood[2, 2])
+                - (neighborhood[0, 0] + 2.0 * neighborhood[0, 1] + neighborhood[0, 2])
+            ) / (8.0 * cellsize)
+            slope_deg[row, col] = math.degrees(math.atan(math.hypot(dzdx, dzdy)))
+    return slope_deg
+
+
+def compute_local_relief_3x3_range(values: np.ndarray) -> np.ndarray:
+    local_relief = np.full_like(values, np.nan, dtype=float)
+    nrows, ncols = values.shape
+    for row in range(1, nrows - 1):
+        for col in range(1, ncols - 1):
+            neighborhood = values[row - 1 : row + 2, col - 1 : col + 2]
+            if not np.isfinite(neighborhood).all():
+                continue
+            local_relief[row, col] = float(np.max(neighborhood) - np.min(neighborhood))
+    return local_relief
+
+
+def filter_small_components(mask: np.ndarray, minimum_component_cells: int) -> np.ndarray:
+    if minimum_component_cells <= 1:
+        return mask.copy()
+    filtered = np.zeros_like(mask, dtype=bool)
+    for component in connected_candidate_components(mask):
+        if len(component) < minimum_component_cells:
+            continue
+        for row, col in component:
+            filtered[row, col] = True
+    return filtered
+
+
 def build_excluded_area_summary(
     terrain_masks: dict[str, np.ndarray],
     terrain: dict[str, Any],
@@ -1019,23 +1117,56 @@ def build_excluded_area_summary(
             "reason": "cells inside the committed frozen source-zone footprint are excluded from candidate screening",
         },
         {
-            "category": "slope_below_candidate_band",
+            "category": "slope_below_workflow_generated_band",
             "cell_count": int(low_mask.sum()),
             "area_m2": int(low_mask.sum()) * cell_area_m2,
-            "reason": f"slope below {screening['candidate_slope_min_deg']} degrees",
+            "reason": f"smoothed slope below {screening['workflow_generated_candidate_slope_min_deg']} degrees",
         },
         {
-            "category": "slope_above_candidate_band",
+            "category": "workflow_generated_candidate_band",
+            "cell_count": int(terrain_masks["workflow_generated_candidate_mask"].sum()),
+            "area_m2": int(terrain_masks["workflow_generated_candidate_mask"].sum()) * cell_area_m2,
+            "reason": (
+                f"smoothed slope within [{screening['workflow_generated_candidate_slope_min_deg']}, "
+                f"{screening['workflow_generated_candidate_slope_max_deg']}) degrees, local relief at or above "
+                f"{screening['minimum_local_relief_m']} m, and component size at or above "
+                f"{screening['minimum_connected_component_cells']} cells"
+            ),
+        },
+        {
+            "category": "reviewed_candidate_band",
+            "cell_count": int(terrain_masks["reviewed_candidate_mask"].sum()),
+            "area_m2": int(terrain_masks["reviewed_candidate_mask"].sum()) * cell_area_m2,
+            "reason": (
+                f"smoothed slope within [{screening['reviewed_candidate_slope_min_deg']}, "
+                f"{screening['reviewed_candidate_slope_max_deg']}) degrees, local relief at or above "
+                f"{screening['minimum_local_relief_m']} m, and component size at or above "
+                f"{screening['minimum_connected_component_cells']} cells"
+            ),
+        },
+        {
+            "category": "review_only_terrain_band",
+            "cell_count": int(terrain_masks["review_only_terrain_mask"].sum()),
+            "area_m2": int(terrain_masks["review_only_terrain_mask"].sum()) * cell_area_m2,
+            "reason": (
+                f"smoothed slope within [{screening['review_only_slope_min_deg']}, "
+                f"{screening['review_only_slope_max_deg']}] degrees, local relief at or above "
+                f"{screening['minimum_local_relief_m']} m, and component size at or above "
+                f"{screening['minimum_connected_component_cells']} cells"
+            ),
+        },
+        {
+            "category": "slope_above_review_only_band",
             "cell_count": int(high_mask.sum()),
             "area_m2": int(high_mask.sum()) * cell_area_m2,
-            "reason": f"slope above {screening['candidate_slope_max_deg']} degrees",
+            "reason": f"smoothed slope above {screening['review_only_slope_max_deg']} degrees",
         },
         {
             "category": "candidate_band",
             "cell_count": int(terrain_masks["candidate_mask"].sum()),
             "area_m2": int(terrain_masks["candidate_mask"].sum()) * cell_area_m2,
             "reason": (
-                f"slope within [{screening['candidate_slope_min_deg']}, {screening['candidate_slope_max_deg']}] degrees "
+                f"smoothed slope within [{screening['candidate_slope_min_deg']}, {screening['candidate_slope_max_deg']}] degrees "
                 "and outside the frozen release-zone footprint"
             ),
         },
@@ -1051,7 +1182,10 @@ def compute_candidate_masks(
     valid_mask = terrain["valid_mask"]
     nrows, ncols = values.shape
 
-    slope_deg = np.full_like(values, np.nan, dtype=float)
+    slope_deg = compute_horn_slope_deg(values, terrain["cellsize"])
+    smoothed_values = smooth_terrain_3x3_mean(terrain)
+    smoothed_slope_deg = compute_horn_slope_deg(smoothed_values, terrain["cellsize"])
+    local_relief_m = compute_local_relief_3x3_range(values)
     valid_interior_mask = np.zeros_like(valid_mask, dtype=bool)
     nodata_mask = ~valid_mask
     incomplete_neighborhood_mask = np.ones_like(valid_mask, dtype=bool)
@@ -1067,30 +1201,64 @@ def compute_candidate_masks(
             if not np.isfinite(neighborhood).all():
                 continue
             valid_interior_mask[row, col] = True
-            dzdx = (
-                (neighborhood[0, 2] + 2.0 * neighborhood[1, 2] + neighborhood[2, 2])
-                - (neighborhood[0, 0] + 2.0 * neighborhood[1, 0] + neighborhood[2, 0])
-            ) / (8.0 * terrain["cellsize"])
-            dzdy = (
-                (neighborhood[2, 0] + 2.0 * neighborhood[2, 1] + neighborhood[2, 2])
-                - (neighborhood[0, 0] + 2.0 * neighborhood[0, 1] + neighborhood[0, 2])
-            ) / (8.0 * terrain["cellsize"])
-            slope_deg[row, col] = math.degrees(math.atan(math.hypot(dzdx, dzdy)))
-
     screenable_mask = valid_interior_mask & ~footprint_mask
-    min_slope_deg = float(screening.get("candidate_slope_min_deg", MIN_CANDIDATE_SLOPE_DEG))
-    max_slope_deg = float(screening.get("candidate_slope_max_deg", MAX_CANDIDATE_SLOPE_DEG))
-    candidate_mask = screenable_mask & (slope_deg >= min_slope_deg) & (slope_deg <= max_slope_deg)
-    low_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg < min_slope_deg)
-    high_slope_mask = screenable_mask & np.isfinite(slope_deg) & (slope_deg > max_slope_deg)
+    finite_screenable_mask = (
+        screenable_mask
+        & np.isfinite(slope_deg)
+        & np.isfinite(smoothed_slope_deg)
+        & np.isfinite(local_relief_m)
+        & (local_relief_m >= float(screening.get("minimum_local_relief_m", MIN_LOCAL_RELIEF_M)))
+    )
+    workflow_generated_raw_mask = finite_screenable_mask & (
+        smoothed_slope_deg >= float(screening.get("workflow_generated_candidate_slope_min_deg", WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG))
+    ) & (
+        smoothed_slope_deg < float(screening.get("workflow_generated_candidate_slope_max_deg", WORKFLOW_GENERATED_CANDIDATE_SLOPE_MAX_DEG))
+    )
+    reviewed_candidate_raw_mask = finite_screenable_mask & (
+        smoothed_slope_deg >= float(screening.get("reviewed_candidate_slope_min_deg", REVIEWED_CANDIDATE_SLOPE_MIN_DEG))
+    ) & (
+        smoothed_slope_deg < float(screening.get("reviewed_candidate_slope_max_deg", REVIEWED_CANDIDATE_SLOPE_MAX_DEG))
+    )
+    review_only_raw_mask = finite_screenable_mask & (
+        smoothed_slope_deg >= float(screening.get("review_only_slope_min_deg", REVIEW_ONLY_SLOPE_MIN_DEG))
+    ) & (
+        smoothed_slope_deg <= float(screening.get("review_only_slope_max_deg", REVIEW_ONLY_SLOPE_MAX_DEG))
+    )
+    workflow_generated_candidate_mask = filter_small_components(
+        workflow_generated_raw_mask, int(screening.get("minimum_connected_component_cells", MIN_COMPONENT_CELLS))
+    )
+    reviewed_candidate_mask = filter_small_components(
+        reviewed_candidate_raw_mask, int(screening.get("minimum_connected_component_cells", MIN_COMPONENT_CELLS))
+    )
+    review_only_terrain_mask = filter_small_components(
+        review_only_raw_mask, int(screening.get("minimum_connected_component_cells", MIN_COMPONENT_CELLS))
+    )
+    candidate_mask = workflow_generated_candidate_mask | reviewed_candidate_mask
+    candidate_screening_mask = candidate_mask | review_only_terrain_mask
+    low_slope_mask = screenable_mask & np.isfinite(smoothed_slope_deg) & (
+        smoothed_slope_deg < float(screening.get("workflow_generated_candidate_slope_min_deg", WORKFLOW_GENERATED_CANDIDATE_SLOPE_MIN_DEG))
+    )
+    high_slope_mask = screenable_mask & np.isfinite(smoothed_slope_deg) & (
+        smoothed_slope_deg > float(screening.get("review_only_slope_max_deg", REVIEW_ONLY_SLOPE_MAX_DEG))
+    )
 
     terrain_masks = {
         "slope_deg": slope_deg,
+        "smoothed_slope_deg": smoothed_slope_deg,
+        "local_relief_m": local_relief_m,
         "valid_interior_mask": valid_interior_mask,
         "nodata_mask": nodata_mask,
         "incomplete_neighborhood_mask": incomplete_neighborhood_mask,
         "footprint_mask": footprint_mask,
         "screenable_mask": screenable_mask,
+        "finite_screenable_mask": finite_screenable_mask,
+        "workflow_generated_candidate_raw_mask": workflow_generated_raw_mask,
+        "reviewed_candidate_raw_mask": reviewed_candidate_raw_mask,
+        "review_only_terrain_raw_mask": review_only_raw_mask,
+        "workflow_generated_candidate_mask": workflow_generated_candidate_mask,
+        "reviewed_candidate_mask": reviewed_candidate_mask,
+        "review_only_terrain_mask": review_only_terrain_mask,
+        "candidate_screening_mask": candidate_screening_mask,
         "candidate_mask": candidate_mask,
         "low_slope_mask": low_slope_mask,
         "high_slope_mask": high_slope_mask,

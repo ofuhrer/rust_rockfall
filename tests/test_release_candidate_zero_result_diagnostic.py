@@ -160,7 +160,7 @@ class ReleaseCandidateZeroResultDiagnosticTests(unittest.TestCase):
     def test_steep_screenable_terrain_reports_candidates_present(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             root = Path(tmp)
-            terrain_path, metadata_path, source_path = self._write_inputs(root, slope_step=1.3)
+            terrain_path, metadata_path, source_path = self._write_inputs(root, slope_step=3.0)
 
             report = diagnostic.build_report(
                 repo_root=root,
@@ -173,6 +173,21 @@ class ReleaseCandidateZeroResultDiagnosticTests(unittest.TestCase):
         self.assertGreater(report["candidate_cell_count"], 0)
         self.assertEqual(report["first_blocker"]["blocker_id"], "none")
         self.assertFalse(report["unblock_guidance"]["scenario_generation_should_remain_blocked"])
+
+    def test_missing_inputs_are_reported_as_blocked(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            root = Path(tmp)
+
+            report = diagnostic.build_report(
+                repo_root=root,
+                terrain_crop_path=root / "missing.asc",
+                terrain_metadata_path=root / "missing.yaml",
+                source_zone_metadata_path=root / "missing_source.yaml",
+            )
+
+        self.assertEqual(report["diagnostic_status"], "blocked_missing_inputs")
+        self.assertEqual(report["first_blocker"]["blocker_id"], "missing_inputs")
+        self.assertTrue(report["claim_boundaries"]["diagnostic_only"])
 
     def test_cli_writes_json_and_returns_success_for_diagnosed_zero(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
