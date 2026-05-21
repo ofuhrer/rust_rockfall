@@ -11,9 +11,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"
 POLICY_VALIDATOR_PATH = ROOT / "scripts" / "validate_source_scenario_policy.py"
-PRAU_MULINS_REVIEW_PACKAGE_PATH = (
-    ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
-)
 
 
 def load_module(path: Path, name: str):
@@ -66,6 +63,232 @@ def square_feature(candidate_id: str, xmin: float, ymin: float, size: float) -> 
             ],
         },
     }
+
+
+def write_prau_mulins_review_package(workdir: Path) -> Path:
+    review_root = workdir / "validation/private/source_zone_review"
+    review_root.mkdir(parents=True, exist_ok=True)
+    review_package_path = review_root / "tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
+    geojson_path = review_root / "tschamut_adjacent_prau_mulins_candidate_v1_review.geojson"
+    csv_path = review_root / "tschamut_adjacent_prau_mulins_candidate_v1_review.csv"
+    mask_path = review_root / "tschamut_adjacent_prau_mulins_candidate_v1_review_mask.asc"
+
+    bbox = {
+        "crs": "EPSG:2056",
+        "xmin": 2696440.0,
+        "xmax": 2696525.0,
+        "ymin": 1167485.0,
+        "ymax": 1167575.0,
+    }
+    review_package = {
+        "schema_version": "terrain_release_zone_candidate_review_package_v1",
+        "review_package_status": "review_applied",
+        "review_application_status": "validated",
+        "candidate_site_id": "tschamut_public_pilot",
+        "candidate_site_name": "Balfrin / Tschamut AOI",
+        "source_zone_id": "tschamut_adjacent_prau_mulins_reviewed_source_zone_v1",
+        "candidate_release_zone_set_status": "review_applied",
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "candidate_release_zone_ids": ["tschamut_adjacent_prau_mulins_candidate_v1"],
+        "accepted_candidate_ids": ["tschamut_adjacent_prau_mulins_candidate_v1"],
+        "rejected_candidate_ids": [],
+        "needs_field_review_candidate_ids": [],
+        "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+        "editable_acceptance_fields": ["review_decision", "accepted", "rejected", "needs_field_review"],
+        "provenance_label_legend": planner.provenance_label_legend(),
+        "review_summary": {
+            "review_row_count": 1,
+            "candidate_count": 1,
+            "review_decision_counts": {"accepted": 1, "rejected": 0, "needs_field_review": 0},
+            "provenance_label_counts": {"workflow_generated": 1, "field_supported": 0, "mixed_provenance": 0, "blocked_missing_provenance": 0},
+            "candidate_stability_class_counts": {"stable": 0, "sensitive": 1, "unstable": 0},
+            "default_review_decision": "needs_field_review",
+        },
+        "candidate_review_rows": [
+            {
+                "candidate_release_zone_id": "tschamut_adjacent_prau_mulins_candidate_v1",
+                "candidate_generation_label": "heuristic_candidate_generation_only",
+                "review_decision": "accepted",
+                "accepted": True,
+                "rejected": False,
+                "needs_field_review": False,
+                "provenance_label": "workflow_generated",
+                "candidate_stability_label": "sensitive",
+                "candidate_stability_class": "sensitive",
+                "candidate_stability_rank": 1,
+                "candidate_stability_score": 0.88,
+                "candidate_minimum_retention_fraction": 0.88,
+                "candidate_mean_retention_fraction": 0.9,
+                "candidate_variant_presence_fraction": 1.0,
+                "candidate_sensitivity_label": "heuristic_sensitive_across_bounded_heuristics",
+                "release_cell_count": 1,
+                "release_cell_ids": ["tschamut_adjacent_prau_mulins_candidate_v1__cell_000"],
+                "component_cell_count": 1,
+                "component_area_m2": 7650.0,
+                "component_bbox_lv95_m": bbox,
+                "component_slope_min_deg": 53.5,
+                "component_slope_max_deg": 53.5,
+                "component_slope_mean_deg": 53.5,
+                "component_slope_median_deg": 53.5,
+                "candidate_review_note": "Selected from expanded terrain-screening plus user visual review; not field validation.",
+                "review_provenance_note": "Selected from expanded terrain-screening plus user visual review; not field validation.",
+                "provenance_ref": "terrain_and_user_visual_review",
+                "review_editable": True,
+                "comparison_to_frozen_footprint_excludes_source_zone": True,
+                "comparison_to_frozen_footprint_cell_count": 0,
+                "source_inputs": [
+                    "validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json",
+                ],
+                "candidate_site_id": "tschamut_public_pilot",
+            }
+        ],
+        "candidate_footprint_comparison": {
+            "comparison_status": "ready",
+            "comparison_mode": "candidate_mask_vs_frozen_source_zone_footprint_mask",
+            "candidate_excludes_frozen_footprint": True,
+            "candidate_cell_count": 1,
+            "frozen_footprint_cell_count": 9,
+            "candidate_and_frozen_footprint_intersection_cell_count": 0,
+            "candidate_and_frozen_footprint_intersection_area_m2": 0.0,
+            "candidate_overlap_fraction_of_candidate_cells": 0.0,
+            "candidate_overlap_fraction_of_frozen_footprint_cells": 0.0,
+        },
+        "frozen_source_zone_footprint": {
+            "source_zone_id": "tschamut_public_lps_release_bbox",
+            "geometry_type": "polygon",
+            "polygon_area_m2_exact": 327.01513671875,
+            "masked_cell_count_on_terrain_grid": 0,
+            "masked_area_m2_on_terrain_grid": 0.0,
+            "vertex_count": 4,
+            "vertex_coordinates": [
+                [2696622.482, 1167728.092],
+                [2696640.895, 1167728.092],
+                [2696640.895, 1167745.852],
+                [2696622.482, 1167745.852],
+            ],
+            "bbox_lv95_m": {
+                "crs": "EPSG:2056",
+                "xmin": 2696622.482,
+                "xmax": 2696640.895,
+                "ymin": 1167728.092,
+                "ymax": 1167745.852,
+            },
+        },
+        "claim_boundaries": {
+            "heuristic_workflow_input_only": True,
+            "validated_release_zone_evidence": False,
+            "field_validation_claims_allowed": False,
+            "physical_release_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "operational_claims_allowed": False,
+            "selection_for_demonstration_only": True,
+            "notes": [
+                "candidate review rows remain workflow review inputs until the source zone is frozen",
+                "accepted, rejected, and needs_field_review are editable review states, not evidence claims",
+                "selection is for demonstration only and does not authorize operational approval",
+                "unselected candidates remain traceable in the review package for auditability",
+                "selected from expanded terrain-screening plus user visual review; not field validation",
+            ],
+        },
+        "review_application": {
+            "schema_version": "terrain_release_zone_candidate_review_application_v1",
+            "review_package_path": str(review_package_path.relative_to(workdir)),
+            "output_root": "validation/private/source_zone_review",
+            "validation_status": "validated",
+            "validation_checks": {
+                "unknown_candidate_ids": [],
+                "unreviewed_accepted_candidate_ids": [],
+                "mixed_provenance_overclaim_candidate_ids": [],
+                "accepted_missing_validation_candidate_ids": [],
+                "accepted_candidate_count": 1,
+                "reviewed_candidate_count": 1,
+                "allowed_provenance_labels": list(planner.PROVENANCE_LABELS),
+            },
+            "reviewed_candidate_ids": ["tschamut_adjacent_prau_mulins_candidate_v1"],
+            "explicit_reviewed_candidate_ids": ["tschamut_adjacent_prau_mulins_candidate_v1"],
+            "accepted_candidate_ids": ["tschamut_adjacent_prau_mulins_candidate_v1"],
+            "rejected_candidate_ids": [],
+            "needs_field_review_candidate_ids": [],
+            "validated_candidate_count": 1,
+        },
+        "map_overlays": [
+            {
+                "overlay_id": "candidate_polygons",
+                "overlay_kind": "vector",
+                "label": "Candidate polygons",
+                "path": str(geojson_path.relative_to(workdir)),
+                "label_fields": [
+                    "candidate_release_zone_id",
+                    "candidate_stability_label",
+                    "candidate_sensitivity_label",
+                    "provenance_label",
+                    "review_decision",
+                ],
+                "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+                "traceability": "candidate ids, stability labels, sensitivity labels, and provenance stay attached to each feature",
+            },
+            {
+                "overlay_id": "candidate_mask",
+                "overlay_kind": "raster_mask",
+                "label": "Candidate mask",
+                "path": str(mask_path.relative_to(workdir)),
+                "label_fields": ["candidate_release_zone_id"],
+                "traceability": "the mask preserves the deterministic heuristic footprint that generated the polygons",
+            },
+        ],
+        "non_operational_warnings": [
+            "candidate review is for demonstration only and human selection only",
+            "candidate review does not validate, calibrate, or approve operational hazard products",
+            "selection may be used to choose a bounded scenario-generation subset, but it does not change claim boundaries",
+            "unselected candidates remain traceable and must be preserved in the review package for auditability",
+        ],
+        "outputs": {
+            "polygon": str(geojson_path.relative_to(workdir)),
+            "mask": str(mask_path.relative_to(workdir)),
+            "csv": str(csv_path.relative_to(workdir)),
+            "manifest": str(review_package_path.relative_to(workdir)),
+        },
+        "output_root": "validation/private/source_zone_review",
+        "repo_root": ".",
+    }
+
+    geojson = {
+        "schema_version": "terrain_release_zone_candidate_review_package_v1",
+        "type": "FeatureCollection",
+        "candidate_site_id": "tschamut_public_pilot",
+        "candidate_site_name": "Balfrin / Tschamut AOI",
+        "source_zone_id": "tschamut_adjacent_prau_mulins_reviewed_source_zone_v1",
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "review_decision_options": ["accepted", "rejected", "needs_field_review"],
+        "provenance_label_legend": planner.provenance_label_legend(),
+        "features": [
+            {
+                "type": "Feature",
+                "id": "tschamut_adjacent_prau_mulins_candidate_v1",
+                "properties": review_package["candidate_review_rows"][0],
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [bbox["xmin"], bbox["ymin"]],
+                        [bbox["xmax"], bbox["ymin"]],
+                        [bbox["xmax"], bbox["ymax"]],
+                        [bbox["xmin"], bbox["ymax"]],
+                        [bbox["xmin"], bbox["ymin"]],
+                    ]],
+                },
+            }
+        ],
+    }
+
+    review_package_path.write_text(json.dumps(review_package, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    geojson_path.write_text(json.dumps(geojson, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    csv_path.write_text(
+        "candidate_release_zone_id,candidate_generation_label,review_decision,accepted,rejected,needs_field_review,provenance_label,candidate_stability_label,candidate_stability_class,candidate_stability_rank,candidate_stability_score,candidate_minimum_retention_fraction,candidate_mean_retention_fraction,candidate_variant_presence_fraction,candidate_sensitivity_label,release_cell_count,release_cell_ids,component_cell_count,component_area_m2,component_slope_min_deg,component_slope_max_deg,component_slope_mean_deg,component_slope_median_deg\n"
+        "tschamut_adjacent_prau_mulins_candidate_v1,heuristic_candidate_generation_only,accepted,true,false,false,workflow_generated,sensitive,sensitive,1,0.88,0.88,0.9,1.0,heuristic_sensitive_across_bounded_heuristics,1,tschamut_adjacent_prau_mulins_candidate_v1__cell_000,1,7650.0,53.5,53.5,53.5,53.5\n",
+        encoding="utf-8",
+    )
+    mask_path.write_text("ncols 1\nnrows 1\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1\n", encoding="utf-8")
+    return review_package_path
 
 
 class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
@@ -266,8 +489,9 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
     def test_freezer_loads_the_adjacent_prau_mulins_review_candidate_southwest_of_the_frozen_footprint(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             workdir = Path(tmp)
+            review_package_path = write_prau_mulins_review_package(workdir)
             report = freezer.build_freezer_report(
-                review_package_path=PRAU_MULINS_REVIEW_PACKAGE_PATH,
+                review_package_path=review_package_path,
                 accepted_candidate_ids=["tschamut_adjacent_prau_mulins_candidate_v1"],
                 output_root=workdir / "validation/private/source_zone_review_freeze",
                 trajectory_count=24,
@@ -284,7 +508,10 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertEqual(report["freezer_status"], "ready")
         self.assertEqual(report["accepted_candidate_ids"], ["tschamut_adjacent_prau_mulins_candidate_v1"])
         self.assertEqual(source_zone_metadata["source_zone_id"], "tschamut_adjacent_prau_mulins_reviewed_source_zone_v1")
-        self.assertEqual(source_zone_metadata["source_review_package_path"], str(PRAU_MULINS_REVIEW_PACKAGE_PATH.relative_to(ROOT)))
+        self.assertEqual(
+            source_zone_metadata["source_review_package_path"],
+            str(review_package_path.resolve()),
+        )
         self.assertGreaterEqual(xmin, 2696440.0)
         self.assertLessEqual(xmax, 2696525.0)
         self.assertGreaterEqual(ymin, 1167485.0)
