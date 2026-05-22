@@ -73,6 +73,15 @@ branches into measured capability:
     surfaces. The measured run root stays within the projected larger-AOI
     runtime, file-count, byte, and manifest bands, so reducer/replay metadata
     remains the next ranked bottleneck instead of another comparison pass.
+  - TB-453 measures the current regional GIS/COG pressure on the committed
+    regional-output root: `hazard/results/tschamut_public_pilot/target_gate_v1`
+    is `gis_package_ready_cog_blocked` with `56` files, `79,160,991` bytes,
+    and `22` rasters, while the converted proof root
+    `hazard/results/tschamut_public_pilot/gate_v1_cog_export` is
+    `cog_package_ready_with_scope_delta` with `52` files, `55,873,028`
+    bytes, and `20` rasters. The exact next unblock action is to run
+    `scripts/convert_same_scale_package_to_cog.py` on the standard root into a
+    scratch COG output root if a refreshed converted proof is needed.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -114,10 +123,11 @@ branches into measured capability:
     bottlenecks for larger bounded probes.
   - `reducer_pressure` and replay metadata growth remain the next bottlenecks
     for 100-zone planning.
-  - `hazard_throughput` remains out of reach until a larger measured multi-zone
-    hazard execution exists.
-  - GIS/COG conversion remains blocked until the packaged AOI root has the
-    required manifest fields and raster package metadata.
+- `hazard_throughput` remains out of reach until a larger measured multi-zone
+  hazard execution exists.
+- GIS/COG conversion remains blocked at the standard-root layer until the
+  packaged AOI root has the required manifest fields and raster package
+  metadata, even though the converted proof root is already ready.
   - `job_count > 1` still crosses the current single-job evidence boundary.
   - `scale_up_authorized=false` and `distributed_execution_authorized=false`
     remain hard boundaries.
@@ -174,6 +184,13 @@ Measured:
   to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
   and matches layer inventory parity; that is demonstration evidence only and
   does not authorize operational GIS claims.
+- The current regional GIS/COG pressure measurement adds a committed-root
+  split: `target_gate_v1` is measured and COG-blocked at `56` files /
+  `79,160,991` bytes / `22` rasters, while `gate_v1_cog_export` is ready at
+  `52` files / `55,873,028` bytes / `20` rasters. The pressure is therefore
+  measured and blocked at the standard root rather than being operationally
+  ready, and the next unblock action is the conversion helper on the standard
+  root.
 - `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
   current real-AOI candidate scenario table at 3 rows, the fixture scenario
   table at 3 rows, and an expanded candidate-repeat ladder at 1 / 3 / 8
@@ -200,9 +217,12 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no promoted broader regional or
 Swiss-wide scale capability under the current single-node/postproc boundary.
-The regional split branch is now measured at the bounded probe level and
-compared against the projection surfaces; the next decisive gap is reducer and
-replay metadata pressure rather than another regional split retry. The
-repository has measured single-job, four-zone postproc, smallest multi-zone
-probe, and bounded regional split evidence, but not measured larger multi-zone
-hazard execution.
+The regional split branch is measured at the bounded probe level, and the
+regional GIS/COG package pressure is now measured as blocked at the standard
+root while the converted proof root is ready. The next decisive gap is still
+reducer and replay metadata pressure rather than another regional split retry,
+and the exact unblock action for the GIS/COG branch is the conversion helper on
+the standard root. The repository has measured single-job, four-zone
+postproc, smallest multi-zone probe, bounded regional split, and regional
+GIS/COG pressure evidence, but not measured larger multi-zone hazard
+execution.

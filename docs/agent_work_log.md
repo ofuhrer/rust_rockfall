@@ -6104,3 +6104,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed_smoke
 - Boundaries: no live Balfrin job, no ensemble, no physics change, no source-frequency semantics, no operational release-zone claim, and no generated heavy artifacts were committed.
 - Next task: `TB-453`
+
+### TB-453: Measure Regional GIS And COG Package Pressure
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: measure the committed regional-output GIS/COG pressure on the standard root and the closest converted-package proof root, without promoting either root to operational GIS readiness.
+- Files changed: `scripts/summarize_balfrin_regional_gis_cog_pressure.py`, `tests/test_balfrin_regional_gis_cog_pressure.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only regional GIS/COG pressure summary helper that measures file counts, byte counts, and raster counts for `hazard/results/tschamut_public_pilot/target_gate_v1` and `hazard/results/tschamut_public_pilot/gate_v1_cog_export`, then threads those counts through the GIS/COG readiness audit.
+  - Kept the distinction explicit between the standard-root blocked state (`gis_package_ready_cog_blocked`) and the converted-package readiness state (`cog_package_ready_with_scope_delta`), and surfaced an exact scratch conversion command as the next unblock action.
+  - Added focused regression coverage for the committed-root pressure summary and the missing-inputs fallback, using fixture-backed raster metadata instead of a live conversion run.
+  - Updated the Swiss-scale projection to name the regional GIS/COG pressure as measured-but-blocked at the standard root, then removed TB-453 from the active backlog after the summary was in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/audit_gis_cog_package_readiness.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --converted-package-root hazard/results/tschamut_public_pilot/gate_v1_cog_export --format json`
+- Result/status: implemented_fixture_backed
+- Boundaries: no operational GIS claim, no QGIS manual QA claim, no live conversion run, and no generated raster artifacts were committed.
+- Next task: `TB-454`

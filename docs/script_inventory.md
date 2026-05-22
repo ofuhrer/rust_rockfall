@@ -165,6 +165,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_target_area_candidate_stability.py`
 - `scripts/summarize_balfrin_target_area_evidence_bundle.py`
 - `scripts/summarize_balfrin_target_area_gis_cog_scope.py`
+- `scripts/summarize_balfrin_regional_gis_cog_pressure.py`
 - `scripts/summarize_balfrin_target_area_interpretation.py`
 - `scripts/summarize_bounded_next_ensemble_feasibility_probe.py`
 - `scripts/summarize_bounded_reducer_runtime_scaling.py`

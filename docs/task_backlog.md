@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-453: Measure Regional GIS And COG Package Pressure
-
-Goal: Measure GIS package and COG conversion pressure for the regional split or closest available regional-output fixture without promoting it to operational GIS readiness.
-
-Capability gap reduced: Quantifies whether GIS/COG packaging becomes the next bottleneck after regional split execution.
-
-Why this outranks alternatives: GIS/export polish is secondary, but regional-scale packaging pressure is a likely practical blocker once runtime evidence exists.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/build_hazard_layers.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Measured or fixture-backed GIS/COG file-count, byte-count, raster-count, and conversion-status summary.
-- Explicit distinction between standard-root blocked status and converted-package readiness.
-- Tests or smoke checks for the pressure summary.
-
-Definition of done:
-
-- The scale projection can name whether regional GIS/COG packaging is measured, fixture-backed, or blocked, and what exact next action would unblock it.
-
-Boundaries: No operational GIS claim, no QGIS manual QA claim, no live run unless already measured outputs exist, and no generated raster commits.
-
 ### TB-454: Reduce Regional Split Manifest And Replay Metadata Pressure
 
 Goal: Use the latest measured or fixture-backed regional split artifacts to remove avoidable manifest/replay metadata growth without losing reproducibility-critical fields.
