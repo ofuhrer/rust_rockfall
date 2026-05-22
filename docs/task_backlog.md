@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-452: Promote Adjacent-Candidate Scenario Path Into Prepared-Pilot Smoke
-
-Goal: Connect the accepted adjacent-candidate source zone and generated scenario table into a tracked prepared-pilot smoke path without running a full ensemble.
-
-Capability gap reduced: Bridges candidate review, scenario generation, and prepared-pilot packaging so the next scale probes do not depend on hand-curated path assumptions.
-
-Why this outranks alternatives: The maturity snapshot says the adjacent-candidate path replaced stale source-zone-overlap repair as the active management-AOI path, but it still needs an executable smoke handoff.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- Fixture-backed or scratch-only prepared-pilot smoke path using adjacent-candidate scenario outputs.
-- Stable manifest fields linking source candidate id, scenario table id, and command-plan target.
-- Focused tests that avoid ignored artifact dependence.
-
-Definition of done:
-
-- A clean checkout can exercise candidate-to-scenario-to-prepared-pilot smoke coverage and fail closed on missing real inputs without relying on stale Tschamut artifacts.
-
-Boundaries: No live Balfrin job, no physics changes, no source-frequency semantics, no operational release-zone claim, and no generated heavy artifacts committed.
-
 ### TB-453: Measure Regional GIS And COG Package Pressure
 
 Goal: Measure GIS package and COG conversion pressure for the regional split or closest available regional-output fixture without promoting it to operational GIS readiness.

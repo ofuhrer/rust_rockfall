@@ -385,6 +385,11 @@ def build_prep_summary(
     release_plan_paths = release_plan_report.get("source_inputs", {})
     generic_release_plan_contract = generic_release_plan_report.get("scenario_generation_contract", {})
     adjacent_scenario_table_generation = dict(management_aoi_scenario_pressure_report.get("scenario_table_generation") or {})
+    adjacent_smoke_handoff = dict(
+        adjacent_scenario_table_generation.get("prepared_pilot_smoke_handoff")
+        or management_aoi_scenario_pressure_report.get("prepared_pilot_smoke_handoff")
+        or {}
+    )
     adjacent_scenario_table_manifest = dict(adjacent_scenario_table_generation.get("scenario_table_manifest") or {})
     adjacent_scenario_table_output_paths = dict(adjacent_scenario_table_manifest.get("output_paths") or {})
     adjacent_scenario_table_path = (
@@ -405,6 +410,7 @@ def build_prep_summary(
         "accepted_candidate_count": int(adjacent_scenario_table_generation.get("accepted_candidate_count") or 0),
         "scenario_row_count": int(adjacent_scenario_table_generation.get("scenario_row_count") or 0),
         "source_inputs": dict(management_aoi_scenario_pressure_report.get("source_inputs") or {}),
+        "prepared_pilot_smoke_handoff": adjacent_smoke_handoff,
     }
     release_scenario_placeholders = {
         "source_scenario_policy_path": release_plan_paths.get("source_scenario_policy_path", ""),
@@ -461,6 +467,7 @@ def build_prep_summary(
         "management_aoi_scenario_pressure_source_inputs": management_aoi_scenario_pressure_report.get("source_inputs", {}),
         "management_aoi_scenario_pressure_command_plan_implications": management_aoi_scenario_pressure_report.get("command_plan_implications", []),
         "adjacent_candidate_scenario_table": adjacent_scenario_table_source,
+        "prepared_pilot_smoke_handoff": adjacent_smoke_handoff,
     }
     if management_aoi_scenario_pressure_is_named_deferral(str(management_aoi_scenario_pressure_report.get("scenario_pressure_status") or "")):
         scenario_generation_inputs["blocked_execution_status"] = str(
@@ -2537,6 +2544,19 @@ def build_case_skeleton_output(
         "output_root": str(resolved_output_root) if resolved_output_root is not None else "",
         "write_status": "not_requested" if resolved_output_root is None else "pending",
         "scenario_generation_handoff": {
+            "prepared_pilot_smoke_handoff": prep_summary.get("scenario_generation_inputs", {}).get(
+                "prepared_pilot_smoke_handoff",
+                {},
+            ),
+            "source_candidate_id": prep_summary.get("scenario_generation_inputs", {})
+            .get("prepared_pilot_smoke_handoff", {})
+            .get("source_candidate_id", ""),
+            "source_candidate_ids": prep_summary.get("scenario_generation_inputs", {})
+            .get("prepared_pilot_smoke_handoff", {})
+            .get("source_candidate_ids", []),
+            "command_plan_target": prep_summary.get("scenario_generation_inputs", {})
+            .get("prepared_pilot_smoke_handoff", {})
+            .get("command_plan_target", ""),
             "command_id": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
             .get("generic_scenario_generation", {})
             .get("command_id", ""),
@@ -2545,11 +2565,10 @@ def build_case_skeleton_output(
             .get("command", ""),
             "expected_scenario_table_path": prep_summary.get("release_scenario_placeholders", {}).get("scenario_table_path", ""),
             "scenario_table_manifest_path": prep_summary.get("release_scenario_placeholders", {}).get("scenario_table_manifest_path", ""),
-            "blocked_execution_status": prep_summary.get("adjacent_candidate_scenario_table", {}).get(
-                "scenario_pressure_status",
-                report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
-                .get("generic_scenario_generation", {})
-                .get("blocked_execution_status", blocked_execution),
+            "blocked_execution_status": scenario_generation_handoff_status(
+                prep_summary=prep_summary,
+                generic_release_plan_report=report_inputs["generic_release_plan_report"],
+                default_status=blocked_execution,
             ),
             "conditional_only_weighting": report_inputs["generic_release_plan_report"].get("scenario_generation_contract", {})
             .get("generic_scenario_generation", {})
@@ -2657,6 +2676,25 @@ def build_case_skeleton_output(
         blocked_execution_status=blocked_execution,
     )
     return skeleton_output
+
+
+def scenario_generation_handoff_status(
+    *,
+    prep_summary: dict[str, Any],
+    generic_release_plan_report: dict[str, Any],
+    default_status: str,
+) -> str:
+    smoke_handoff = prep_summary.get("scenario_generation_inputs", {}).get("prepared_pilot_smoke_handoff", {})
+    if isinstance(smoke_handoff, dict) and smoke_handoff.get("smoke_status") == "ready":
+        adjacent_source = prep_summary.get("scenario_generation_inputs", {}).get("adjacent_candidate_scenario_table", {})
+        adjacent_status = str(adjacent_source.get("scenario_pressure_status") or "")
+        if adjacent_status:
+            return adjacent_status
+    return (
+        generic_release_plan_report.get("scenario_generation_contract", {})
+        .get("generic_scenario_generation", {})
+        .get("blocked_execution_status", default_status)
+    )
 
 
 def write_case_skeleton_bundle(skeleton_output: dict[str, Any]) -> None:

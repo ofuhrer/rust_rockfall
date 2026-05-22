@@ -102,11 +102,23 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertIn("source-zone footprint", report["blocked_reason"])
         self.assertIn("larger real-staged AOI crop", report["required_upstream_replacement"])
         self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 0)
+        self.assertEqual(
+            report["scenario_generation_pressure"]["prepared_pilot_smoke_handoff"]["smoke_status"],
+            "blocked_missing_inputs",
+        )
+        self.assertEqual(
+            report["scenario_generation_pressure"]["prepared_pilot_smoke_handoff"]["command_plan_target"],
+            "second_site_aoi_to_prepared_pilot_dry_run",
+        )
+        self.assertIn(
+            "source_candidate_id",
+            report["scenario_generation_pressure"]["prepared_pilot_smoke_handoff"]["missing_fields"],
+        )
         self.assertEqual(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
         self.assertEqual(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)
         self.assertEqual(
             [row["block_family_id"] for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]],
-            ["tschamut_selected_rows_small", "tschamut_selected_rows_medium", "tschamut_selected_rows_large"],
+            ["tschamut_public_block_small", "tschamut_public_block_medium", "tschamut_public_block_large"],
         )
         self.assertTrue(all(row["row_count"] == 0 for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]))
         self.assertEqual(report["command_plan_implications"][1]["command_id"], "second_site_release_plan_execution_template")
@@ -208,6 +220,15 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual([row["row_count"] for row in report["scenario_generation_pressure"]["release_zone_cardinality"]], [3, 3])
         self.assertTrue(all(row["row_count"] == 6 for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]))
         self.assertEqual(report["scenario_table_generation"]["accepted_candidate_count"], 2)
+        smoke_handoff = report["scenario_table_generation"]["prepared_pilot_smoke_handoff"]
+        self.assertEqual(smoke_handoff["smoke_status"], "ready")
+        self.assertEqual(smoke_handoff["source_candidate_id"], "candidate_a")
+        self.assertEqual(smoke_handoff["source_candidate_ids"], ["candidate_a", "candidate_b"])
+        self.assertEqual(smoke_handoff["scenario_table_id"], "scenario_table_ready")
+        self.assertEqual(smoke_handoff["command_plan_target"], "second_site_aoi_to_prepared_pilot_dry_run")
+        self.assertTrue(smoke_handoff["scenario_table_csv"].endswith("scenario_table.csv"))
+        self.assertEqual(report["scenario_generation_pressure"]["prepared_pilot_smoke_handoff"], smoke_handoff)
+        self.assertEqual(report["prepared_pilot_smoke_handoff"], smoke_handoff)
         self.assertEqual(report["scenario_table_generation"]["scenario_row_count"], 6)
         self.assertEqual(report["scenario_table_generation"]["file_count"], 5)
         self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
@@ -260,6 +281,14 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["first_blocker"]["status"], "candidates_present")
         self.assertEqual(report["scenario_table_generation"]["review_application_status"], "validated")
         self.assertEqual(report["scenario_table_generation"]["accepted_candidate_count"], 1)
+        smoke_handoff = report["scenario_table_generation"]["prepared_pilot_smoke_handoff"]
+        self.assertEqual(smoke_handoff["smoke_status"], "ready")
+        self.assertEqual(smoke_handoff["source_candidate_id"], "tschamut_adjacent_prau_mulins_candidate_v1")
+        self.assertEqual(smoke_handoff["source_candidate_ids"], ["tschamut_adjacent_prau_mulins_candidate_v1"])
+        self.assertEqual(smoke_handoff["scenario_table_id"], "scenario_table_adjacent")
+        self.assertEqual(smoke_handoff["command_plan_target"], "second_site_aoi_to_prepared_pilot_dry_run")
+        self.assertTrue(smoke_handoff["scenario_table_csv"].endswith("scenario_table.csv"))
+        self.assertTrue(smoke_handoff["scenario_table_manifest_path"].endswith("reviewed_candidate_source_zone_freezer_manifest.json"))
         self.assertEqual(report["scenario_table_generation"]["scenario_row_count"], 3)
         self.assertEqual(report["scenario_table_generation"]["file_count"], 5)
         self.assertEqual(report["scenario_table_generation"]["scenario_table_manifest"]["conditional_weight_semantics"], "conditional_sampling_only")

@@ -34,6 +34,8 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "management_aoi_scenario_pressure_v1"
 DEFERRAL_SCHEMA_VERSION = "release_candidate_zero_result_diagnostic_v1"
+PREPARED_PILOT_SMOKE_HANDOFF_SCHEMA_VERSION = "management_aoi_prepared_pilot_smoke_handoff_v1"
+PREPARED_PILOT_SMOKE_COMMAND_TARGET = "second_site_aoi_to_prepared_pilot_dry_run"
 DEFAULT_CANDIDATE_METRICS_MANIFEST = ROOT / "validation/private/source_zone_review/tschamut_expanded_source_zone_candidate_report.json"
 DEFAULT_CANDIDATE_REVIEW_MANIFEST = ROOT / "validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json"
 DEFAULT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
@@ -163,6 +165,10 @@ def build_report(
         )
         first_blocker = dict(deferral_report.get("first_blocker") or {})
         unblock_guidance = dict(deferral_report.get("unblock_guidance") or {})
+        smoke_handoff = build_prepared_pilot_smoke_handoff(
+            scenario_table_generation={},
+            scenario_output_root=scenario_output_root,
+        )
         report = {
             "schema_version": SCHEMA_VERSION,
             "scenario_pressure_status": scenario_pressure_status,
@@ -208,6 +214,7 @@ def build_report(
                     "candidate_bundle_manifest_bytes": bundle_measurements["manifest_bytes"],
                     "candidate_bundle_total_bytes": bundle_measurements["total_bytes"],
                 },
+                "prepared_pilot_smoke_handoff": smoke_handoff,
             },
             "command_plan_implications": [
                 {
@@ -228,6 +235,7 @@ def build_report(
             ],
             "unblock_guidance": unblock_guidance,
             "claim_boundary": claim_boundary_from_policy(policy),
+            "prepared_pilot_smoke_handoff": smoke_handoff,
         }
         write_report(report, output_root)
         return report
@@ -273,6 +281,11 @@ def build_report(
     )
 
     scenario_table_generation = dict(generated_table_report.get("scenario_table_generation") or {})
+    prepared_pilot_smoke_handoff = build_prepared_pilot_smoke_handoff(
+        scenario_table_generation=scenario_table_generation,
+        scenario_output_root=scenario_output_root,
+    )
+    scenario_table_generation["prepared_pilot_smoke_handoff"] = prepared_pilot_smoke_handoff
     scenario_table_bundle_measurements = dict(scenario_table_generation.get("bundle_measurements") or {})
     scenario_table_manifest = dict(scenario_table_generation.get("scenario_table_manifest") or {})
     scenario_table_file_count = int(scenario_table_bundle_measurements.get("file_count") or 0)
@@ -356,6 +369,7 @@ def build_report(
             "candidate_expansion_ladder": candidate_expansion_report.get("candidate_expansion_ladder", []),
             "candidate_expansion_ladder_summary": candidate_expansion_report.get("candidate_expansion_ladder_summary", {}),
             "candidate_expansion_threshold": candidate_expansion_report.get("candidate_expansion_threshold", {}),
+            "prepared_pilot_smoke_handoff": prepared_pilot_smoke_handoff,
         },
         "command_plan_implications": [
             {
@@ -386,6 +400,7 @@ def build_report(
         },
         "claim_boundary": claim_boundary_from_policy(policy),
         "scenario_table_generation": scenario_table_generation,
+        "prepared_pilot_smoke_handoff": prepared_pilot_smoke_handoff,
     }
     write_report(report, output_root)
     return report
@@ -404,6 +419,10 @@ def blocked_report(
     candidate_evidence_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     bundle_measurements = measure_bundle_pressure(candidate_metrics_manifest_path.parent)
+    smoke_handoff = build_prepared_pilot_smoke_handoff(
+        scenario_table_generation={},
+        scenario_output_root=scenario_output_root,
+    )
     report = {
         "schema_version": SCHEMA_VERSION,
         "scenario_pressure_status": blocking_label,
@@ -448,6 +467,7 @@ def blocked_report(
                 "candidate_bundle_manifest_bytes": bundle_measurements["manifest_bytes"],
                 "candidate_bundle_total_bytes": bundle_measurements["total_bytes"],
             },
+            "prepared_pilot_smoke_handoff": smoke_handoff,
         },
         "command_plan_implications": [
             {
@@ -474,6 +494,7 @@ def blocked_report(
             "risk_or_exposure_supported": False,
         },
         "missing_inputs": sorted(set(missing_inputs)),
+        "prepared_pilot_smoke_handoff": smoke_handoff,
     }
     write_report(report, output_root)
     return report
@@ -585,6 +606,94 @@ def build_generated_scenario_table_report(
         },
     }
     return scenario_generation
+
+
+def build_prepared_pilot_smoke_handoff(
+    *,
+    scenario_table_generation: dict[str, Any],
+    scenario_output_root: Path,
+) -> dict[str, Any]:
+    manifest = scenario_table_generation.get("scenario_table_manifest")
+    if not isinstance(manifest, dict):
+        manifest = {}
+    output_paths = manifest.get("output_paths")
+    if not isinstance(output_paths, dict):
+        output_paths = {}
+
+    source_candidate_ids = candidate_ids_from_scenario_table_manifest(manifest)
+    scenario_table_output_root = (
+        text_value(scenario_table_generation.get("scenario_table_output_root"))
+        or display_path(scenario_output_root)
+    )
+    scenario_table_csv = (
+        text_value(scenario_table_generation.get("scenario_table_csv"))
+        or text_value(output_paths.get("scenario_table"))
+        or str((scenario_output_root / "scenario_table.csv").resolve())
+    )
+    scenario_table_manifest_path = (
+        text_value(scenario_table_generation.get("scenario_table_manifest_path"))
+        or text_value(output_paths.get("manifest"))
+        or str((scenario_output_root / "scenario_table_manifest.json").resolve())
+    )
+    scenario_table_id = Path(scenario_table_output_root).name if scenario_table_output_root else ""
+    missing_fields: list[str] = []
+    if not source_candidate_ids:
+        missing_fields.append("source_candidate_id")
+    if not scenario_table_csv:
+        missing_fields.append("scenario_table_csv")
+    if not scenario_table_manifest_path:
+        missing_fields.append("scenario_table_manifest_path")
+    smoke_status = "ready" if not missing_fields else "blocked_missing_inputs"
+    return {
+        "schema_version": PREPARED_PILOT_SMOKE_HANDOFF_SCHEMA_VERSION,
+        "smoke_status": smoke_status,
+        "blocked_reason": (
+            "" if smoke_status == "ready" else f"missing prepared-pilot smoke handoff fields: {', '.join(missing_fields)}"
+        ),
+        "missing_fields": missing_fields,
+        "command_plan_target": PREPARED_PILOT_SMOKE_COMMAND_TARGET,
+        "source_candidate_id": source_candidate_ids[0] if source_candidate_ids else "",
+        "source_candidate_ids": source_candidate_ids,
+        "scenario_table_id": scenario_table_id,
+        "scenario_table_output_root": scenario_table_output_root,
+        "scenario_table_csv": scenario_table_csv,
+        "scenario_table_manifest_path": scenario_table_manifest_path,
+        "scenario_row_count": int(scenario_table_generation.get("scenario_row_count") or manifest.get("scenario_row_count") or 0),
+        "accepted_candidate_count": int(
+            scenario_table_generation.get("accepted_candidate_count")
+            or manifest.get("accepted_candidate_count")
+            or len(source_candidate_ids)
+        ),
+        "read_only": True,
+        "scale_up_authorized": False,
+        "operational_claims_allowed": False,
+    }
+
+
+def candidate_ids_from_scenario_table_manifest(manifest: dict[str, Any]) -> list[str]:
+    candidate_ids: list[str] = []
+    for key in (
+        "accepted_candidate_ids",
+        "candidate_release_zone_ids",
+        "candidate_release_zone_record_ids",
+        "source_candidate_ids",
+    ):
+        values = manifest.get(key)
+        if isinstance(values, list):
+            candidate_ids.extend(text_value(value) for value in values)
+    for key in ("source_zone_family_cardinality", "release_zone_cardinality"):
+        rows = manifest.get(key)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            candidate_ids.append(
+                text_value(row.get("source_zone_id"))
+                or text_value(row.get("release_zone_id"))
+                or text_value(row.get("candidate_release_zone_id"))
+            )
+    return dedupe([candidate_id for candidate_id in candidate_ids if candidate_id])
 
 
 def build_candidate_expansion_pressure_report(
@@ -934,6 +1043,17 @@ def display_path(path: Path) -> str:
         return str(resolved.relative_to(ROOT))
     except ValueError:
         return str(resolved)
+
+
+def dedupe(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        out.append(item)
+    return out
 
 
 def render_text_report(report: dict[str, Any]) -> str:

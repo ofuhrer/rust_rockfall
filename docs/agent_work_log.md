@@ -6066,7 +6066,7 @@ scan thousands of lines of completed history.
 ### TB-451: Harden Regional Split Retry Idempotency And Remote Hygiene
 
 - Date: 2026-05-22
-- Commit: to-be-recorded
+- Commit: e14c963
 - Objective: prevent regional split retries from silently reusing stale remote generated artifacts or stale local `/tmp` package state.
 - Files changed: `scripts/check_balfrin_remote_access_preflight.py`, `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -6084,3 +6084,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only Balfrin inspection and local package generation only; no Balfrin job was submitted, rerun, canceled, or deleted, and no operational, scale-up, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was added.
 - Next task: `TB-452`
+
+### TB-452: Promote Adjacent-Candidate Scenario Path Into Prepared-Pilot Smoke
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: connect the accepted adjacent-candidate source zone and generated scenario table into a tracked prepared-pilot smoke handoff without running an ensemble.
+- Files changed: `scripts/summarize_management_aoi_scenario_pressure.py`, `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `tests/test_management_aoi_scenario_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `management_aoi_prepared_pilot_smoke_handoff_v1` record to the management-AOI scenario-pressure report, including source candidate id(s), scenario-table id/path, manifest path, command-plan target, and fail-closed missing-field status.
+  - Threaded the smoke handoff into the AOI-to-prepared-pilot dry-run skeleton as metadata only, preserving existing blocked/deferred classifications when the handoff is not ready.
+  - Added fixture-backed regression coverage for zero-candidate fail-closed behavior, synthetic candidate tables, and the accepted `tschamut_adjacent_prau_mulins_candidate_v1` scenario path.
+  - Removed TB-452 from the active backlog after the candidate-to-scenario-to-prepared-pilot smoke handoff was exercised without relying on ignored Tschamut hazard artifacts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_management_aoi_scenario_pressure.py scripts/plan_aoi_to_prepared_pilot_dry_run.py tests/test_management_aoi_scenario_pressure.py tests/test_aoi_to_prepared_pilot_dry_run.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure tests.test_aoi_to_prepared_pilot_dry_run`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json --output-root /tmp/tb452_scenario_pressure --scenario-output-root /tmp/tb452_scenario_table`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --format json --output-root /tmp/tb452_prepared_pilot_smoke`
+- Result/status: implemented_fixture_backed_smoke
+- Boundaries: no live Balfrin job, no ensemble, no physics change, no source-frequency semantics, no operational release-zone claim, and no generated heavy artifacts were committed.
+- Next task: `TB-453`
