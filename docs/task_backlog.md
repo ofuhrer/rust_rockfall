@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-448: Collect Regional Split Run-Root Metrics And Preservation Evidence
-
-Goal: Collect validation/hazard output counts, bytes, reducer metrics, preservation status, and manifest pointers from the regional split run root if TB-447 submitted successfully.
-
-Capability gap reduced: Turns a raw regional split run into auditable measured evidence that can be compared against projections and dashboards.
-
-Why this outranks alternatives: A submitted job is not useful scale evidence until runtime/output and preservation evidence are collected and classified.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_single_job_execution_sufficiency.md`
-
-Deliverables:
-
-- Regional split run-root metrics JSON/text or failed-closed collection report.
-- Validation and hazard file counts/bytes split by output family where possible.
-- Reducer/postproc timing and peak-memory evidence when scheduler data allows it.
-- Preservation and replay-critical artifact status.
-
-Definition of done:
-
-- Measured run-root evidence is collected for the regional split branch, or collection fails closed with exact missing artifact/access classes and no fixture-backed promotion.
-
-Boundaries: GPT-5.5 Balfrin-capable worker recommended. Read-only evidence collection only; do not fabricate metrics from fixtures, do not rerun the job, and do not upgrade claim boundaries.
-
 ### TB-449: Integrate Regional Split Evidence Into Scale Readiness Surfaces
 
 Goal: Thread the TB-447/TB-448 regional split outcome into the scale readiness matrix, Swiss-scale projection, management package, and maturity snapshot.

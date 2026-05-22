@@ -121,6 +121,9 @@ starting context for implementation unless a task explicitly asks for them.
 - `balfrin_regional_split_probe_gate_tb432.md`: TB-432 failed closed before
   `sbatch` because the Balfrin remote checkout hygiene/access preflight found
   stale generated package files after the package compaction gate passed.
+- `balfrin_regional_split_run_root_metrics_tb448.md`: TB-448 measured
+  regional split run-root metrics and preservation evidence from completed
+  `postproc` job `4350232`.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

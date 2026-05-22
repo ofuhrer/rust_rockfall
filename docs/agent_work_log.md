@@ -5984,3 +5984,34 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: one `postproc` submission only; no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency claim, physical-probability claim, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-448`
+
+### TB-448: Collect Regional Split Run-Root Metrics And Preservation Evidence
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: collect and classify validation/hazard output counts, reducer metrics, preservation status, and manifest pointers from the completed regional split run root without rerunning or submitting any Balfrin job.
+- Files changed: `docs/balfrin_regional_split_run_root_metrics_tb448.md`, `docs/README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the read-only Balfrin access preflight; it reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, remote checkout hygiene `pass`, dirty path count `0`, and remote head `faef6d8ec055b0a9457932d4659a4c5f7f4c7399`.
+  - Collected measured run-root metrics from `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1` into `/tmp/tb448_regional_split_metrics.json`; the metrics contract is `complete`, validation outputs are `130` files / `34565323` bytes, hazard outputs are `53` files / `55837701` bytes, conditional curve rows are `729600`, and collector wall time is `6.738646155004972` seconds.
+  - Queried job-specific scheduler evidence for SLURM job `4350232` into `/tmp/tb448_slurm_accounting_4350232.psv`; the job completed with `ExitCode=0:0`, `Elapsed=00:00:24`, `AllocCPUS=16`, and batch `MaxRSS=5488K`. The collector peak-memory field remains `172.921875` MB from preserved run-root accounting fallback because the reused run root has no `slurm_accounting_4350232.psv`.
+  - Ran the preservation gate into `/tmp/tb448_regional_split_preservation_gate.json`; it reported `ready_for_demonstration_evidence`, required run-root entries `complete`, output-family status `sufficient`, spatial/GIS artifact paths `declared`, no missing required families, no missing run-root entries, complete checksums, and measured reducer/replay metadata.
+  - Added `docs/balfrin_regional_split_run_root_metrics_tb448.md` as the tracked compact evidence note, indexed it in `docs/README.md`, and removed TB-448 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-448 --format json`
+  - `rg -n "^### TB-448:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb448_balfrin_access_preflight.json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1' > /tmp/tb448_regional_split_metrics.json`
+  - `ssh balfrin 'sacct -j 4350232 --parsable2 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,MaxDiskRead,MaxDiskWrite,WorkDir' > /tmp/tb448_slurm_accounting_4350232.psv`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --format json' > /tmp/tb448_regional_split_preservation_gate.json`
+  - `ssh balfrin 'RUN_ROOT=/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1; find "$RUN_ROOT" -type f -printf "%P|%s\n" | sort' > /tmp/tb448_remote_inventory_all.psv`
+  - `ssh balfrin 'RUN_ROOT=/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1; tail -n 80 "$RUN_ROOT"/logs/slurm-4350232.out "$RUN_ROOT"/logs/slurm-4350232.err' > /tmp/tb448_slurm_4350232_log_tail.txt`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: read-only evidence collection only; no Balfrin job was submitted, rerun, or canceled, no generated remote artifacts were committed, and no non-`postproc`, distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-449`
