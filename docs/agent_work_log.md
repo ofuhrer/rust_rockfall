@@ -6015,3 +6015,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only evidence collection only; no Balfrin job was submitted, rerun, or canceled, no generated remote artifacts were committed, and no non-`postproc`, distributed-execution, scale-up, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim was added.
 - Next task: `TB-449`
+
+### TB-449: Integrate Regional Split Evidence Into Scale Readiness Surfaces
+
+- Date: 2026-05-22
+- Commit: 4f6e98a
+- Objective: thread the TB-447/TB-448 measured regional split outcome through the scale readiness matrix, Swiss-scale projection, management package, and maturity snapshot.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_management_demo_package.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted the latest regional split dashboard row from historical TB-432 failed-closed/no-submit evidence to the measured TB-447/TB-448 regional split evidence class while preserving TB-432 as historical failed-closed evidence.
+  - Added measured regional split fields to the scale readiness matrix and management readiness matrix, including job `4350232`, validation output count/bytes, hazard output count/bytes, conditional curve rows, preservation status, and the next action `compare_measured_regional_split_against_scenario_and_output_projections`.
+  - Updated the Swiss-scale projection, management package, and maturity snapshot so the next step is projection comparison rather than another regional split retry, without promoting broader regional workflows to scale capability.
+  - Removed TB-449 from the active backlog after focused tests covered the updated evidence class.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_management_demo_package`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: synthesis only; no Balfrin submission, no claim promotion beyond measured TB-447/TB-448 evidence, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, distributed-execution, or scale-up claim was added.
+- Next task: `TB-450`

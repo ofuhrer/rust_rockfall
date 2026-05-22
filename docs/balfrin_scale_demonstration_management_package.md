@@ -15,18 +15,20 @@ toward a larger Balfrin demonstration?
   probe.
 - 100-zone work is conditionally feasible as a deferred planning case until
   reducer, manifest, scheduler, and authorization pressure are reduced.
-- Regional split work is the next executable milestone, but under current
-  constraints it is still failed-closed/no-submit evidence rather than
-  measured scale capability, so regional workflows remain out of reach until
-  that bounded retry is measured.
+- Regional split work is now measured at the bounded probe level: TB-447
+  executed one Balfrin `postproc` job and TB-448 preserved the run-root
+  metrics. That evidence does not promote broader regional workflows, but it
+  does mean the next step is comparison against the projection surfaces rather
+  than another retry.
 - Swiss-wide workflows are out of reach under current single-node/postproc
   constraints.
 - The recent two-zone and four-zone submit branches are failed-closed guardrail
   evidence, not measured hazard execution evidence, and the rebuilt
   management-AOI branch is still blocked by `source_zone_footprint_overlap`.
-- TB-312's four-zone postproc/reducer package is measured, and TB-407 adds the
-  smallest multi-zone probe, but both remain postproc-only and do not upgrade
-  hazard execution capability.
+- TB-312's four-zone postproc/reducer package is measured, TB-407 adds the
+  smallest multi-zone probe, and TB-447/TB-448 add the latest measured
+  regional split run root, but all remain bounded diagnostic evidence and do
+  not upgrade hazard execution capability.
 - TB-340 through TB-444 improved real-AOI acquisition/preprocessing automation,
   release-zone/scenario pressure tooling, QGIS and connector review readiness,
   submit-contract regeneration, fail-closed branch integration,
@@ -74,5 +76,5 @@ use, annual frequency, physical probability, risk, exposure, or vulnerability
 claims. It also does not treat failed-closed or postproc-only evidence as
 measured hazard execution, and it keeps the current `source_zone_footprint_overlap`
 candidate-screening blocker separate from measured Balfrin evidence. The next
-recommended executable milestone is one bounded regional split postproc retry
-with a fresh passing access preflight and regenerated ready package.
+recommended executable milestone is comparison of the measured regional split
+run root against the scenario-cardinality and output-tier projection surfaces.

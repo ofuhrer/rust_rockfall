@@ -62,6 +62,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         )
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["status"], "projection_only")
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "feasible")
+        self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["regional_split_probe"], "measured")
         self.assertEqual(
             report["swiss_scale_feasibility_projection_section"]["upstream_data_blockers"],
             ["scenario_cardinality"],
@@ -77,6 +78,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             ],
         )
         self.assertEqual(report["failed_closed_section"]["status"], "failed_closed")
+        self.assertIn("TB-432 is still historical failed-closed/no-submit regional split evidence", report["failed_closed_section"]["summary"])
         self.assertEqual(report["next_decision_section"]["evidence_type"], "deferred")
         self.assertTrue(report["scaling_section"]["single_job_sufficient_for_next_step"])
         self.assertFalse(report["scaling_section"]["scale_up_authorized"])
@@ -87,7 +89,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
         self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
         self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
-        self.assertIn("adjacent-candidate management-AOI path", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("TB-447/TB-448 supply measured regional split evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
         self.assertIn("scenario cardinality", report["swiss_scale_feasibility_projection_section"]["summary"])
         self.assertIn("adjacent-candidate review bundle", report["failed_closed_section"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
@@ -117,6 +119,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             gates,
             {
                 "measured_multi_zone_execution",
+                "regional_split_projection_comparison",
                 "preservation_gate",
                 "reducer_constraints",
                 "output_budget",
@@ -147,6 +150,14 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(measured_multi_zone_row["current_evidence"]["metrics_contract_status"], "complete")
         self.assertEqual(measured_multi_zone_row["current_evidence"]["preservation_status"], "ready_for_demonstration_evidence")
         self.assertIn("TB-407", measured_multi_zone_row["summary"])
+        regional_split_row = next(row for row in matrix["rows"] if row["gate"] == "regional_split_projection_comparison")
+        self.assertEqual(regional_split_row["status"], "analysis_only")
+        self.assertEqual(regional_split_row["evidence_status"], "measured")
+        self.assertEqual(regional_split_row["current_evidence"]["classification"], "measured_regional_split_probe")
+        self.assertEqual(regional_split_row["current_evidence"]["evidence_label"], "measured_on_balfrin")
+        self.assertEqual(regional_split_row["current_evidence"]["job_id"], "4350232")
+        self.assertEqual(regional_split_row["current_evidence"]["supersedes_failed_closed_task"], "TB-432")
+        self.assertIn("comparison work", regional_split_row["summary"])
         clean_checkout_row = next(row for row in matrix["rows"] if row["gate"] == "clean_checkout_behavior")
         self.assertEqual(clean_checkout_row["evidence_status"], "blocked")
         self.assertIn("does not exist", clean_checkout_row["current_evidence"]["missing_run_root_reason"])

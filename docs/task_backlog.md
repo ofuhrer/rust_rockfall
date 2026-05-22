@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-449: Integrate Regional Split Evidence Into Scale Readiness Surfaces
-
-Goal: Thread the TB-447/TB-448 regional split outcome into the scale readiness matrix, Swiss-scale projection, management package, and maturity snapshot.
-
-Capability gap reduced: Prevents the repo from continuing to describe regional split status from stale TB-432 evidence after a new retry has completed or failed closed.
-
-Why this outranks alternatives: Management-facing feasibility claims depend on correctly separating measured, failed-closed, blocked, and projection-only regional evidence.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Updated helper output and tests for the regional split evidence class.
-- Updated docs reflecting the new measured or failed-closed state.
-- Explicit next-action recommendation based on the new outcome.
-
-Definition of done:
-
-- The scale dashboard and management docs no longer point at stale TB-432 as the latest regional split state, and the new status is covered by focused tests.
-
-Boundaries: Synthesis only; no new Balfrin submission, no claim promotion beyond measured evidence actually collected, and no operational or physical-probability semantics.
-
 ### TB-450: Compare Regional Split Measurement Against Scenario And Output Projections
 
 Goal: Compare measured regional split runtime/output/reducer pressure against existing scenario-cardinality and output-tier projections.

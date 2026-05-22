@@ -25,11 +25,11 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
         self.assertEqual(
             report["next_evidence_field"],
-            "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "regional_split_projection_delta_summary",
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
-        self.assertIn("TB-432 failed closed before sbatch on regional split remote checkout hygiene", report["summary"])
-        self.assertIn("ranked next probe ladder", report["summary"])
+        self.assertIn("TB-447 and TB-448 now provide measured regional split evidence", report["summary"])
+        self.assertIn("ranked next probe ladder now places regional split projection comparison first", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
             [
@@ -38,11 +38,12 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 "smallest_multi_zone",
                 "four_zone_review_package",
                 "two_zone_preserved_hazard_run",
+                "regional_split_probe",
             ],
         )
         self.assertEqual(report["blocked_tiers"], ["four_zone_hazard_probe"])
         self.assertEqual(report["blocked_pre_submit_tiers"], ["four_zone_hazard_probe"])
-        self.assertEqual(report["failed_closed_tiers"], ["management_aoi_multi_zone_run", "regional_split_probe"])
+        self.assertEqual(report["failed_closed_tiers"], ["management_aoi_multi_zone_run"])
         self.assertEqual(report["postproc_microbenchmark_tiers"], ["postproc_microbenchmark"])
         self.assertEqual(report["fixture_backed_tiers"], ["fixture_budget_gate"])
         self.assertEqual(report["scratch_local_tiers"], ["local_reducer_ladder"])
@@ -52,17 +53,23 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertTrue(report["live_run_authorization_status"]["standing_postproc_clearance_active"])
         self.assertEqual(
             report["live_run_authorization_status"]["recommended_next_action"],
-            "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "compare_measured_regional_split_against_scenario_and_output_projections",
         )
         self.assertEqual(
             report["next_recommended_scaling_task"],
-            "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "compare_measured_regional_split_against_scenario_and_output_projections",
         )
         self.assertEqual(len(report["next_probe_ranking"]), 4)
-        self.assertEqual(report["next_probe_ranking"][0]["action_id"], "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe")
-        self.assertEqual(report["next_probe_ranking"][0]["probe_scope"], "live_postproc")
-        self.assertEqual(report["next_probe_ranking"][0]["blocker"], "tb432_failed_closed_remote_checkout_hygiene_cleared_but_fresh_regenerated_package_required")
-        self.assertIn("fresh_passing_access_preflight", report["next_probe_ranking"][0]["required_pre_submit_gates"])
+        self.assertEqual(
+            report["next_probe_ranking"][0]["action_id"],
+            "compare_measured_regional_split_against_scenario_and_output_projections",
+        )
+        self.assertEqual(report["next_probe_ranking"][0]["probe_scope"], "analysis_only")
+        self.assertEqual(
+            report["next_probe_ranking"][0]["blocker"],
+            "tb448_measured_regional_split_pressure_not_yet_threaded_into_projection_surfaces",
+        )
+        self.assertIn("measured-versus-projected runtime, output, and reducer-pressure deltas", report["next_probe_ranking"][0]["expected_evidence_gain"])
         self.assertEqual(report["next_probe_ranking"][1]["action_id"], "measure_scenario_storage_output_tier_pressure")
         self.assertIn("scenario_cardinality_and_manifest_size", report["next_probe_ranking"][1]["blocker"])
         self.assertEqual(report["next_probe_ranking"][2]["action_id"], "summarize_multi_zone_reducer_pressure")
@@ -71,23 +78,34 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["next_probe_ranking"][3]["action_id"], "summarize_balfrin_target_area_candidate_stability")
         self.assertEqual(
             report["regional_split_status"]["classification"],
-            "failed_closed_remote_hygiene_preflight",
+            "measured_regional_split_probe",
         )
-        self.assertEqual(report["regional_split_status"]["evidence_label"], "failed_closed")
-        self.assertEqual(report["regional_split_status"]["next_blocker_category"], "evidence_collection")
-        self.assertEqual(report["regional_split_status"]["post_cleanup_access_preflight_status"], "ready_for_read_only_collection")
-        self.assertEqual(report["regional_split_status"]["post_cleanup_remote_checkout_hygiene_status"], "pass")
-        self.assertEqual(report["regional_split_status"]["post_cleanup_dirty_path_count"], 0)
+        self.assertEqual(report["regional_split_status"]["evidence_label"], "measured_on_balfrin")
+        self.assertEqual(report["regional_split_status"]["measurement_status"], "measured_regional_split_postproc")
+        self.assertEqual(report["regional_split_status"]["next_blocker_category"], "projection_comparison")
+        self.assertEqual(report["regional_split_status"]["job_id"], "4350232")
+        self.assertEqual(report["regional_split_status"]["run_root"], "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1")
+        self.assertEqual(report["regional_split_status"]["validation_output_file_count"], 130)
+        self.assertEqual(report["regional_split_status"]["validation_output_bytes"], 34565323)
+        self.assertEqual(report["regional_split_status"]["hazard_output_file_count"], 53)
+        self.assertEqual(report["regional_split_status"]["hazard_output_bytes"], 55837701)
+        self.assertEqual(report["regional_split_status"]["conditional_curve_rows"], 729600)
+        self.assertEqual(report["regional_split_status"]["collector_wall_seconds"], 6.738646155004972)
+        self.assertEqual(report["regional_split_status"]["memory_peak_mb"], 172.921875)
+        self.assertEqual(report["regional_split_status"]["metrics_contract_status"], "complete")
+        self.assertEqual(report["regional_split_status"]["preservation_status"], "ready_for_demonstration_evidence")
+        self.assertEqual(report["regional_split_status"]["supersedes_failed_closed_task"], "TB-432")
+        self.assertEqual(report["regional_split_status"]["source_report"], "docs/balfrin_regional_split_run_root_metrics_tb448.md")
         self.assertEqual(
             [item["action_id"] for item in report["next_backlog_recommendations"]],
             [
-                "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+                "compare_measured_regional_split_against_scenario_and_output_projections",
                 "measure_scenario_storage_output_tier_pressure",
                 "summarize_multi_zone_reducer_pressure",
                 "summarize_balfrin_target_area_candidate_stability",
             ],
         )
-        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "evidence_collection")
+        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "projection_comparison")
         self.assertEqual(report["next_backlog_recommendations"][1]["status"], "deferred_until_higher_ranked_probe_executes")
         self.assertEqual(
             report["evidence_label_order"],
@@ -108,6 +126,11 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("failed_closed", report["evidence_label_definitions"])
         self.assertIn("smallest_multi_zone", report["latest_output_budget_status"])
         self.assertIn("single_zone", report["latest_execution_efficiency_status"])
+        self.assertEqual(
+            report["latest_execution_efficiency_status"]["regional_split_probe"],
+            "measured_regional_split_postproc_probe",
+        )
+        self.assertEqual(report["latest_output_budget_status"]["regional_split_probe"], "ready_for_demonstration_evidence")
         self.assertEqual(
             report["latest_execution_efficiency_status"]["postproc_microbenchmark"],
             "measured_postproc_shell_overhead_only",
@@ -224,6 +247,29 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             "measured_preservation_ready",
         )
 
+        self.assertEqual(tiers["regional_split_probe"]["classification"], "measured_regional_split_probe")
+        self.assertEqual(tiers["regional_split_probe"]["evidence_label"], "measured_on_balfrin")
+        self.assertEqual(tiers["regional_split_probe"]["measurement_status"], "measured_regional_split_postproc")
+        self.assertEqual(tiers["regional_split_probe"]["output_budget_status"], "ready_for_demonstration_evidence")
+        self.assertEqual(tiers["regional_split_probe"]["output_pressure_status"], "measured_regional_split_output_pressure")
+        self.assertEqual(tiers["regional_split_probe"]["reducer_pressure_status"], "measured_regional_split_reducer_pressure")
+        self.assertEqual(tiers["regional_split_probe"]["hazard_execution_status"], "measured_postproc_probe")
+        self.assertEqual(tiers["regional_split_probe"]["job_id"], "4350232")
+        self.assertEqual(tiers["regional_split_probe"]["run_root"], "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1")
+        self.assertEqual(tiers["regional_split_probe"]["validation_output_file_count"], 130)
+        self.assertEqual(tiers["regional_split_probe"]["validation_output_bytes"], 34565323)
+        self.assertEqual(tiers["regional_split_probe"]["hazard_output_file_count"], 53)
+        self.assertEqual(tiers["regional_split_probe"]["hazard_output_bytes"], 55837701)
+        self.assertEqual(tiers["regional_split_probe"]["collector_wall_seconds"], 6.738646155004972)
+        self.assertEqual(tiers["regional_split_probe"]["memory_peak_mb"], 172.921875)
+        self.assertEqual(tiers["regional_split_probe"]["metrics_contract_status"], "complete")
+        self.assertEqual(tiers["regional_split_probe"]["preservation_status"], "ready_for_demonstration_evidence")
+        self.assertEqual(tiers["regional_split_probe"]["next_recommended_action"], "compare_measured_regional_split_against_scenario_and_output_projections")
+        self.assertEqual(tiers["regional_split_probe"]["next_evidence_field"], "regional_split_projection_delta_summary")
+        self.assertEqual(tiers["regional_split_probe"]["supersedes_failed_closed_task"], "TB-432")
+        self.assertEqual(tiers["regional_split_probe"]["superseded_failed_closed_source_report"], "docs/balfrin_regional_split_probe_gate_tb432.md")
+        self.assertIn("comparison work", tiers["regional_split_probe"]["next_recommended_action_reason"])
+
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["classification"], "failed_closed")
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["evidence_label"], "failed_closed")
         self.assertEqual(
@@ -252,33 +298,6 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             tiers["management_aoi_multi_zone_run"]["next_evidence_field"],
             "adjacent_candidate_scenario_table",
         )
-
-        self.assertEqual(tiers["regional_split_probe"]["classification"], "failed_closed_remote_hygiene_preflight")
-        self.assertEqual(tiers["regional_split_probe"]["evidence_label"], "failed_closed")
-        self.assertEqual(tiers["regional_split_probe"]["measurement_status"], "failed_closed_no_submission")
-        self.assertEqual(tiers["regional_split_probe"]["hazard_execution_status"], "failed_closed_no_hazard_execution")
-        self.assertEqual(tiers["regional_split_probe"]["output_budget_status"], "ready_after_tb431_package_compaction")
-        self.assertEqual(tiers["regional_split_probe"]["reducer_pressure_status"], "ready_regional_split_merge_contract")
-        self.assertEqual(tiers["regional_split_probe"]["next_blocker_category"], "evidence_collection")
-        self.assertEqual(
-            tiers["regional_split_probe"]["next_recommended_action"],
-            "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
-        )
-        self.assertEqual(
-            tiers["regional_split_probe"]["next_evidence_field"],
-            "regional_split_bounded_postproc_probe_run_root",
-        )
-        self.assertFalse(tiers["regional_split_probe"]["sbatch_attempted"])
-        self.assertFalse(tiers["regional_split_probe"]["balfrin_job_submitted"])
-        self.assertEqual(tiers["regional_split_probe"]["regional_split_count"], 12)
-        self.assertEqual(tiers["regional_split_probe"]["remote_checkout_hygiene_status_at_gate"], "fail")
-        self.assertEqual(tiers["regional_split_probe"]["dirty_path_count_at_gate"], 3)
-        self.assertEqual(tiers["regional_split_probe"]["post_cleanup_access_preflight_status"], "ready_for_read_only_collection")
-        self.assertTrue(tiers["regional_split_probe"]["post_cleanup_ready_for_pre_submit"])
-        self.assertEqual(tiers["regional_split_probe"]["post_cleanup_remote_checkout_hygiene_status"], "pass")
-        self.assertEqual(tiers["regional_split_probe"]["post_cleanup_dirty_path_count"], 0)
-        self.assertIsNone(tiers["regional_split_probe"]["current_blocker"])
-        self.assertIn("fresh passing preflight", tiers["regional_split_probe"]["next_recommended_action_reason"])
 
         self.assertEqual(tiers["postproc_microbenchmark"]["classification"], "synthetic_postproc_overhead_measured")
         self.assertEqual(
@@ -322,14 +341,15 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("postproc_microbenchmark", text)
         self.assertIn("management_aoi_multi_zone_run", text)
         self.assertIn("regional_split_probe", text)
-        self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run, regional_split_probe", text)
+        self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
         self.assertIn(
-            "next_recommended_scaling_task: regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
+            "next_recommended_scaling_task: compare_measured_regional_split_against_scenario_and_output_projections",
             text,
         )
-        self.assertIn("next_blocker_category: evidence_collection", text)
+        self.assertIn("next_blocker_category: projection_comparison", text)
         self.assertIn("TB-407", text)
+        self.assertIn("TB-447", text)
         self.assertIn("adjacent-candidate review bundle", text)
         self.assertIn("projected_larger_aoi", text)
 

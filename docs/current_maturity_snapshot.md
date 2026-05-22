@@ -42,13 +42,13 @@ cleanup and retry ranking, hardened AOI/QGIS review coverage, and refreshed the
 management-facing feasibility summary. The current
 architectural answer is: a 10-zone single-AOI workflow is
 feasible under the current single-node/postproc boundary; a 100-zone workflow is
-conditionally feasible as a deferred planning case; regional workflows remain
-out of reach as scale capability until the bounded regional split retry is
-measured; and Swiss-wide execution remains out of reach under current
-single-node/postproc constraints. These updates clarified the regional split
-retry path, AOI/QGIS review readiness, candidate and scenario separation, and
-the next ranked executable milestone without changing the measured scale
-boundary.
+conditionally feasible as a deferred planning case; the bounded regional split
+probe is now measured, but broader regional workflows still remain out of reach
+as scale capability; and Swiss-wide execution remains out of reach under
+current single-node/postproc constraints. These updates clarified the regional
+split comparison path, AOI/QGIS review readiness, candidate and scenario
+separation, and the next ranked executable milestone without changing the
+measured scale boundary.
 The
 Chant Sura
 real-input gate distinguishes real, fixture-backed, partial, missing, and
@@ -64,9 +64,8 @@ families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
 matrix gives workers one compact evidence dashboard. The active backlog is now
 empty after TB-445 and needs a scoped refill before another worker cycle; the
-highest-ranked executable follow-up is the bounded regional split `postproc`
-retry, after regenerating the ready package with a fresh passing access
-preflight. The
+highest-ranked executable follow-up is now comparison of the measured regional
+split against the scenario-cardinality and output-tier projection surfaces. The
 Balfrin/Tschamut conditional demonstration track now has a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -173,15 +172,13 @@ package path enough for the reviewed package gate to pass in fixture-backed
 preflight. TB-432 then reran the live gate and failed closed before `sbatch`
 because the Balfrin remote checkout hygiene/access preflight reported three
 stale generated `command_plan.json` files under
-`validation/private/tb407_repaired_handoff_remote/...`. The regional split
-branch therefore remains unmeasured and TB-432 remains failed-closed/no-submit
-evidence. After TB-432, the orchestrator preserved/removed those ignored remote
-generated files and a fresh Balfrin access preflight returned
-`ready_for_read_only_collection`, `ready_for_pre_submit=true`, remote checkout
-hygiene `pass`, and `dirty_path_count=0`. The next blocker category is evidence
-collection rather than output pressure or reducer pressure: regenerate the
-ready regional split package with the fresh passing access preflight and retry
-one bounded regional split `postproc` probe.
+`validation/private/tb407_repaired_handoff_remote/...`. TB-447 later executed
+one bounded regional split `postproc` job and TB-448 collected the preserved
+run-root metrics for that same run root, so the regional split branch is now
+measured and TB-432 is historical failed-closed/no-submit evidence. The next
+blocker category is comparison work rather than evidence collection: thread the
+measured regional split pressure into the scenario-cardinality and output-tier
+projection surfaces before any further live recommendation.
 TB-315 through TB-318 then moved
 the AOI path from scattered dry-run commands to a guided, fixture-backed
 bounds-to-review-map workflow with map packaging and a polished static QA
@@ -217,11 +214,10 @@ risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
 TB-338/TB-445 now package the measured evidence, the projection-only Swiss-scale
 feasibility classification, the failed-closed submit branches, and the
 deferred next authorized step into one management-facing surface without
-upgrading any claim. The readiness matrix now ranks one bounded regional split
-`postproc` retry as the next runnable milestone, after regenerating the ready
-package with a fresh passing access preflight. That remains separate from
-claim promotion: the regional split branch is still failed-closed/no-submit
-evidence until the retry is measured, and the next decisive evidence gap is
+upgrading any claim. The readiness matrix now ranks comparison of the measured
+regional split against the projection surfaces as the next runnable milestone.
+That remains separate from claim promotion: the regional split branch is now
+measured at the bounded-probe level, and the next decisive evidence gap is
 larger measured multi-zone Balfrin hazard execution, not another projection-only
 report.
 The largest near-term gaps have moved from "can the Balfrin demo execute?" and

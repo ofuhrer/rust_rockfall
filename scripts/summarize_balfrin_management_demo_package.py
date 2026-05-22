@@ -530,6 +530,33 @@ def build_readiness_matrix(
             },
         ),
         matrix_row(
+            gate="regional_split_projection_comparison",
+            status="analysis_only",
+            gate_status="measured_regional_split_available",
+            evidence_status="measured",
+            summary=(
+                "TB-447/TB-448 supply measured regional split evidence; the next step is comparison work against the "
+                "scenario-cardinality and output-tier projection surfaces, not another regional split retry."
+            ),
+            helper_sources=[
+                "scripts/summarize_balfrin_scale_readiness_matrix.py",
+                "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+                "docs/balfrin_regional_split_probe_gate_tb432.md",
+            ],
+            current_evidence={
+                "classification": "measured_regional_split_probe",
+                "evidence_label": "measured_on_balfrin",
+                "job_id": "4350232",
+                "validation_output_file_count": 130,
+                "hazard_output_file_count": 53,
+                "conditional_curve_rows": 729600,
+                "preservation_status": "ready_for_demonstration_evidence",
+                "next_recommended_action": "compare_measured_regional_split_against_scenario_and_output_projections",
+                "supersedes_failed_closed_task": "TB-432",
+                "source_report": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+            },
+        ),
+        matrix_row(
             gate="preservation_gate",
             status="fixture_backed",
             gate_status=str(preservation_report.get("gate_status") or "blocked_missing_inputs"),
@@ -1026,12 +1053,13 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "evidence_type": "projection_only",
         "summary": (
             "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
-            "and regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-            "TB-407 supplies measured smallest multi-zone evidence, and the adjacent-candidate management-AOI path now shifts the first remaining bottleneck to scenario cardinality rather than source-zone automation."
+            "and broader regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
+            "TB-407 supplies measured smallest multi-zone evidence, TB-447/TB-448 supply measured regional split evidence, and the adjacent-candidate management-AOI path now shifts the first remaining bottleneck to scenario cardinality rather than source-zone automation."
         ),
         "projection_classification": {
             "10_zone": "feasible",
             "100_zone": "conditionally_feasible_deferred",
+            "regional_split_probe": "measured",
             "regional": "out_of_reach",
             "swiss_wide": "out_of_reach",
         },
@@ -1051,6 +1079,11 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "trajectory_count": 6,
             "single_node_postproc_boundary": True,
             "adjacent_candidate_review_path": True,
+            "regional_split_job_id": "4350232",
+            "regional_split_validation_output_file_count": 130,
+            "regional_split_hazard_output_file_count": 53,
+            "regional_split_conditional_curve_rows": 729600,
+            "regional_split_preservation_status": "ready_for_demonstration_evidence",
         },
         "source_paths": [
             "scripts/estimate_large_scale_execution.py",
@@ -1058,6 +1091,8 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "docs/swiss_scale_feasibility_projection.md",
             "docs/current_maturity_snapshot.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
+            "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+            "docs/balfrin_regional_split_probe_gate_tb432.md",
             "docs/balfrin_management_demo_package.md",
         ],
     }
@@ -1069,7 +1104,7 @@ def build_failed_closed_section() -> dict[str, Any]:
         "evidence_type": "failed_closed",
         "summary": (
             "The recent submit branches, including the canonical TB-362 two-zone hazard path and the rebuilt TB-386 management-AOI path on the adjacent-candidate review bundle and generated scenario table, "
-            "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability. TB-407 is separate measured smallest multi-zone evidence and does not change those failed-closed classifications."
+            "failed closed before live execution, so they remain guardrail evidence rather than measured scale capability. TB-432 is still historical failed-closed/no-submit regional split evidence, while TB-407 and TB-448 are separate measured evidence and do not change those failed-closed classifications."
         ),
         "failed_closed_branches": [
             {
@@ -1108,18 +1143,28 @@ def build_failed_closed_section() -> dict[str, Any]:
                 "failure_point": "target-area wrapper manifest used instead of the executable contract",
                 "classification": "failed_closed",
             },
+            {
+                "task": "TB-432",
+                "branch": "regional split postproc probe",
+                "failure_point": "remote checkout hygiene stopped the live gate before sbatch",
+                "classification": "failed_closed",
+                "preflight_status": "blocked_dirty_remote_checkout",
+                "source_report": "docs/balfrin_regional_split_probe_gate_tb432.md",
+            },
         ],
         "top_blockers": [
             "output_profile_status_blocked_output_profile",
             "authorization_record_checksum_mismatch",
             "review_only_profile_mismatch",
             "submit_contract_manifest_mismatch",
+            "remote_checkout_hygiene",
         ],
         "source_paths": [
             "docs/current_maturity_snapshot.md",
             "docs/balfrin_two_zone_hazard_run_tb362.md",
             "docs/multi_zone_reducer_pressure_probe.md",
             "docs/balfrin_single_job_execution_sufficiency.md",
+            "docs/balfrin_regional_split_probe_gate_tb432.md",
         ],
     }
 
@@ -1221,7 +1266,7 @@ def build_next_decision_section(bundle_report: dict[str, Any], post_run_report: 
         )
     return {
         "status": "deferred",
-        "summary": "This package is for review and decision-making, not for launching another Balfrin job; measured TB-407 evidence is already separated from failed-closed and projection-only branches.",
+        "summary": "This package is for review and decision-making, not for launching another Balfrin job; measured TB-407 and TB-448 evidence are already separated from failed-closed and projection-only branches.",
         "recommended_next_authorized_step": next_authorized_step,
         "recommendation": recommendation,
         "evidence_type": "deferred",
