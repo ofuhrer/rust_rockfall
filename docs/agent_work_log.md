@@ -6161,3 +6161,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: planning/refill only, no claim upgrade, no live Balfrin submission, no distributed execution, and no generated artifacts were committed.
 - Next task: `TB-456`
+
+### TB-456: Summarize Reducer Pressure From The Measured Regional Split Root
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: measure the compact-vs-baseline reducer pressure on the committed measured regional split root so the reducer/replay bottleneck can be ranked against the current evidence.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a fixture-backed `--measured-regional-split-root-report` mode to the multi-zone reducer-pressure script that reads the committed regional split validation and hazard manifests, records the compact-manifest default recommendation, and surfaces the measured replay-critical reducer/package family budgets.
+  - Kept the measured-root report explicit about the reducer merge order and the next probe recommendation, which now points to `measure_scenario_storage_output_tier_pressure` for the compact-candidate batching follow-up.
+  - Added focused regression coverage for the measured-root JSON and CLI paths, plus a short doc note that points to the new report command from the reducer-pressure surface.
+  - Removed TB-456 from the active backlog after the measured-root summary, compact recommendation, and next-probe ranking were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --measured-regional-split-root-report --format json > /tmp/tb456_measured_regional_split_report.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --measured-regional-split-root-report --format text | sed -n '1,30p'`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_reducer_pressure.py tests/test_multi_zone_reducer_pressure.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live Balfrin submission, no scale-up claim, no distributed execution, and no operational semantics.
+- Next task: `TB-457`

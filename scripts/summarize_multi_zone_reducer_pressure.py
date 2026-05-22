@@ -22,8 +22,35 @@ from typing import Any
 
 SCHEMA_VERSION = "multi_zone_reducer_pressure_probe_v1"
 REGIONAL_SPLIT_PLAN_SCHEMA_VERSION = "regional_split_execution_plan_v1"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
 DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_manifest_pressure_ladder_v1")
+MEASURED_REGIONAL_SPLIT_RUN_ROOT = "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
+MEASURED_REGIONAL_SPLIT_SOURCE_REPORT = REPO_ROOT / "docs" / "balfrin_regional_split_run_root_metrics_tb448.md"
+MEASURED_REGIONAL_SPLIT_VALIDATION_MANIFEST = (
+    REPO_ROOT
+    / "validation"
+    / "private"
+    / "tschamut_public_pilot"
+    / "gate_v1"
+    / "validation_tschamut_public_conditional_gate_v1_manifest.json"
+)
+MEASURED_REGIONAL_SPLIT_HAZARD_MANIFEST = (
+    REPO_ROOT
+    / "hazard"
+    / "results"
+    / "tschamut_public_pilot"
+    / "gate_v1"
+    / "validation_tschamut_public_conditional_gate_v1_manifest.json"
+)
+MEASURED_REGIONAL_SPLIT_REPLAY_CRITICAL_OUTPUT_FAMILIES = (
+    "reducer_execution_plan",
+    "reducer_execution_index",
+    "reducer_merge_state",
+    "reducer_chunk_manifest",
+    "map_package_manifest",
+    "pilot_gis_package_manifest",
+)
 DEFAULT_RELEASE_ZONE_COUNT = 12
 DEFAULT_REDUCER_WORKERS = 2
 DEFAULT_REDUCER_CHUNK_COUNT = 2
@@ -151,6 +178,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Materialize the deterministic 2/4/8/12-zone full-vs-compact manifest-pressure ladder.",
     )
     parser.add_argument(
+        "--measured-regional-split-root-report",
+        action="store_true",
+        help="Summarize the committed measured regional split root instead of materializing the local scratch probe.",
+    )
+    parser.add_argument(
         "--pressure-ladder-release-zone-counts",
         default="2,4,8,12",
         help="Comma-separated release-zone counts to use for the manifest-pressure ladder.",
@@ -160,7 +192,9 @@ def main(argv: list[str] | None = None) -> int:
     probe_root = args.probe_root
     try:
         output_family_mix = normalize_output_family_mix(args.output_family_mix)
-        if args.measure_manifest_pressure_ladder:
+        if args.measured_regional_split_root_report:
+            report = build_measured_regional_split_root_report()
+        elif args.measure_manifest_pressure_ladder:
             report = build_manifest_pressure_ladder_report(
                 release_zone_counts=parse_release_zone_counts(args.pressure_ladder_release_zone_counts),
                 output_family_mix=output_family_mix,
@@ -194,6 +228,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         print(render_text(report))
+    if report.get("report_kind") == "measured_regional_split_root":
+        return 0
     if report.get("ladder_status") == "measured_scratch_root":
         return 0
     return 0 if report["probe_status"] == "measured_scratch_root" else 2
@@ -597,6 +633,75 @@ def build_manifest_pressure_ladder_report(
         "rungs": rung_reports,
         "measurement_command": measurement_command,
         "summary": summarize_manifest_pressure_ladder(rung_reports, recommended_default_manifest_mode),
+    }
+
+
+def build_measured_regional_split_root_report() -> dict[str, Any]:
+    validation_manifest = load_json(MEASURED_REGIONAL_SPLIT_VALIDATION_MANIFEST)
+    hazard_manifest = load_json(MEASURED_REGIONAL_SPLIT_HAZARD_MANIFEST)
+    validation_outputs = ensure_list_of_mappings(validation_manifest.get("outputs"), "validation_manifest.outputs")
+    hazard_outputs = ensure_list_of_mappings(hazard_manifest.get("outputs"), "hazard_manifest.outputs")
+    validation_family_file_counts, validation_family_bytes = aggregate_output_families(validation_outputs)
+    hazard_family_file_counts, hazard_family_bytes = aggregate_output_families(hazard_outputs)
+    ladder_report = build_manifest_pressure_ladder_report()
+    compact_rung = next(
+        (rung for rung in ladder_report.get("rungs", []) if int(rung.get("release_zone_count") or 0) == 12),
+        ladder_report.get("rungs", [{}])[-1] if ladder_report.get("rungs") else {},
+    )
+    compact_manifest_delta = dict(compact_rung.get("manifest_mode_delta") or {})
+    replay_critical_family_budgets = {
+        family: {
+            "file_count": hazard_family_file_counts.get(family, 0),
+            "bytes": hazard_family_bytes.get(family, 0),
+        }
+        for family in MEASURED_REGIONAL_SPLIT_REPLAY_CRITICAL_OUTPUT_FAMILIES
+    }
+    measured_validation_output_budget = {
+        "file_count": number_or_zero(validation_manifest.get("performance", {}).get("output_file_count")),
+        "bytes": number_or_zero(validation_manifest.get("performance", {}).get("output_bytes")),
+        "family_file_counts": validation_family_file_counts,
+        "family_bytes": validation_family_bytes,
+    }
+    next_probe_recommendation = {
+        "task_id": "TB-457",
+        "action_id": "measure_scenario_storage_output_tier_pressure",
+        "probe_scope": "scratch_local_and_fixture_backed",
+        "blocker": "scenario_cardinality_and_manifest_size_are_the_next_ranking_step",
+        "reason": (
+            "Reducer pressure now has a measured regional-split root summary and the compact-manifest default is explicit, "
+            "so the next probe should remeasure scenario storage and output-tier pressure for compact candidate batches."
+        ),
+    }
+    summary = (
+        "The measured regional split root keeps deterministic reducer merge ordering, exposes replay-critical family budgets, "
+        "and still recommends compact manifest mode as the default. "
+        "The next probe is scenario storage and output-tier pressure."
+    )
+    return {
+        "schema_version": "multi_zone_measured_regional_split_reducer_pressure_v1",
+        "report_kind": "measured_regional_split_root",
+        "measurement_status": "measured_existing_artifacts",
+        "measured_run_root": MEASURED_REGIONAL_SPLIT_RUN_ROOT,
+        "source_report": str(MEASURED_REGIONAL_SPLIT_SOURCE_REPORT),
+        "validation_manifest_path": str(MEASURED_REGIONAL_SPLIT_VALIDATION_MANIFEST),
+        "hazard_manifest_path": str(MEASURED_REGIONAL_SPLIT_HAZARD_MANIFEST),
+        "reducer_merge_order": hazard_manifest.get("reducer_execution", {}).get("merge_order"),
+        "reducer_merge_order_independent": bool(hazard_manifest.get("reducer_execution", {}).get("merge_order_independent")),
+        "compact_manifest_recommendation": {
+            "default_manifest_mode": ladder_report.get("recommended_default_manifest_mode"),
+            "basis": ladder_report.get("summary"),
+            "release_zone_count": number_or_zero(compact_rung.get("release_zone_count")),
+            "manifest_size_bytes_delta": number_or_zero(compact_manifest_delta.get("manifest_size_bytes_delta")),
+            "output_file_count_delta": number_or_zero(compact_manifest_delta.get("output_file_count_delta")),
+            "reducer_manifest_bytes_delta": number_or_zero(compact_manifest_delta.get("reducer_manifest_bytes_delta")),
+            "reducer_manifest_file_count_delta": number_or_zero(compact_manifest_delta.get("reducer_manifest_file_count_delta")),
+            "sidecar_file_count_delta": number_or_zero(compact_manifest_delta.get("sidecar_file_count_delta")),
+        },
+        "replay_critical_output_families": list(MEASURED_REGIONAL_SPLIT_REPLAY_CRITICAL_OUTPUT_FAMILIES),
+        "replay_critical_family_budgets": replay_critical_family_budgets,
+        "measured_validation_output_budget": measured_validation_output_budget,
+        "next_probe_recommendation": next_probe_recommendation,
+        "summary": summary,
     }
 
 
@@ -2140,6 +2245,8 @@ def number_or_zero(value: Any) -> int | float:
 
 
 def render_text(report: dict[str, Any]) -> str:
+    if report.get("report_kind") == "measured_regional_split_root":
+        return render_measured_regional_split_root_text(report)
     if report.get("ladder_status") == "measured_scratch_root":
         return render_manifest_pressure_ladder_text(report)
     lines = [
@@ -2189,6 +2296,8 @@ def render_text(report: dict[str, Any]) -> str:
 
 
 def render_markdown(report: dict[str, Any]) -> str:
+    if report.get("report_kind") == "measured_regional_split_root":
+        return render_measured_regional_split_root_markdown(report)
     if report.get("ladder_status") == "measured_scratch_root":
         return render_manifest_pressure_ladder_markdown(report)
     inventory = report.get("validation_output_inventory", {})
@@ -2303,6 +2412,75 @@ def render_manifest_pressure_ladder_markdown(report: dict[str, Any]) -> str:
         lines.append(f"  - output_family_delta: `{rung.get('output_family_delta')}`")
         lines.append(f"  - combined_delta: `{rung.get('combined_delta')}`")
     return "\n".join(lines)
+
+
+def render_measured_regional_split_root_text(report: dict[str, Any]) -> str:
+    lines = [
+        f"report_kind: {report['report_kind']}",
+        f"measurement_status: {report['measurement_status']}",
+        f"measured_run_root: {report['measured_run_root']}",
+        f"source_report: {report['source_report']}",
+        f"reducer_merge_order: {report['reducer_merge_order']}",
+        f"reducer_merge_order_independent: {str(report['reducer_merge_order_independent']).lower()}",
+        "compact_manifest_recommendation:",
+        f"- default_manifest_mode: {report['compact_manifest_recommendation']['default_manifest_mode']}",
+        f"- basis: {report['compact_manifest_recommendation']['basis']}",
+        f"- release_zone_count: {report['compact_manifest_recommendation']['release_zone_count']}",
+        f"- manifest_size_bytes_delta: {report['compact_manifest_recommendation']['manifest_size_bytes_delta']}",
+        f"- output_file_count_delta: {report['compact_manifest_recommendation']['output_file_count_delta']}",
+        f"- reducer_manifest_bytes_delta: {report['compact_manifest_recommendation']['reducer_manifest_bytes_delta']}",
+        f"- reducer_manifest_file_count_delta: {report['compact_manifest_recommendation']['reducer_manifest_file_count_delta']}",
+        f"- sidecar_file_count_delta: {report['compact_manifest_recommendation']['sidecar_file_count_delta']}",
+        "replay_critical_family_budgets:",
+    ]
+    for family, budget in report["replay_critical_family_budgets"].items():
+        lines.append(f"- {family}: files={budget['file_count']} bytes={budget['bytes']}")
+    lines.append("next_probe_recommendation:")
+    for key in ("task_id", "action_id", "probe_scope", "blocker", "reason"):
+        lines.append(f"- {key}: {report['next_probe_recommendation'][key]}")
+    lines.append(f"summary: {report['summary']}")
+    return "\n".join(lines)
+
+
+def render_measured_regional_split_root_markdown(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            "# Measured Regional Split Reducer Pressure",
+            "",
+            f"- report_kind: `{report['report_kind']}`",
+            f"- measurement_status: `{report['measurement_status']}`",
+            f"- measured_run_root: `{report['measured_run_root']}`",
+            f"- source_report: `{report['source_report']}`",
+            f"- reducer_merge_order: `{report['reducer_merge_order']}`",
+            f"- reducer_merge_order_independent: `{str(report['reducer_merge_order_independent']).lower()}`",
+            "",
+            "## Compact Manifest Recommendation",
+            f"- default_manifest_mode: `{report['compact_manifest_recommendation']['default_manifest_mode']}`",
+            f"- basis: {report['compact_manifest_recommendation']['basis']}",
+            f"- release_zone_count: `{report['compact_manifest_recommendation']['release_zone_count']}`",
+            f"- manifest_size_bytes_delta: `{report['compact_manifest_recommendation']['manifest_size_bytes_delta']}`",
+            f"- output_file_count_delta: `{report['compact_manifest_recommendation']['output_file_count_delta']}`",
+            f"- reducer_manifest_bytes_delta: `{report['compact_manifest_recommendation']['reducer_manifest_bytes_delta']}`",
+            f"- reducer_manifest_file_count_delta: `{report['compact_manifest_recommendation']['reducer_manifest_file_count_delta']}`",
+            f"- sidecar_file_count_delta: `{report['compact_manifest_recommendation']['sidecar_file_count_delta']}`",
+            "",
+            "## Replay-Critical Family Budgets",
+            *[
+                f"- `{family}`: `{budget['file_count']}` files / `{budget['bytes']}` bytes"
+                for family, budget in report["replay_critical_family_budgets"].items()
+            ],
+            "",
+            "## Next Probe Recommendation",
+            f"- task_id: `{report['next_probe_recommendation']['task_id']}`",
+            f"- action_id: `{report['next_probe_recommendation']['action_id']}`",
+            f"- probe_scope: `{report['next_probe_recommendation']['probe_scope']}`",
+            f"- blocker: {report['next_probe_recommendation']['blocker']}",
+            f"- reason: {report['next_probe_recommendation']['reason']}",
+            "",
+            f"- summary: {report['summary']}",
+            "",
+        ]
+    )
 
 
 if __name__ == "__main__":

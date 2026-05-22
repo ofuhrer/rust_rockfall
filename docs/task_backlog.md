@@ -39,29 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-456: Summarize Reducer Pressure From The Measured Regional Split Root
-
-Goal: Measure the compact-vs-baseline reducer pressure on the measured regional split root so the reducer/replay bottleneck can be ranked against the current evidence.
-
-Capability gap reduced: Concrete reducer and replay metadata budgets for the measured regional split branch.
-
-Why this outranks alternatives: The scale matrix now ranks reducer pressure first, and the measured split already fits the projected pressure band.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- A scratch or fixture-backed reducer-pressure report for the measured regional split root that records compact-manifest default behavior, replay-critical family budgets, and the next probe recommendation.
-
-Definition of done:
-
-- The reducer-pressure surface reflects the measured regional split branch, the compact-manifest recommendation is explicit, and focused checks pass.
-
-Boundaries: No live Balfrin submission, no scale-up claim, no distributed execution, no operational semantics.
-
 ### TB-457: Measure Scenario Storage And Output-Tier Pressure For Compact Candidate Batches
 
 Goal: Re-measure scenario storage and output-tier pressure at the measured candidate-repeat cap so batching guidance stays aligned with the regional split result.

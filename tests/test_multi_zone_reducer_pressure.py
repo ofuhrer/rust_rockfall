@@ -124,6 +124,46 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
 
+    def test_measured_regional_split_root_report_exposes_compact_manifest_and_replay_budgets(self) -> None:
+        report = MODULE.build_measured_regional_split_root_report()
+
+        self.assertEqual(report["schema_version"], "multi_zone_measured_regional_split_reducer_pressure_v1")
+        self.assertEqual(report["report_kind"], "measured_regional_split_root")
+        self.assertEqual(
+            report["measured_run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+        )
+        self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
+        self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
+        self.assertEqual(report["compact_manifest_recommendation"]["release_zone_count"], 12)
+        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -10245)
+        self.assertEqual(report["compact_manifest_recommendation"]["output_file_count_delta"], 0)
+        self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_bytes_delta"], 0)
+        self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_file_count_delta"], 0)
+        self.assertEqual(report["compact_manifest_recommendation"]["sidecar_file_count_delta"], 0)
+        self.assertEqual(report["reducer_merge_order"], "sorted_chunk_id")
+        self.assertTrue(report["reducer_merge_order_independent"])
+        self.assertEqual(report["replay_critical_family_budgets"]["reducer_execution_plan"]["file_count"], 1)
+        self.assertEqual(report["replay_critical_family_budgets"]["reducer_execution_plan"]["bytes"], 46234)
+        self.assertEqual(report["replay_critical_family_budgets"]["reducer_chunk_manifest"]["file_count"], 2)
+        self.assertEqual(report["replay_critical_family_budgets"]["reducer_chunk_manifest"]["bytes"], 43141)
+        self.assertEqual(report["replay_critical_family_budgets"]["pilot_gis_package_manifest"]["file_count"], 1)
+        self.assertEqual(report["replay_critical_family_budgets"]["pilot_gis_package_manifest"]["bytes"], 21956)
+        self.assertEqual(report["next_probe_recommendation"]["task_id"], "TB-457")
+        self.assertEqual(report["next_probe_recommendation"]["action_id"], "measure_scenario_storage_output_tier_pressure")
+        self.assertIn("compact manifest mode", report["summary"])
+        self.assertIn("scenario storage and output-tier pressure", report["summary"])
+
+    def test_cli_measured_regional_split_root_report_uses_fixture_backed_artifacts(self) -> None:
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            exit_code = MODULE.main(["--measured-regional-split-root-report", "--format", "json"])
+        self.assertEqual(exit_code, 0)
+        report = json.loads(buffer.getvalue())
+        self.assertEqual(report["report_kind"], "measured_regional_split_root")
+        self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
+        self.assertEqual(report["next_probe_recommendation"]["task_id"], "TB-457")
+
     def test_regional_split_plan_has_stable_ordering_and_unique_execution_keys(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             probe_root = Path(tmpdir) / "probe"

@@ -37,6 +37,19 @@ The same manifest is referenced from `command_plan.json`, the probe manifest,
 and the JSON summary. Fixture tests enforce stable ordering and reject duplicate
 execution keys so later split/merge work does not rely on implicit file naming.
 
+## Measured Regional Split Root Summary
+
+The committed measured regional split root can be summarized directly with:
+
+```bash
+PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py \
+  --measured-regional-split-root-report --format json
+```
+
+That report keeps the compact-manifest recommendation explicit, records the
+measured replay-critical family budgets from the regional split hazard manifest,
+and names `measure_scenario_storage_output_tier_pressure` as the next probe.
+
 ## Scenario Batching Contract
 
 The candidate scenario generator now also emits
