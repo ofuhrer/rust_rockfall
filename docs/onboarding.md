@@ -188,7 +188,10 @@ not a Swiss-wide production hazard service. New contributors should assume:
   `scripts/summarize_balfrin_scale_readiness_matrix.py`. It labels tiers as
   measured on Balfrin, measured postproc microbenchmark, fixture-backed,
   scratch-local, projection-only, blocked before submission, or failed closed;
-  use those labels before proposing larger runs.
+  use those labels before proposing larger runs. After TB-445, the dashboard's
+  ranked next executable milestone is a bounded regional split `postproc` retry
+  with a fresh passing access preflight and regenerated ready package. That
+  branch is not measured scale capability until the retry completes.
 - The canonical AOI command-level walkthrough lives in
   [`docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart`](docs/public_real_site_geodata_preparation.md#canonical-aoi-quickstart).
   It covers the AOI front door, public-geodata staging, and the review bundle
@@ -204,7 +207,9 @@ not a Swiss-wide production hazard service. New contributors should assume:
   absent.
 
 For current maturity, read `docs/current_maturity_snapshot.md` before adding
-new backlog tasks. For a replayability check of the Balfrin demonstration, use:
+new backlog tasks. If `scripts/print_agent_task_context.py` reports
+`backlog_refill_needed=true`, do a scoped gap-analysis/refill pass before
+launching workers. For a replayability check of the Balfrin demonstration, use:
 
 ```bash
 PYENV_VERSION=system uv run python \

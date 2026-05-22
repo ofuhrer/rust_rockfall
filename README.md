@@ -24,14 +24,16 @@ measured by the TB-307 metrics-completion rerun on `postproc` as SLURM job
 `4339889`; the earlier blocked/failed-closed attempts remain history, not
 current blockers. The smallest bounded multi-zone branch is now measured:
 TB-407 completed one `postproc` run with preserved metrics and a ready
-preservation gate. The newer regional split branch is not yet measured; TB-428
-failed closed before `sbatch` because the reviewed regional split package
-exceeded its manifest-size budget. The current scale surface also includes
-reduced-output command-plan
+preservation gate. The newer regional split branch is not yet measured:
+TB-432 failed closed before `sbatch`; after remote-hygiene cleanup, the next
+ranked executable milestone is to regenerate the ready regional split package
+with a fresh passing access preflight and retry one bounded `postproc` probe.
+The current scale surface also includes reduced-output command-plan
 enforcement, validation-output replay/debug budget inventories, a local
 1/2/4/8/12-zone scaling ladder, a measured four-zone post-processing/reducer
 package on Balfrin `postproc`, a read-only Balfrin run-root output-budget
-auditor, and a compact scale evidence dashboard for workers. These surfaces
+auditor, and a compact scale evidence dashboard for workers with a deterministic
+next-probe ranking. These surfaces
 distinguish `measured_on_balfrin`,
 `measured_on_balfrin_postproc_microbenchmark`, `fixture_backed`,
 `scratch_local`, `projection_only`, `blocked_pre_submit`, and `failed_closed`
@@ -65,23 +67,26 @@ front door, which prints `workflow_status`, `first_blocker`, `next_command`,
 required inputs, generated outputs, and claim boundaries in one
 copy-pasteable summary.
 
-TB-338/TB-359 added and refreshed the current management-facing scale synthesis:
+TB-338/TB-445 added and refreshed the current management-facing scale synthesis:
 `docs/swiss_scale_feasibility_projection.md` and
 `docs/balfrin_scale_demonstration_management_package.md`. The current answer is
 that 10-zone single-AOI work is feasible under the present single-node/postproc
-boundary, 100-zone work is conditionally feasible but deferred, and regional or
-Swiss-wide execution is out of reach until public-geodata automation,
-release/scenario generation, multi-zone hazard execution, reducer/manifest
-pressure, and GIS/COG packaging blockers are reduced with measured evidence.
-TB-340 through TB-359 moved the next workflow layer forward: real-AOI
+boundary, 100-zone work is conditionally feasible but deferred, regional split
+work is the next executable milestone but remains failed-closed/no-submit
+evidence, and Swiss-wide execution is out of reach until public-geodata
+automation, release/scenario generation, multi-zone hazard execution,
+reducer/manifest pressure, and GIS/COG packaging blockers are reduced with
+measured evidence. TB-340 through TB-445 moved the next workflow layer forward:
+real-AOI
 public-geodata acquisition and cache-integrity planning, real-AOI terrain and
 context preprocessing, release-zone candidate sweep/stability/review tooling,
 candidate scenario pressure gates, an AOI prepared-pilot compiler, large-AOI GIS
 manifest repair, regenerated multi-zone Balfrin submit contracts, fail-closed
 two-zone/four-zone submit evidence, measured four-zone postproc/reducer
-pressure, hazard-throughput no-op boundaries, and the latest Swiss-scale
-projection refresh. These changes improve automation and evidence separation,
-but they still do not provide measured multi-zone Balfrin hazard execution.
+pressure, hazard-throughput no-op boundaries, QGIS/connector review guards,
+regional split retry ranking, and the latest Swiss-scale projection refresh.
+These changes improve automation and evidence separation, but they still do not
+provide measured regional or Swiss-wide hazard execution.
 
 The compact AOI front door lives in
 [`docs/aoi_user_manual.md`](docs/aoi_user_manual.md). Use that page for the
@@ -94,11 +99,12 @@ or a second workflow layer.
 Current next-backlog recommendations are deliberately execution- or
 acquisition-oriented: acquire and preprocess real public geodata for arbitrary
 AOIs, make release-zone and scenario generation defensible on real terrain,
-repair/regenerate failed-closed multi-zone submit contracts before live
-multi-zone scale steps, measure bounded multi-zone Balfrin hazard execution,
-and pursue performance work only from measured bottlenecks. Physical-frequency,
-calibration, risk/exposure/vulnerability, and operational claims remain
-deferred.
+regenerate the failed-closed regional split package with a fresh passing
+preflight before live regional scale steps, measure bounded multi-zone Balfrin
+hazard execution, and pursue performance work only from measured bottlenecks.
+The active backlog is currently empty after TB-445 and needs refill before the
+next implementation cycle. Physical-frequency, calibration,
+risk/exposure/vulnerability, and operational claims remain deferred.
 
 The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
 normalized `workflow_status`, `first_blocker`, `next_command`,

@@ -35,6 +35,12 @@ target-area probe. These are conditional diagnostic demonstrations: they improve
 execution confidence and scaling realism, but they do not establish physical
 credibility, annual-frequency semantics, operational acceptance, distributed
 execution authorization, or Swiss-wide scale-up readiness.
+Post-TB-445 scale planning distinguishes measured single-job, target-area,
+four-zone postproc, and smallest multi-zone `postproc` evidence from
+failed-closed submit attempts and projection-only regional/Swiss-wide cases.
+The next ranked executable milestone is a bounded regional split `postproc`
+retry after regenerating the ready package with a fresh passing access
+preflight; that branch remains failed-closed/no-submit evidence until measured.
 
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,

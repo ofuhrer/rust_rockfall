@@ -39,6 +39,8 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+Backlog refill needed. No active executable tasks remain after TB-445.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
