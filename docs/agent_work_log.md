@@ -5928,3 +5928,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: synthesis only; no scale-up, distributed execution, operational, or physical-probability claim was added.
 - Next task: backlog refill needed
+
+### TB-446: Regenerate Regional Split Package With Fresh Access Preflight
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: regenerate the regional split no-submit package from a fresh Balfrin access preflight so the next live retry starts from current remote state.
+- Files changed: `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the fresh read-only Balfrin access preflight and preserved it at `/tmp/tb446_balfrin_access_preflight.json`; it reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, remote checkout hygiene `pass`, dirty path count `0`, and remote head `f326e7c350c3e00ce930fbdb019eb9274c6e6175`.
+  - Regenerated the no-submit regional split package under `/tmp/rust_rockfall/tb446_regional_split_package`, with copies at `/tmp/tb446_regional_split_package.json` and `/tmp/tb446_regional_split_package.txt`; it reported `ready_for_bounded_postproc_submission=true`, `first_blocker=null`, no `sbatch`, and the exact later submit command scoped to `--partition postproc`.
+  - Added a focused regression proving a TB-432-style dirty remote-checkout preflight remains `failed_closed_preflight` and records the stale `command_plan.json` paths instead of being reused silently.
+  - Removed TB-446 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb446_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --balfrin-access-preflight-json /tmp/tb446_balfrin_access_preflight.json --artifact-dir /tmp/rust_rockfall/tb446_regional_split_package --format json --json-output /tmp/tb446_regional_split_package.json --text-output /tmp/tb446_regional_split_package.txt > /tmp/tb446_regional_split_package.stdout.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_regional_split_submission_package.py tests/test_balfrin_regional_split_submission_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package -v`
+  - `rg -n "^### TB-446:" docs/task_backlog.md` (expected no match after removal)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: read-only Balfrin access and package regeneration only; no `sbatch`, no non-`postproc` partition use, no distributed execution, no scale-up authorization, and no operational, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was added.
+- Next task: `TB-447`

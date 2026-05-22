@@ -11,6 +11,14 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIO_SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 SCRIPT_PATH = ROOT / "scripts" / "generate_balfrin_regional_split_submission_package.py"
+TB432_STALE_COMMAND_PLAN_PATHS = [
+    "validation/private/tb407_repaired_handoff_remote/multi_zone_pressure/"
+    "four_zone_review_only/handoff_output_budget_projection_compact_root/command_plan.json",
+    "validation/private/tb407_repaired_handoff_remote/multi_zone_pressure/"
+    "four_zone_review_only/handoff_output_budget_projection_full_root/command_plan.json",
+    "validation/private/tb407_repaired_handoff_remote/multi_zone_pressure/"
+    "handoff_output_budget_projection_full_root/command_plan.json",
+]
 SCENARIO_SPEC = importlib.util.spec_from_file_location("generate_candidate_source_zone_scenarios", SCENARIO_SCRIPT_PATH)
 SPEC = importlib.util.spec_from_file_location("generate_balfrin_regional_split_submission_package", SCRIPT_PATH)
 assert SCENARIO_SPEC is not None
@@ -45,6 +53,27 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
             "live_submission_authorized": False,
             "checked_commands": [{"name": "ssh_availability", "status": "pass"}],
         }
+
+    def _tb432_dirty_access(self) -> dict[str, object]:
+        access = dict(self._ready_access())
+        access.update(
+            {
+                "status": "blocked_dirty_remote_checkout",
+                "ready_for_read_only_collection": False,
+                "ready_for_pre_submit": False,
+                "remote_checkout_hygiene": {
+                    "status": "fail",
+                    "remote_head": "tb432-stale-head",
+                    "tracked_modifications": [],
+                    "untracked_generated_files": TB432_STALE_COMMAND_PLAN_PATHS,
+                    "stale_submission_packages": TB432_STALE_COMMAND_PLAN_PATHS,
+                    "stale_logs": [],
+                    "dirty_path_count": 3,
+                    "safe_cleanup_commands": [],
+                },
+            }
+        )
+        return access
 
     def test_default_package_fails_closed_when_access_preflight_is_not_supplied(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
@@ -105,6 +134,29 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertIn("--authorized-submit", report["exact_bounded_postproc_command"])
         self.assertNotIn("sbatch ", report["exact_bounded_postproc_command"])
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
+
+    def test_tb432_dirty_preflight_fixture_fails_closed_without_silent_reuse(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "regional_split_package"
+            report = MODULE.build_report(
+                artifact_dir=artifact_dir,
+                balfrin_access_preflight=self._tb432_dirty_access(),
+                balfrin_access_preflight_source="/tmp/tb432_balfrin_access_preflight.json",
+            )
+
+        self.assertEqual(report["submission_package_status"], "failed_closed_preflight")
+        self.assertFalse(report["ready_for_bounded_postproc_submission"])
+        self.assertEqual(report["first_blocker"]["gate"], "authorization_preflight")
+        self.assertIn("blocked_dirty_remote_checkout", report["first_blocker"]["reason"])
+        access_requirement = report["authorization_preflight"]["balfrin_access_preflight_requirement"]
+        self.assertEqual(access_requirement["source"], "/tmp/tb432_balfrin_access_preflight.json")
+        self.assertEqual(access_requirement["consumed_status"], "blocked_dirty_remote_checkout")
+        self.assertEqual(
+            access_requirement["remote_checkout_hygiene"]["stale_submission_packages"],
+            self._tb432_dirty_access()["remote_checkout_hygiene"]["stale_submission_packages"],
+        )
+        self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
+        self.assertFalse(report["no_submit_semantics"]["balfrin_job_submitted"])
 
     def test_missing_regional_merge_manifest_fails_closed_before_ready_package(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

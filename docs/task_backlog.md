@@ -39,35 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-446: Regenerate Regional Split Package With Fresh Access Preflight
-
-Goal: Rebuild the compact regional split `postproc` submission package from a fresh Balfrin access preflight so the next live retry starts from current remote state rather than stale TB-432 evidence.
-
-Capability gap reduced: Converts the regional split branch from historical failed-closed/no-submit evidence into a current ready-or-blocked submission package.
-
-Why this outranks alternatives: The maturity snapshot ranks the bounded regional split retry as the next executable scale milestone, and it cannot be submitted responsibly until the package is regenerated with a passing live preflight.
-
-Inspect first:
-
-- `docs/balfrin_regional_split_probe_gate_tb432.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Fresh Balfrin access preflight JSON preserved under `/tmp` or an ignored scratch root.
-- Regenerated regional split package JSON/text using that preflight.
-- Machine-readable ready/blocked status, first blocker, and exact submit command if ready.
-- Focused regression or smoke check proving stale TB-432 paths are not reused silently.
-
-Definition of done:
-
-- The regenerated package either reports `ready_for_bounded_postproc_submission=true` with current preflight evidence, or fails closed with one exact actionable blocker and no scheduler submission.
-- TB-446 is removed from this backlog and a chronological work-log entry is appended.
-
-Boundaries: GPT-5.5 Balfrin-capable worker required. Read-only Balfrin access and package regeneration only; no `sbatch`, no non-postproc partition, no distributed execution, no scale-up authorization, and no operational or physical-probability claim.
-
 ### TB-447: Execute One Bounded Regional Split Postproc Probe
 
 Goal: Submit and monitor exactly one bounded regional split `postproc` probe if and only if the regenerated package and all live gates are ready.
