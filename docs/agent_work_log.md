@@ -6240,3 +6240,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: read-only Balfrin preflight and local package regeneration only; no live Balfrin submission, no scale-up claim, no distributed execution, and no operational semantics.
 - Next task: `TB-460`
+
+### TB-460: Measure Restaged Management-AOI Candidate Stability For The Next Live Probe
+
+- Date: 2026-05-23
+- Commit: `16cc756c644313d1359b190c51683aedc253a9a0`
+- Objective: refresh the restaged management-AOI candidate-stability report so the next probe uses the current candidate ordering, stability deltas, and exclusion state instead of stale heuristics.
+- Files changed: `scripts/summarize_balfrin_target_area_candidate_stability.py`, `tests/test_balfrin_target_area_candidate_stability.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Surfaced the per-variant stability delta rows in the candidate-stability summary so the report now carries the current ordering inputs alongside the ranked candidate list.
+  - Exposed the frozen-footprint exclusion flag and all emitted candidate-output paths, including the search-domain artifact that makes the current sweep output set explicit.
+  - Refreshed the regression to the current deterministic output set, including the added search-domain artifact and the current delta values for the smoothed, coarsened, and boundary-trimmed variants.
+  - Removed TB-460 from the active backlog after the focused report and regression checks passed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_target_area_candidate_stability -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_target_area_candidate_stability.py --output-root /tmp/tb460_candidate_products --format json --json-output /tmp/tb460_candidate_stability_report.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no live submission, no scale-up claim, no distributed execution, and no operational semantics.
+- Next task: `TB-461`
