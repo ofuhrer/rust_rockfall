@@ -6144,3 +6144,20 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no claim upgrade, no deleted provenance, and no generated artifacts were committed.
 - Next task: `TB-455`
+
+### TB-455: Refill Backlog From Regional Split Outcome
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: replace the empty post-TB-445 queue with a compact dependency-ordered set of worker-sized tasks that reflects the measured regional split outcome and the current reducer-first ranking.
+- Files changed: `docs/task_backlog.md`, `docs/current_maturity_snapshot.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Replaced the lone TB-455 refill placeholder with six executable backlog items ordered from reducer-pressure measurement through scenario batching, replay smoke, package refresh, local candidate stability, and downstream decision-gate refresh.
+  - Updated the maturity snapshot to state that the backlog has been refilled and that reducer-pressure optimization is now the highest-ranked executable follow-up, with scenario batching and local candidate evidence behind it.
+  - Tightened the Swiss-scale projection wording so the regional split branch now feeds a reducer-first next step rather than another compare-first pass, while preserving the current claim boundaries.
+  - Kept the backlog compact and worker-sized, with each task naming a concrete output or measurement and staying inside the planning/refill boundary.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json >/tmp/tb455_scale_matrix.json`
+- Result/status: implemented_measured
+- Boundaries: planning/refill only, no claim upgrade, no live Balfrin submission, no distributed execution, and no generated artifacts were committed.
+- Next task: `TB-456`

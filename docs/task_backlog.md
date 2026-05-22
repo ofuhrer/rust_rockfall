@@ -39,32 +39,146 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-455: Refill Backlog From Regional Split Outcome
+### TB-456: Summarize Reducer Pressure From The Measured Regional Split Root
 
-Goal: After the regional split retry and integration tasks, perform a compact gap analysis and refill the backlog with the next executable worker-sized tasks.
+Goal: Measure the compact-vs-baseline reducer pressure on the measured regional split root so the reducer/replay bottleneck can be ranked against the current evidence.
 
-Capability gap reduced: Keeps the queue aligned with measured regional evidence rather than stale projection or failed-closed assumptions.
+Capability gap reduced: Concrete reducer and replay metadata budgets for the measured regional split branch.
 
-Why this outranks alternatives: Downstream work should depend on whether the regional split retry measured, failed closed, or exposed a new dominant bottleneck.
+Why this outranks alternatives: The scale matrix now ranks reducer pressure first, and the measured split already fits the projected pressure band.
 
 Inspect first:
 
-- `docs/task_backlog.md`
-- `docs/current_maturity_snapshot.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_multi_zone_reducer_pressure.py`
+- `tests/test_multi_zone_reducer_pressure.py`
 
 Deliverables:
 
-- 6-10 prioritized executable tasks based on the latest regional split outcome.
-- Removal or deferral of stale tasks whose dependencies did not materialize.
-- Updated capability-gap framing only where materially changed.
+- A scratch or fixture-backed reducer-pressure report for the measured regional split root that records compact-manifest default behavior, replay-critical family budgets, and the next probe recommendation.
 
 Definition of done:
 
-- The active backlog is non-empty, ordered by dependency, and contains only worker-sized executable tasks that name concrete outputs or measurements.
+- The reducer-pressure surface reflects the measured regional split branch, the compact-manifest recommendation is explicit, and focused checks pass.
 
-Boundaries: Planning/refill only; do not add process-only tasks, claim upgrades, distributed execution, operational semantics, annual-frequency modeling, risk/exposure/vulnerability workflows, or large production ensembles.
+Boundaries: No live Balfrin submission, no scale-up claim, no distributed execution, no operational semantics.
+
+### TB-457: Measure Scenario Storage And Output-Tier Pressure For Compact Candidate Batches
+
+Goal: Re-measure scenario storage and output-tier pressure at the measured candidate-repeat cap so batching guidance stays aligned with the regional split result.
+
+Capability gap reduced: Scenario cardinality and manifest-size budgets for compact candidate batches.
+
+Why this outranks alternatives: Scenario cardinality remains the first planning bottleneck after reducer pressure, and the current batching cap is already explicit.
+
+Inspect first:
+
+- `scripts/measure_scenario_storage_output_tier_pressure.py`
+- `tests/test_scenario_storage_output_tier_pressure.py`
+
+Deliverables:
+
+- An updated pressure report that keeps the 3-repeat/30-candidate batching cap explicit and shows the storage/output tier bands that justify it.
+
+Definition of done:
+
+- The measured batching rule is current, the report remains deterministic, and focused checks pass.
+
+Boundaries: No live Balfrin submission, no distributed execution, no larger-AOI claim, no annual-frequency framing.
+
+### TB-458: Refresh The Regional-Split Replay Smoke At The Rebuildable-Reduced Tier
+
+Goal: Confirm the measured regional split run root still supports rebuildable-reduced replay smoke without promoting full GIS or research outputs.
+
+Capability gap reduced: Replay-critical recovery evidence for the measured regional split branch.
+
+Why this outranks alternatives: The matrix still recommends `rebuildable_reduced` as the smallest replay tier, so replay-smoke evidence should stay current before any larger probe.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
+- `tests/test_balfrin_demonstration_replay_smoke.py`
+
+Deliverables:
+
+- A refreshed replay-smoke report that preserves the current replay-tier recommendation and any missing-output follow-up needed to keep the measured branch reproducible.
+
+Definition of done:
+
+- The replay-smoke recommendation matches the current measured evidence and focused checks pass.
+
+Boundaries: No operational claim upgrade, no live submission, no distributed execution, no risk/exposure/vulnerability workflow.
+
+### TB-459: Regenerate The Reviewed Regional Split Submission Package From Fresh Preflight Inputs
+
+Goal: Regenerate the reviewed regional split submission package from fresh access-preflight inputs and compact manifest mode before any retry is considered.
+
+Capability gap reduced: Stale-package and stale-preflight rejection on the live regional split path.
+
+Why this outranks alternatives: The earlier failed-closed branch was about stale remote hygiene, and the refreshed package must stay aligned with the current measured split shape.
+
+Inspect first:
+
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `tests/test_balfrin_regional_split_submission_package.py`
+
+Deliverables:
+
+- A regenerated package report that records the current preflight path, remote-head alignment, and compact-manifest freshness.
+
+Definition of done:
+
+- Fresh preflight and package state agree, stale-package rejection remains covered, and focused checks pass.
+
+Boundaries: No live Balfrin submission, no scale-up claim, no distributed execution, no operational semantics.
+
+### TB-460: Measure Restaged Management-AOI Candidate Stability For The Next Live Probe
+
+Goal: Measure restaged management-AOI candidate stability so the next live probe can use the current candidate ordering instead of stale heuristics.
+
+Capability gap reduced: Local candidate-stability evidence for the next live probe.
+
+Why this outranks alternatives: Local evidence is now ranked behind reducer and scenario follow-up, but it still directly refines the next bounded probe once those are current.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_target_area_candidate_stability.py`
+- `tests/test_balfrin_target_area_candidate_stability.py`
+
+Deliverables:
+
+- A refreshed candidate-stability report that records the restaged terrain candidate ordering, stability deltas, and any batching or exclusion changes it implies.
+
+Definition of done:
+
+- The candidate-stability output is current and focused checks pass.
+
+Boundaries: No live submission, no scale-up claim, no distributed execution, no operational semantics.
+
+### TB-461: Recompute The Balfrin Next-Live-Run Decision Gate And Demo Package
+
+Goal: Recompute the Balfrin next-live-run decision gate and management demo package from the refreshed reducer, scenario, replay, and candidate measurements.
+
+Capability gap reduced: A single current surface for the next ranked executable action.
+
+Why this outranks alternatives: The queue needs one compact downstream decision surface after the measured regional split work, not another stale summary of earlier blockers.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `tests/test_balfrin_next_live_run_decision_gate.py`
+- `tests/test_balfrin_management_demo_package.py`
+
+Deliverables:
+
+- Updated decision-gate and management-demo reports that reflect the reducer-first ranking, scenario batching cap, replay-smoke recommendation, and candidate-stability result.
+
+Definition of done:
+
+- The downstream decision surface matches the latest ranked evidence and focused checks pass.
+
+Boundaries: No operational claim upgrade, no annual-frequency or risk/exposure/vulnerability workflow, no distributed execution.
 
 ## Backlog Protocol
 

@@ -62,11 +62,11 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. The active backlog is now
-empty after TB-445 and needs a scoped refill before another worker cycle; the
-highest-ranked executable follow-up is now comparison of the measured regional
-split against the scenario-cardinality and output-tier projection surfaces. The
-Balfrin/Tschamut conditional demonstration track now has a frozen minimal
+matrix gives workers one compact evidence dashboard. The active backlog has
+been refilled after TB-455, and the highest-ranked executable follow-up is now
+reducer-pressure optimization, followed by scenario batching and local
+candidate evidence. The Balfrin/Tschamut conditional demonstration track now has
+a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
 evidence bundle, a replay smoke helper, a live interruption/resume proof, a

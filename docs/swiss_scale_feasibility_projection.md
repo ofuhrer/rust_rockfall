@@ -17,8 +17,8 @@ risk, exposure, or vulnerability semantics.
 - Regional split probe branch: TB-447 executed one bounded regional split
   `postproc` job and TB-448 preserved the run-root metrics. TB-432 remains
   historical failed-closed/no-submit evidence, but it is no longer the latest
-  regional split state. The next step is to compare the measured split against
-  the scenario-cardinality and output-tier projection surfaces.
+  regional split state. The next step is reducer-pressure optimization, then
+  scenario batching, before any further live recommendation.
 - Regional workflows: still out of reach as scale capability under current
   single-node/postproc constraints; the measured split probe is an anchor for
   comparison, not a promotion to broader regional capability.
@@ -153,8 +153,8 @@ treated as projection bounds, not new measurements.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Scenario cardinality remains the first bottleneck; source-zone automation is no longer first after the adjacent-candidate path | blocked_missing_inputs | next probe candidate if the scenario table stays compact |
 | 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | blocked_missing_inputs | optimization task before any live step |
-| regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,323 / 34,565,323 / 34,565,323 | 130 / 130 / 130 | Measured regional split run-root evidence is now available; compare it against the projection surfaces before any further live recommendation | ready_for_demonstration_evidence | compare measured regional split pressure against the scenario-cardinality and output-tier projections |
-| regional workflows | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent, so the broader class remains a projection-only planning class | blocked_missing_inputs | no scale-capability promotion until the measured regional split branch is compared against projections |
+| regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,323 / 34,565,323 / 34,565,323 | 130 / 130 / 130 | Measured regional split run-root evidence is now available; reducer pressure now outranks another comparison pass | ready_for_demonstration_evidence | reducer-pressure optimization first, then scenario batching, then local evidence |
+| regional workflows | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent, so the broader class remains a projection-only planning class | blocked_missing_inputs | no scale-capability promotion until reducer-pressure and scenario-batching follow-up measurements are refreshed |
 | Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | Balfrin access, authorization, and scheduler practicality remain the final boundary | blocked_missing_inputs | continued deferral until access and multi-AOI gaps close |
 
 ## Measured Versus Extrapolated
@@ -173,9 +173,8 @@ Measured:
   the failed-closed branches and still does not authorize scale-up.
 - TB-447 and TB-448 add measured regional split evidence. TB-432 remains
   failed-closed/no-submit history, but the next executable action is now
-  comparison work: thread the measured regional split pressure into the
-  scenario-cardinality and output-tier projection surfaces before any further
-  live recommendation.
+  reducer-pressure optimization, then scenario batching, then local candidate
+  evidence before any further live recommendation.
 - TB-389 adds a measured real-AOI candidate bundle on the restaged management
   terrain, which is useful for downstream scenario pressure work but remains a
   heuristic candidate-generation result rather than validated release-zone
@@ -219,10 +218,11 @@ conditional 100-zone planning class, and no promoted broader regional or
 Swiss-wide scale capability under the current single-node/postproc boundary.
 The regional split branch is measured at the bounded probe level, and the
 regional GIS/COG package pressure is now measured as blocked at the standard
-root while the converted proof root is ready. The next decisive gap is still
-reducer and replay metadata pressure rather than another regional split retry,
-and the exact unblock action for the GIS/COG branch is the conversion helper on
-the standard root. The repository has measured single-job, four-zone
+root while the converted proof root is ready. The next decisive gap is reducer
+and replay metadata pressure first, with scenario batching next and local
+candidate evidence after that, rather than another regional split retry; the
+exact unblock action for the GIS/COG branch is the conversion helper on the
+standard root. The repository has measured single-job, four-zone
 postproc, smallest multi-zone probe, bounded regional split, and regional
 GIS/COG pressure evidence, but not measured larger multi-zone hazard
 execution.
