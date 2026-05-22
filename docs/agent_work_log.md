@@ -5831,7 +5831,7 @@ scan thousands of lines of completed history.
 ### TB-441: Measure Reducer Pressure On Batched Scenario Outputs
 
 - Date: 2026-05-22
-- Commit: to-be-recorded
+- Commit: 09c06e6
 - Objective: measure reducer and merge pressure on the batched scenario contract, then prove the merge path stays deterministic when the batch fixture order changes.
 - Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
