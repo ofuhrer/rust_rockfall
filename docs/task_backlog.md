@@ -39,29 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-457: Measure Scenario Storage And Output-Tier Pressure For Compact Candidate Batches
-
-Goal: Re-measure scenario storage and output-tier pressure at the measured candidate-repeat cap so batching guidance stays aligned with the regional split result.
-
-Capability gap reduced: Scenario cardinality and manifest-size budgets for compact candidate batches.
-
-Why this outranks alternatives: Scenario cardinality remains the first planning bottleneck after reducer pressure, and the current batching cap is already explicit.
-
-Inspect first:
-
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `tests/test_scenario_storage_output_tier_pressure.py`
-
-Deliverables:
-
-- An updated pressure report that keeps the 3-repeat/30-candidate batching cap explicit and shows the storage/output tier bands that justify it.
-
-Definition of done:
-
-- The measured batching rule is current, the report remains deterministic, and focused checks pass.
-
-Boundaries: No live Balfrin submission, no distributed execution, no larger-AOI claim, no annual-frequency framing.
-
 ### TB-458: Refresh The Regional-Split Replay Smoke At The Rebuildable-Reduced Tier
 
 Goal: Confirm the measured regional split run root still supports rebuildable-reduced replay smoke without promoting full GIS or research outputs.

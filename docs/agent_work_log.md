@@ -6181,3 +6181,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live Balfrin submission, no scale-up claim, no distributed execution, and no operational semantics.
 - Next task: `TB-457`
+
+### TB-457: Measure Scenario Storage And Output-Tier Pressure For Compact Candidate Batches
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: re-measure scenario storage and output-tier pressure at the measured candidate-repeat cap so the batching guidance stays aligned with the regional split result.
+- Files changed: `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an explicit batching-cap summary field to the scenario-storage pressure report so the measured `3-repeat / 30-candidate / 300-row` cap is surfaced directly in both JSON and text output.
+  - Added an explicit storage/output tier-band summary alongside the existing tier comparison so the report spells out the measured minimal, rebuildable-reduced, GIS, and research-full bands that justify the cap.
+  - Locked the new report surface into focused regression coverage while preserving the existing deterministic ladder measurements and fallback behavior for missing reduced-root inputs.
+  - Removed TB-457 from the active backlog after the report surface and regression checks were current.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format text | sed -n '1,40p'`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no distributed execution, no larger-AOI claim, and no annual-frequency framing.
+- Next task: `TB-458`

@@ -82,8 +82,45 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
             report["next_balfrin_package_batching_rule"]["recommended_cap_scenario_row_count"],
             300,
         )
+        self.assertEqual(
+            report["next_balfrin_package_batching_rule"]["cap_summary"],
+            "3-repeat / 30-candidate / 300-row cap",
+        )
         self.assertIn("3-repeat", report["next_balfrin_package_batching_rule"]["reason"])
 
+        self.assertEqual(
+            report["storage_output_tier_bands"],
+            [
+                {
+                    "tier_id": "minimal",
+                    "tier_role": "scenario table plus release-plan manifest only",
+                    "file_count": 5,
+                    "total_bytes": 13685,
+                    "replay_suitability": "insufficient_missing_trajectory_outputs",
+                },
+                {
+                    "tier_id": "rebuildable_reduced",
+                    "tier_role": "smallest builder-facing validation outputs needed to replay or rebuild hazard layers",
+                    "file_count": 17,
+                    "total_bytes": 3953602,
+                    "replay_suitability": "sufficient",
+                },
+                {
+                    "tier_id": "gis",
+                    "tier_role": "map package, rasters, vectors, and GIS manifests for QGIS review",
+                    "file_count": 56,
+                    "total_bytes": 79160991,
+                    "replay_suitability": "sufficient_for_review_not_minimal_replay",
+                },
+                {
+                    "tier_id": "research_full",
+                    "tier_role": "full validation output with full trajectory/history products where present",
+                    "file_count": 2716,
+                    "total_bytes": 764598283,
+                    "replay_suitability": "sufficient_but_not_smallest",
+                },
+            ],
+        )
         tiers = {row["tier_id"]: row for row in report["tier_comparison"]}
         self.assertEqual(set(tiers), {"minimal", "rebuildable_reduced", "gis", "research_full"})
         self.assertEqual(tiers["minimal"]["replay_suitability"], "insufficient_missing_trajectory_outputs")
@@ -93,7 +130,10 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
             "rebuildable_reduced",
         )
         self.assertEqual(report["next_scale_bottleneck"]["bottleneck_id"], "gis_and_research_full_output_growth")
-        self.assertIn("Scenario Storage", MODULE.render_text_report(report))
+        rendered = MODULE.render_text_report(report)
+        self.assertIn("Scenario Storage", rendered)
+        self.assertIn("cap_summary: 3-repeat / 30-candidate / 300-row cap", rendered)
+        self.assertIn("storage_output_tier_bands:", rendered)
 
     def test_missing_real_candidate_inputs_block_candidate_without_blocking_fixture_tiers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

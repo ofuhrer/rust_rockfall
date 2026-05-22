@@ -128,6 +128,16 @@ def build_report(
     )
     recommendation = recommend_balfrin_replay_tier(tier_comparison)
     next_bottleneck = determine_next_bottleneck(real_candidate=real_candidate, tier_comparison=tier_comparison)
+    storage_output_tier_bands = [
+        {
+            "tier_id": row["tier_id"],
+            "tier_role": row["tier_role"],
+            "file_count": row["file_count"],
+            "total_bytes": row["total_bytes"],
+            "replay_suitability": row["replay_suitability"],
+        }
+        for row in tier_comparison
+    ]
     return {
         "schema_version": SCHEMA_VERSION,
         "measurement_status": "ready",
@@ -141,6 +151,7 @@ def build_report(
         "next_balfrin_package_batching_rule": recommend_candidate_batching_rule(expanded_candidate_sets),
         "output_family_measurements": output_families,
         "tier_comparison": tier_comparison,
+        "storage_output_tier_bands": storage_output_tier_bands,
         "balfrin_demonstration_replay_recommendation": recommendation,
         "next_scale_bottleneck": next_bottleneck,
         "claim_boundaries": claim_boundaries(),
@@ -359,6 +370,11 @@ def recommend_candidate_batching_rule(candidate_measurements: list[dict[str, Any
         "recommended_cap_candidate_repeat_count": int(cap_measurement.get("candidate_repeat_count") or 0),
         "recommended_cap_candidate_release_zone_record_count": int(cap_measurement.get("candidate_release_zone_record_count") or 0),
         "recommended_cap_scenario_row_count": int(cap_measurement.get("scenario_row_count") or 0),
+        "cap_summary": (
+            f"{int(cap_measurement.get('candidate_repeat_count') or 0)}-repeat / "
+            f"{int(cap_measurement.get('candidate_release_zone_record_count') or 0)}-candidate / "
+            f"{int(cap_measurement.get('scenario_row_count') or 0)}-row cap"
+        ),
         "cap_measurement": {
             "candidate_repeat_count": int(cap_measurement.get("candidate_repeat_count") or 0),
             "candidate_release_zone_record_count": int(cap_measurement.get("candidate_release_zone_record_count") or 0),
@@ -628,12 +644,19 @@ def render_text_report(report: dict[str, Any]) -> str:
         "next_balfrin_package_batching_rule:",
         f"  status: {batching_rule['recommended_batching_status']}",
         f"  key: {batching_rule['batching_key']}",
+        f"  cap_summary: {batching_rule['cap_summary']}",
         f"  cap_repeat_count: {batching_rule['recommended_cap_candidate_repeat_count']}",
         f"  cap_candidate_records: {batching_rule['recommended_cap_candidate_release_zone_record_count']}",
         f"  cap_scenario_rows: {batching_rule['recommended_cap_scenario_row_count']}",
         f"  reason: {batching_rule['reason']}",
-        "tier_comparison:",
+        "storage_output_tier_bands:",
     ])
+    for tier in report["storage_output_tier_bands"]:
+        lines.append(
+            f"  - {tier['tier_id']}: files={tier['file_count']} bytes={tier['total_bytes']} "
+            f"replay={tier['replay_suitability']}"
+        )
+    lines.append("tier_comparison:")
     for tier in report["tier_comparison"]:
         lines.append(
             f"  - {tier['tier_id']}: status={tier['measurement_status']} files={tier['file_count']} "
