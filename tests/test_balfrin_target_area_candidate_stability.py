@@ -75,7 +75,8 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertEqual(first["candidate_sweep_summary"]["topography_thresholds"]["resolution_m"], 2.0)
             self.assertEqual(first["candidate_sweep_summary"]["topography_thresholds"]["valid_area_fraction"], 1.0)
             self.assertEqual(first["candidate_sweep_summary"]["sweep_measurements"]["runtime_seconds"], 3.25)
-            self.assertEqual(first["candidate_sweep_summary"]["sweep_measurements"]["output_file_count"], 7)
+            self.assertEqual(first["candidate_sweep_summary"]["sweep_measurements"]["output_file_count"], 8)
+            self.assertIn("search_domain", first["candidate_sweep_summary"]["sweep_measurements"]["output_paths"])
             self.assertGreater(first["candidate_sweep_summary"]["sweep_measurements"]["output_total_bytes"], 6_000_000)
             self.assertEqual(first["candidate_sweep_summary"]["multi_zone_stress_test_readiness"]["status"], "ready")
             self.assertIn("multi-zone scenario-generation stress tests", first["candidate_sweep_summary"]["multi_zone_stress_test_readiness"]["summary"])
@@ -84,6 +85,17 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertEqual(first["candidate_summary"]["screenable_cell_count"], 89915)
             self.assertEqual(first["candidate_stability_summary"]["variant_count"], 6)
             self.assertEqual(first["candidate_stability_summary"]["baseline_variant_id"], "baseline")
+            self.assertEqual(
+                [row["variant_id"] for row in first["candidate_stability_summary"]["variant_summaries"]],
+                [
+                    "baseline",
+                    "tight_threshold_band",
+                    "wide_threshold_band",
+                    "smoothed_3x3_mean",
+                    "coarsened_2x2_mean_reexpanded",
+                    "trimmed_aoi_boundary_1_cell",
+                ],
+            )
             self.assertEqual(first["candidate_stability_summary"]["candidate_count_range"], {"min": 3077, "max": 3419})
             self.assertEqual(first["candidate_stability_summary"]["candidate_area_range_m2"], {"min": 12308.0, "max": 13676.0})
             self.assertEqual(
@@ -91,6 +103,10 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
                 "minimum_retention_fraction_across_bounded_heuristic_variants",
             )
             self.assertEqual(first["candidate_stability_summary"]["ranked_candidate_count"], 65)
+            self.assertEqual(first["candidate_stability_summary"]["variant_summaries"][0]["candidate_delta_cell_count_vs_baseline"], 0)
+            self.assertEqual(first["candidate_stability_summary"]["variant_summaries"][3]["candidate_delta_cell_count_vs_baseline"], -342)
+            self.assertEqual(first["candidate_stability_summary"]["variant_summaries"][4]["candidate_delta_area_m2_vs_baseline"], -992.0)
+            self.assertEqual(first["candidate_stability_summary"]["variant_summaries"][5]["candidate_overlap_jaccard_index_with_baseline"], 0.9570049722140976)
             self.assertEqual(first["selected_candidate_assessment"]["candidate_release_zone_id"], "tschamut_public_lps_release_bbox_candidate_058")
             self.assertEqual(first["selected_candidate_assessment"]["candidate_stability_class"], "stable")
             self.assertEqual(first["selected_candidate_assessment"]["selected_candidate_classification"], "stable")
@@ -140,10 +156,13 @@ class BalfrinTargetAreaCandidateStabilityTests(unittest.TestCase):
             self.assertIn("adequate_for_bounded_engineering_probe", report_text)
             self.assertIn("## Candidate Ranking", report_text)
             self.assertIn("## Bounded Probe Selection", report_text)
+            self.assertIn("## Stability Deltas", report_text)
             self.assertIn("top 2 candidate ids", report_text)
             self.assertIn("Persistence Metrics", report_text)
             self.assertIn("Sensitivity Matrix", report_text)
             self.assertIn("Sweep Measurements", report_text)
+            self.assertIn("Candidate excludes frozen footprint", report_text)
+            self.assertIn("search_domain", report_text)
             self.assertIn("candidate_release_zone_products", json.dumps(report_json, sort_keys=True))
             self.assertTrue(Path(first["candidate_stability_report_path"]).exists())
             self.assertEqual(contract["target_area"]["target_area_id"], first["target_area"]["target_area_id"])

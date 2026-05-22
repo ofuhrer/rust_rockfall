@@ -181,6 +181,7 @@ def build_report(
             "sensitivity_scope": candidate_sensitivity_report["sensitivity_scope"],
             "variant_count": candidate_sensitivity_report["variant_count"],
             "baseline_variant_id": candidate_sensitivity_report["baseline_variant_id"],
+            "variant_summaries": candidate_sensitivity_report["variant_summaries"],
             "candidate_count_range": candidate_sensitivity_report["candidate_count_range"],
             "candidate_area_range_m2": candidate_sensitivity_report["candidate_area_range_m2"],
             "stability_score_method": candidate_sensitivity_report["candidate_stability_score_method"],
@@ -259,9 +260,9 @@ def candidate_release_zone_products_summary(candidate_report: dict[str, Any]) ->
         "candidate_site_name": products.get("candidate_site_name"),
         "source_zone_id": products.get("source_zone_id"),
         "candidate_release_zone_set_status": products.get("candidate_release_zone_set_status", "not_emitted"),
+        "candidate_excludes_frozen_footprint": products.get("candidate_excludes_frozen_footprint", True),
         "component_count": products.get("component_count", 0),
         "candidate_cell_count": products.get("candidate_cell_count", 0),
-        "candidate_excludes_frozen_footprint": products.get("candidate_excludes_frozen_footprint", True),
         "component_area_distribution_m2": products.get(
             "component_area_distribution_m2", {"min": None, "max": None, "mean": None, "median": None, "p95": None}
         ),
@@ -499,16 +500,29 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Candidate count range: `{report['candidate_stability_summary'].get('candidate_count_range', {})}`",
         f"- Candidate area range m2: `{report['candidate_stability_summary'].get('candidate_area_range_m2', {})}`",
         "",
-        "## Persistence Metrics",
-        "",
-        f"- Stable fraction of union cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_union_candidate_cells', 'n/a')}`",
-        f"- Stable fraction of baseline cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_baseline_candidate_cells', 'n/a')}`",
-        f"- Heuristic-sensitive fraction of union cells: `{report['candidate_persistence_metrics'].get('heuristic_sensitive_fraction_of_union_candidate_cells', 'n/a')}`",
-        f"- Pairwise Jaccard range: `{report['candidate_persistence_metrics'].get('pairwise_jaccard_index_range', {})}`",
-        "",
-        "## Sensitivity Matrix",
+        "## Stability Deltas",
         "",
     ]
+    for row in report["candidate_stability_summary"].get("variant_summaries", []):
+        lines.append(
+            f"- {row['variant_id']}: delta_cells={row['candidate_delta_cell_count_vs_baseline']}, "
+            f"delta_area_m2={row['candidate_delta_area_m2_vs_baseline']}, "
+            f"jaccard_vs_baseline={row['candidate_overlap_jaccard_index_with_baseline']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Persistence Metrics",
+            "",
+            f"- Stable fraction of union cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_union_candidate_cells', 'n/a')}`",
+            f"- Stable fraction of baseline cells: `{report['candidate_persistence_metrics'].get('stable_fraction_of_baseline_candidate_cells', 'n/a')}`",
+            f"- Heuristic-sensitive fraction of union cells: `{report['candidate_persistence_metrics'].get('heuristic_sensitive_fraction_of_union_candidate_cells', 'n/a')}`",
+            f"- Pairwise Jaccard range: `{report['candidate_persistence_metrics'].get('pairwise_jaccard_index_range', {})}`",
+            "",
+            "## Sensitivity Matrix",
+            "",
+        ]
+    )
     for row in report["candidate_sensitivity_matrix"]:
         lines.append(
             f"- {row['sensitivity_dimension']}: variants={row['variant_ids']}, "
@@ -566,12 +580,12 @@ def render_text_report(report: dict[str, Any]) -> str:
             "## Candidate Outputs",
             "",
             f"- Manifest: `{report['candidate_release_zone_products']['manifest_path']}`",
+            f"- Candidate excludes frozen footprint: `{report['candidate_release_zone_products']['candidate_excludes_frozen_footprint']}`",
         ]
     )
     outputs = report["candidate_release_zone_products"].get("outputs") or {}
-    for key in ("polygon", "mask", "manifest"):
-        if key in outputs:
-            lines.append(f"- {key}: `{outputs[key]}`")
+    for key in sorted(outputs):
+        lines.append(f"- {key}: `{outputs[key]}`")
     lines.extend(
         [
             "",

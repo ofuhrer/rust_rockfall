@@ -39,29 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-460: Measure Restaged Management-AOI Candidate Stability For The Next Live Probe
-
-Goal: Measure restaged management-AOI candidate stability so the next live probe can use the current candidate ordering instead of stale heuristics.
-
-Capability gap reduced: Local candidate-stability evidence for the next live probe.
-
-Why this outranks alternatives: Local evidence is now ranked behind reducer and scenario follow-up, but it still directly refines the next bounded probe once those are current.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_target_area_candidate_stability.py`
-- `tests/test_balfrin_target_area_candidate_stability.py`
-
-Deliverables:
-
-- A refreshed candidate-stability report that records the restaged terrain candidate ordering, stability deltas, and any batching or exclusion changes it implies.
-
-Definition of done:
-
-- The candidate-stability output is current and focused checks pass.
-
-Boundaries: No live submission, no scale-up claim, no distributed execution, no operational semantics.
-
 ### TB-461: Recompute The Balfrin Next-Live-Run Decision Gate And Demo Package
 
 Goal: Recompute the Balfrin next-live-run decision gate and management demo package from the refreshed reducer, scenario, replay, and candidate measurements.
