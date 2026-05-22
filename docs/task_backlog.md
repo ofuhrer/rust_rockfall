@@ -39,29 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-458: Refresh The Regional-Split Replay Smoke At The Rebuildable-Reduced Tier
-
-Goal: Confirm the measured regional split run root still supports rebuildable-reduced replay smoke without promoting full GIS or research outputs.
-
-Capability gap reduced: Replay-critical recovery evidence for the measured regional split branch.
-
-Why this outranks alternatives: The matrix still recommends `rebuildable_reduced` as the smallest replay tier, so replay-smoke evidence should stay current before any larger probe.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
-- `tests/test_balfrin_demonstration_replay_smoke.py`
-
-Deliverables:
-
-- A refreshed replay-smoke report that preserves the current replay-tier recommendation and any missing-output follow-up needed to keep the measured branch reproducible.
-
-Definition of done:
-
-- The replay-smoke recommendation matches the current measured evidence and focused checks pass.
-
-Boundaries: No operational claim upgrade, no live submission, no distributed execution, no risk/exposure/vulnerability workflow.
-
 ### TB-459: Regenerate The Reviewed Regional Split Submission Package From Fresh Preflight Inputs
 
 Goal: Regenerate the reviewed regional split submission package from fresh access-preflight inputs and compact manifest mode before any retry is considered.

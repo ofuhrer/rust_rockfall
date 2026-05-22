@@ -21,6 +21,7 @@ if __package__ in {None, ""}:
 from scripts import audit_gis_cog_package_readiness as gis_cog
 from scripts import collect_balfrin_probe_metrics as probe_metrics
 from scripts import summarize_balfrin_evidence_bundle as bundle
+from scripts import summarize_balfrin_output_tier_audit as output_tier
 from scripts import summarize_balfrin_post_run_interpretation_gate as post_run_gate
 from scripts import summarize_balfrin_single_job_execution as single_job
 
@@ -28,6 +29,8 @@ from scripts import summarize_balfrin_single_job_execution as single_job
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_demonstration_replay_smoke_v1"
 DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_demonstration_replay_smoke_v1"
+RECOMMENDED_REPLAY_TIER = "rebuildable_reduced"
+RECOMMENDED_OUTPUT_TIER = "rebuildable_reduced_output"
 
 
 class BalfrinDemonstrationReplaySmokeError(ValueError):
@@ -73,6 +76,7 @@ def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -
         )
 
     probe_summary = probe_metrics.collect_run_metrics(run_root)
+    output_tier_report = output_tier.build_report(probe_summary)
     single_job_summary = single_job.build_summary()
     gis_report = gis_cog.build_gis_cog_readiness_report()
     post_run_evidence = bundle.build_post_run_evidence(
@@ -112,6 +116,10 @@ def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -
                 smoke_blockers.append(str(missing))
     if not smoke_blockers and smoke_status == "blocked_missing_inputs":
         smoke_blockers = ["replay_artifacts"]
+    replay_tier_recommendation = build_replay_tier_recommendation(
+        smoke_status=smoke_status,
+        output_tier_report=output_tier_report,
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -121,6 +129,8 @@ def build_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -
         "run_root_status": "present",
         "run_root_provenance": run_root_provenance,
         "probe_metrics_status": probe_metrics_status,
+        "replay_tier_recommendation": replay_tier_recommendation,
+        "output_tier_audit_report": output_tier_report,
         "bundle_status": bundle_report.get("bundle_status", "blocked_missing_inputs"),
         "post_run_interpretation_status": post_run_report.get("interpretation_status", "blocked_missing_inputs"),
         "bundle_report": bundle_report,
@@ -151,6 +161,7 @@ def blocked_report(
             "canonical_bundle_path": artifact_dir,
         }
     )
+    output_tier_report = output_tier.build_report({})
     post_run_report = post_run_gate.build_report({"missing_inputs": ["post_run_evidence_bundle"]})
     return {
         "schema_version": SCHEMA_VERSION,
@@ -160,6 +171,11 @@ def blocked_report(
         "run_root_status": "missing",
         "run_root_provenance": run_root_provenance,
         "probe_metrics_status": "blocked_missing_inputs",
+        "replay_tier_recommendation": build_replay_tier_recommendation(
+            smoke_status="blocked_missing_inputs",
+            output_tier_report=output_tier_report,
+        ),
+        "output_tier_audit_report": output_tier_report,
         "bundle_status": bundle_report.get("bundle_status", "blocked_missing_inputs"),
         "post_run_interpretation_status": post_run_report.get("interpretation_status", "blocked_missing_inputs"),
         "bundle_report": bundle_report,
@@ -171,6 +187,61 @@ def blocked_report(
         "missing_inputs": list(missing_inputs),
         "blocked_reason": reason,
         "claim_boundaries": post_run_report.get("claim_boundaries", post_run_gate.claim_boundaries()),
+    }
+
+
+def build_replay_tier_recommendation(
+    *,
+    smoke_status: str,
+    output_tier_report: dict[str, Any],
+) -> dict[str, Any]:
+    rebuildability_status = str(output_tier_report.get("rebuildability_status") or "blocked_missing_measured_output")
+    rebuildability_classification = str(output_tier_report.get("rebuildability_classification") or "")
+    required_family_counts_status = output_tier_report.get("required_family_counts_status", {})
+    missing_required_families = [
+        str(family)
+        for family, present in required_family_counts_status.items()
+        if not present
+    ]
+    output_families_complete = bool(required_family_counts_status) and not missing_required_families
+    curve_available = bool((output_tier_report.get("curve_availability") or {}).get("available"))
+    missing_output_follow_up = list(missing_required_families)
+    if not curve_available:
+        missing_output_follow_up.append("conditional_curve_row_count")
+    missing_output_follow_up = sorted(set(missing_output_follow_up))
+    missing_metric_follow_up = [
+        str(item)
+        for item in output_tier_report.get("metrics_contract_missing_metrics", [])
+        if isinstance(item, str)
+    ]
+
+    recommendation_status = "blocked_missing_inputs"
+    if (
+        smoke_status == "replayable"
+        and rebuildability_status == "sufficient"
+        and rebuildability_classification == RECOMMENDED_OUTPUT_TIER
+    ):
+        recommendation_status = "supported_by_current_evidence"
+        missing_output_follow_up = []
+    elif rebuildability_status == "insufficient":
+        recommendation_status = "blocked_missing_output_families"
+    elif output_families_complete and curve_available:
+        recommendation_status = "supported_by_replay_outputs_with_metric_follow_up"
+        missing_output_follow_up = []
+
+    return {
+        "recommended_replay_tier": RECOMMENDED_REPLAY_TIER,
+        "recommended_output_tier": RECOMMENDED_OUTPUT_TIER,
+        "recommendation_status": recommendation_status,
+        "evidence_provenance_status": output_tier_report.get("evidence_provenance_status", "blocked_missing_inputs"),
+        "rebuildability_status": rebuildability_status,
+        "rebuildability_classification": rebuildability_classification,
+        "missing_output_follow_up": missing_output_follow_up,
+        "missing_metric_follow_up": missing_metric_follow_up,
+        "boundary_note": (
+            "The replay tier recommendation preserves the smallest rebuildable replay tier only; "
+            "it does not promote full GIS, operational, risk, exposure, vulnerability, scale-up, or distributed-execution claims."
+        ),
     }
 
 
@@ -210,6 +281,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"run_root: {report['run_root']}",
         f"artifact_dir: {report['artifact_dir']}",
         f"probe_metrics_status: {report['probe_metrics_status']}",
+        f"recommended_replay_tier: {report['replay_tier_recommendation']['recommended_replay_tier']}",
+        f"recommended_output_tier: {report['replay_tier_recommendation']['recommended_output_tier']}",
+        f"replay_tier_recommendation_status: {report['replay_tier_recommendation']['recommendation_status']}",
+        f"missing_output_follow_up: {report['replay_tier_recommendation']['missing_output_follow_up']}",
+        f"missing_metric_follow_up: {report['replay_tier_recommendation']['missing_metric_follow_up']}",
         f"bundle_status: {report['bundle_status']}",
         f"post_run_interpretation_status: {report['post_run_interpretation_status']}",
         "claim_boundaries:",

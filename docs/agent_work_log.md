@@ -6199,3 +6199,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live Balfrin submission, no distributed execution, no larger-AOI claim, and no annual-frequency framing.
 - Next task: `TB-458`
+
+### TB-458: Refresh The Regional-Split Replay Smoke At The Rebuildable-Reduced Tier
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: refresh the replay-smoke recommendation for the measured regional split branch while preserving `rebuildable_reduced` as the smallest replay tier and keeping missing-output follow-up explicit.
+- Files changed: `scripts/summarize_balfrin_demonstration_replay_smoke.py`, `tests/test_balfrin_demonstration_replay_smoke.py`, `docs/balfrin_single_job_execution_sufficiency.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Composed the existing Balfrin output-tier audit into the replay-smoke report so the JSON/text output now records `replay_tier_recommendation`, `output_tier_audit_report`, and separate `missing_output_follow_up` versus `missing_metric_follow_up` lists.
+  - Preserved the current `rebuildable_reduced` recommendation when replay-critical output families are present, while still failing closed for absent run roots or missing replay outputs.
+  - Verified the measured Balfrin run root read-only: map package, pilot GIS package, trajectory chunk, reducer chunk, and conditional-curve outputs are present; the remaining follow-up is the non-output `memory_peak_mb` metric.
+  - Removed TB-458 from the active backlog after the focused replay-smoke report and tests were refreshed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_demonstration_replay_smoke.py tests/test_balfrin_demonstration_replay_smoke.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_demonstration_replay_smoke -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_demonstration_replay_smoke.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/tb458_balfrin_demonstration_replay_smoke_v1 --format json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_output_tier_audit.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --format json' > /tmp/tb458_remote_output_tier_audit.json`
+- Result/status: implemented_measured
+- Boundaries: read-only Balfrin evidence collection only; no live submission, no distributed execution, no full-GIS promotion, no operational claim, and no risk/exposure/vulnerability workflow.
+- Next task: `TB-459`

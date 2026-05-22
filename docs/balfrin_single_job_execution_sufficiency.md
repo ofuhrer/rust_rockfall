@@ -262,6 +262,17 @@ The smoke helper checks that the run root is present, regenerates the Balfrin
 evidence bundle and post-run interpretation outputs into the artifact
 directory, and returns `blocked_missing_inputs` when the run root is absent or
 the required replay artifacts are unavailable.
+It also composes the Balfrin output-tier audit and keeps the replay-tier
+recommendation explicit: the smallest recommended replay tier remains
+`rebuildable_reduced`, backed by `rebuildable_reduced_output` only when the
+measured run-root evidence keeps the required map package, pilot GIS package,
+trajectory chunk, reducer chunk, and conditional-curve outputs. If any of
+those measured outputs are missing, the report leaves `missing_output_follow_up`
+populated and fails closed instead of promoting full GIS or research outputs.
+If the replay outputs are present but a non-output metric remains absent, the
+recommendation stays at `rebuildable_reduced` with
+`supported_by_replay_outputs_with_metric_follow_up` and records the separate
+`missing_metric_follow_up` list.
 Its report now also records `run_root_provenance` so fixture-backed replay
 coverage is distinguishable from a non-fixture live run root. A fixture path
 under `tests/fixtures/...` is reported as `fixture_backed`; a present

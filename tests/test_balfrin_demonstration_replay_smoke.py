@@ -43,6 +43,18 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             self.assertEqual(report["smoke_status"], "replayable")
             self.assertEqual(report["run_root_status"], "present")
             self.assertEqual(report["run_root_provenance"], "fixture_backed")
+            self.assertEqual(report["replay_tier_recommendation"]["recommended_replay_tier"], "rebuildable_reduced")
+            self.assertEqual(report["replay_tier_recommendation"]["recommended_output_tier"], "rebuildable_reduced_output")
+            self.assertEqual(
+                report["replay_tier_recommendation"]["recommendation_status"],
+                "supported_by_current_evidence",
+            )
+            self.assertEqual(report["replay_tier_recommendation"]["missing_output_follow_up"], [])
+            self.assertEqual(report["output_tier_audit_report"]["rebuildability_status"], "sufficient")
+            self.assertEqual(
+                report["output_tier_audit_report"]["rebuildability_classification"],
+                "rebuildable_reduced_output",
+            )
             self.assertEqual(report["bundle_status"], report["bundle_report"]["bundle_status"])
             self.assertEqual(
                 report["post_run_interpretation_status"],
@@ -78,6 +90,11 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             self.assertEqual(report["run_root_status"], "present")
             self.assertEqual(report["run_root_provenance"], "live_run_root")
             self.assertEqual(report["smoke_status"], "blocked_missing_inputs")
+            self.assertEqual(
+                report["replay_tier_recommendation"]["recommendation_status"],
+                "blocked_missing_inputs",
+            )
+            self.assertGreater(len(report["replay_tier_recommendation"]["missing_output_follow_up"]), 0)
             self.assertGreater(len(report["missing_inputs"]), 0)
 
     def test_missing_run_root_fails_closed(self) -> None:
@@ -109,9 +126,42 @@ class BalfrinDemonstrationReplaySmokeTests(unittest.TestCase):
             self.assertEqual(smoke_report["run_root_provenance"], "missing")
             self.assertEqual(smoke_report["missing_inputs"], [str(missing_root)])
             self.assertEqual(
+                smoke_report["replay_tier_recommendation"]["recommendation_status"],
+                "blocked_missing_inputs",
+            )
+            self.assertEqual(
                 json.loads((artifact_dir / "balfrin_post_run_interpretation_gate_v1.json").read_text(encoding="utf-8"))["interpretation_status"],
                 "blocked_missing_inputs",
             )
+
+    def test_replay_tier_recommendation_preserves_output_tier_with_metric_follow_up(self) -> None:
+        output_tier_report = {
+            "evidence_provenance_status": "blocked_missing_inputs",
+            "rebuildability_status": "blocked_missing_measured_output",
+            "rebuildability_classification": "blocked_missing_measured_output",
+            "blocked_reasons": ["memory_peak_mb"],
+            "metrics_contract_missing_metrics": ["memory_peak_mb"],
+            "required_family_counts_status": {
+                "map_package_manifest": True,
+                "pilot_gis_package_manifest": True,
+                "trajectory_chunk_manifest": True,
+                "reducer_chunk_manifest": True,
+            },
+            "curve_availability": {"available": True, "row_count": 729600},
+        }
+
+        recommendation = smoke.build_replay_tier_recommendation(
+            smoke_status="blocked_missing_inputs",
+            output_tier_report=output_tier_report,
+        )
+
+        self.assertEqual(recommendation["recommended_replay_tier"], "rebuildable_reduced")
+        self.assertEqual(
+            recommendation["recommendation_status"],
+            "supported_by_replay_outputs_with_metric_follow_up",
+        )
+        self.assertEqual(recommendation["missing_output_follow_up"], [])
+        self.assertEqual(recommendation["missing_metric_follow_up"], ["memory_peak_mb"])
 
 
 if __name__ == "__main__":
