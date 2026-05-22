@@ -6019,7 +6019,7 @@ scan thousands of lines of completed history.
 ### TB-449: Integrate Regional Split Evidence Into Scale Readiness Surfaces
 
 - Date: 2026-05-22
-- Commit: 4f6e98a
+- Commit: f0519c3
 - Objective: thread the TB-447/TB-448 measured regional split outcome through the scale readiness matrix, Swiss-scale projection, management package, and maturity snapshot.
 - Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_management_demo_package.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
