@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-461: Recompute The Balfrin Next-Live-Run Decision Gate And Demo Package
-
-Goal: Recompute the Balfrin next-live-run decision gate and management demo package from the refreshed reducer, scenario, replay, and candidate measurements.
-
-Capability gap reduced: A single current surface for the next ranked executable action.
-
-Why this outranks alternatives: The queue needs one compact downstream decision surface after the measured regional split work, not another stale summary of earlier blockers.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-- `tests/test_balfrin_management_demo_package.py`
-
-Deliverables:
-
-- Updated decision-gate and management-demo reports that reflect the reducer-first ranking, scenario batching cap, replay-smoke recommendation, and candidate-stability result.
-
-Definition of done:
-
-- The downstream decision surface matches the latest ranked evidence and focused checks pass.
-
-Boundaries: No operational claim upgrade, no annual-frequency or risk/exposure/vulnerability workflow, no distributed execution.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

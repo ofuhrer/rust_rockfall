@@ -495,6 +495,9 @@ def build_readiness_matrix(
     multi_zone_pressure = dict(multi_zone_handoff_report.get("multi_zone_pressure") or {})
     follow_up_recommendation = dict(multi_zone_handoff_report.get("follow_up_recommendation") or {})
     next_action = dict(next_live_decision_report.get("recommended_next_action") or {})
+    next_criteria = dict(next_live_decision_report.get("criteria") or {})
+    scenario_cap = dict(next_criteria.get("scenario_batching_cap") or {})
+    candidate_result = dict(next_criteria.get("candidate_stability_result") or {})
 
     rows = [
         matrix_row(
@@ -585,6 +588,46 @@ def build_readiness_matrix(
                 "scripts/summarize_multi_zone_reducer_pressure.py",
             ],
             current_evidence=dict(multi_zone_handoff_report.get("multi_zone_pressure") or {}),
+        ),
+        matrix_row(
+            gate="scenario_batching_cap",
+            status=str(scenario_cap.get("status") or "blocked_missing_inputs"),
+            gate_status=str(scenario_cap.get("prepared_pilot_smoke_status") or "blocked_missing_inputs"),
+            evidence_status="scratch_local",
+            summary=(
+                "Scenario batching is ready for local planning at the current cap of "
+                f"{scenario_cap.get('scenario_batching_cap')} candidate expansions; this is a scratch/local planning cap, not a live execution authorization."
+            ),
+            helper_sources=[
+                "scripts/summarize_management_aoi_scenario_pressure.py",
+                "scripts/generate_candidate_source_zone_scenarios.py",
+            ],
+            current_evidence={
+                "scenario_batching_cap": scenario_cap.get("scenario_batching_cap"),
+                "candidate_expansion_counts": scenario_cap.get("candidate_expansion_counts", []),
+                "scenario_row_count": scenario_cap.get("scenario_row_count"),
+                "prepared_pilot_smoke_status": scenario_cap.get("prepared_pilot_smoke_status"),
+            },
+        ),
+        matrix_row(
+            gate="candidate_stability",
+            status=str(candidate_result.get("status") or "blocked_missing_inputs"),
+            gate_status=str(candidate_result.get("selected_candidate_status") or "blocked_missing_inputs"),
+            evidence_status="scratch_local",
+            summary=(
+                "Candidate-stability evidence selects "
+                f"{candidate_result.get('selected_candidate_id')} as {candidate_result.get('selected_candidate_class')} "
+                "for bounded engineering follow-up; this does not promote the candidate to validation or physical evidence."
+            ),
+            helper_sources=["scripts/summarize_balfrin_target_area_candidate_stability.py"],
+            current_evidence={
+                "selected_candidate_id": candidate_result.get("selected_candidate_id"),
+                "selected_candidate_class": candidate_result.get("selected_candidate_class"),
+                "stability_score": candidate_result.get("stability_score"),
+                "minimum_retention_fraction": candidate_result.get("minimum_retention_fraction"),
+                "variant_count": candidate_result.get("variant_count"),
+                "stable_candidate_cell_count": candidate_result.get("stable_candidate_cell_count"),
+            },
         ),
         matrix_row(
             gate="output_budget",
@@ -728,7 +771,7 @@ def build_readiness_matrix(
         "schema_version": READINESS_MATRIX_SCHEMA_VERSION,
         "status": matrix_status,
         "summary": (
-            "Full-scale Balfrin demonstration readiness remains blocked by the absence of larger measured multi-zone execution and by the still-unauthorized live-run boundary."
+            "Full-scale Balfrin demonstration readiness remains blocked by the absence of larger measured multi-zone execution and by the still-unauthorized live-run boundary; the next decision surface ranks reducer-pressure optimization first, with scenario batching and candidate-stability evidence as bounded scratch/local support."
         ),
         "rows": rows,
         "recommended_next_milestone": build_next_milestone_recommendation(next_live_decision_report),
@@ -753,6 +796,8 @@ def build_readiness_matrix(
             "replay_status": replay_report.get("smoke_status"),
             "multi_zone_package_status": multi_zone_handoff_report.get("package_status"),
             "next_action": next_action.get("action_id"),
+            "scenario_batching_cap": scenario_cap.get("scenario_batching_cap"),
+            "selected_candidate_id": candidate_result.get("selected_candidate_id"),
         },
     }
 
@@ -787,6 +832,7 @@ def build_next_milestone_recommendation(next_live_decision_report: dict[str, Any
     action_id = str(next_action.get("action_id") or "")
     recommendation_map = {
         "metrics_completion_rerun": "metrics completion",
+        "reducer_pressure_optimization": "reducer-pressure optimization",
         "smallest_bounded_multi_zone_probe": "smallest multi-zone measurement",
         "defer_portability_or_physical_evidence": "real second-site staging",
         "hazard_builder_accumulation_optimization": "hazard-builder optimization",
@@ -832,6 +878,9 @@ def build_replay_section(smoke_report: dict[str, Any]) -> dict[str, Any]:
         "status": str(smoke_report.get("smoke_status") or "blocked_missing_inputs"),
         "summary": (
             "Replay smoke proves the command path can be rerun from a present run root; fixture-backed replay remains distinct from measured runtime evidence."
+        ),
+        "replay_smoke_recommendation": (
+            "Use replay smoke as fixture-backed restart evidence for review only; do not treat it as a new measured Balfrin run or live-run authorization."
         ),
         "run_root": smoke_report.get("run_root"),
         "run_root_provenance": smoke_report.get("run_root_provenance"),
@@ -1266,7 +1315,7 @@ def build_next_decision_section(bundle_report: dict[str, Any], post_run_report: 
         )
     return {
         "status": "deferred",
-        "summary": "This package is for review and decision-making, not for launching another Balfrin job; measured TB-407 and TB-448 evidence are already separated from failed-closed and projection-only branches.",
+        "summary": "This package is for review and decision-making, not for launching another Balfrin job; reducer-pressure optimization is the next ranked executable action, while scenario batching, replay smoke, and candidate-stability evidence remain bounded support surfaces.",
         "recommended_next_authorized_step": next_authorized_step,
         "recommendation": recommendation,
         "evidence_type": "deferred",
@@ -1414,6 +1463,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  status: {report['replay_section'].get('status', 'unknown')}",
             f"  run_root_provenance: {report['replay_section'].get('run_root_provenance', 'unknown')}",
             f"  run_root_status: {report['replay_section'].get('run_root_status', 'unknown')}",
+            f"  replay_smoke_recommendation: {report['replay_section'].get('replay_smoke_recommendation', '')}",
             "target_area_aoi_automation_section:",
             f"  status: {report['target_area_aoi_automation_section'].get('status', 'unknown')}",
             f"  bundle_status: {report['target_area_aoi_automation_section'].get('bundle_status', 'unknown')}",

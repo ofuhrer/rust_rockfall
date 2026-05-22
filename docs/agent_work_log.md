@@ -6262,3 +6262,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no live submission, no scale-up claim, no distributed execution, and no operational semantics.
 - Next task: `TB-461`
+
+### TB-461: Recompute The Balfrin Next-Live-Run Decision Gate And Demo Package
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: recompute the Balfrin next-live-run decision gate and management demo package from the refreshed reducer, scenario, replay, and candidate measurements.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a reducer-pressure optimization action to the next-live-run decision gate so the refreshed surface ranks reducer work first after the target-area metrics gap is complete and live scale remains unauthorized.
+  - Threaded the scenario batching cap, prepared-pilot smoke status, and candidate-stability result into the decision criteria and text/JSON report surfaces.
+  - Updated the management demo readiness matrix with explicit `scenario_batching_cap` and `candidate_stability` gates, plus replay-smoke review-only guidance and the reducer-first next milestone.
+  - Removed TB-461 from the active backlog after the downstream decision surface matched the refreshed evidence.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_next_live_run_decision_gate.py scripts/summarize_balfrin_management_demo_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package.BalfrinManagementDemoPackageTests.test_readiness_matrix_tracks_required_gates_and_claim_boundaries`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_management_demo_package`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json > /tmp/tb461_decision_after.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json > /tmp/tb461_demo_after.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: read-only Balfrin preflight/evidence only; no live submission, no scale-up claim, no distributed execution, no operational claim, and no annual-frequency or risk/exposure/vulnerability workflow.
+- Next task: backlog refill needed

@@ -111,8 +111,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(matrix["schema_version"], "balfrin_full_scale_readiness_matrix_v1")
         self.assertEqual(matrix["status"], "blocked")
         self.assertEqual(matrix["clean_checkout_probe"]["status"], "blocked_missing_run_root")
-        self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "hazard-builder optimization")
-        self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "hazard_builder_accumulation_optimization")
+        self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "reducer-pressure optimization")
+        self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "reducer_pressure_optimization")
 
         gates = {row["gate"] for row in matrix["rows"]}
         self.assertEqual(
@@ -122,6 +122,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
                 "regional_split_projection_comparison",
                 "preservation_gate",
                 "reducer_constraints",
+                "scenario_batching_cap",
+                "candidate_stability",
                 "output_budget",
                 "restart_replay",
                 "gis_package_scope",
@@ -134,6 +136,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         statuses = {row["status"] for row in matrix["rows"]}
         self.assertIn("measured", statuses)
         self.assertIn("fixture_backed", statuses)
+        self.assertIn("ready", statuses)
         self.assertIn("dry_run", statuses)
         self.assertIn("blocked", statuses)
         self.assertIn("unauthorized", statuses)
@@ -158,6 +161,19 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(regional_split_row["current_evidence"]["job_id"], "4350232")
         self.assertEqual(regional_split_row["current_evidence"]["supersedes_failed_closed_task"], "TB-432")
         self.assertIn("comparison work", regional_split_row["summary"])
+        scenario_row = next(row for row in matrix["rows"] if row["gate"] == "scenario_batching_cap")
+        self.assertEqual(scenario_row["status"], "ready")
+        self.assertEqual(scenario_row["evidence_status"], "scratch_local")
+        self.assertEqual(scenario_row["current_evidence"]["scenario_batching_cap"], 8)
+        self.assertEqual(scenario_row["current_evidence"]["prepared_pilot_smoke_status"], "ready")
+        candidate_row = next(row for row in matrix["rows"] if row["gate"] == "candidate_stability")
+        self.assertEqual(candidate_row["status"], "ready")
+        self.assertEqual(candidate_row["evidence_status"], "scratch_local")
+        self.assertEqual(
+            candidate_row["current_evidence"]["selected_candidate_id"],
+            "tschamut_public_lps_release_bbox_candidate_058",
+        )
+        self.assertEqual(candidate_row["current_evidence"]["selected_candidate_class"], "stable")
         clean_checkout_row = next(row for row in matrix["rows"] if row["gate"] == "clean_checkout_behavior")
         self.assertEqual(clean_checkout_row["evidence_status"], "blocked")
         self.assertIn("does not exist", clean_checkout_row["current_evidence"]["missing_run_root_reason"])

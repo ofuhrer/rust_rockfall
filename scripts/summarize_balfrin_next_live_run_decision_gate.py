@@ -27,9 +27,11 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as multi_zone_handoff  # noqa: E402
+from scripts import summarize_balfrin_target_area_candidate_stability as candidate_stability  # noqa: E402
 from scripts import summarize_balfrin_evidence_bundle as evidence_bundle  # noqa: E402
 from scripts import summarize_balfrin_probe_metrics_report as metrics_report  # noqa: E402
 from scripts import summarize_balfrin_probe_preservation_gate as preservation_gate  # noqa: E402
+from scripts import summarize_management_aoi_scenario_pressure as scenario_pressure  # noqa: E402
 from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  # noqa: E402
 
 
@@ -49,6 +51,7 @@ REQUIRED_BUNDLE_KEYS = (
 )
 
 OPTION_METRICS = "metrics_completion_rerun"
+OPTION_REDUCER = "reducer_pressure_optimization"
 OPTION_MULTI_ZONE = "smallest_bounded_multi_zone_probe"
 OPTION_DEFER = "defer_portability_or_physical_evidence"
 OPTION_SECOND_SITE = "second_site_public_context_progress"
@@ -57,6 +60,7 @@ OPTION_HAZARD_OPTIMIZATION = "hazard_builder_accumulation_optimization"
 
 RANKED_ACTION_OPTIONS = (
     OPTION_METRICS,
+    OPTION_REDUCER,
     OPTION_MULTI_ZONE,
     OPTION_SECOND_SITE,
     OPTION_PHYSICAL_EVIDENCE,
@@ -188,6 +192,8 @@ def normalize_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
         "second_site_progress": _copy_mapping(bundle.get("second_site_progress")),
         "physical_evidence_acquisition": _copy_mapping(bundle.get("physical_evidence_acquisition")),
         "hazard_builder_optimization": _copy_mapping(bundle.get("hazard_builder_optimization")),
+        "scenario_batching": _copy_mapping(bundle.get("scenario_batching")),
+        "candidate_stability": _copy_mapping(bundle.get("candidate_stability")),
         "post_tb_221_evidence": _safe_list(bundle.get("post_tb_221_evidence")),
         "source_paths": _copy_mapping(bundle.get("source_paths")),
     }
@@ -199,10 +205,15 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         raise BalfrinNextLiveRunDecisionGateError(f"default evidence bundle is missing: {DEFAULT_EVIDENCE_BUNDLE}")
     current_bundle = evidence_bundle.build_current_report()
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
         reducer_root = Path(tmpdir) / "reducer_pressure"
         reducer_pressure.materialize_probe_root(reducer_root)
         reducer_report = reducer_pressure.build_report(reducer_root)
+        scenario_report = scenario_pressure.build_report(
+            output_root=Path(tmpdir) / "management_aoi_scenario_pressure",
+            scenario_output_root=Path(tmpdir) / "management_aoi_scenario_table",
+        )
+        candidate_report = candidate_stability.build_report(output_root=Path(tmpdir) / "candidate_stability")
 
     return {
         "schema_version": str(default_bundle.get("schema_version") or "balfrin_next_live_run_decision_gate_bundle_v1"),
@@ -219,6 +230,8 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         "second_site_progress": _copy_mapping(default_bundle.get("second_site_progress")),
         "physical_evidence_acquisition": _copy_mapping(default_bundle.get("physical_evidence_acquisition")),
         "hazard_builder_optimization": _copy_mapping(default_bundle.get("hazard_builder_optimization")),
+        "scenario_batching": scenario_report,
+        "candidate_stability": candidate_report,
         "post_tb_221_evidence": _safe_list(default_bundle.get("post_tb_221_evidence")),
         "source_paths": _copy_mapping(default_bundle.get("source_paths")),
     }
@@ -236,6 +249,8 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
     second_site = bundle["second_site_progress"]
     physical_evidence = bundle["physical_evidence_acquisition"]
     hazard_optimization = bundle["hazard_builder_optimization"]
+    scenario_batching = bundle["scenario_batching"]
+    candidate_stability_report = bundle["candidate_stability"]
 
     missing_metrics = _safe_list(metrics.get("metrics_contract_missing_metrics"))
     next_run_required = _safe_list(metrics.get("metrics_remediation", {}).get("next_run_required_metrics"))
@@ -329,10 +344,97 @@ def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
             "follow_up_task": str(hazard_optimization.get("follow_up_task") or "TB-229"),
             "summary": str(hazard_optimization.get("summary") or ""),
         },
+        "scenario_batching_cap": build_scenario_batching_cap_criteria(scenario_batching),
+        "candidate_stability_result": build_candidate_stability_result_criteria(candidate_stability_report),
+        "reducer_first_ranked_evidence": build_reducer_first_ranked_evidence(
+            reducer=reducer,
+            scenario_batching=scenario_batching,
+            candidate_stability_report=candidate_stability_report,
+        ),
         "post_tb_221_evidence": {
             "status": "recorded",
             "evidence_items": bundle["post_tb_221_evidence"],
         },
+    }
+
+
+def build_scenario_batching_cap_criteria(report: dict[str, Any]) -> dict[str, Any]:
+    pressure = _copy_mapping(report.get("scenario_generation_pressure"))
+    expansion_counts = pressure.get("candidate_expansion_counts")
+    counts = [int(item) for item in expansion_counts] if isinstance(expansion_counts, list) else []
+    scenario_table = _copy_mapping(report.get("scenario_table_generation"))
+    smoke = _copy_mapping(report.get("prepared_pilot_smoke_handoff"))
+    return {
+        "status": _status(report.get("scenario_pressure_status"), "blocked_missing_inputs"),
+        "scenario_batching_cap": max(counts) if counts else None,
+        "candidate_expansion_counts": counts,
+        "scenario_row_count": scenario_table.get("scenario_row_count"),
+        "prepared_pilot_smoke_status": _status(smoke.get("smoke_status"), "blocked_missing_inputs"),
+        "summary": (
+            "Scenario batching is ready for scratch/local planning through the current candidate expansion cap."
+            if report.get("scenario_pressure_status") == "ready"
+            else str(report.get("blocked_reason") or "Scenario batching evidence is unavailable.")
+        ),
+    }
+
+
+def build_candidate_stability_result_criteria(report: dict[str, Any]) -> dict[str, Any]:
+    summary = _copy_mapping(report.get("candidate_stability_summary"))
+    selected = _copy_mapping(report.get("selected_candidate_assessment"))
+    stable_region = _copy_mapping(summary.get("stable_candidate_region"))
+    return {
+        "status": _status(report.get("candidate_metrics_status"), "blocked_missing_inputs"),
+        "stability_status": _status(summary.get("stability_status"), "blocked_missing_inputs"),
+        "selected_candidate_id": selected.get("candidate_release_zone_id"),
+        "selected_candidate_class": selected.get("candidate_stability_class"),
+        "selected_candidate_status": selected.get("selected_candidate_status"),
+        "stability_score": selected.get("stability_score"),
+        "minimum_retention_fraction": selected.get("minimum_retention_fraction"),
+        "variant_count": summary.get("variant_count"),
+        "stable_candidate_cell_count": stable_region.get("cell_count"),
+        "summary": str(
+            _copy_mapping(selected.get("selected_candidate_recommendation")).get("reason")
+            or "Candidate stability evidence is unavailable."
+        ),
+    }
+
+
+def build_reducer_first_ranked_evidence(
+    *,
+    reducer: dict[str, Any],
+    scenario_batching: dict[str, Any],
+    candidate_stability_report: dict[str, Any],
+) -> dict[str, Any]:
+    scenario_cap = build_scenario_batching_cap_criteria(scenario_batching)
+    candidate_result = build_candidate_stability_result_criteria(candidate_stability_report)
+    return {
+        "status": "ready",
+        "ranked_next_probe_ladder": [
+            {
+                "rank": 1,
+                "action_id": "summarize_multi_zone_reducer_pressure",
+                "category": "reducer_pressure",
+                "status": _status(reducer.get("probe_status"), "blocked_missing_inputs"),
+                "summary": "Reducer-pressure optimization ranks first because the refreshed reducer still shows manifest/replay metadata pressure.",
+            },
+            {
+                "rank": 2,
+                "action_id": "measure_scenario_storage_output_tier_pressure",
+                "category": "scenario_cardinality",
+                "status": scenario_cap["status"],
+                "scenario_batching_cap": scenario_cap["scenario_batching_cap"],
+                "summary": "Scenario batching ranks second and is capped at the measured candidate expansion boundary.",
+            },
+            {
+                "rank": 3,
+                "action_id": "summarize_balfrin_target_area_candidate_stability",
+                "category": "local_evidence",
+                "status": candidate_result["status"],
+                "selected_candidate_id": candidate_result["selected_candidate_id"],
+                "selected_candidate_class": candidate_result["selected_candidate_class"],
+                "summary": "Candidate stability ranks third because it refines local evidence without authorizing live execution.",
+            },
+        ],
     }
 
 
@@ -473,6 +575,8 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     second_site = criteria["second_site_progress"]
     physical_evidence = criteria["physical_evidence_acquisition"]
     hazard_optimization = criteria["hazard_builder_optimization"]
+    scenario_cap = criteria["scenario_batching_cap"]
+    candidate_result = criteria["candidate_stability_result"]
 
     access_blockers = []
     if access["hard_live_run_blocker"]:
@@ -556,6 +660,16 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
         else ("measured" if metrics_ready else "closed" if metrics_closed else "blocked")
     )
     multi_zone_path_state = access["path_state"] if access_blockers else ("measured" if not multi_zone_blockers else "blocked")
+    reducer_blockers: list[str] = []
+    if metrics_gap_open:
+        reducer_blockers.append(metrics_gap_blocker)
+    if reducer["probe_status"] != "measured_scratch_root":
+        reducer_blockers.append(f"reducer_pressure:{reducer['probe_status']}")
+    if scenario_cap["status"] != "ready":
+        reducer_blockers.append(f"scenario_batching:{scenario_cap['status']}")
+    if candidate_result["status"] != "ready":
+        reducer_blockers.append(f"candidate_stability:{candidate_result['status']}")
+    reducer_ready = metrics_complete and reducer["probe_status"] == "measured_scratch_root" and not reducer_blockers
 
     assessments = {
         OPTION_METRICS: {
@@ -580,6 +694,27 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
             "boundary_that_prevents_claim_upgrade": "A metrics-completion rerun would collect missing execution metrics only; it does not establish physical credibility, annual frequency, risk, or operational hazard-map status.",
             "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
             "metrics_completion_source": metrics_source,
+        },
+        OPTION_REDUCER: {
+            "status": "defer" if reducer_ready else "blocked",
+            "path_state": "scratch_local" if reducer_ready else "blocked",
+            "follow_up_task": "TB-462",
+            "summary": (
+                "Reducer-pressure optimization is the next ranked executable action: metrics are complete, live scale remains unauthorized, scenario batching is capped at 8 candidates, replay smoke stays fixture-backed, and the selected candidate is stable for bounded engineering follow-up."
+                if reducer_ready
+                else "Reducer-pressure optimization cannot be ranked first until the metrics gap is closed and refreshed reducer evidence is present."
+            ),
+            "exact_evidence_blockers": reducer_blockers,
+            "boundary_that_prevents_claim_upgrade": "Reducer-pressure optimization is scratch/local planning evidence only; it does not authorize a Balfrin submission, distributed execution, scale-up, or operational hazard use.",
+            "criteria": [
+                "missing_target_area_metrics",
+                "reducer_pressure",
+                "scenario_batching_cap",
+                "candidate_stability_result",
+            ],
+            "scenario_batching_cap": scenario_cap["scenario_batching_cap"],
+            "selected_candidate_id": candidate_result["selected_candidate_id"],
+            "selected_candidate_class": candidate_result["selected_candidate_class"],
         },
         OPTION_MULTI_ZONE: {
             "status": "ready" if not multi_zone_blockers else "blocked",
@@ -652,6 +787,7 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
 
 def choose_recommendation(option_assessments: dict[str, Any]) -> dict[str, Any]:
     metrics = option_assessments[OPTION_METRICS]
+    reducer = option_assessments[OPTION_REDUCER]
     multi_zone = option_assessments[OPTION_MULTI_ZONE]
     defer = option_assessments[OPTION_DEFER]
     second_site = option_assessments[OPTION_SECOND_SITE]
@@ -680,6 +816,18 @@ def choose_recommendation(option_assessments: dict[str, Any]) -> dict[str, Any]:
             "summary": multi_zone["summary"],
             "exact_evidence_blockers": multi_zone["exact_evidence_blockers"],
             "boundary_that_prevents_claim_upgrade": multi_zone["boundary_that_prevents_claim_upgrade"],
+            "blocked_reason": "none",
+        }
+    if reducer["status"] == "defer":
+        return {
+            "action_id": OPTION_REDUCER,
+            "status": "defer",
+            "classification": "reducer_first",
+            "path_state": reducer["path_state"],
+            "follow_up_task": reducer["follow_up_task"],
+            "summary": reducer["summary"],
+            "exact_evidence_blockers": reducer["exact_evidence_blockers"],
+            "boundary_that_prevents_claim_upgrade": reducer["boundary_that_prevents_claim_upgrade"],
             "blocked_reason": "none",
         }
     for action_id, option in (
@@ -748,6 +896,7 @@ def build_ranked_actions(option_assessments: dict[str, Any]) -> list[dict[str, A
     path_score = {
         "measured": 30,
         "fixture_backed": 20,
+        "scratch_local": 25,
         "blocked": 0,
         "closed": -30,
         "unavailable": -10,
@@ -756,6 +905,7 @@ def build_ranked_actions(option_assessments: dict[str, Any]) -> list[dict[str, A
     }
     priority_bias = {
         OPTION_METRICS: 50,
+        OPTION_REDUCER: 45,
         OPTION_MULTI_ZONE: 40,
         OPTION_SECOND_SITE: 30,
         OPTION_PHYSICAL_EVIDENCE: 25,
@@ -799,6 +949,8 @@ def build_evidence_sources(bundle: dict[str, Any]) -> dict[str, Any]:
         "second_site_progress": source_paths.get("second_site_progress"),
         "physical_evidence_acquisition": source_paths.get("physical_evidence_acquisition"),
         "hazard_builder_optimization": source_paths.get("hazard_builder_optimization"),
+        "scenario_batching": source_paths.get("scenario_batching") or "scripts/summarize_management_aoi_scenario_pressure.py",
+        "candidate_stability": source_paths.get("candidate_stability") or "scripts/summarize_balfrin_target_area_candidate_stability.py",
         "post_tb_221_evidence": source_paths.get("post_tb_221_evidence"),
     }
 
@@ -844,6 +996,9 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
             "second_site_progress": {"status": "blocked_missing_inputs", "path_state": "blocked"},
             "physical_evidence_acquisition": {"status": "blocked_missing_inputs", "path_state": "blocked"},
             "hazard_builder_optimization": {"status": "blocked_missing_inputs", "path_state": "blocked"},
+            "scenario_batching_cap": {"status": "blocked_missing_inputs"},
+            "candidate_stability_result": {"status": "blocked_missing_inputs"},
+            "reducer_first_ranked_evidence": {"status": "blocked_missing_inputs", "ranked_next_probe_ladder": []},
             "post_tb_221_evidence": {"status": "blocked_missing_inputs", "evidence_items": []},
         },
         "option_assessments": {
@@ -856,6 +1011,15 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
                 "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any claim upgrade.",
                 "criteria": ["missing_target_area_metrics", "preservation_gate_readiness"],
                 "metrics_completion_source": "blocked_missing_metrics",
+            },
+            OPTION_REDUCER: {
+                "status": "blocked",
+                "path_state": "blocked",
+                "follow_up_task": "TB-462",
+                "summary": "Reducer-pressure optimization cannot be ranked until the missing measured inputs are supplied.",
+                "exact_evidence_blockers": missing,
+                "boundary_that_prevents_claim_upgrade": "Missing measured inputs prevent any reducer, scale-up, distributed-execution, or operational claim upgrade.",
+                "criteria": ["reducer_pressure", "scenario_batching_cap", "candidate_stability_result"],
             },
             OPTION_MULTI_ZONE: {
                 "status": "blocked",
@@ -966,6 +1130,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         "second_site_progress",
         "physical_evidence_acquisition",
         "hazard_builder_optimization",
+        "scenario_batching_cap",
+        "candidate_stability_result",
+        "reducer_first_ranked_evidence",
         "post_tb_221_evidence",
     ):
         entry = criteria.get(key, {}) if isinstance(criteria, dict) else {}
@@ -1004,12 +1171,22 @@ def render_text_report(report: dict[str, Any]) -> str:
         if key in {"second_site_progress", "physical_evidence_acquisition", "hazard_builder_optimization"}:
             lines.append(f"    path_state: {entry.get('path_state', '')}")
             lines.append(f"    blockers: {entry.get('blockers', [])}")
+        if key == "scenario_batching_cap":
+            lines.append(f"    scenario_batching_cap: {entry.get('scenario_batching_cap', '')}")
+            lines.append(f"    prepared_pilot_smoke_status: {entry.get('prepared_pilot_smoke_status', '')}")
+        if key == "candidate_stability_result":
+            lines.append(f"    selected_candidate_id: {entry.get('selected_candidate_id', '')}")
+            lines.append(f"    selected_candidate_class: {entry.get('selected_candidate_class', '')}")
+            lines.append(f"    stability_score: {entry.get('stability_score', '')}")
+        if key == "reducer_first_ranked_evidence":
+            lines.append(f"    ranked_next_probe_ladder: {entry.get('ranked_next_probe_ladder', [])}")
         if key == "post_tb_221_evidence":
             lines.append(f"    evidence_items: {entry.get('evidence_items', [])}")
 
     lines.extend(["", "options:"])
     for option_key in (
         OPTION_METRICS,
+        OPTION_REDUCER,
         OPTION_MULTI_ZONE,
         OPTION_SECOND_SITE,
         OPTION_PHYSICAL_EVIDENCE,
@@ -1023,6 +1200,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"    blockers: {option.get('exact_evidence_blockers', [])}")
         if option_key == OPTION_METRICS:
             lines.append(f"    metrics_completion_source: {option.get('metrics_completion_source', 'unknown')}")
+        if option_key == OPTION_REDUCER:
+            lines.append(f"    scenario_batching_cap: {option.get('scenario_batching_cap', 'unknown')}")
+            lines.append(f"    selected_candidate_id: {option.get('selected_candidate_id', 'unknown')}")
+            lines.append(f"    selected_candidate_class: {option.get('selected_candidate_class', 'unknown')}")
         if option_key == OPTION_MULTI_ZONE:
             lines.append(f"    scaling_frontier_branch: {option.get('scaling_frontier_branch', 'unknown')}")
             lines.append(f"    next_safe_expansion: {option.get('next_safe_expansion', 'unknown')}")
