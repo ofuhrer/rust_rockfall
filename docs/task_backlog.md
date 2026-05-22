@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-451: Harden Regional Split Retry Idempotency And Remote Hygiene
-
-Goal: Prevent future regional split retries from being blocked by stale generated checkout files or reused `/tmp` package state.
-
-Capability gap reduced: Reduces hidden local/remote state coupling in the Balfrin retry workflow.
-
-Why this outranks alternatives: TB-432 failed entirely on remote checkout hygiene, so hardening idempotency directly removes a repeated operational failure mode.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_probe_slurm_driver.md`
-
-Deliverables:
-
-- Preflight/report improvements that identify stale regional split artifacts with exact preserve/clean guidance.
-- Package generation that records current remote HEAD, access preflight path, and scratch-package freshness.
-- Tests covering stale generated file detection or stale package rejection.
-
-Definition of done:
-
-- A stale remote/package state fails closed before submission with a clear remediation path, and a fresh state is distinguishable in machine-readable output.
-
-Boundaries: No remote deletion unless explicitly encoded as operator guidance or done under an already documented cleanup procedure; no live job submission and no claim upgrade.
-
 ### TB-452: Promote Adjacent-Candidate Scenario Path Into Prepared-Pilot Smoke
 
 Goal: Connect the accepted adjacent-candidate source zone and generated scenario table into a tracked prepared-pilot smoke path without running a full ensemble.

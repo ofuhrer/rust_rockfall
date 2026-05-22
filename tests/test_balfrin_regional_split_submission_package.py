@@ -87,6 +87,8 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], "balfrin_regional_split_submission_package_v1")
         self.assertEqual(report["submission_package_status"], "failed_closed_preflight")
         self.assertFalse(report["ready_for_bounded_postproc_submission"])
+        self.assertEqual(report["scratch_package_freshness"]["status"], "ready_clean_scratch")
+        self.assertTrue(report["scratch_package_freshness"]["fresh"])
         self.assertEqual(report["authorization_preflight_status"], "blocked_access")
         self.assertEqual(
             report["authorization_preflight"]["balfrin_access_status"],
@@ -120,6 +122,9 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertEqual(report["submission_package_status"], "ready_for_bounded_postproc_submission")
         self.assertTrue(report["ready_for_bounded_postproc_submission"])
         self.assertIsNone(report["first_blocker"])
+        self.assertEqual(report["generation_inputs"]["balfrin_remote_head"], "abc123")
+        self.assertEqual(report["generation_inputs"]["balfrin_access_preflight_path"], "fixture")
+        self.assertEqual(report["scratch_package_freshness"]["status"], "ready_clean_scratch")
         self.assertEqual(report["authorization_preflight_status"], "ready_for_authorization_review")
         self.assertEqual(
             report["writable_remote_roots"]["run_root"],
@@ -157,6 +162,35 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         )
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
         self.assertFalse(report["no_submit_semantics"]["balfrin_job_submitted"])
+
+    def test_stale_scratch_package_fails_closed_before_reuse(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "regional_split_package"
+            old_access = self._ready_access()
+            old_access["remote_head"] = "old-head"
+            old_access["remote_checkout_hygiene"]["remote_head"] = "old-head"
+            old_report = MODULE.build_report(
+                artifact_dir=artifact_dir,
+                balfrin_access_preflight=old_access,
+                balfrin_access_preflight_source="/tmp/old_access.json",
+            )
+            MODULE.materialize_artifacts(old_report)
+
+            fresh_report = MODULE.build_report(
+                artifact_dir=artifact_dir,
+                balfrin_access_preflight=self._ready_access(),
+                balfrin_access_preflight_source="/tmp/current_access.json",
+            )
+
+        self.assertEqual(fresh_report["submission_package_status"], "failed_closed_stale_scratch_package")
+        self.assertFalse(fresh_report["ready_for_bounded_postproc_submission"])
+        self.assertEqual(fresh_report["first_blocker"]["gate"], "scratch_package_freshness")
+        freshness = fresh_report["scratch_package_freshness"]
+        self.assertEqual(freshness["status"], "blocked_stale_scratch_package")
+        self.assertFalse(freshness["fresh"])
+        self.assertIn("balfrin_remote_head", freshness["mismatches"][0])
+        self.assertIn("preserve_before_retry.tgz", freshness["preserve_command"])
+        self.assertIn("rm -rf", freshness["clean_command"])
 
     def test_missing_regional_merge_manifest_fails_closed_before_ready_package(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

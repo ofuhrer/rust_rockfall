@@ -163,6 +163,54 @@ def _is_generated_untracked(path: str) -> bool:
     return path.startswith(generated_prefixes) or any(name in path for name in generated_names)
 
 
+def _is_stale_regional_split_artifact(path: str) -> bool:
+    regional_markers = (
+        "balfrin_regional_split_submission_package",
+        "regional_split_execution_plan.json",
+        "regional_split_merge_manifest.json",
+        "regional_split_probe",
+        "multi_zone_pressure/",
+        "four_zone_review_only/",
+    )
+    return any(marker in path for marker in regional_markers)
+
+
+def _regional_split_artifact_guidance(remote_repo_root: str, paths: list[str]) -> dict[str, Any]:
+    unique_paths = sorted(set(paths))
+    if not unique_paths:
+        return {
+            "status": "clean",
+            "stale_artifact_count": 0,
+            "stale_artifacts": [],
+            "preserve_command": None,
+            "inspect_commands": [],
+            "clean_preview_command": None,
+            "clean_command": None,
+            "summary": "No stale regional split artifacts were detected.",
+        }
+
+    quoted_root = shlex.quote(remote_repo_root)
+    quoted_paths = _quote_path_list(unique_paths)
+    return {
+        "status": "blocked_stale_regional_split_artifacts",
+        "stale_artifact_count": len(unique_paths),
+        "stale_artifacts": unique_paths,
+        "preserve_command": (
+            f"tar -C {quoted_root} -czf /tmp/balfrin_regional_split_stale_artifacts_preserve.tgz {quoted_paths}"
+        ),
+        "inspect_commands": [
+            f"git -C {quoted_root} status --short --untracked-files=all -- {quoted_paths}",
+            f"git -C {quoted_root} clean -n -- {quoted_paths}",
+        ],
+        "clean_preview_command": f"git -C {quoted_root} clean -n -- {quoted_paths}",
+        "clean_command": f"git -C {quoted_root} clean -f -- {quoted_paths}",
+        "summary": (
+            "Preserve the listed regional split artifacts, inspect the clean preview, "
+            "then remove only those untracked generated paths before retrying package generation."
+        ),
+    }
+
+
 def _parse_checkout_hygiene_output(stdout: str, remote_repo_root: str) -> dict[str, Any]:
     sections: dict[str, list[str]] = {
         "__REMOTE_HEAD__": [],
@@ -201,6 +249,13 @@ def _parse_checkout_hygiene_output(stdout: str, remote_repo_root: str) -> dict[s
 
     stale_submission_packages = sorted(set(sections["__STALE_SUBMISSION_PACKAGES__"]))
     stale_logs = sorted(set(sections["__STALE_LOGS__"]))
+    stale_regional_split_artifacts = sorted(
+        {
+            path
+            for path in (untracked_generated_files + stale_submission_packages + stale_logs)
+            if _is_stale_regional_split_artifact(path)
+        }
+    )
     dirty_paths = (
         tracked_modifications
         + untracked_files
@@ -239,6 +294,11 @@ def _parse_checkout_hygiene_output(stdout: str, remote_repo_root: str) -> dict[s
         "untracked_other_files": untracked_other_files,
         "stale_submission_packages": stale_submission_packages,
         "stale_logs": stale_logs,
+        "stale_regional_split_artifacts": stale_regional_split_artifacts,
+        "regional_split_artifact_guidance": _regional_split_artifact_guidance(
+            remote_repo_root,
+            stale_regional_split_artifacts,
+        ),
         "dirty_path_count": len(set(dirty_paths)),
         "safe_cleanup_commands": cleanup_commands,
         "summary": (

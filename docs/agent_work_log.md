@@ -6062,3 +6062,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no new ensemble, no live submission, no scale-up authorization, and no operational or risk/exposure/vulnerability claims were added.
 - Next task: `TB-451`
+
+### TB-451: Harden Regional Split Retry Idempotency And Remote Hygiene
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: prevent regional split retries from silently reusing stale remote generated artifacts or stale local `/tmp` package state.
+- Files changed: `scripts/check_balfrin_remote_access_preflight.py`, `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_balfrin_probe_driver.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the Balfrin access preflight checkout-hygiene report with `stale_regional_split_artifacts` and `regional_split_artifact_guidance`, including exact preserve, inspect, clean-preview, and clean commands for operator-controlled remote cleanup.
+  - Added regional split package `generation_inputs`, top-level `balfrin_remote_head`, `balfrin_access_preflight_path`, and a `scratch_package_freshness` gate that fails closed as `failed_closed_stale_scratch_package` when an existing scratch package does not match the current access preflight path and remote HEAD.
+  - Verified a fresh package state with the current read-only access preflight: remote checkout hygiene was `pass`, dirty path count was `0`, remote HEAD was `faef6d8ec055b0a9457932d4659a4c5f7f4c7399`, and the generated package reported `scratch_package_freshness=ready_clean_scratch`.
+  - Removed TB-451 from the active backlog after focused regression coverage for stale regional artifacts and stale scratch-package rejection was in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-451 --format json`
+  - `rg -n "^### TB-451:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb451_access_preflight.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package tests.test_balfrin_probe_driver`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --balfrin-access-preflight-json /tmp/tb451_access_preflight.json --artifact-dir /tmp/rust_rockfall/tb451_fresh_package --format json >/tmp/tb451_fresh_package.json`
+- Result/status: implemented_measured
+- Boundaries: read-only Balfrin inspection and local package generation only; no Balfrin job was submitted, rerun, canceled, or deleted, and no operational, scale-up, annual-frequency, physical-probability, risk, exposure, vulnerability, or distributed-execution claim was added.
+- Next task: `TB-452`

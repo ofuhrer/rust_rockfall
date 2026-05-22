@@ -94,10 +94,16 @@ def build_report(
     )
 
     regional_contract = build_regional_contract(pressure_probe_root)
+    scratch_package_freshness = build_scratch_package_freshness(
+        artifact_dir=artifact_dir,
+        access_report=access_report,
+        access_source=access_source,
+    )
     package_contract = build_package_contract_status(
         handoff_report=handoff_report,
         preflight_report=preflight_report,
         regional_contract=regional_contract,
+        scratch_package_freshness=scratch_package_freshness,
     )
     output_budget = build_output_budget_summary(handoff_report, preflight_report)
     preservation_plan = build_preservation_plan(handoff_report, preflight_report, artifact_dir)
@@ -112,13 +118,21 @@ def build_report(
         preflight_report=preflight_report,
         output_budget=output_budget,
         writable_remote_roots=writable_remote_roots,
+        scratch_package_freshness=scratch_package_freshness,
     )
     blocking_gate = first_blocker(
         package_contract=package_contract,
         preflight_report=preflight_report,
         output_budget=output_budget,
         writable_remote_roots=writable_remote_roots,
+        scratch_package_freshness=scratch_package_freshness,
     )
+    generation_inputs = {
+        "balfrin_remote_head": access_report.get("remote_head"),
+        "balfrin_access_preflight_path": access_source,
+        "balfrin_access_status": access_report.get("status"),
+        "artifact_dir": str(artifact_dir),
+    }
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -131,6 +145,10 @@ def build_report(
         "package_text_path": str(artifact_dir / DEFAULT_PACKAGE_TXT.name),
         "reviewed_handoff_package_path": str(reviewed_package),
         "authorization_record_path": str(authorization_record),
+        "generation_inputs": generation_inputs,
+        "balfrin_access_preflight_path": access_source,
+        "balfrin_remote_head": access_report.get("remote_head"),
+        "scratch_package_freshness": scratch_package_freshness,
         "handoff_package_status": handoff_report.get("package_status"),
         "handoff_package_constraint_status": handoff_report.get("package_constraint_status"),
         "regional_split_merge_contract": regional_contract,
@@ -241,10 +259,13 @@ def build_package_contract_status(
     handoff_report: dict[str, Any],
     preflight_report: dict[str, Any],
     regional_contract: dict[str, Any],
+    scratch_package_freshness: dict[str, Any],
 ) -> dict[str, Any]:
     blocked_reasons: list[str] = []
     if regional_contract["status"] != "ready":
         blocked_reasons.extend(regional_contract["blocked_reasons"])
+    if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
+        blocked_reasons.append(scratch_package_freshness["blocked_reason"])
     if handoff_report.get("package_status") == "blocked_missing_inputs":
         blocked_reasons.append("handoff package is blocked_missing_inputs")
     if handoff_report.get("submission_classification") != "blocked_pending_new_human_authorization":
@@ -261,6 +282,92 @@ def build_package_contract_status(
         "reviewed_handoff_package_status": preflight_report.get("reviewed_handoff_package_status"),
         "submit_contract_status": preflight_report.get("submit_contract_status"),
         "regional_contract_status": regional_contract.get("status"),
+        "scratch_package_freshness_status": scratch_package_freshness.get("status"),
+    }
+
+
+def build_scratch_package_freshness(
+    *,
+    artifact_dir: Path,
+    access_report: dict[str, Any],
+    access_source: str,
+) -> dict[str, Any]:
+    package_json = artifact_dir / DEFAULT_PACKAGE_JSON.name
+    package_text = artifact_dir / DEFAULT_PACKAGE_TXT.name
+    existing_paths = [path for path in (package_json, package_text) if path.exists()]
+    expected = {
+        "balfrin_remote_head": access_report.get("remote_head"),
+        "balfrin_access_preflight_path": access_source,
+    }
+    base = {
+        "schema_version": "balfrin_scratch_package_freshness_v1",
+        "artifact_dir": str(artifact_dir),
+        "package_json_path": str(package_json),
+        "package_text_path": str(package_text),
+        "existing_paths": [str(path) for path in existing_paths],
+        "expected": expected,
+    }
+    if not existing_paths:
+        return {
+            **base,
+            "status": "ready_clean_scratch",
+            "fresh": True,
+            "blocked_reason": "",
+            "remediation": "No existing regional split package artifacts were present in the scratch package directory.",
+        }
+
+    try:
+        existing_package = load_json(package_json)
+    except (OSError, json.JSONDecodeError) as exc:
+        return _blocked_stale_scratch_package(
+            base,
+            reason=f"existing scratch package is unreadable or missing JSON: {exc}",
+        )
+
+    existing_inputs = dict(existing_package.get("generation_inputs") or {})
+    mismatches: list[str] = []
+    for key, value in expected.items():
+        if existing_inputs.get(key) != value:
+            mismatches.append(f"{key}: existing={existing_inputs.get(key)!r} current={value!r}")
+    if existing_package.get("schema_version") != SCHEMA_VERSION:
+        mismatches.append(
+            f"schema_version: existing={existing_package.get('schema_version')!r} current={SCHEMA_VERSION!r}"
+        )
+    if mismatches:
+        return _blocked_stale_scratch_package(
+            {
+                **base,
+                "existing_generation_inputs": existing_inputs,
+                "mismatches": mismatches,
+            },
+            reason="existing regional split scratch package does not match the current access preflight or remote HEAD",
+        )
+
+    return {
+        **base,
+        "status": "ready_existing_current_package",
+        "fresh": True,
+        "blocked_reason": "",
+        "existing_generation_inputs": existing_inputs,
+        "remediation": "Existing scratch package matches the current access preflight path and remote HEAD.",
+    }
+
+
+def _blocked_stale_scratch_package(base: dict[str, Any], *, reason: str) -> dict[str, Any]:
+    artifact_dir = Path(str(base["artifact_dir"]))
+    preserve_path = artifact_dir.parent / f"{artifact_dir.name}_preserve_before_retry.tgz"
+    return {
+        **base,
+        "status": "blocked_stale_scratch_package",
+        "fresh": False,
+        "blocked_reason": reason,
+        "preserve_command": f"tar -C {artifact_dir.parent} -czf {preserve_path} {artifact_dir.name}",
+        "clean_command": f"rm -rf {artifact_dir}",
+        "use_unique_artifact_dir_guidance": "Retry with a new --artifact-dir under /tmp if the existing package must be retained.",
+        "remediation": (
+            "Preserve the existing scratch package or choose a unique --artifact-dir, then remove the stale "
+            "local scratch directory before regenerating the regional split package."
+        ),
     }
 
 
@@ -345,7 +452,10 @@ def classify_submission_package_status(
     preflight_report: dict[str, Any],
     output_budget: dict[str, Any],
     writable_remote_roots: dict[str, Any],
+    scratch_package_freshness: dict[str, Any],
 ) -> str:
+    if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
+        return "failed_closed_stale_scratch_package"
     if package_contract["status"] != "ready":
         return "failed_closed_package_contract"
     if output_budget["status"] != "ready":
@@ -363,7 +473,14 @@ def first_blocker(
     preflight_report: dict[str, Any],
     output_budget: dict[str, Any],
     writable_remote_roots: dict[str, Any],
+    scratch_package_freshness: dict[str, Any],
 ) -> dict[str, Any] | None:
+    if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
+        return {
+            "gate": "scratch_package_freshness",
+            "status": scratch_package_freshness["status"],
+            "reason": scratch_package_freshness.get("blocked_reason", ""),
+        }
     if package_contract["status"] != "ready":
         return {"gate": "package_contract", "status": package_contract["status"], "reason": "; ".join(package_contract["blocked_reasons"])}
     if output_budget["status"] != "ready":
@@ -510,6 +627,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     regional = dict(report.get("regional_split_merge_contract") or {})
     roots = dict(report.get("writable_remote_roots") or {})
     budget = dict(report.get("output_budget") or {})
+    freshness = dict(report.get("scratch_package_freshness") or {})
     lines = [
         "Balfrin Regional Split Submission Package",
         "",
@@ -517,6 +635,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Ready for bounded postproc submission: `{report.get('ready_for_bounded_postproc_submission')}`",
         f"- Authorization preflight status: `{report.get('authorization_preflight_status')}`",
         f"- First blocker: `{first.get('gate')}` `{first.get('status')}` {first.get('reason', '')}",
+        f"- Balfrin remote HEAD: `{report.get('balfrin_remote_head')}`",
+        f"- Access preflight path: `{report.get('balfrin_access_preflight_path')}`",
+        f"- Scratch package freshness: `{freshness.get('status')}`",
         f"- Exact bounded postproc command: `{report.get('exact_bounded_postproc_command')}`",
         "",
         "## Regional Split/Merge",

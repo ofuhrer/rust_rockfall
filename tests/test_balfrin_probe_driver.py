@@ -122,9 +122,13 @@ class BalfrinProbeDriverTests(unittest.TestCase):
     def test_remote_access_preflight_blocks_dirty_remote_checkout_with_cleanup_commands(self) -> None:
         def runner(command: list[str], **_kwargs: object):
             remote_command = command[-1]
-            if remote_command == "true" or remote_command == access_preflight._remote_clone_check(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+            if remote_command == "true" or remote_command == access_preflight._remote_clone_check(
+                access_preflight.DEFAULT_REMOTE_REPO_ROOT
+            ):
                 return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
-            if remote_command == access_preflight._remote_checkout_hygiene_command(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+            if remote_command == access_preflight._remote_checkout_hygiene_command(
+                access_preflight.DEFAULT_REMOTE_REPO_ROOT
+            ):
                 stdout = "\n".join(
                     [
                         "__REMOTE_HEAD__",
@@ -158,6 +162,43 @@ class BalfrinProbeDriverTests(unittest.TestCase):
         self.assertIn("logs/slurm-123.err", hygiene["stale_logs"])
         self.assertTrue(any("git -C /users/olifu/work/rust_rockfall restore" in command for command in hygiene["safe_cleanup_commands"]))
         self.assertTrue(any("git -C /users/olifu/work/rust_rockfall clean -n" in command for command in hygiene["safe_cleanup_commands"]))
+
+    def test_remote_access_preflight_reports_regional_split_artifact_guidance(self) -> None:
+        stale_plan = (
+            "validation/private/tb407_repaired_handoff_remote/multi_zone_pressure/"
+            "four_zone_review_only/handoff_output_budget_projection_full_root/command_plan.json"
+        )
+
+        def runner(command: list[str], **_kwargs: object):
+            remote_command = command[-1]
+            if remote_command == "true" or remote_command == access_preflight._remote_clone_check(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            if remote_command == access_preflight._remote_checkout_hygiene_command(access_preflight.DEFAULT_REMOTE_REPO_ROOT):
+                stdout = "\n".join(
+                    [
+                        "__REMOTE_HEAD__",
+                        "main",
+                        "regional-stale-head",
+                        "__REMOTE_STATUS__",
+                        f"?? {stale_plan}",
+                        "__STALE_SUBMISSION_PACKAGES__",
+                        stale_plan,
+                        "__STALE_LOGS__",
+                    ]
+                )
+                return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+            raise AssertionError(f"unexpected remote command: {remote_command}")
+
+        report = access_preflight.collect_preflight_report(runner=runner)
+
+        self.assertEqual(report["status"], "blocked_dirty_remote_checkout")
+        hygiene = report["remote_checkout_hygiene"]
+        self.assertEqual(hygiene["stale_regional_split_artifacts"], [stale_plan])
+        guidance = hygiene["regional_split_artifact_guidance"]
+        self.assertEqual(guidance["status"], "blocked_stale_regional_split_artifacts")
+        self.assertIn("balfrin_regional_split_stale_artifacts_preserve.tgz", guidance["preserve_command"])
+        self.assertIn("git -C /users/olifu/work/rust_rockfall clean -n", guidance["clean_preview_command"])
+        self.assertIn("git -C /users/olifu/work/rust_rockfall clean -f", guidance["clean_command"])
 
     def test_remote_access_preflight_reports_missing_run_root(self) -> None:
         report = access_preflight.collect_preflight_report(runner=self._preflight_runner("run_root_visibility"))
