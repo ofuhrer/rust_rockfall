@@ -39,30 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-459: Regenerate The Reviewed Regional Split Submission Package From Fresh Preflight Inputs
-
-Goal: Regenerate the reviewed regional split submission package from fresh access-preflight inputs and compact manifest mode before any retry is considered.
-
-Capability gap reduced: Stale-package and stale-preflight rejection on the live regional split path.
-
-Why this outranks alternatives: The earlier failed-closed branch was about stale remote hygiene, and the refreshed package must stay aligned with the current measured split shape.
-
-Inspect first:
-
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `tests/test_balfrin_regional_split_submission_package.py`
-
-Deliverables:
-
-- A regenerated package report that records the current preflight path, remote-head alignment, and compact-manifest freshness.
-
-Definition of done:
-
-- Fresh preflight and package state agree, stale-package rejection remains covered, and focused checks pass.
-
-Boundaries: No live Balfrin submission, no scale-up claim, no distributed execution, no operational semantics.
-
 ### TB-460: Measure Restaged Management-AOI Candidate Stability For The Next Live Probe
 
 Goal: Measure restaged management-AOI candidate stability so the next live probe can use the current candidate ordering instead of stale heuristics.

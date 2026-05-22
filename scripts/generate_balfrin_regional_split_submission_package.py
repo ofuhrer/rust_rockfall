@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -82,6 +83,7 @@ def build_report(
         artifact_dir=handoff_artifact_dir,
         pressure_probe_root=pressure_probe_root,
     )
+    handoff_report = ensure_compact_handoff_manifest_report(handoff_report)
     reviewed_package = Path(handoff_report["package_json_path"])
     authorization_record = handoff_artifact_dir / handoff.DEFAULT_AUTHORIZATION_RECORD_PATH.name
     access_report = dict(balfrin_access_preflight or preflight._missing_access_report())
@@ -99,11 +101,18 @@ def build_report(
         access_report=access_report,
         access_source=access_source,
     )
+    remote_head_alignment = build_remote_head_alignment(
+        access_report=access_report,
+        access_source=access_source,
+    )
+    compact_manifest_freshness = build_compact_manifest_freshness(handoff_report)
     package_contract = build_package_contract_status(
         handoff_report=handoff_report,
         preflight_report=preflight_report,
         regional_contract=regional_contract,
         scratch_package_freshness=scratch_package_freshness,
+        remote_head_alignment=remote_head_alignment,
+        compact_manifest_freshness=compact_manifest_freshness,
     )
     output_budget = build_output_budget_summary(handoff_report, preflight_report)
     preservation_plan = build_preservation_plan(handoff_report, preflight_report, artifact_dir)
@@ -119,6 +128,8 @@ def build_report(
         output_budget=output_budget,
         writable_remote_roots=writable_remote_roots,
         scratch_package_freshness=scratch_package_freshness,
+        remote_head_alignment=remote_head_alignment,
+        compact_manifest_freshness=compact_manifest_freshness,
     )
     blocking_gate = first_blocker(
         package_contract=package_contract,
@@ -126,17 +137,20 @@ def build_report(
         output_budget=output_budget,
         writable_remote_roots=writable_remote_roots,
         scratch_package_freshness=scratch_package_freshness,
+        remote_head_alignment=remote_head_alignment,
+        compact_manifest_freshness=compact_manifest_freshness,
     )
     generation_inputs = {
         "balfrin_remote_head": access_report.get("remote_head"),
         "balfrin_access_preflight_path": access_source,
         "balfrin_access_status": access_report.get("status"),
+        "local_package_source_head": remote_head_alignment.get("local_head"),
         "artifact_dir": str(artifact_dir),
     }
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "task_id": "TB-427",
+        "task_id": "TB-459",
         "submission_package_status": submission_package_status,
         "ready_for_bounded_postproc_submission": submission_package_status == "ready_for_bounded_postproc_submission",
         "first_blocker": blocking_gate,
@@ -148,7 +162,9 @@ def build_report(
         "generation_inputs": generation_inputs,
         "balfrin_access_preflight_path": access_source,
         "balfrin_remote_head": access_report.get("remote_head"),
+        "remote_head_alignment": remote_head_alignment,
         "scratch_package_freshness": scratch_package_freshness,
+        "compact_manifest_freshness": compact_manifest_freshness,
         "handoff_package_status": handoff_report.get("package_status"),
         "handoff_package_constraint_status": handoff_report.get("package_constraint_status"),
         "regional_split_merge_contract": regional_contract,
@@ -260,12 +276,18 @@ def build_package_contract_status(
     preflight_report: dict[str, Any],
     regional_contract: dict[str, Any],
     scratch_package_freshness: dict[str, Any],
+    remote_head_alignment: dict[str, Any],
+    compact_manifest_freshness: dict[str, Any],
 ) -> dict[str, Any]:
     blocked_reasons: list[str] = []
     if regional_contract["status"] != "ready":
         blocked_reasons.extend(regional_contract["blocked_reasons"])
     if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
         blocked_reasons.append(scratch_package_freshness["blocked_reason"])
+    if str(remote_head_alignment["status"]).startswith("blocked_"):
+        blocked_reasons.append(remote_head_alignment["blocked_reason"])
+    if compact_manifest_freshness["status"] != "ready_compact_manifest_current":
+        blocked_reasons.append(compact_manifest_freshness["blocked_reason"])
     if handoff_report.get("package_status") == "blocked_missing_inputs":
         blocked_reasons.append("handoff package is blocked_missing_inputs")
     if handoff_report.get("submission_classification") != "blocked_pending_new_human_authorization":
@@ -283,6 +305,160 @@ def build_package_contract_status(
         "submit_contract_status": preflight_report.get("submit_contract_status"),
         "regional_contract_status": regional_contract.get("status"),
         "scratch_package_freshness_status": scratch_package_freshness.get("status"),
+        "remote_head_alignment_status": remote_head_alignment.get("status"),
+        "compact_manifest_freshness_status": compact_manifest_freshness.get("status"),
+    }
+
+
+def ensure_compact_handoff_manifest_report(handoff_report: dict[str, Any]) -> dict[str, Any]:
+    manifest_pruning = dict(handoff_report.get("manifest_pruning") or {})
+    active_projection = dict(manifest_pruning.get("active_handoff_output_budget_projection") or {})
+    if manifest_pruning.get("mode") == "compact" and active_projection.get("projection_mode") == "compact":
+        return handoff_report
+
+    command_plan = dict(handoff_report.get("command_plan") or {})
+    pressure_artifact_dir = Path(str(handoff_report.get("pressure_artifact_dir") or ""))
+    if not command_plan or not str(pressure_artifact_dir):
+        return handoff_report
+
+    compact_projection = handoff.build_handoff_output_budget_projection(
+        command_plan=command_plan,
+        pressure_artifact_dir=pressure_artifact_dir,
+        manifest_mode="compact",
+    )
+    baseline = dict(handoff_report.get("handoff_output_budget_projection") or {})
+    delta = handoff.projection_budget_delta(baseline, compact_projection)
+    compact_status = str(compact_projection.get("budget_recheck", {}).get("status") or "")
+    replay_critical_contract = handoff.build_replay_critical_contract(
+        command_plan=command_plan,
+        projection=compact_projection,
+    )
+    new_manifest_pruning = {
+        "status": compact_status or "blocked_replay_contract_ambiguity",
+        "summary": (
+            "regional split package refreshed the reviewed handoff with compact manifest mode: "
+            f"{baseline.get('manifest_size_bytes')} -> {compact_projection.get('manifest_size_bytes')} manifest bytes, "
+            f"{baseline.get('sidecar_file_count')} -> {compact_projection.get('sidecar_file_count')} sidecar files."
+        ),
+        "mode": "compact",
+        "active_handoff_output_budget_projection": compact_projection,
+        "before": handoff.summarize_projection_budget(baseline),
+        "after": handoff.summarize_projection_budget(compact_projection),
+        "delta": delta,
+        "replay_critical_output_families": list(handoff.REPLAY_CRITICAL_OUTPUT_FAMILIES),
+        "pruned_output_families": list(handoff.PRUNED_OUTPUT_FAMILIES),
+        "retained_output_families": list(compact_projection.get("output_family_mix") or []),
+        "replay_critical_contract": replay_critical_contract,
+        "exact_blocking_fields": list(compact_projection.get("output_family_mix") or []),
+        "projection_hashes": dict(compact_projection.get("projection_file_hashes") or {}),
+        "blocked_reason": compact_projection.get("budget_recheck", {}).get("reason")
+        if compact_status != "budget_passes_no_reduction_needed"
+        else None,
+    }
+    updated = dict(handoff_report)
+    updated["manifest_pruning"] = new_manifest_pruning
+    updated["handoff_output_budget_projection"] = compact_projection
+    updated["output_budget_acceptance_validation"] = compact_projection.get("budget_acceptance_validation", {})
+    handoff.write_package_files(updated)
+    return updated
+
+
+def build_remote_head_alignment(
+    *,
+    access_report: dict[str, Any],
+    access_source: str,
+) -> dict[str, Any]:
+    remote_head = access_report.get("remote_head")
+    source_kind = "fixture" if access_source == "fixture" else "preflight_json"
+    if access_source.startswith("not_supplied"):
+        source_kind = "not_supplied"
+    if access_report.get("status") != access_preflight_ready_status():
+        return {
+            "schema_version": "balfrin_remote_head_alignment_v1",
+            "status": "not_checked_access_not_ready",
+            "aligned": None,
+            "remote_head": remote_head,
+            "local_head": None,
+            "access_preflight_path": access_source,
+            "blocked_reason": "",
+            "summary": "Remote-head alignment is checked only after the Balfrin access preflight is ready.",
+        }
+    if source_kind != "preflight_json":
+        return {
+            "schema_version": "balfrin_remote_head_alignment_v1",
+            "status": "not_checked_fixture_or_missing_preflight",
+            "aligned": None,
+            "remote_head": remote_head,
+            "local_head": None,
+            "access_preflight_path": access_source,
+            "blocked_reason": "",
+            "summary": "Remote-head alignment is enforced for file-backed Balfrin access preflight inputs.",
+        }
+    local_head = local_git_head()
+    if not remote_head or not local_head:
+        return {
+            "schema_version": "balfrin_remote_head_alignment_v1",
+            "status": "blocked_remote_head_unknown",
+            "aligned": False,
+            "remote_head": remote_head,
+            "local_head": local_head,
+            "access_preflight_path": access_source,
+            "blocked_reason": "remote or local git HEAD is unavailable for package/preflight alignment",
+            "summary": "The package cannot prove source alignment with the Balfrin checkout.",
+        }
+    if remote_head != local_head:
+        return {
+            "schema_version": "balfrin_remote_head_alignment_v1",
+            "status": "blocked_remote_head_mismatch",
+            "aligned": False,
+            "remote_head": remote_head,
+            "local_head": local_head,
+            "access_preflight_path": access_source,
+            "blocked_reason": (
+                "Balfrin remote HEAD from the access preflight does not match the local package source HEAD"
+            ),
+            "summary": "Refresh the Balfrin checkout to the package source revision before considering a retry.",
+        }
+    return {
+        "schema_version": "balfrin_remote_head_alignment_v1",
+        "status": "ready_remote_head_aligned",
+        "aligned": True,
+        "remote_head": remote_head,
+        "local_head": local_head,
+        "access_preflight_path": access_source,
+        "blocked_reason": "",
+        "summary": "Balfrin remote HEAD matches the local package source HEAD.",
+    }
+
+
+def build_compact_manifest_freshness(handoff_report: dict[str, Any]) -> dict[str, Any]:
+    manifest_pruning = dict(handoff_report.get("manifest_pruning") or {})
+    active_projection = dict(manifest_pruning.get("active_handoff_output_budget_projection") or {})
+    mode = manifest_pruning.get("mode") or active_projection.get("projection_mode")
+    status = str(manifest_pruning.get("status") or "")
+    projection_status = str(active_projection.get("status") or "")
+    projection_path = active_projection.get("projection_manifest_path")
+    ready = mode == "compact" and status in {
+        "budget_passes_no_reduction_needed",
+        "blocked_budget_reduction_needed",
+    }
+    return {
+        "schema_version": "balfrin_compact_manifest_freshness_v1",
+        "status": "ready_compact_manifest_current" if ready else "blocked_compact_manifest_not_current",
+        "fresh": ready,
+        "manifest_pruning_status": status,
+        "manifest_mode": mode,
+        "active_projection_status": projection_status,
+        "active_projection_manifest_path": projection_path,
+        "manifest_size_bytes": active_projection.get("manifest_size_bytes"),
+        "output_file_count": active_projection.get("output_file_count"),
+        "sidecar_file_count": active_projection.get("sidecar_file_count"),
+        "reducer_manifest_file_count": active_projection.get("reducer_manifest_file_count"),
+        "projection_hashes": dict(manifest_pruning.get("projection_hashes") or {}),
+        "blocked_reason": ""
+        if ready
+        else "regional split package did not use the current compact handoff manifest projection",
+        "summary": manifest_pruning.get("summary"),
     }
 
 
@@ -453,9 +629,15 @@ def classify_submission_package_status(
     output_budget: dict[str, Any],
     writable_remote_roots: dict[str, Any],
     scratch_package_freshness: dict[str, Any],
+    remote_head_alignment: dict[str, Any],
+    compact_manifest_freshness: dict[str, Any],
 ) -> str:
     if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
         return "failed_closed_stale_scratch_package"
+    if str(remote_head_alignment["status"]).startswith("blocked_"):
+        return "failed_closed_remote_head_mismatch"
+    if compact_manifest_freshness["status"] != "ready_compact_manifest_current":
+        return "failed_closed_compact_manifest_stale"
     if package_contract["status"] != "ready":
         return "failed_closed_package_contract"
     if output_budget["status"] != "ready":
@@ -474,12 +656,26 @@ def first_blocker(
     output_budget: dict[str, Any],
     writable_remote_roots: dict[str, Any],
     scratch_package_freshness: dict[str, Any],
+    remote_head_alignment: dict[str, Any],
+    compact_manifest_freshness: dict[str, Any],
 ) -> dict[str, Any] | None:
     if scratch_package_freshness["status"] == "blocked_stale_scratch_package":
         return {
             "gate": "scratch_package_freshness",
             "status": scratch_package_freshness["status"],
             "reason": scratch_package_freshness.get("blocked_reason", ""),
+        }
+    if str(remote_head_alignment["status"]).startswith("blocked_"):
+        return {
+            "gate": "remote_head_alignment",
+            "status": remote_head_alignment["status"],
+            "reason": remote_head_alignment.get("blocked_reason", ""),
+        }
+    if compact_manifest_freshness["status"] != "ready_compact_manifest_current":
+        return {
+            "gate": "compact_manifest_freshness",
+            "status": compact_manifest_freshness["status"],
+            "reason": compact_manifest_freshness.get("blocked_reason", ""),
         }
     if package_contract["status"] != "ready":
         return {"gate": "package_contract", "status": package_contract["status"], "reason": "; ".join(package_contract["blocked_reasons"])}
@@ -628,6 +824,8 @@ def render_text_report(report: dict[str, Any]) -> str:
     roots = dict(report.get("writable_remote_roots") or {})
     budget = dict(report.get("output_budget") or {})
     freshness = dict(report.get("scratch_package_freshness") or {})
+    alignment = dict(report.get("remote_head_alignment") or {})
+    compact = dict(report.get("compact_manifest_freshness") or {})
     lines = [
         "Balfrin Regional Split Submission Package",
         "",
@@ -637,7 +835,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- First blocker: `{first.get('gate')}` `{first.get('status')}` {first.get('reason', '')}",
         f"- Balfrin remote HEAD: `{report.get('balfrin_remote_head')}`",
         f"- Access preflight path: `{report.get('balfrin_access_preflight_path')}`",
+        f"- Remote-head alignment: `{alignment.get('status')}` local=`{alignment.get('local_head')}`",
         f"- Scratch package freshness: `{freshness.get('status')}`",
+        f"- Compact manifest freshness: `{compact.get('status')}` mode=`{compact.get('manifest_mode')}`",
         f"- Exact bounded postproc command: `{report.get('exact_bounded_postproc_command')}`",
         "",
         "## Regional Split/Merge",
@@ -660,6 +860,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Acceptance status: `{budget.get('acceptance_status')}`",
         f"- Manifest bytes: `{budget.get('manifest_size_bytes')}`",
         f"- Output files: `{budget.get('output_file_count')}`",
+        f"- Compact manifest bytes: `{compact.get('manifest_size_bytes')}`",
+        f"- Compact sidecar files: `{compact.get('sidecar_file_count')}`",
         "",
         "## Preservation",
     ]
@@ -711,6 +913,25 @@ def dedupe(items: list[str]) -> list[str]:
         if text and text not in deduped:
             deduped.append(text)
     return deduped
+
+
+def local_git_head() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def access_preflight_ready_status() -> str:
+    return getattr(preflight.access_preflight, "STATUS_READY", "ready_for_read_only_collection")
 
 
 def main(argv: list[str] | None = None) -> int:

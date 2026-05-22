@@ -125,6 +125,9 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertEqual(report["generation_inputs"]["balfrin_remote_head"], "abc123")
         self.assertEqual(report["generation_inputs"]["balfrin_access_preflight_path"], "fixture")
         self.assertEqual(report["scratch_package_freshness"]["status"], "ready_clean_scratch")
+        self.assertEqual(report["remote_head_alignment"]["status"], "not_checked_fixture_or_missing_preflight")
+        self.assertEqual(report["compact_manifest_freshness"]["status"], "ready_compact_manifest_current")
+        self.assertEqual(report["compact_manifest_freshness"]["manifest_mode"], "compact")
         self.assertEqual(report["authorization_preflight_status"], "ready_for_authorization_review")
         self.assertEqual(
             report["writable_remote_roots"]["run_root"],
@@ -139,6 +142,39 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertIn("--authorized-submit", report["exact_bounded_postproc_command"])
         self.assertNotIn("sbatch ", report["exact_bounded_postproc_command"])
         self.assertFalse(report["no_submit_semantics"]["sbatch_attempted"])
+
+    def test_file_backed_ready_access_fails_closed_when_remote_head_is_not_local_head(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "regional_split_package"
+            with patch.object(MODULE, "local_git_head", return_value="local-head"):
+                report = MODULE.build_report(
+                    artifact_dir=artifact_dir,
+                    balfrin_access_preflight=self._ready_access(),
+                    balfrin_access_preflight_source="/tmp/current_access.json",
+                )
+
+        self.assertEqual(report["submission_package_status"], "failed_closed_remote_head_mismatch")
+        self.assertFalse(report["ready_for_bounded_postproc_submission"])
+        self.assertEqual(report["first_blocker"]["gate"], "remote_head_alignment")
+        self.assertEqual(report["remote_head_alignment"]["status"], "blocked_remote_head_mismatch")
+        self.assertEqual(report["remote_head_alignment"]["remote_head"], "abc123")
+        self.assertEqual(report["remote_head_alignment"]["local_head"], "local-head")
+        self.assertEqual(report["compact_manifest_freshness"]["status"], "ready_compact_manifest_current")
+
+    def test_file_backed_ready_access_records_remote_head_alignment(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "regional_split_package"
+            with patch.object(MODULE, "local_git_head", return_value="abc123"):
+                report = MODULE.build_report(
+                    artifact_dir=artifact_dir,
+                    balfrin_access_preflight=self._ready_access(),
+                    balfrin_access_preflight_source="/tmp/current_access.json",
+                )
+
+        self.assertEqual(report["submission_package_status"], "ready_for_bounded_postproc_submission")
+        self.assertEqual(report["remote_head_alignment"]["status"], "ready_remote_head_aligned")
+        self.assertTrue(report["remote_head_alignment"]["aligned"])
+        self.assertEqual(report["generation_inputs"]["local_package_source_head"], "abc123")
 
     def test_tb432_dirty_preflight_fixture_fails_closed_without_silent_reuse(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

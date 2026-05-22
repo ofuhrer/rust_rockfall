@@ -6219,3 +6219,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only Balfrin evidence collection only; no live submission, no distributed execution, no full-GIS promotion, no operational claim, and no risk/exposure/vulnerability workflow.
 - Next task: `TB-459`
+
+### TB-459: Regenerate The Reviewed Regional Split Submission Package From Fresh Preflight Inputs
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: regenerate the reviewed regional split submission package from a fresh read-only Balfrin access preflight and compact manifest projection before any retry is considered.
+- Files changed: `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a file-backed preflight remote-head alignment gate to the regional split package so a stale Balfrin checkout now fails closed before a retry can be treated as ready.
+  - Refreshed the reviewed handoff package with compact manifest mode before the authorization preflight consumes it, and surfaced compact-manifest freshness in the JSON/text package report.
+  - Regenerated the package report from `/tmp/tb459_balfrin_access_preflight.json`; access preflight was ready and remote checkout hygiene was clean, but the package failed closed as `failed_closed_remote_head_mismatch` because Balfrin remote HEAD `faef6d8ec055b0a9457932d4659a4c5f7f4c7399` did not match local package source HEAD `dee1e7d1f587a6d1e48abf4ed17d4914eab1d59a`.
+  - Confirmed scratch package freshness was `ready_clean_scratch`, compact manifest freshness was `ready_compact_manifest_current`, and no Balfrin job was submitted.
+  - Removed TB-459 from the active backlog after the fail-closed package refresh and regression coverage were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_regional_split_submission_package.py tests/test_balfrin_regional_split_submission_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package -v`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb459_balfrin_access_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/rust_rockfall/tb459_regional_split_package --balfrin-access-preflight-json /tmp/tb459_balfrin_access_preflight.json --format json --json-output /tmp/tb459_regional_split_package.json --text-output /tmp/tb459_regional_split_package.txt > /tmp/tb459_regional_split_package.stdout.json` (expected exit `2` with `failed_closed_remote_head_mismatch`)
+- Result/status: implemented_blocked_report
+- Boundaries: read-only Balfrin preflight and local package regeneration only; no live Balfrin submission, no scale-up claim, no distributed execution, and no operational semantics.
+- Next task: `TB-460`
