@@ -6039,3 +6039,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: synthesis only; no Balfrin submission, no claim promotion beyond measured TB-447/TB-448 evidence, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, distributed-execution, or scale-up claim was added.
 - Next task: `TB-450`
+
+### TB-450: Compare Regional Split Measurement Against Scenario And Output Projections
+
+- Date: 2026-05-22
+- Commit: `a7e5158`
+- Objective: compare the measured TB-447/TB-448 regional split evidence against the existing scenario-cardinality, output-tier, and reducer-pressure projection surfaces and thread the result into the Balfrin scale-readiness summary.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `regional_split_projection_delta_summary` to the scale-readiness matrix that compares the measured regional split runtime, validation output file count, validation bytes, hazard-manifest bytes, and memory band against the projected larger-AOI surface.
+  - Threaded the scenario-cardinality and reducer-pressure helpers into the matrix through cached report lookups, then surfaced the next ranked bottleneck as reducer-pressure/replay-metadata growth instead of re-recommending the completed comparison.
+  - Updated the matrix text renderer and focused regression coverage to lock down the new delta summary, pressure-band classification, and revised next-probe ranking.
+  - Refreshed the Swiss-scale projection note and removed TB-450 from the active backlog once the comparison summary and regression coverage were in place.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb450_matrix.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: no new ensemble, no live submission, no scale-up authorization, and no operational or risk/exposure/vulnerability claims were added.
+- Next task: `TB-451`
