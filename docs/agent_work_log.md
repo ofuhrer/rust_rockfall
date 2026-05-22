@@ -5810,7 +5810,7 @@ scan thousands of lines of completed history.
 ### TB-440: Define Scenario Batching Contract For Multi-Zone Runs
 
 - Date: 2026-05-22
-- Commit: to-be-recorded
+- Commit: recorded by this commit
 - Objective: define deterministic batching metadata for expanded multi-zone scenario tables and add a no-submit smoke package path for the batched contract.
 - Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -5954,3 +5954,33 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only Balfrin access and package regeneration only; no `sbatch`, no non-`postproc` partition use, no distributed execution, no scale-up authorization, and no operational, annual-frequency, risk, exposure, vulnerability, or physical-probability claim was added.
 - Next task: `TB-447`
+
+### TB-447: Execute One Bounded Regional Split Postproc Probe
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: submit and actively monitor exactly one bounded regional split Balfrin `postproc` probe after regenerated package and live gates passed.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout at `/users/olifu/work/rust_rockfall` from `f326e7c350c3e00ce930fbdb019eb9274c6e6175` to `faef6d8ec055b0a9457932d4659a4c5f7f4c7399`, then reran the live access preflight; it reported `ready_for_read_only_collection`, `ready_for_pre_submit=true`, checkout hygiene `pass`, dirty path count `0`, and scheduler query `pass`.
+  - Regenerated the regional split package on Balfrin at `/tmp/tb447_regional_split_package.json`; it reported `ready_for_bounded_postproc_submission=true`, `first_blocker=null`, package contract `ready`, output budget `ready`, writable remote roots `ready`, and exact command scope `--partition postproc`.
+  - Submitted exactly one bounded `postproc` job from the Balfrin checkout. SLURM job `4350232` ran on `nid001225`, completed with `State=COMPLETED`, `ExitCode=0:0`, `Elapsed=00:00:24`, `ReqCPUS=16`, and `AllocCPUS=16`.
+  - Preserved evidence under `/tmp`: `/tmp/tb447_submit_stdout.txt`, `/tmp/tb447_submit_stderr.txt`, `/tmp/tb447_sacct_4350232.psv`, `/tmp/tb447_collect_stdout.json`, `/tmp/tb447_slurm_4350232.out`, `/tmp/tb447_slurm_4350232.err`, and `/tmp/tb447_balfrin_probe_summary.json`.
+  - Collected completed run-root evidence from `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`: metrics contract `complete`, total wall seconds `6.738646155004972`, peak memory `172.921875` MB, validation outputs `130` files / `34565323` bytes, hazard outputs `53` files / `55837701` bytes, and conditional curve rows `729600`.
+  - Removed TB-447 from the active backlog; TB-448 remains the next follow-up to collect and integrate regional split preservation/metrics evidence more completely.
+- Checks run:
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb447_balfrin_access_preflight_after_pull.json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --balfrin-access-preflight-json /tmp/tb447_balfrin_access_preflight_after_pull.json --format json --json-output /tmp/tb447_regional_split_package.json --text-output /tmp/tb447_regional_split_package.txt'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1 --run-id tschamut_public_balfrin_multi_release_zone_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/balfrin_regional_split_submission_package_v1/handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/balfrin_regional_split_submission_package_v1/handoff/balfrin_multi_zone_live_authorization_record_v1.yaml'`
+  - `ssh balfrin 'sacct -j 4350232 --format=JobID,JobName%32,Partition,State,ExitCode,Elapsed,Start,End,MaxRSS,ReqCPUS,AllocCPUS,NodeList -P'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1'`
+  - `rg -n "^### TB-447:" docs/task_backlog.md` (expected no match after removal)
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short --branch`
+- Result/status: implemented_measured
+- Boundaries: one `postproc` submission only; no non-`postproc` partition, distributed execution, scale-up claim, operational claim, annual-frequency claim, physical-probability claim, risk, exposure, or vulnerability claim was added.
+- Next task: `TB-448`

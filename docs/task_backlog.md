@@ -39,36 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-447: Execute One Bounded Regional Split Postproc Probe
-
-Goal: Submit and monitor exactly one bounded regional split `postproc` probe if and only if the regenerated package and all live gates are ready.
-
-Capability gap reduced: Produces the first measured regional split execution evidence or a clean failed-closed live gate record.
-
-Why this outranks alternatives: The largest current scale gap is that the regional split branch remains failed-closed/no-submit despite being the ranked next probe candidate.
-
-Inspect first:
-
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_regional_split_probe_gate_tb432.md`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-
-Deliverables:
-
-- One live `postproc` submission attempt only after ready gates pass.
-- SLURM job id, run root, exit status, elapsed time, and scheduler evidence if submitted.
-- Failed-closed/no-submit evidence if any pre-submit gate is not ready.
-- Preserved stdout/stderr or final relevant scheduler/error block in `/tmp`.
-
-Definition of done:
-
-- The task produces either measured regional split `postproc` evidence with a completed run root, or an explicitly classified failed-closed live gate that names the first blocker.
-- TB-447 is removed only after the evidence is committed and the next required follow-up is clear.
-
-Boundaries: GPT-5.5 Balfrin worker required. Postproc only; stop and rediscuss if the run would fill `postproc` for more than 6 hours. No non-postproc partition, no distributed execution, no scale-up claim, and no operational, annual-frequency, risk, exposure, vulnerability, or physical-probability claim.
-
 ### TB-448: Collect Regional Split Run-Root Metrics And Preservation Evidence
 
 Goal: Collect validation/hazard output counts, bytes, reducer metrics, preservation status, and manifest pointers from the regional split run root if TB-447 submitted successfully.
