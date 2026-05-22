@@ -5907,3 +5907,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: ranking-only synthesis; no Balfrin submission, no distributed execution, no scale-up authorization, and no operational claim was added.
 - Next task: `TB-445`
+
+### TB-445: Refresh Management Feasibility Summary After Regional And AOI Updates
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: refresh the management-facing feasibility summary so it matches the latest measured evidence, failed-closed regional retry state, and AOI/QGIS readiness updates.
+- Files changed: `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rewrote the management package to answer the 10-zone, 100-zone, regional, and Swiss-wide feasibility questions directly from the current measured, failed-closed, and projection-only evidence classes.
+  - Updated the Swiss-scale projection and maturity snapshot so the regional split retry stays the next executable milestone while remaining separate from measured scale capability.
+  - Removed TB-445 from the active backlog after the narrative surfaces were aligned.
+- Checks run:
+  - `rg -n "^### TB-445:" docs/task_backlog.md`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: synthesis only; no scale-up, distributed execution, operational, or physical-probability claim was added.
+- Next task: backlog refill needed

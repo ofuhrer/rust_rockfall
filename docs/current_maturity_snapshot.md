@@ -36,8 +36,13 @@ submit records, measured four-zone postproc/reducer pressure, hazard-throughput
 no-op boundaries, and a refreshed Swiss-scale projection. The current
 architectural answer is: a 10-zone single-AOI workflow is
 feasible under the current single-node/postproc boundary; a 100-zone workflow is
-conditionally feasible as a deferred planning case; regional and Swiss-wide
-execution remain out of reach under current single-node/postproc constraints.
+conditionally feasible as a deferred planning case; regional workflows remain
+out of reach as scale capability until the bounded regional split retry is
+measured; and Swiss-wide execution remains out of reach under current
+single-node/postproc constraints. TB-431 through TB-444 then clarified the
+regional split retry path, AOI/QGIS review readiness, candidate and scenario
+separation, and the next ranked executable milestone without changing the
+measured scale boundary.
 The
 Chant Sura
 real-input gate distinguishes real, fixture-backed, partial, missing, and
@@ -212,6 +217,10 @@ at hazard-builder optimization, but that remains separate from the next
 authorized step of management review. TB-359 refreshed this synthesis after the
 real-AOI and multi-zone evidence cycle: the next decisive evidence gap is now
 larger measured multi-zone Balfrin hazard execution, not another projection-only report.
+The next executable milestone is one bounded regional split postproc retry
+with a fresh passing access preflight; the regional split branch is still the
+first live retry candidate, but it remains failed-closed/no-submit until that
+retry is measured.
 The largest near-term gaps have moved from "can the Balfrin demo execute?" and
 "can an AOI dry run be composed?" to "can real arbitrary-AOI public geodata be
 acquired and preprocessed reproducibly?", "can release-zone and scenario

@@ -53,17 +53,18 @@ branches into measured capability:
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
     four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
     TB-407 smallest multi-zone probe, and the current claim boundaries.
-  - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
-    restartability, GIS scope, uncertainty, and claim boundaries in the measured
-    section while separating projection-only and failed-closed sections and now
-    reflects the adjacent-candidate scenario path.
+- `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
+  restartability, GIS scope, uncertainty, and claim boundaries in the measured
+  section while separating projection-only and failed-closed sections and now
+  reflects the adjacent-candidate scenario path, AOI/QGIS review readiness,
+  and the current regional retry ranking.
   - TB-407 measured the smallest multi-zone Balfrin probe on `postproc`, with
     `130` validation files, `53` hazard files, `729600` conditional-curve
     rows, and preservation-ready run-root evidence.
-  - The regional split dashboard row does not add measured evidence: TB-432
-    failed closed before `sbatch`, and the later remote-hygiene cleanup only
-    makes a fresh bounded retry executable after a regenerated ready package
-    and passing access preflight.
+- The regional split dashboard row does not add measured evidence: TB-432
+  failed closed before `sbatch`, and the later remote-hygiene cleanup only
+  makes a fresh bounded retry executable after a regenerated ready package
+  and passing access preflight.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -190,8 +191,8 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no promoted regional or Swiss-wide
 scale capability under the current single-node/postproc boundary. The regional
-split branch is now a bounded evidence-collection retry candidate, not a
-measured scale result: TB-432 remains failed-closed/no-submit, while the
-transient remote-hygiene blocker has been cleared. The repository has measured
+split branch is the next executable milestone, but it remains failed-closed/
+no-submit evidence until the fresh access preflight and regenerated ready
+package produce a measured bounded postproc retry. The repository has measured
 single-job, four-zone postproc, and smallest multi-zone probe evidence, but not
 measured larger multi-zone hazard execution.

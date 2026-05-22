@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-445: Refresh Management Feasibility Summary After Regional And AOI Updates
-
-Goal: Update the management-facing feasibility summary after TB-431 through TB-444 clarify regional split, AOI, candidate, scenario, and QGIS readiness.
-
-Capability gap reduced: Management-facing status drift after executable changes.
-
-Why this outranks alternatives: This should happen after the execution and automation blockers are updated, not before, so it synthesizes measured progress instead of creating another projection-only report.
-
-Inspect first:
-
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Concise updated management status explaining what is measured, what is blocked, and what remains projected.
-- Explicit answer to whether 10-zone, 100-zone, regional, and Swiss-wide workflows are feasible under current constraints.
-- No duplicate evidence package if existing surfaces can be updated.
-
-Definition of done:
-
-- Management-facing docs agree with the latest measured evidence and failed-closed blockers, and the next recommended executable milestone is explicit.
-
-Boundaries: Synthesis only after upstream evidence tasks; do not upgrade failed-closed or projection-only evidence into measured capability.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
