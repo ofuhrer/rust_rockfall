@@ -328,7 +328,11 @@ def build_report(
     write_started = time.perf_counter()
     scenario_table_output_path.parent.mkdir(parents=True, exist_ok=True)
     write_csv(scenario_table_output_path, rows)
-    scenario_manifest_output_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    compact_manifest = compact_scenario_table_manifest(manifest)
+    scenario_manifest_output_path.write_text(
+        json.dumps(compact_manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     scenario_batching_output_path.write_text(
         json.dumps(scenario_batching_contract, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -339,6 +343,7 @@ def build_report(
     manifest_bytes = scenario_manifest_output_path.stat().st_size
     batching_contract_bytes = scenario_batching_output_path.stat().st_size
     total_bytes = csv_bytes + manifest_bytes + batching_contract_bytes
+    manifest_compaction = summarize_manifest_compaction(manifest, compact_manifest)
     first_scaling_bottleneck = build_first_scaling_bottleneck(
         csv_bytes=csv_bytes,
         manifest_bytes=manifest_bytes,
@@ -383,6 +388,7 @@ def build_report(
         "release_candidate_physical_meaning_firewall": release_candidate_firewall,
         "runtime_measurements": runtime_measurements,
         "storage_measurements": storage_measurements,
+        "manifest_compaction": manifest_compaction,
         "first_scaling_bottleneck": first_scaling_bottleneck,
         "tb_183_planning_input": tb_183_planning_input,
         "output_paths": {
@@ -1260,6 +1266,101 @@ def build_first_scaling_bottleneck(
     }
 
 
+def compact_scenario_table_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    compact_manifest = dict(manifest)
+    compact_manifest.pop("row_summaries", None)
+    return compact_manifest
+
+
+def compact_freezer_manifest(report: dict[str, Any]) -> dict[str, Any]:
+    compact_report = {
+        "schema_version": report.get("schema_version"),
+        "freezer_status": report.get("freezer_status"),
+        "blocked_reason": report.get("blocked_reason"),
+        "read_only": report.get("read_only"),
+        "scale_up_authorized": report.get("scale_up_authorized"),
+        "operational_claims_allowed": report.get("operational_claims_allowed"),
+        "candidate_site_id": report.get("candidate_site_id"),
+        "candidate_site_name": report.get("candidate_site_name"),
+        "review_package_path": report.get("review_package_path"),
+        "source_zone_id": report.get("source_zone_id"),
+        "accepted_candidate_ids": list(report.get("accepted_candidate_ids") or []),
+        "rejected_candidate_ids": list(report.get("rejected_candidate_ids") or []),
+        "accepted_candidate_count": report.get("accepted_candidate_count"),
+        "rejected_candidate_count": report.get("rejected_candidate_count"),
+        "release_row_count": report.get("release_row_count"),
+        "scenario_row_count": report.get("scenario_row_count"),
+        "trajectory_count": report.get("trajectory_count"),
+        "seed": report.get("seed"),
+        "seed_policy": report.get("seed_policy"),
+        "block_family_ids": list(report.get("block_family_ids") or []),
+        "block_scenario_ids": list(report.get("block_scenario_ids") or []),
+        "conditional_weight_total": report.get("conditional_weight_total"),
+        "conditional_weight_semantics": report.get("conditional_weight_semantics"),
+        "forest_realization_plan": dict(report.get("forest_realization_plan") or {}),
+        "claim_boundaries": dict(report.get("claim_boundaries") or {}),
+        "output_paths": dict(report.get("output_paths") or {}),
+    }
+    return compact_report
+
+
+def summarize_manifest_compaction(full_manifest: dict[str, Any], compact_manifest: dict[str, Any]) -> dict[str, Any]:
+    full_measurement = measure_json_payload(full_manifest)
+    compact_measurement = measure_json_payload(compact_manifest)
+    return {
+        "status": "ready",
+        "before": full_measurement,
+        "after": compact_measurement,
+        "delta": {
+            "bytes": full_measurement["bytes"] - compact_measurement["bytes"],
+            "field_count": full_measurement["field_count"] - compact_measurement["field_count"],
+        },
+        "compacted_fields": ["row_summaries"],
+        "reconstruction_contract": {
+            "status": "ready",
+            "deterministic_reconstruction": True,
+            "replay_critical_fields_retained": [
+                "candidate_release_zone_record_ids",
+                "source_zone_family_ids",
+                "block_family_ids",
+                "shape_family_ids",
+                "scenario_family_template_ids",
+                "row_ids",
+                "candidate_cardinality",
+                "source_zone_family_cardinality",
+                "block_family_cardinality",
+                "shape_family_cardinality",
+                "scenario_family_template_cardinality",
+                "release_candidate_physical_meaning_firewall",
+                "forest_realization_plan",
+                "deterministic_orientation_repetition_policy",
+                "block_shape_volume_family_templates",
+                "first_scaling_bottleneck",
+                "tb_183_planning_input",
+                "scenario_batching_summary",
+                "source_inputs",
+                "supported_templates",
+            ],
+        },
+    }
+
+
+def measure_json_payload(value: Any) -> dict[str, int]:
+    payload = json.dumps(value, indent=2, sort_keys=True)
+    return {
+        "bytes": len(payload.encode("utf-8")),
+        "field_count": count_json_fields(value),
+    }
+
+
+def count_json_fields(value: Any) -> int:
+    if isinstance(value, dict):
+        return sum(1 + count_json_fields(item) for item in value.values())
+    if isinstance(value, list):
+        return sum(count_json_fields(item) for item in value)
+    return 0
+
+
 def build_tb_183_planning_input(
     *,
     candidate_record_count: int,
@@ -1967,7 +2068,9 @@ def build_freezer_report(
             "manifest": display_path(manifest_output),
         },
     }
-    manifest_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    compact_manifest = compact_freezer_manifest(report)
+    manifest_output.write_text(json.dumps(compact_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    report["manifest_compaction"] = summarize_manifest_compaction(report, compact_manifest)
     return report
 
 

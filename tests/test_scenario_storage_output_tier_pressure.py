@@ -26,9 +26,17 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         self.assertEqual(report["fixture_measurement"]["measurement_status"], "ready")
         self.assertEqual(report["fixture_measurement"]["scenario_row_count"], 3)
         self.assertGreater(report["fixture_measurement"]["scenario_bundle"]["total_bytes"], 0)
+        self.assertGreater(
+            report["fixture_measurement"]["manifest_compaction"]["before"]["bytes"],
+            report["fixture_measurement"]["manifest_compaction"]["after"]["bytes"],
+        )
         self.assertEqual(report["real_aoi_candidate_measurement"]["measurement_status"], "ready")
         self.assertEqual(report["real_aoi_candidate_measurement"]["scenario_row_count"], 3)
         self.assertGreater(report["real_aoi_candidate_measurement"]["candidate_bundle"]["total_bytes"], 0)
+        self.assertGreater(
+            report["real_aoi_candidate_measurement"]["manifest_compaction"]["before"]["bytes"],
+            report["real_aoi_candidate_measurement"]["manifest_compaction"]["after"]["bytes"],
+        )
 
         ladder = report["expanded_candidate_set_measurements"]
         self.assertEqual([row["candidate_repeat_count"] for row in ladder], [1, 3, 8])

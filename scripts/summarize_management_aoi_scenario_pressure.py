@@ -603,6 +603,7 @@ def build_generated_scenario_table_report(
             "block_family_cardinality": list(scenario_table_manifest_payload.get("block_family_cardinality") or []),
             "scenario_family_template_cardinality": list(scenario_table_manifest_payload.get("scenario_family_template_cardinality") or []),
             "scenario_table_rows": freezer_report.get("scenario_table_rows") or [],
+            "manifest_compaction": freezer_report.get("manifest_compaction") or {},
         },
     }
     return scenario_generation

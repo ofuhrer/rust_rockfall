@@ -57,6 +57,12 @@ The no-submit smoke-package helper can consume this contract directly, so the
 batched scenario path stays inspectable without authorizing any Balfrin
 submission or distributed execution.
 
+The reviewed candidate freezer now writes a compact manifest that drops the
+duplicated per-row summaries from the file on disk while keeping the replay-
+critical ids, cardinality summaries, and output-path references. The pressure
+probe records the before/after byte and field-count delta so the manifest
+reduction stays measurable instead of implicit.
+
 The current fixture-backed stress run expands to `80` candidate release-zone
 records and `800` scenario rows. The resulting batching contract stays at `10`
 batches with a `batch_release_zone_count_max` of `8` and a

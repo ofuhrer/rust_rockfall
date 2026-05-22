@@ -258,7 +258,7 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
                 self.assertTrue(Path(first["output_paths"]["scenario_table"]).exists())
                 self.assertTrue(Path(first["output_paths"]["manifest"]).exists())
                 self.assertGreater(csv_bytes, previous_csv_bytes)
-                self.assertGreater(manifest_bytes, previous_manifest_bytes)
+                self.assertGreaterEqual(manifest_bytes, previous_manifest_bytes)
                 self.assertLess(csv_bytes, 20_000)
                 self.assertLess(manifest_bytes, 80_000)
 

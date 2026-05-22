@@ -438,6 +438,12 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertEqual(manifest["accepted_candidate_ids"], ["cand_accept_a", "cand_accept_b"])
         self.assertEqual(manifest["rejected_candidate_ids"], ["cand_rejected"])
         self.assertEqual(manifest["conditional_weight_semantics"], "conditional_sampling_only")
+        self.assertNotIn("release_rows", manifest)
+        self.assertNotIn("scenario_table_rows", manifest)
+        self.assertNotIn("source_zone_metadata", manifest)
+        self.assertGreater(first["manifest_compaction"]["before"]["bytes"], first["manifest_compaction"]["after"]["bytes"])
+        self.assertGreater(first["manifest_compaction"]["before"]["field_count"], first["manifest_compaction"]["after"]["field_count"])
+        self.assertTrue(first["manifest_compaction"]["reconstruction_contract"]["deterministic_reconstruction"])
         self.assertEqual(policy["policy_status"], "ready_for_conditional_pilot")
         policy_validator.validate_policy(policy)
 

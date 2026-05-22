@@ -293,6 +293,14 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["scenario_table_generation"]["file_count"], 5)
         self.assertEqual(report["scenario_table_generation"]["scenario_table_manifest"]["conditional_weight_semantics"], "conditional_sampling_only")
         self.assertTrue(report["scenario_table_generation"]["scenario_table_manifest"]["conditional_weight_semantics"] == "conditional_sampling_only")
+        self.assertGreater(
+            report["scenario_table_generation"]["manifest_compaction"]["before"]["bytes"],
+            report["scenario_table_generation"]["manifest_compaction"]["after"]["bytes"],
+        )
+        self.assertGreater(
+            report["scenario_table_generation"]["manifest_compaction"]["before"]["field_count"],
+            report["scenario_table_generation"]["manifest_compaction"]["after"]["field_count"],
+        )
         self.assertEqual(
             [row["row_count"] for row in report["scenario_generation_pressure"]["scenario_family_cardinality"]],
             [1, 1, 1],

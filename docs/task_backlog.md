@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-454: Reduce Regional Split Manifest And Replay Metadata Pressure
-
-Goal: Use the latest measured or fixture-backed regional split artifacts to remove avoidable manifest/replay metadata growth without losing reproducibility-critical fields.
-
-Capability gap reduced: Reduces the manifest/replay pressure that blocks 100-zone and regional planning.
-
-Why this outranks alternatives: The Swiss-scale projection ranks scenario cardinality, manifest size, and replay metadata growth ahead of hazard throughput for larger planning cases.
-
-Inspect first:
-
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- One bounded manifest/replay compaction or deduplication change.
-- Before/after byte and field-count comparison.
-- Regression coverage proving deterministic reconstruction still works.
-
-Definition of done:
-
-- Manifest/replay metadata pressure is measurably lower or the task documents a tested no-op result with the next bottleneck clearly identified.
-
-Boundaries: No deletion of replay-critical provenance, no loss of deterministic rebuildability, no live submission, and no claim upgrade.
-
 ### TB-455: Refill Backlog From Regional Split Outcome
 
 Goal: After the regional split retry and integration tasks, perform a compact gap analysis and refill the backlog with the next executable worker-sized tasks.

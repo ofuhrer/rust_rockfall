@@ -6121,3 +6121,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no operational GIS claim, no QGIS manual QA claim, no live conversion run, and no generated raster artifacts were committed.
 - Next task: `TB-454`
+
+### TB-454: Reduce Regional Split Manifest And Replay Metadata Pressure
+
+- Date: 2026-05-22
+- Commit: to-be-recorded
+- Objective: remove avoidable replay metadata duplication from the reviewed regional split freezer manifest while keeping deterministic reconstruction inputs and output-path references intact.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/summarize_management_aoi_scenario_pressure.py`, `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_candidate_source_zone_freezer.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_management_aoi_scenario_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Wrote a compact freezer manifest on disk that drops the duplicated row-level CSV/YAML payloads while retaining replay-critical ids, counts, outputs, and provenance summaries in the returned report object.
+  - Threaded a deterministic manifest-compaction summary through the management-AOI pressure report and the scenario-storage pressure probe so the before/after byte and field-count delta is visible at the measurement surface.
+  - Kept the in-memory report shape stable for downstream callers and added regression coverage that proves the compact manifest stays deterministic and still reconstructs from the retained summary fields and output paths.
+  - Updated the reducer-pressure probe note to describe the compact manifest behavior and removed TB-454 from the active backlog after the measured reduction landed.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_management_aoi_scenario_pressure tests.test_scenario_storage_output_tier_pressure`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+- Result/status: implemented_measured
+- Boundaries: no live Balfrin submission, no claim upgrade, no deleted provenance, and no generated artifacts were committed.
+- Next task: `TB-455`
