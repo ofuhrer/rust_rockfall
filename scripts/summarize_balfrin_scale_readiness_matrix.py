@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +23,11 @@ if __package__ in {None, ""}:
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
 from scripts import execute_management_aoi_balfrin_run as management_aoi_execution  # noqa: E402
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
+from scripts import measure_scenario_storage_output_tier_pressure as scenario_pressure  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
 from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
 from scripts import summarize_balfrin_single_job_execution as single_job  # noqa: E402
+from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -197,6 +200,7 @@ TB448_REGIONAL_SPLIT_METRICS = {
     "preservation_status": "ready_for_demonstration_evidence",
     "source_report": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
 }
+TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 92458
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "task_id": "TB-432",
     "submission_package_status": "failed_closed_preflight",
@@ -242,6 +246,106 @@ SMALLEST_MULTI_ZONE_COMPACT_SIDECARES = 2
 
 class BalfrinScaleReadinessMatrixError(ValueError):
     """User-facing scale-readiness matrix error."""
+
+
+@lru_cache(maxsize=1)
+def _scenario_storage_pressure_report() -> dict[str, Any]:
+    return scenario_pressure.build_report()
+
+
+@lru_cache(maxsize=1)
+def _multi_zone_reducer_pressure_report() -> dict[str, Any]:
+    return reducer_pressure.build_manifest_pressure_ladder_report()
+
+
+def _regional_split_projection_delta_summary() -> dict[str, Any]:
+    measured = _regional_split_measured_row()
+    scenario_report = _scenario_storage_pressure_report()
+    reducer_report = _multi_zone_reducer_pressure_report()
+    projected_row = _projection_row()
+    measured_runtime_seconds = float(measured.get("runtime_seconds") or 0.0)
+    measured_file_count = int(measured.get("validation_output_file_count") or 0)
+    measured_bytes = int(measured.get("validation_output_bytes") or 0)
+    measured_manifest_bytes = TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES
+    projected_runtime_seconds = float(projected_row.get("runtime_seconds") or 0.0)
+    projected_file_count = int(projected_row.get("file_count") or 0)
+    projected_bytes = int(projected_row.get("bytes") or 0)
+    projected_manifest_bytes = int(projected_row.get("manifest_bytes") or 0)
+    runtime_within_band = measured_runtime_seconds <= projected_runtime_seconds
+    file_count_within_band = measured_file_count <= projected_file_count
+    bytes_within_band = measured_bytes <= projected_bytes
+    manifest_within_band = measured_manifest_bytes <= projected_manifest_bytes
+    reducer_mode = str(reducer_report.get("recommended_default_manifest_mode") or "unknown")
+    compact_rung = next(
+        (rung for rung in reducer_report.get("rungs", []) if int(rung.get("release_zone_count") or 0) == 12),
+        {},
+    )
+    compact_reduced_delta = dict(compact_rung.get("combined_delta") or {})
+    return {
+        "schema_version": "regional_split_projection_delta_summary_v1",
+        "measurement_status": "measured_existing_artifacts",
+        "evidence_label": measured.get("evidence_label"),
+        "measured_regional_split": {
+            "job_id": measured.get("job_id"),
+            "runtime_seconds": measured_runtime_seconds,
+            "validation_output_file_count": measured_file_count,
+            "validation_output_bytes": measured_bytes,
+            "hazard_manifest_bytes": measured_manifest_bytes,
+            "hazard_output_file_count": int(measured.get("hazard_output_file_count") or 0),
+            "hazard_output_bytes": int(measured.get("hazard_output_bytes") or 0),
+            "collector_wall_seconds": TB448_REGIONAL_SPLIT_METRICS["collector_wall_seconds"],
+            "collector_peak_memory_mb": TB448_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
+        },
+        "projection_reference": {
+            "tier_id": projected_row.get("tier_id"),
+            "tier_label": projected_row.get("tier_label"),
+            "runtime_seconds": projected_runtime_seconds,
+            "file_count": projected_file_count,
+            "bytes": projected_bytes,
+            "manifest_bytes": projected_manifest_bytes,
+            "memory_peak_mb": projected_row.get("memory_peak_mb"),
+            "planner_decision": projected_row.get("planner_decision"),
+        },
+        "delta_vs_projection": {
+            "runtime_seconds": round(measured_runtime_seconds - projected_runtime_seconds, 3),
+            "validation_output_file_count": measured_file_count - projected_file_count,
+            "validation_output_bytes": measured_bytes - projected_bytes,
+            "hazard_manifest_bytes": measured_manifest_bytes - projected_manifest_bytes,
+            "memory_peak_mb": round(float(measured.get("memory_peak_mb") or 0.0) - float(projected_row.get("memory_peak_mb") or 0.0), 3),
+        },
+        "pressure_band_status": {
+            "runtime_seconds": "within_projected_band" if runtime_within_band else "above_projected_band",
+            "validation_output_file_count": "within_projected_band" if file_count_within_band else "above_projected_band",
+            "validation_output_bytes": "within_projected_band" if bytes_within_band else "above_projected_band",
+            "hazard_manifest_bytes": "within_projected_band" if manifest_within_band else "above_projected_band",
+        },
+        "scenario_cardinality_projection_surface": {
+            "measurement_status": scenario_report.get("measurement_status"),
+            "candidate_repeat_counts": [
+                row.get("candidate_repeat_count")
+                for row in scenario_report.get("expanded_candidate_set_measurements", [])
+                if isinstance(row, dict)
+            ],
+            "recommended_batching_rule": dict(scenario_report.get("next_balfrin_package_batching_rule") or {}),
+            "replay_recommendation": dict(scenario_report.get("balfrin_demonstration_replay_recommendation") or {}),
+            "next_scale_bottleneck": dict(scenario_report.get("next_scale_bottleneck") or {}),
+        },
+        "reducer_pressure_projection_surface": {
+            "measurement_status": reducer_report.get("ladder_status"),
+            "recommended_default_manifest_mode": reducer_mode,
+            "summary": reducer_report.get("summary"),
+            "largest_manifest_delta_bytes": int((compact_reduced_delta.get("manifest_size_bytes_delta") or 0)),
+            "largest_output_file_count_delta": int((compact_reduced_delta.get("output_file_count_delta") or 0)),
+            "largest_reducer_manifest_bytes_delta": int((compact_reduced_delta.get("reducer_manifest_bytes_delta") or 0)),
+        },
+        "within_expected_pressure_bands": runtime_within_band and file_count_within_band and bytes_within_band and manifest_within_band,
+        "next_probe_class": "summarize_multi_zone_reducer_pressure" if reducer_mode == "compact" else "measure_scenario_storage_output_tier_pressure",
+        "next_bottleneck_ranked": "reducer_pressure_and_replay_metadata_growth",
+        "summary": (
+            "The measured regional split run root stays within the projected larger-AOI runtime, file-count, byte, and manifest bands. "
+            "Scenario-cardinality pressure remains bounded by the current batching recommendation, and the reducer ladder still recommends compact manifest mode, so reducer/replay metadata is the next ranked bottleneck."
+        ),
+    }
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -973,26 +1077,26 @@ def _next_probe_ranking() -> list[dict[str, Any]]:
     return [
         {
             "rank": 1,
-            "candidate_id": "regional_split_projection_comparison",
-            "action_id": "compare_measured_regional_split_against_scenario_and_output_projections",
-            "category": "projection_comparison",
-            "probe_scope": "analysis_only",
-            "blocker": "tb448_measured_regional_split_pressure_not_yet_threaded_into_projection_surfaces",
+            "candidate_id": "reducer_pressure_optimization_probe",
+            "action_id": "summarize_multi_zone_reducer_pressure",
+            "category": "reducer_pressure",
+            "probe_scope": "scratch_local_and_fixture_backed",
+            "blocker": "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
             "expected_evidence_gain": (
-                "measured-versus-projected runtime, output, and reducer-pressure deltas for the latest regional split run root"
+                "compact reducer manifest pressure and explicit replay-critical family budgets for larger multi-zone batches"
             ),
             "required_pre_submit_gates": [
-                "measured_regional_split_run_root",
-                "scenario_cardinality_projection_surface",
-                "output_tier_projection_surface",
+                "measured_reducer_pressure_baseline",
+                "replay_critical_families_retained",
+                "merge_order_deterministic",
+                "no_live_submission",
             ],
             "evidence_basis": [
-                "tb448_measured_regional_split_run_root",
-                "scenario_storage_output_tier_projection_surface",
-                "multi_zone_reducer_pressure_projection_surface",
+                "tb312_four_zone_postproc_probe",
+                "multi_zone_reducer_pressure_probe",
             ],
             "summary": (
-                "Compare the measured regional split run root against the scenario-cardinality and output-tier projection surfaces first, because the new evidence gap is a measured-versus-projected pressure delta rather than another live retry."
+                "Optimize reducer pressure next because the measured regional split comparison is complete and the reducer helper still shows manifest and replay metadata pressure as the next visible bottleneck."
             ),
         },
         {
@@ -1022,31 +1126,6 @@ def _next_probe_ranking() -> list[dict[str, Any]]:
         },
         {
             "rank": 3,
-            "candidate_id": "reducer_pressure_optimization_probe",
-            "action_id": "summarize_multi_zone_reducer_pressure",
-            "category": "reducer_pressure",
-            "probe_scope": "scratch_local_and_fixture_backed",
-            "blocker": "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
-            "expected_evidence_gain": (
-                "compact reducer manifest pressure and explicit replay-critical family budgets for larger multi-zone batches"
-            ),
-            "required_pre_submit_gates": [
-                "measured_reducer_pressure_baseline",
-                "replay_critical_families_retained",
-                "merge_order_deterministic",
-                "no_live_submission",
-            ],
-            "evidence_basis": [
-                "tb312_four_zone_postproc_probe",
-                "multi_zone_reducer_pressure_probe",
-            ],
-            "summary": (
-                "Optimize reducer pressure after scenario batching because the measured multi-zone reducer helper already "
-                "shows manifest and replay metadata pressure as the next visible bottleneck."
-            ),
-        },
-        {
-            "rank": 4,
             "candidate_id": "local_candidate_evidence_probe",
             "action_id": "summarize_balfrin_target_area_candidate_stability",
             "category": "local_evidence",
@@ -1103,25 +1182,10 @@ def build_report() -> dict[str, Any]:
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
     overall_status = "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
-    measured_multi_zone_row = next((row for row in rows if row["tier_id"] == "smallest_multi_zone"), {})
     regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
-    next_recommended_scaling_task = str(
-        regional_split_row.get("next_recommended_action")
-        or (
-            "optimize_only_from_new_measured_bottleneck"
-            if measured_multi_zone_row.get("classification") == "measured_smallest_multi_zone_probe"
-            else next(
-                (
-                    row.get("next_recommended_action")
-                    for row in rows
-                    if row.get("next_recommended_action")
-                ),
-                "defer_eight_zone_probe_until_measured_hazard_execution",
-            )
-        )
-    )
-    live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_probe_ranking = _next_probe_ranking()
+    next_recommended_scaling_task = str(next_probe_ranking[0]["action_id"]) if next_probe_ranking else "second_site_public_context_progress"
+    live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_backlog_recommendations = [
         {
             "rank": item["rank"],
@@ -1144,7 +1208,7 @@ def build_report() -> dict[str, Any]:
             "TB-447 and TB-448 now provide measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
-            "the ranked next probe ladder now places regional split projection comparison first, then scenario batching, reducer-pressure optimization, and local evidence collection, and the larger AOI projection remains a no-go."
+            "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
         ),
         "evidence_label_order": list(EVIDENCE_LABELS),
         "evidence_label_definitions": {
@@ -1205,7 +1269,7 @@ def build_report() -> dict[str, Any]:
         },
         "next_probe_ranking": next_probe_ranking,
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
-        "next_recommended_scaling_task_reason": "TB-447/TB-448 now supply measured regional split evidence, so the ranked next scale action is to compare that measured pressure against the scenario-cardinality and output-tier projections before any further live recommendation.",
+        "next_recommended_scaling_task_reason": "TB-450 now threads the measured regional split into the scenario-cardinality, output-tier, and reducer-pressure projections, so the ranked next scale action is reducer-pressure optimization rather than another comparison pass.",
         "regional_split_status": {
             "classification": regional_split_row.get("classification"),
             "evidence_label": regional_split_row.get("evidence_label"),
@@ -1226,7 +1290,9 @@ def build_report() -> dict[str, Any]:
             "supersedes_failed_closed_task": regional_split_row.get("supersedes_failed_closed_task"),
             "superseded_failed_closed_source_report": regional_split_row.get("superseded_failed_closed_source_report"),
             "source_report": regional_split_row.get("source_report"),
+            "projection_delta_summary": _regional_split_projection_delta_summary(),
         },
+        "regional_split_projection_delta_summary": _regional_split_projection_delta_summary(),
         "next_evidence_field": "regional_split_projection_delta_summary",
         "next_backlog_recommendations": next_backlog_recommendations,
         "blocked_reason": "four_zone_hazard_probe.authorization_record_checksum",
@@ -1282,6 +1348,25 @@ def render_text_report(report: dict[str, Any]) -> str:
         )
         if row.get("summary"):
             lines.append(f"  summary: {row.get('summary')}")
+    delta = report.get("regional_split_projection_delta_summary") or {}
+    measured = dict(delta.get("measured_regional_split") or {})
+    projection = dict(delta.get("projection_reference") or {})
+    deltas = dict(delta.get("delta_vs_projection") or {})
+    pressure_band_status = dict(delta.get("pressure_band_status") or {})
+    if delta:
+        lines.extend(
+            [
+                "regional_split_projection_delta_summary:",
+                f"  status: {delta.get('measurement_status')}",
+                f"  within_expected_pressure_bands: {delta.get('within_expected_pressure_bands')}",
+                f"  runtime_seconds: measured={measured.get('runtime_seconds')} projected={projection.get('runtime_seconds')} delta={deltas.get('runtime_seconds')}",
+                f"  validation_output_file_count: measured={measured.get('validation_output_file_count')} projected={projection.get('file_count')} delta={deltas.get('validation_output_file_count')}",
+                f"  validation_output_bytes: measured={measured.get('validation_output_bytes')} projected={projection.get('bytes')} delta={deltas.get('validation_output_bytes')}",
+                f"  hazard_manifest_bytes: measured={measured.get('hazard_manifest_bytes')} projected={projection.get('manifest_bytes')} delta={deltas.get('hazard_manifest_bytes')}",
+                f"  reducer_pressure: next_probe_class={delta.get('next_probe_class')} next_bottleneck={delta.get('next_bottleneck_ranked')} reducer_mode={dict(delta.get('reducer_pressure_projection_surface') or {}).get('recommended_default_manifest_mode')}",
+                f"  pressure_band_status: runtime={pressure_band_status.get('runtime_seconds')} file_count={pressure_band_status.get('validation_output_file_count')} bytes={pressure_band_status.get('validation_output_bytes')} manifest={pressure_band_status.get('hazard_manifest_bytes')}",
+            ]
+        )
     lines.extend(
         [
             f"measured_tiers: {', '.join(report.get('measured_tiers', []))}",

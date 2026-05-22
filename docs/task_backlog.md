@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-450: Compare Regional Split Measurement Against Scenario And Output Projections
-
-Goal: Compare measured regional split runtime/output/reducer pressure against existing scenario-cardinality and output-tier projections.
-
-Capability gap reduced: Replaces projection-only regional split assumptions with a measured-versus-expected delta for planning the next larger probe.
-
-Why this outranks alternatives: The next scaling decision should be driven by measured deltas, not another wrapper or status report.
-
-Inspect first:
-
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Deterministic measured-versus-projected delta summary for runtime, file count, bytes, manifest size, and reducer pressure.
-- Focused tests using fixtures or preserved measured regional split evidence.
-- One recommended next probe class or explicit no-go blocker.
-
-Definition of done:
-
-- The repo can answer whether the regional split measurement stayed within expected pressure bands and what bottleneck ranks next.
-
-Boundaries: No new ensemble, no live submission, no scale-up authorization, and no operational or risk/exposure/vulnerability claims.
-
 ### TB-451: Harden Regional Split Retry Idempotency And Remote Hygiene
 
 Goal: Prevent future regional split retries from being blocked by stale generated checkout files or reused `/tmp` package state.

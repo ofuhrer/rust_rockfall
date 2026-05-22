@@ -29,7 +29,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-447 and TB-448 now provide measured regional split evidence", report["summary"])
-        self.assertIn("ranked next probe ladder now places regional split projection comparison first", report["summary"])
+        self.assertIn("TB-450 now threads the measured regional split", report["summary"])
+        self.assertIn("ranked next probe ladder now places reducer-pressure optimization first", report["summary"])
         self.assertEqual(
             report["measured_tiers"],
             [
@@ -53,29 +54,27 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertTrue(report["live_run_authorization_status"]["standing_postproc_clearance_active"])
         self.assertEqual(
             report["live_run_authorization_status"]["recommended_next_action"],
-            "compare_measured_regional_split_against_scenario_and_output_projections",
+            "summarize_multi_zone_reducer_pressure",
         )
         self.assertEqual(
             report["next_recommended_scaling_task"],
-            "compare_measured_regional_split_against_scenario_and_output_projections",
+            "summarize_multi_zone_reducer_pressure",
         )
-        self.assertEqual(len(report["next_probe_ranking"]), 4)
+        self.assertEqual(len(report["next_probe_ranking"]), 3)
         self.assertEqual(
             report["next_probe_ranking"][0]["action_id"],
-            "compare_measured_regional_split_against_scenario_and_output_projections",
+            "summarize_multi_zone_reducer_pressure",
         )
-        self.assertEqual(report["next_probe_ranking"][0]["probe_scope"], "analysis_only")
+        self.assertEqual(report["next_probe_ranking"][0]["probe_scope"], "scratch_local_and_fixture_backed")
         self.assertEqual(
             report["next_probe_ranking"][0]["blocker"],
-            "tb448_measured_regional_split_pressure_not_yet_threaded_into_projection_surfaces",
+            "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
         )
-        self.assertIn("measured-versus-projected runtime, output, and reducer-pressure deltas", report["next_probe_ranking"][0]["expected_evidence_gain"])
+        self.assertIn("compact reducer manifest pressure", report["next_probe_ranking"][0]["expected_evidence_gain"])
         self.assertEqual(report["next_probe_ranking"][1]["action_id"], "measure_scenario_storage_output_tier_pressure")
         self.assertIn("scenario_cardinality_and_manifest_size", report["next_probe_ranking"][1]["blocker"])
-        self.assertEqual(report["next_probe_ranking"][2]["action_id"], "summarize_multi_zone_reducer_pressure")
-        self.assertIn("reducer_pressure_and_replay_metadata_growth", report["next_probe_ranking"][2]["blocker"])
-        self.assertEqual(report["next_probe_ranking"][3]["probe_scope"], "scratch_local")
-        self.assertEqual(report["next_probe_ranking"][3]["action_id"], "summarize_balfrin_target_area_candidate_stability")
+        self.assertEqual(report["next_probe_ranking"][2]["probe_scope"], "scratch_local")
+        self.assertEqual(report["next_probe_ranking"][2]["action_id"], "summarize_balfrin_target_area_candidate_stability")
         self.assertEqual(
             report["regional_split_status"]["classification"],
             "measured_regional_split_probe",
@@ -96,16 +95,31 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["regional_split_status"]["preservation_status"], "ready_for_demonstration_evidence")
         self.assertEqual(report["regional_split_status"]["supersedes_failed_closed_task"], "TB-432")
         self.assertEqual(report["regional_split_status"]["source_report"], "docs/balfrin_regional_split_run_root_metrics_tb448.md")
+        delta_summary = report["regional_split_projection_delta_summary"]
+        self.assertTrue(delta_summary["within_expected_pressure_bands"])
+        self.assertEqual(delta_summary["next_probe_class"], "summarize_multi_zone_reducer_pressure")
+        self.assertEqual(delta_summary["next_bottleneck_ranked"], "reducer_pressure_and_replay_metadata_growth")
+        self.assertEqual(delta_summary["projection_reference"]["tier_id"], "projected_larger_aoi")
+        self.assertEqual(delta_summary["pressure_band_status"]["runtime_seconds"], "within_projected_band")
+        self.assertEqual(delta_summary["delta_vs_projection"]["runtime_seconds"], -439.84)
+        self.assertEqual(delta_summary["delta_vs_projection"]["validation_output_file_count"], -312)
+        self.assertEqual(delta_summary["delta_vs_projection"]["validation_output_bytes"], -68228329)
+        self.assertEqual(delta_summary["delta_vs_projection"]["hazard_manifest_bytes"], -55108)
+        self.assertEqual(
+            delta_summary["reducer_pressure_projection_surface"]["recommended_default_manifest_mode"],
+            "compact",
+        )
+        self.assertEqual(delta_summary["reducer_pressure_projection_surface"]["largest_manifest_delta_bytes"], -10883)
+        self.assertEqual(report["regional_split_status"]["projection_delta_summary"], delta_summary)
         self.assertEqual(
             [item["action_id"] for item in report["next_backlog_recommendations"]],
             [
-                "compare_measured_regional_split_against_scenario_and_output_projections",
-                "measure_scenario_storage_output_tier_pressure",
                 "summarize_multi_zone_reducer_pressure",
+                "measure_scenario_storage_output_tier_pressure",
                 "summarize_balfrin_target_area_candidate_stability",
             ],
         )
-        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "projection_comparison")
+        self.assertEqual(report["next_backlog_recommendations"][0]["category"], "reducer_pressure")
         self.assertEqual(report["next_backlog_recommendations"][1]["status"], "deferred_until_higher_ranked_probe_executes")
         self.assertEqual(
             report["evidence_label_order"],
@@ -341,12 +355,14 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("postproc_microbenchmark", text)
         self.assertIn("management_aoi_multi_zone_run", text)
         self.assertIn("regional_split_probe", text)
+        self.assertIn("regional_split_projection_delta_summary:", text)
         self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)
         self.assertIn(
-            "next_recommended_scaling_task: compare_measured_regional_split_against_scenario_and_output_projections",
+            "next_recommended_scaling_task: summarize_multi_zone_reducer_pressure",
             text,
         )
+        self.assertIn("next_probe_class=summarize_multi_zone_reducer_pressure", text)
         self.assertIn("next_blocker_category: projection_comparison", text)
         self.assertIn("TB-407", text)
         self.assertIn("TB-447", text)

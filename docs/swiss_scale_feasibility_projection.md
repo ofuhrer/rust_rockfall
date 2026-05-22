@@ -68,6 +68,11 @@ branches into measured capability:
   conditional-curve rows, `ready_for_demonstration_evidence` preservation
   status, and the run-root metrics that supersede TB-432 as the latest
   regional split state.
+  - TB-450 threads that measured regional split evidence through the
+    scenario-cardinality, output-tier, and reducer-pressure projection
+    surfaces. The measured run root stays within the projected larger-AOI
+    runtime, file-count, byte, and manifest bands, so reducer/replay metadata
+    remains the next ranked bottleneck instead of another comparison pass.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -195,8 +200,9 @@ Extrapolated:
 The current evidence supports a feasible 10-zone planning class, a deferred and
 conditional 100-zone planning class, and no promoted broader regional or
 Swiss-wide scale capability under the current single-node/postproc boundary.
-The regional split branch is now measured at the bounded probe level, but the
-next decisive gap is comparing that measured pressure against the projection
-surfaces rather than collecting another retry. The repository has measured
-single-job, four-zone postproc, smallest multi-zone probe, and bounded regional
-split evidence, but not measured larger multi-zone hazard execution.
+The regional split branch is now measured at the bounded probe level and
+compared against the projection surfaces; the next decisive gap is reducer and
+replay metadata pressure rather than another regional split retry. The
+repository has measured single-job, four-zone postproc, smallest multi-zone
+probe, and bounded regional split evidence, but not measured larger multi-zone
+hazard execution.
