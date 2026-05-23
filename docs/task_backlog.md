@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-463: Audit Conditional Denominator Provenance
-
-Goal: Make the denominator behind conditional reach and threshold layers explicit from existing local hazard manifests.
-
-Capability gap reduced: Conditional layers are reproducible, but their denominators and conditioning filters are still too easy to overread as physical probabilities.
-
-Why this outranks alternatives: Denominator provenance is a direct scientific-interpretation blocker for the existing map layers and can be audited entirely from local artifacts.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/compare_hazard_map_convergence.py`
-- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
-- `docs/hazard_layers.md`
-
-Deliverables:
-
-- A read-only denominator-provenance audit command and tests that report the conditioning scope, trajectory/sample denominator evidence, and non-probability claim boundary for existing local hazard manifests.
-
-Definition of done:
-
-- The audit command succeeds on the committed Tschamut target manifest, rejects missing denominator evidence clearly, tests pass, and this task is removed only after the report names the exact local follow-up for any missing denominator field.
-
-Boundaries: No relabeling conditional products as physical probability, no annual-frequency semantics, no operational claims, and no Balfrin access.
-
 ### TB-464: Audit Trajectory-To-Deposition Traceability
 
 Goal: Verify that deposition-density diagnostics can be traced back to local validation outputs and trajectory/deposition files.

@@ -6305,3 +6305,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local read-only summary only; no live Balfrin access, no tuning, no operational claim, no annual-frequency or physical-probability claim, no scale-up authorization, and no distributed execution.
 - Next task: `TB-463`
+
+### TB-463: Audit Conditional Denominator Provenance
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: make the denominator behind conditional reach and threshold layers explicit from existing local hazard manifests.
+- Files changed: `scripts/audit_conditional_denominator_provenance.py`, `tests/test_conditional_denominator_provenance.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only denominator provenance audit for local hazard manifests, defaulting to the committed Tschamut target hazard manifest.
+  - Audited trajectory count, trajectory sample count, layer conditioning, denominator semantics, and annualized/physical-probability/risk boundaries for conditional reach and exceedance layers.
+  - Treated max kinetic energy and max jump height as denominator-not-applicable max-value layers rather than false missing-denominator failures.
+  - Added regression coverage for the default manifest, denominator-not-applicable maximum layers, missing-denominator blocking, and text boundary output.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_conditional_denominator_provenance -v`
+  - `.venv/bin/python scripts/audit_conditional_denominator_provenance.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only audit only; no relabeling conditional products as physical probability, no annual-frequency semantics, no operational claims, and no Balfrin access.
+- Next task: `TB-464`
