@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-464: Audit Trajectory-To-Deposition Traceability
-
-Goal: Verify that deposition-density diagnostics can be traced back to local validation outputs and trajectory/deposition files.
-
-Capability gap reduced: Deposition-density layers are deterministic, but traceability from map package to validation output should be explicit before stronger scientific interpretation.
-
-Why this outranks alternatives: It improves the most interpretable existing physical diagnostic without requiring new external data or remote execution.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_output_manifests.py`
-- `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
-
-Deliverables:
-
-- A local traceability audit command and tests that connect the hazard deposition layer to validation deposition and trajectory outputs, including clear missing-output classifications.
-
-Definition of done:
-
-- The audit command reports traceability for the local target package, tests cover present and missing-output cases, focused checks pass, and the task is removed only after the traceability result is actionable.
-
-Boundaries: No new validation claim, no field-calibration claim, no operational map claim, and no Balfrin access.
-
 ### TB-465: Rank Local Hazard-Layer Fragility
 
 Goal: Produce a local fragility ranking for existing conditional hazard-layer families.

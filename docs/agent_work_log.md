@@ -6323,3 +6323,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only audit only; no relabeling conditional products as physical probability, no annual-frequency semantics, no operational claims, and no Balfrin access.
 - Next task: `TB-464`
+
+### TB-464: Audit Trajectory-To-Deposition Traceability
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: verify that deposition-density diagnostics can be traced back to local validation outputs and trajectory/deposition files.
+- Files changed: `scripts/audit_trajectory_deposition_traceability.py`, `tests/test_trajectory_deposition_traceability.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only traceability audit that connects the hazard `deposition_density` and `weighted_deposition_density` layers to validation deposition, single-trajectory, and ensemble-trajectory outputs.
+  - Verified the local target package consistency: validation deposition rows match hazard `deposition_point_count`, and single plus ensemble trajectory rows match hazard `trajectory_sample_count`.
+  - Added missing-output classification for absent deposition layers and preserved explicit boundaries that the audit adds no field-validation, calibration, operational-map, physical-probability, or Balfrin claim.
+  - Registered the new helper in the script inventory.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_trajectory_deposition_traceability -v`
+  - `.venv/bin/python scripts/audit_trajectory_deposition_traceability.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only traceability audit only; no new validation claim, no field-calibration claim, no operational map claim, and no Balfrin access.
+- Next task: `TB-465`

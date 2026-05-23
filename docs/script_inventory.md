@@ -123,6 +123,7 @@ operator-facing until they get smoke tests or a documented replacement.
 
 - `scripts/assess_validation_calibration_evidence_gaps.py`
 - `scripts/audit_conditional_denominator_provenance.py`
+- `scripts/audit_trajectory_deposition_traceability.py`
 - `scripts/build_terrain_material_diagnostic_matrix.py`
 - `scripts/collect_tschamut_registration_sensitivity.py`
 - `scripts/diagnose_release_candidate_zero_result.py`
