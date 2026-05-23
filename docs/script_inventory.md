@@ -179,6 +179,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_chant_sura_holdout_evidence.py`
 - `scripts/summarize_clean_checkout_blocked_reports.py`
 - `scripts/summarize_conditional_pilot_acceptance.py`
+- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
 - `scripts/summarize_large_aoi_gis_cog_stress_test.py`
 - `scripts/summarize_multi_zone_hazard_throughput_profile.py`
 - `scripts/summarize_multi_zone_scaling_ladder.py`

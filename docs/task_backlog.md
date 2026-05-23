@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-466: Add A Local Extreme-Layer Sensitivity Smoke
-
-Goal: Measure a small local sensitivity smoke for max kinetic energy and max jump height using existing same-scale hazard manifests.
-
-Capability gap reduced: Extreme-value layer fragility is known but not yet converted into a repeatable local sensitivity measurement.
-
-Why this outranks alternatives: It gives the repo a concrete local measurement for the most fragile scientific outputs before larger validation or external data work.
-
-Inspect first:
-
-- `scripts/compare_hazard_map_convergence.py`
-- `scripts/summarize_same_scale_uncertainty_envelope.py`
-- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
-- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
-
-Deliverables:
-
-- A local sensitivity-smoke command and tests that compare extreme-layer presence, support, and summary deltas between existing gate and target hazard manifests.
-
-Definition of done:
-
-- The command emits a deterministic sensitivity report, tests cover missing and present layer inputs, focused checks pass, and this task is removed after the report identifies the next sensitivity measurement to run.
-
-Boundaries: No new ensemble execution, no tuning, no operational or physical-probability claim, and no Balfrin access.
-
 ### TB-467: Clarify Second-Site Local Input Blockers
 
 Goal: Make the Chant Sura / Fluelapass local prepared-pilot blockers explicit and grouped by unblock command.

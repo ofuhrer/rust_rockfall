@@ -6359,3 +6359,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local read-only ranking only; no tuning, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
 - Next task: `TB-466`
+
+### TB-466: Add A Local Extreme-Layer Sensitivity Smoke
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: measure a repeatable local sensitivity smoke for `max_kinetic_energy` and `max_jump_height` from the committed same-scale gate and target hazard manifests.
+- Files changed: `scripts/summarize_extreme_layer_sensitivity_smoke.py`, `tests/test_extreme_layer_sensitivity_smoke.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only smoke helper that reuses the existing hazard convergence grid parser to compare only the two fragile extreme layers.
+  - Reported per-layer presence, support deltas, nodata mismatches, nonzero-support Jaccard, `linf`, `l1`, and RMSE deltas between gate and target manifests.
+  - Added blocked-missing-layer handling so absent extreme layers produce a deterministic blocker report instead of a broad convergence failure.
+  - Preserved explicit local boundaries: no ensemble execution, no tuning, no Balfrin requirement, no scale-up, no physical-probability or annual-frequency claim, no risk/exposure claim, and no operational use.
+  - Registered the helper in the script inventory and removed TB-466 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_extreme_layer_sensitivity_smoke -v`
+  - `.venv/bin/python scripts/summarize_extreme_layer_sensitivity_smoke.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only sensitivity smoke only; no new ensemble execution, no tuning, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
+- Next task: `TB-467`
