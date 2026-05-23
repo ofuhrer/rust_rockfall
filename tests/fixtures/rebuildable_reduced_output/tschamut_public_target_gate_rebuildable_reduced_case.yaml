@@ -38,8 +38,8 @@ expected:
 outputs:
   validation_output_mode: rebuildable_reduced_output
 probabilistic_metadata:
-  source_zone_metadata_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_source_zone_metadata_v1.yaml
-  scenario_table_path: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_scenario_table_v1.csv
+  source_zone_metadata_path: tests/fixtures/tschamut_public_input/tschamut_public_source_zone_metadata_v1.yaml
+  scenario_table_path: tests/fixtures/tschamut_public_input/tschamut_public_scenario_table_v1.csv
   map_product_id: tschamut_public_conditional_gate_v1
   probability_mode: sampling_weighted_conditional
   normalization_scope: conditioned_on_filter
