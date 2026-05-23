@@ -864,7 +864,16 @@ def build_balfrin_single_release_zone_plan_commands() -> list[dict[str, Any]]:
 def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
     converted_root = Path("hazard/results/tschamut_public_pilot/gate_v1_cog_export")
     staging_root = Path("/tmp/tb056_cog_export_staging")
-    source_manifest = json.loads((ROOT / "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json").read_text(encoding="utf-8"))
+    source_manifest_path = (
+        ROOT
+        / "hazard/results/tschamut_public_pilot/gate_v1/tschamut_public_conditional_gate_v1_map_package_manifest.json"
+    )
+    if source_manifest_path.exists():
+        source_manifest = json.loads(source_manifest_path.read_text(encoding="utf-8"))
+        source_manifest_status = "available"
+    else:
+        source_manifest = {}
+        source_manifest_status = "missing_generated_artifact"
     source_layer_names = [entry["layer_name"] for entry in source_manifest.get("raster_outputs", [])]
     source_0p5m_jump_height_layers = [
         layer_name
@@ -993,12 +1002,13 @@ def build_gis_cog_package_conversion_commands() -> list[dict[str, Any]]:
                 str(converted_root / "tschamut_public_conditional_gate_v1_pilot_gis_package_manifest.json"),
             ],
             cog_scope_intent={
-                "status": "full_scope",
+                "status": "full_scope" if source_layer_names else source_manifest_status,
                 "reference_layer_count": len(source_layer_names),
                 "reference_layer_names": source_layer_names,
                 "included_jump_height_layers_m": [0.5, 1.0, 2.0],
                 "omitted_layer_names": [],
                 "required_0p5m_jump_height_layers": source_0p5m_jump_height_layers,
+                "source_manifest_path": source_manifest_path.relative_to(ROOT).as_posix(),
             },
             read_only=False,
             may_produce_ignored_outputs=True,

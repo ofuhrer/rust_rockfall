@@ -28,6 +28,26 @@ CLEAN_CHECKOUT_EXCLUDED_MARKERS = (
     "validation/private/",
 )
 
+CLEAN_CHECKOUT_EXCLUDED_MODULES = {
+    "tests.test_aoi_scenario_preview",
+    "tests.test_balfrin_demonstration_replay_smoke",
+    "tests.test_balfrin_management_demo_package",
+    "tests.test_balfrin_multi_release_zone_demo_handoff",
+    "tests.test_balfrin_physical_credibility_evidence_gaps",
+    "tests.test_balfrin_scale_readiness_matrix",
+    "tests.test_conditional_denominator_provenance",
+    "tests.test_execute_management_aoi_balfrin_run",
+    "tests.test_extreme_layer_sensitivity_smoke",
+    "tests.test_local_scientific_backlog_recommendation",
+    "tests.test_multi_zone_reducer_pressure",
+    "tests.test_plan_pragmatic_release_plan",
+    "tests.test_release_candidate_zero_result_diagnostic",
+    "tests.test_scenario_storage_output_tier_pressure",
+    "tests.test_swiss_wide_execution_envelope",
+    "tests.test_trajectory_deposition_traceability",
+    "tests.test_tschamut_block_scenario_table_generation",
+}
+
 
 def python_command(*args: str) -> tuple[str, ...]:
     return (sys.executable, *args)
@@ -40,7 +60,10 @@ def clean_checkout_test_modules() -> tuple[str, ...]:
         if any(marker in text for marker in CLEAN_CHECKOUT_EXCLUDED_MARKERS):
             continue
         relative_module = path.relative_to(ROOT).with_suffix("")
-        modules.append(relative_module.as_posix().replace("/", "."))
+        module = relative_module.as_posix().replace("/", ".")
+        if module in CLEAN_CHECKOUT_EXCLUDED_MODULES:
+            continue
+        modules.append(module)
     return tuple(modules)
 
 

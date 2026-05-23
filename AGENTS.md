@@ -46,8 +46,8 @@ door and link out to detailed workflow docs only when needed.
 For local scientific work that does not require Balfrin, start with:
 
 ```bash
-.venv/bin/python scripts/summarize_local_scientific_progress.py --format text
-.venv/bin/python scripts/recommend_local_scientific_backlog.py --format text
+PYENV_VERSION=system uv run python scripts/summarize_local_scientific_progress.py --format text
+PYENV_VERSION=system uv run python scripts/recommend_local_scientific_backlog.py --format text
 ```
 
 Use the focused local audit commands before broad manual interpretation:
