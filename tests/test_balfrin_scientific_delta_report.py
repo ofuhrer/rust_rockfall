@@ -38,7 +38,7 @@ class BalfrinScientificDeltaReportTests(unittest.TestCase):
         self.assertIn("does not reclassify the current inconclusive diagnostic interpretation", report["canonical_interpretation"]["interpretation_delta"]["summary"])
         self.assertEqual(report["balfrin_post_run_interpretation_gate_report"]["interpretation_status"], "measured_conditional_diagnostic")
         self.assertEqual(report["same_scale_uncertainty_report"]["spatial_uncertainty_status"], "measured_existing_artifacts")
-        self.assertEqual(report["bounded_probe_interpretation_report"]["probe_interpretation_status"], "blocked_missing_inputs")
+        self.assertEqual(report["bounded_probe_interpretation_report"]["probe_interpretation_status"], "unchanged")
         self.assertEqual(report["same_scale_stability_frontier_report"]["frontier_status"], "measured_existing_artifacts")
         self.assertEqual(report["closure_gap_deltas_report"]["closure_gap_status"], "measured_gaps_remain")
         self.assertEqual(report["hotspot_provenance_report"]["hotspot_provenance_status"], "measured_existing_artifacts")
@@ -46,7 +46,7 @@ class BalfrinScientificDeltaReportTests(unittest.TestCase):
         self.assertIn("same-scale uncertainty envelope", report["scientific_delta_summary"]["comparisons"][0]["summary"])
         self.assertEqual(
             report["scientific_delta_summary"]["same_scale_focus"]["bounded_probe_interpretation"]["status"],
-            "blocked_missing_inputs",
+            "unchanged",
         )
         self.assertTrue(
             report["scientific_delta_summary"]["same_scale_focus"]["bounded_probe_interpretation"]["keep_closure_inconclusive"]

@@ -228,12 +228,13 @@ Inspect first:
         )
 
     def test_task_hygiene_reports_shallow_history_for_work_log_reachability(self) -> None:
-        original = backlog_hygiene._git_repository_is_shallow
+        function_globals = check_repo_consistency.check_task_backlog_and_work_log_hygiene.__globals__
+        original = function_globals["_git_repository_is_shallow"]
         try:
-            backlog_hygiene._git_repository_is_shallow = lambda: True
+            function_globals["_git_repository_is_shallow"] = lambda: True
             errors = check_repo_consistency.check_task_backlog_and_work_log_hygiene()
         finally:
-            backlog_hygiene._git_repository_is_shallow = original
+            function_globals["_git_repository_is_shallow"] = original
 
         self.assertTrue(
             any("shallow clone" in error for error in errors),

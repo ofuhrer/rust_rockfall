@@ -2975,10 +2975,19 @@ class HazardLayerTests(unittest.TestCase):
     def test_chunk_execution_plan_records_failed_chunks(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-        def fail_first_trajectory(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
-            if path.name == "trajectory_000000.csv":
+        failed_once = False
+
+        def fail_first_trajectory(
+            path: Path,
+            warnings: list[str],
+            *args: object,
+            **kwargs: object,
+        ) -> hazard.TrajectorySampleBatch | None:
+            nonlocal failed_once
+            if not failed_once and path.name == "trajectory_000000.csv":
+                failed_once = True
                 raise RuntimeError("simulated chunk execution failure")
-            return original_read_trajectory_sample_batch(path, warnings)
+            return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -3037,10 +3046,19 @@ class HazardLayerTests(unittest.TestCase):
     def test_chunked_reducer_retries_failed_chunks_on_restart(self) -> None:
         original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-        def fail_first_trajectory_once(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
-            if path.name == "trajectory_000000.csv":
+        failed_once = False
+
+        def fail_first_trajectory_once(
+            path: Path,
+            warnings: list[str],
+            *args: object,
+            **kwargs: object,
+        ) -> hazard.TrajectorySampleBatch | None:
+            nonlocal failed_once
+            if not failed_once and path.name == "trajectory_000000.csv":
+                failed_once = True
                 raise RuntimeError("simulated transient chunk failure")
-            return original_read_trajectory_sample_batch(path, warnings)
+            return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
@@ -3505,9 +3523,14 @@ class HazardLayerTests(unittest.TestCase):
             read_calls: list[Path] = []
             original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-            def fail_on_trajectory_read(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+            def fail_on_trajectory_read(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch:
                 read_calls.append(path)
-                return original_read_trajectory_sample_batch(path, warnings)
+                return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
             with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_on_trajectory_read):
                 self.assertEqual(hazard.main_with_args(common_args), 0)
@@ -3590,9 +3613,14 @@ class HazardLayerTests(unittest.TestCase):
             read_calls: list[Path] = []
             original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-            def fail_if_rerun(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+            def fail_if_rerun(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch:
                 read_calls.append(path)
-                return original_read_trajectory_sample_batch(path, warnings)
+                return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
             with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=fail_if_rerun):
                 self.assertEqual(hazard.main_with_args(common_args), 0)
@@ -3676,9 +3704,14 @@ class HazardLayerTests(unittest.TestCase):
             read_calls: list[Path] = []
             original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+            def spy_read_trajectory_sample_batch(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch:
                 read_calls.append(path)
-                return original_read_trajectory_sample_batch(path, warnings)
+                return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
             with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
                 self.assertEqual(hazard.main_with_args(common_args), 0)
@@ -3726,9 +3759,14 @@ class HazardLayerTests(unittest.TestCase):
             read_calls: list[Path] = []
             original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+            def spy_read_trajectory_sample_batch(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch:
                 read_calls.append(path)
-                return original_read_trajectory_sample_batch(path, warnings)
+                return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
             with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
                 self.assertEqual(hazard.main_with_args(common_args), 0)
@@ -3796,9 +3834,14 @@ class HazardLayerTests(unittest.TestCase):
             read_calls: list[Path] = []
             original_read_trajectory_sample_batch = hazard.read_trajectory_sample_batch
 
-            def spy_read_trajectory_sample_batch(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch:
+            def spy_read_trajectory_sample_batch(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch:
                 read_calls.append(path)
-                return original_read_trajectory_sample_batch(path, warnings)
+                return original_read_trajectory_sample_batch(path, warnings, *args, **kwargs)
 
             with patch("scripts.build_hazard_layers.read_trajectory_sample_batch", side_effect=spy_read_trajectory_sample_batch):
                 self.assertEqual(hazard.main_with_args(common_args), 0)
@@ -3901,7 +3944,12 @@ class HazardLayerTests(unittest.TestCase):
             self.assertEqual(plan_record.get("input_signature"), manifest.get("input_signature"))
 
     def test_chunked_reducer_max_attempts_exceeded(self) -> None:
-        def fail_all_trajectory_paths(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
+        def fail_all_trajectory_paths(
+            path: Path,
+            warnings: list[str],
+            *args: object,
+            **kwargs: object,
+        ) -> hazard.TrajectorySampleBatch | None:
             raise RuntimeError("max attempts test failure")
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -4107,7 +4155,12 @@ class HazardLayerTests(unittest.TestCase):
 
             read_calls: list[Path] = []
 
-            def fail_if_rerun(path: Path, warnings: list[str]) -> hazard.TrajectorySampleBatch | None:
+            def fail_if_rerun(
+                path: Path,
+                warnings: list[str],
+                *args: object,
+                **kwargs: object,
+            ) -> hazard.TrajectorySampleBatch | None:
                 read_calls.append(path)
                 raise AssertionError(
                     f"trajectory reader should not run for reused chunk on resume: {path}"

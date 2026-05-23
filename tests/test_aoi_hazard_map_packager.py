@@ -50,6 +50,7 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
                     "unweighted_diagnostic",
                     "sampling_weighted_conditional",
                     "conditional_intensity_exceedance",
+                    "target_line_conditional_diagnostics",
                 ],
             )
             self.assertIn("risk_map", manifest["claim_boundary"]["deferred_or_unsupported_labels"])

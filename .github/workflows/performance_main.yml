@@ -43,9 +43,9 @@ jobs:
 
       - name: Run standard synthetic benchmark
         run: |
-          python scripts/run_performance_benchmark.py \
-            --profile standard \
-            --output-root validation/results/performance_ci_main
+          python scripts/run_ci_local.py \
+            --suite performance-standard \
+            --performance-output-root validation/results/performance_ci_main
 
       - name: Build performance history and chart
         run: |

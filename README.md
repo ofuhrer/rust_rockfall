@@ -135,11 +135,18 @@ Prerequisites are Rust with `cargo`, `rustfmt`, and `clippy`, plus the
 project-local `uv` Python environment. See `docs/onboarding.md` for setup.
 
 ```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 cargo test
 cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
 cargo run -- verify --all
 cargo run -- validate --all
 PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
+```
+
+For a faster local parity check against the Python GitHub Actions job, run:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
 ```
 
 For active implementation work, use `docs/task_backlog.md` and the compact task
@@ -157,6 +164,9 @@ Local repository Python commands should use `PYENV_VERSION=system uv run python 
 so pyenv shims and global packages do not affect results. GitHub Actions may
 install `requirements-tools.txt` into its system Python; that file is kept in
 sync with `pyproject.toml` for CI compatibility, not as a separate local policy.
+The canonical CI command definitions live in
+[`scripts/run_ci_local.py`](scripts/run_ci_local.py); GitHub Actions invokes the
+same entrypoint for Python and performance jobs.
 
 If the helper reports `backlog_refill_needed`, do a scoped gap-analysis and
 backlog-refill pass before launching implementation workers.

@@ -26,6 +26,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts.hazard_output_manifests import (
     compact_output_manifest_entry,
     hazard_map_package_manifest_section,
@@ -45,9 +49,6 @@ from scripts.hazard_output_writers import (
     write_text,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 SIGNIFICANT_IMPACT_MIN_NORMAL_SPEED_MPS = 0.05
 INPUT_ARTIFACT_COLLECTION_MEMBER_LIMIT = 32
 CHUNK_MANIFEST_SCHEMA_VERSION = "hazard_reducer_chunk_manifest_v1"

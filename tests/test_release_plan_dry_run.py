@@ -85,7 +85,10 @@ class ReleasePlanDryRunTests(unittest.TestCase):
         self.assertEqual(heuristics["release_sampling_seed_policy"]["release_cell_id_prefix"], "tschamut_public_release_cell")
         self.assertEqual(heuristics["release_sampling_seed_policy"]["requested_release_cell_count"], 10)
         self.assertEqual(len(heuristics["reference_block_scenario_classes"]), 3)
-        self.assertEqual(heuristics["reference_block_scenario_classes"][0]["block_scenario_id"], "tschamut_public_block_small")
+        self.assertEqual(
+            heuristics["reference_block_scenario_classes"][0]["block_scenario_id"],
+            "tschamut_public_block_small__tschamut_public_shape_equant",
+        )
 
         distinction = report["machine_readable_distinction"]
         self.assertIn("release_point_table_shape", distinction["reusable_semantics"])

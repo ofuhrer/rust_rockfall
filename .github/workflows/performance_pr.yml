@@ -30,9 +30,9 @@ jobs:
 
       - name: Run standard synthetic benchmark
         run: |
-          python scripts/run_performance_benchmark.py \
-            --profile standard \
-            --output-root validation/results/performance_ci_pr
+          python scripts/run_ci_local.py \
+            --suite performance-standard \
+            --performance-output-root validation/results/performance_ci_pr
 
       - name: Compare against latest main baseline
         run: |

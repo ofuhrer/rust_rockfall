@@ -55,9 +55,9 @@ class BalfrinSingleReleaseZoneCasePlanDryRunTests(unittest.TestCase):
         self.assertEqual(
             first["deterministic_generation_evidence"]["policy_block_scenario_ids"],
             [
-                "tschamut_public_block_small",
-                "tschamut_public_block_medium",
-                "tschamut_public_block_large",
+                "tschamut_public_block_small__tschamut_public_shape_equant",
+                "tschamut_public_block_medium__tschamut_public_shape_equant",
+                "tschamut_public_block_large__tschamut_public_shape_equant",
             ],
         )
         self.assertIn("validation/results/", first["ignored_output_roots"])

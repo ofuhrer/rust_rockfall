@@ -80,6 +80,7 @@ Related non-script interface fixture:
 - `scripts/inventory_workflow_shell_coupling.py`
 - `scripts/performance_ci_tracking.py`
 - `scripts/print_agent_task_context.py`
+- `scripts/run_ci_local.py`
 
 ## Hazard Output Support Modules
 

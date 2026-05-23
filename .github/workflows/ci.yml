@@ -26,11 +26,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: cargo fmt --check
-        run: cargo fmt --check
-
-      - name: cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: cargo fmt + clippy
+        run: python3 scripts/run_ci_local.py --suite lint
 
   # ── Rust unit + integration tests ──────────────────────────────────────────
   test:
@@ -44,7 +41,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: cargo test
-        run: cargo test
+        run: python3 scripts/run_ci_local.py --suite rust-tests
 
   # ── analytic verification + real-data validation cases ────────────────────
   verify:
@@ -57,11 +54,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: cargo run -- verify --all
-        run: cargo run --release -- verify --all
-
-      - name: cargo run -- validate --all
-        run: cargo run --release -- validate --all
+      - name: cargo run -- verify + validate
+        run: python3 scripts/run_ci_local.py --suite verify
 
   # ── Python workflow tests + repository consistency ─────────────────────────
   python:
@@ -84,7 +78,7 @@ jobs:
           python -m pip install -r requirements-tools.txt
 
       - name: Python unit tests
-        run: python -m unittest discover -s tests -p 'test_*.py'
+        run: python scripts/run_ci_local.py --suite python-tests
 
       - name: Repository consistency
-        run: python scripts/check_repo_consistency.py
+        run: python scripts/run_ci_local.py --suite repo-consistency

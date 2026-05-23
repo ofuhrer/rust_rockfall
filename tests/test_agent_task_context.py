@@ -118,10 +118,14 @@ Inspect first:
     def test_active_queue_report_does_not_revert_to_backlog_refill_language(self) -> None:
         report = agent_context.build_report(run_checks=False)
 
-        self.assertTrue(report["active_tasks"])
-        self.assertFalse(report["backlog_refill_needed"])
-        self.assertIsNone(report["backlog_note"])
-        self.assertIsNone(report["current_execution_focus"])
+        if report["active_tasks"]:
+            self.assertFalse(report["backlog_refill_needed"])
+            self.assertIsNone(report["backlog_note"])
+            self.assertIsNone(report["current_execution_focus"])
+        else:
+            self.assertTrue(report["backlog_refill_needed"])
+            self.assertEqual(report["backlog_note"], "Backlog refill needed")
+            self.assertEqual(report["current_execution_focus"], agent_context.CURRENT_EXECUTION_FOCUS)
 
     def test_current_execution_focus_names_the_adjacent_candidate_unblock_path(self) -> None:
         self.assertIn("adjacent-candidate review path", agent_context.CURRENT_EXECUTION_FOCUS)

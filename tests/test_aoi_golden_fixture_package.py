@@ -180,6 +180,13 @@ class AoiGoldenFixturePackageTests(unittest.TestCase):
         config["candidate_selection_rationale"] = (
             "Clean-checkout AOI regression fixture with real-like public-data metadata and a tiny terrain crop."
         )
+        config["site_extent"] = {
+            "crs": "EPSG:2056",
+            "xmin": 2793002.0,
+            "ymin": 1180202.0,
+            "xmax": 2793006.0,
+            "ymax": 1180206.0,
+        }
         (repo_root / "site_config.yaml").write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
         (repo_root / "chant_sura_fluelapass_public_geodata_acquisition.yaml").write_text(
             yaml.safe_dump(acquisition_manifest, sort_keys=False),
@@ -193,11 +200,11 @@ class AoiGoldenFixturePackageTests(unittest.TestCase):
             "type": "Polygon",
             "coordinates": [
                 [
-                    [2793001.0, 1180201.0],
-                    [2793006.0, 1180201.0],
-                    [2793006.0, 1180206.0],
-                    [2793001.0, 1180206.0],
-                    [2793001.0, 1180201.0],
+                    [2793002.5, 1180202.5],
+                    [2793005.5, 1180202.5],
+                    [2793005.5, 1180205.5],
+                    [2793002.5, 1180205.5],
+                    [2793002.5, 1180202.5],
                 ]
             ],
         }
