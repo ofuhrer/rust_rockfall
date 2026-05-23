@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-470: Package A Local Scientific Backlog Recommendation
-
-Goal: Generate a compact recommendation report for the next local scientific backlog after the first local audits land.
-
-Capability gap reduced: Backlog refill currently depends on manual interpretation of several helper outputs.
-
-Why this outranks alternatives: It consolidates the new local evidence surfaces into the next small worker queue without reopening Balfrin or claim-upgrade work.
-
-Inspect first:
-
-- `scripts/print_agent_task_context.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/task_backlog.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- A local recommendation command or extension and tests that ranks the next scientific tasks from denominator, traceability, fragility, second-site, holdout, and calibration-separation outputs.
-
-Definition of done:
-
-- The report ranks at least five local follow-ups with dependencies and claim boundaries, tests pass, and this task is removed only after it can guide another backlog refill.
-
-Boundaries: No live Balfrin access, no scale-up authorization, no operational claims, no physical-probability claims, and no distributed execution.
-
 ### TB-471: Refresh Scientific State Docs From Local Evidence
 
 Goal: Refresh the current maturity and local onboarding docs so they point to the new local scientific progress commands.

@@ -6433,3 +6433,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only preflight only; no tuning, no selected-parameter promotion, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
 - Next task: `TB-470`
+
+### TB-470: Package A Local Scientific Backlog Recommendation
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: consolidate the new local audit outputs into a ranked recommendation report for the next scientific backlog refill.
+- Files changed: `scripts/recommend_local_scientific_backlog.py`, `tests/test_local_scientific_backlog_recommendation.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only recommendation helper that composes denominator, traceability, fragility, sensitivity, second-site, holdout-split, calibration-separation, and local-progress reports.
+  - Ranked six local follow-ups with dependencies, expected measurements, suggested commands, and claim boundaries.
+  - Kept the highest-ranked recommendation on the current Chant Sura terrain crop extent blocker, followed by public context staging review, extreme-layer support/nodata drilldown, interpretation-gate consolidation, holdout/calibration guardrail integration, and doc refresh.
+  - Registered the helper in the script inventory and removed TB-470 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_local_scientific_backlog_recommendation -v`
+  - `.venv/bin/python scripts/recommend_local_scientific_backlog.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only recommendation only; no live Balfrin access, no distributed execution, no scale-up authorization, no operational claim, no annual-frequency or physical-probability claim, and no backlog mutation.
+- Next task: `TB-471`

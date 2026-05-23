@@ -135,6 +135,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/map_physical_credibility_evidence_requirements.py`
 - `scripts/prototype_cog_conversion.py`
 - `scripts/rank_local_hazard_layer_fragility.py`
+- `scripts/recommend_local_scientific_backlog.py`
 - `scripts/run_dem_terrain_sensitivity.py`
 - `scripts/run_performance_benchmark.py`
 - `scripts/hazard_accumulation_benchmark.py`
