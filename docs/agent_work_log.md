@@ -6378,3 +6378,22 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only sensitivity smoke only; no new ensemble execution, no tuning, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
 - Next task: `TB-467`
+
+### TB-467: Clarify Second-Site Local Input Blockers
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: make Chant Sura / Fluelapass local blockers explicit by input group and next local unblock command.
+- Files changed: `scripts/inventory_second_site_local_blockers.py`, `tests/test_second_site_local_blockers.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only local blocker inventory that composes the second-site public-geodata preflight and groups terrain, source-zone, scenario, public-context, and prepared-pilot inputs.
+  - Identified the current first local blocker as terrain QA: the staged DEM crop does not contain the configured AOI extent, so the next command is `scripts/plan_aoi_terrain_preprocessing.py`.
+  - Kept source-zone and scenario inputs visible as ready while preserving deferred public-context blockers and prepared-pilot dependency on local inputs.
+  - Added regression coverage for the current default blocked state plus ready and blocked terrain-extent fixture shapes.
+  - Registered the helper in the script inventory and removed TB-467 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_second_site_local_blockers -v`
+  - `.venv/bin/python scripts/inventory_second_site_local_blockers.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only inventory only; no data download, no live Balfrin submission, no second-site execution authorization, no operational claim, no annual-frequency or physical-probability claim, and no scale-up authorization.
+- Next task: `TB-468`

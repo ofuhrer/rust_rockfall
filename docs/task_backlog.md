@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-467: Clarify Second-Site Local Input Blockers
-
-Goal: Make the Chant Sura / Fluelapass local prepared-pilot blockers explicit and grouped by unblock command.
-
-Capability gap reduced: The AOI front door reports blocked state, but local workers need a smaller input-blocker inventory that points to the next local command rather than Balfrin.
-
-Why this outranks alternatives: Second-site portability is the strongest local path toward scientific progress beyond Tschamut, but only if the missing inputs are unambiguous.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/aoi_user_manual.md`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A local second-site blocker inventory command and tests that group missing terrain, source-zone, scenario, context, and prepared-pilot inputs with the next local command for each group.
-
-Definition of done:
-
-- The command reports the current Chant Sura / Fluelapass blocker set without Balfrin, tests cover blocked and ready fixture shapes, focused checks pass, and the task is removed after the next local unblock command is explicit.
-
-Boundaries: No data download by default, no live Balfrin submission, no second-site execution authorization, no operational claims, and no physical-probability claims.
-
 ### TB-468: Audit Chant Sura Holdout Split Independence
 
 Goal: Add a local audit that verifies the Chant Sura model-selection and held-out trajectory IDs remain disjoint.

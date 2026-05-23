@@ -137,6 +137,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/run_dem_terrain_sensitivity.py`
 - `scripts/run_performance_benchmark.py`
 - `scripts/hazard_accumulation_benchmark.py`
+- `scripts/inventory_second_site_local_blockers.py`
 - `scripts/summarize_local_scientific_progress.py`
 
 ## Evidence Summarizers
