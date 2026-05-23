@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-468: Audit Chant Sura Holdout Split Independence
-
-Goal: Add a local audit that verifies the Chant Sura model-selection and held-out trajectory IDs remain disjoint.
-
-Capability gap reduced: Chant Sura is the current contact/trajectory holdout evidence, but split independence should be executable rather than only documented.
-
-Why this outranks alternatives: This is a low-cost local check that protects one of the repo's few holdout-style scientific evidence surfaces.
-
-Inspect first:
-
-- `validation/data/processed/chant_sura_2020/metadata_contact_split.json`
-- `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`
-- `scripts/summarize_chant_sura_holdout_evidence.py`
-- `tests/test_chant_sura_holdout_evidence.py`
-
-Deliverables:
-
-- A holdout-split audit command or extension and tests that fail on trajectory overlap and report split counts, roles, and limitations.
-
-Definition of done:
-
-- The audit passes on current fixtures, tests cover overlap failure, focused checks pass, and this task is removed after the split-independence result is available from a local command.
-
-Boundaries: No calibration, no parameter tuning, no external validation claim, no operational claims, and no Balfrin access.
-
 ### TB-469: Add A Calibration-Separation Preflight
 
 Goal: Verify that calibration experiment outputs are not silently treated as validation acceptance evidence.

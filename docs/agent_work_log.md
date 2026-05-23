@@ -6397,3 +6397,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only inventory only; no data download, no live Balfrin submission, no second-site execution authorization, no operational claim, no annual-frequency or physical-probability claim, and no scale-up authorization.
 - Next task: `TB-468`
+
+### TB-468: Audit Chant Sura Holdout Split Independence
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: make Chant Sura model-selection versus held-out trajectory split independence executable as a focused local audit.
+- Files changed: `scripts/audit_chant_sura_holdout_split.py`, `tests/test_chant_sura_holdout_split_audit.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only split-independence audit for `metadata_contact_split.json` and the held-out evidence manifest.
+  - Reported model-selection and held-out trajectory counts, roles, computed overlap, recorded-overlap consistency, duplicate-ID checks, limitations, and claim boundaries.
+  - Made trajectory overlap fail closed as `blocked_overlap_detected`, with regression coverage using a temporary overlapping split fixture.
+  - Registered the helper in the script inventory and removed TB-468 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_chant_sura_holdout_split_audit -v`
+  - `.venv/bin/python scripts/audit_chant_sura_holdout_split.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only split audit only; no calibration, no parameter tuning, no external validation claim, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
+- Next task: `TB-469`

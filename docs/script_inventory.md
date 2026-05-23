@@ -166,6 +166,7 @@ operator-facing until they get smoke tests or a documented replacement.
 - `scripts/summarize_balfrin_single_release_zone_pilot_contract.py`
 - `scripts/recover_balfrin_target_area_metrics_from_run_root.py`
 - `scripts/recover_balfrin_target_area_spatial_artifacts_from_run_root.py`
+- `scripts/audit_chant_sura_holdout_split.py`
 - `scripts/summarize_balfrin_target_area_metrics_completion_rerun_package.py`
 - `scripts/summarize_balfrin_target_area_candidate_stability.py`
 - `scripts/summarize_balfrin_target_area_evidence_bundle.py`
