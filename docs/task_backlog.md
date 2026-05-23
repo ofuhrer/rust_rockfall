@@ -39,30 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-465: Rank Local Hazard-Layer Fragility
-
-Goal: Produce a local fragility ranking for existing conditional hazard-layer families.
-
-Capability gap reduced: The current evidence gap report identifies fragile layers qualitatively, but workers need an executable ranking to prioritize local sensitivity checks.
-
-Why this outranks alternatives: Max kinetic energy and jump-height layers are known fragile surfaces, and ranking them locally prevents broad undirected validation work.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/hazard_layers.md`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-
-Deliverables:
-
-- A read-only fragility ranking command and tests that classify layer families by reproducibility, diagnostic usefulness, and scientific fragility from existing repo evidence.
-
-Definition of done:
-
-- The command ranks max kinetic energy and max jump height ahead of more stable footprint summaries, records why each layer is fragile, tests pass, and this task is removed after the ranking is usable by later sensitivity tasks.
-
-Boundaries: No tuning, no physical-credibility upgrade, no operational claims, and no Balfrin access.
-
 ### TB-466: Add A Local Extreme-Layer Sensitivity Smoke
 
 Goal: Measure a small local sensitivity smoke for max kinetic energy and max jump height using existing same-scale hazard manifests.

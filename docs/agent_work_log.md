@@ -6341,3 +6341,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only traceability audit only; no new validation claim, no field-calibration claim, no operational map claim, and no Balfrin access.
 - Next task: `TB-465`
+
+### TB-465: Rank Local Hazard-Layer Fragility
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: produce an executable local fragility ranking for conditional hazard-layer families so later sensitivity work starts with the least stable scientific surfaces.
+- Files changed: `scripts/rank_local_hazard_layer_fragility.py`, `tests/test_local_hazard_layer_fragility.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only fragility-ranking helper that composes `product_layer_claim_boundaries` from the validation/calibration evidence-gap report.
+  - Ranked `max_kinetic_energy` and `max_jump_height` ahead of stable footprint summaries, while preserving reproducibility, diagnostic-usefulness, physical-credibility, and operational-inadmissibility statuses for every layer family.
+  - Recorded layer-specific reasons and local follow-ups that point the next worker toward the extreme-layer sensitivity smoke without adding tuning, Balfrin, physical-probability, annual-frequency, scale-up, risk, or operational claims.
+  - Registered the new helper in the script inventory and removed TB-465 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_local_hazard_layer_fragility -v`
+  - `.venv/bin/python scripts/rank_local_hazard_layer_fragility.py --format text`
+- Result/status: implemented_fixture_backed
+- Boundaries: local read-only ranking only; no tuning, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
+- Next task: `TB-466`
