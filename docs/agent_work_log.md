@@ -6287,3 +6287,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only Balfrin preflight/evidence only; no live submission, no scale-up claim, no distributed execution, no operational claim, and no annual-frequency or risk/exposure/vulnerability workflow.
 - Next task: backlog refill needed
+
+### TB-462: Add A Local Scientific Progress Summary
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: create a compact local-only summary that tells workers what can progress scientifically without Balfrin.
+- Files changed: `scripts/summarize_local_scientific_progress.py`, `tests/test_local_scientific_progress.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only local scientific progress helper that composes the validation/calibration evidence-gap report and same-scale artifact readiness into one compact JSON/text surface.
+  - Ranked local non-Balfrin work tracks for conditional denominator provenance, trajectory/deposition traceability, extreme-layer fragility, second-site blockers, Chant Sura holdout split auditing, and calibration separation.
+  - Preserved explicit claim boundaries: no Balfrin requirement, no physical-probability or annual-frequency claim, no operational use, no risk/exposure/vulnerability claim, and no scale-up authorization.
+  - Added focused regression coverage for the ranked tracks, fragile-layer ordering, and text output.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_local_scientific_progress -v`
+  - `.venv/bin/python scripts/summarize_local_scientific_progress.py --format json`
+- Result/status: implemented_fixture_backed
+- Boundaries: local read-only summary only; no live Balfrin access, no tuning, no operational claim, no annual-frequency or physical-probability claim, no scale-up authorization, and no distributed execution.
+- Next task: `TB-463`

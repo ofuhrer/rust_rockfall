@@ -39,6 +39,230 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+### TB-463: Audit Conditional Denominator Provenance
+
+Goal: Make the denominator behind conditional reach and threshold layers explicit from existing local hazard manifests.
+
+Capability gap reduced: Conditional layers are reproducible, but their denominators and conditioning filters are still too easy to overread as physical probabilities.
+
+Why this outranks alternatives: Denominator provenance is a direct scientific-interpretation blocker for the existing map layers and can be audited entirely from local artifacts.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/compare_hazard_map_convergence.py`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `docs/hazard_layers.md`
+
+Deliverables:
+
+- A read-only denominator-provenance audit command and tests that report the conditioning scope, trajectory/sample denominator evidence, and non-probability claim boundary for existing local hazard manifests.
+
+Definition of done:
+
+- The audit command succeeds on the committed Tschamut target manifest, rejects missing denominator evidence clearly, tests pass, and this task is removed only after the report names the exact local follow-up for any missing denominator field.
+
+Boundaries: No relabeling conditional products as physical probability, no annual-frequency semantics, no operational claims, and no Balfrin access.
+
+### TB-464: Audit Trajectory-To-Deposition Traceability
+
+Goal: Verify that deposition-density diagnostics can be traced back to local validation outputs and trajectory/deposition files.
+
+Capability gap reduced: Deposition-density layers are deterministic, but traceability from map package to validation output should be explicit before stronger scientific interpretation.
+
+Why this outranks alternatives: It improves the most interpretable existing physical diagnostic without requiring new external data or remote execution.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/hazard_output_manifests.py`
+- `validation/private/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+
+Deliverables:
+
+- A local traceability audit command and tests that connect the hazard deposition layer to validation deposition and trajectory outputs, including clear missing-output classifications.
+
+Definition of done:
+
+- The audit command reports traceability for the local target package, tests cover present and missing-output cases, focused checks pass, and the task is removed only after the traceability result is actionable.
+
+Boundaries: No new validation claim, no field-calibration claim, no operational map claim, and no Balfrin access.
+
+### TB-465: Rank Local Hazard-Layer Fragility
+
+Goal: Produce a local fragility ranking for existing conditional hazard-layer families.
+
+Capability gap reduced: The current evidence gap report identifies fragile layers qualitatively, but workers need an executable ranking to prioritize local sensitivity checks.
+
+Why this outranks alternatives: Max kinetic energy and jump-height layers are known fragile surfaces, and ranking them locally prevents broad undirected validation work.
+
+Inspect first:
+
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `docs/hazard_layers.md`
+- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
+
+Deliverables:
+
+- A read-only fragility ranking command and tests that classify layer families by reproducibility, diagnostic usefulness, and scientific fragility from existing repo evidence.
+
+Definition of done:
+
+- The command ranks max kinetic energy and max jump height ahead of more stable footprint summaries, records why each layer is fragile, tests pass, and this task is removed after the ranking is usable by later sensitivity tasks.
+
+Boundaries: No tuning, no physical-credibility upgrade, no operational claims, and no Balfrin access.
+
+### TB-466: Add A Local Extreme-Layer Sensitivity Smoke
+
+Goal: Measure a small local sensitivity smoke for max kinetic energy and max jump height using existing same-scale hazard manifests.
+
+Capability gap reduced: Extreme-value layer fragility is known but not yet converted into a repeatable local sensitivity measurement.
+
+Why this outranks alternatives: It gives the repo a concrete local measurement for the most fragile scientific outputs before larger validation or external data work.
+
+Inspect first:
+
+- `scripts/compare_hazard_map_convergence.py`
+- `scripts/summarize_same_scale_uncertainty_envelope.py`
+- `hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json`
+- `hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json`
+
+Deliverables:
+
+- A local sensitivity-smoke command and tests that compare extreme-layer presence, support, and summary deltas between existing gate and target hazard manifests.
+
+Definition of done:
+
+- The command emits a deterministic sensitivity report, tests cover missing and present layer inputs, focused checks pass, and this task is removed after the report identifies the next sensitivity measurement to run.
+
+Boundaries: No new ensemble execution, no tuning, no operational or physical-probability claim, and no Balfrin access.
+
+### TB-467: Clarify Second-Site Local Input Blockers
+
+Goal: Make the Chant Sura / Fluelapass local prepared-pilot blockers explicit and grouped by unblock command.
+
+Capability gap reduced: The AOI front door reports blocked state, but local workers need a smaller input-blocker inventory that points to the next local command rather than Balfrin.
+
+Why this outranks alternatives: Second-site portability is the strongest local path toward scientific progress beyond Tschamut, but only if the missing inputs are unambiguous.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `docs/aoi_user_manual.md`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+
+Deliverables:
+
+- A local second-site blocker inventory command and tests that group missing terrain, source-zone, scenario, context, and prepared-pilot inputs with the next local command for each group.
+
+Definition of done:
+
+- The command reports the current Chant Sura / Fluelapass blocker set without Balfrin, tests cover blocked and ready fixture shapes, focused checks pass, and the task is removed after the next local unblock command is explicit.
+
+Boundaries: No data download by default, no live Balfrin submission, no second-site execution authorization, no operational claims, and no physical-probability claims.
+
+### TB-468: Audit Chant Sura Holdout Split Independence
+
+Goal: Add a local audit that verifies the Chant Sura model-selection and held-out trajectory IDs remain disjoint.
+
+Capability gap reduced: Chant Sura is the current contact/trajectory holdout evidence, but split independence should be executable rather than only documented.
+
+Why this outranks alternatives: This is a low-cost local check that protects one of the repo's few holdout-style scientific evidence surfaces.
+
+Inspect first:
+
+- `validation/data/processed/chant_sura_2020/metadata_contact_split.json`
+- `validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json`
+- `scripts/summarize_chant_sura_holdout_evidence.py`
+- `tests/test_chant_sura_holdout_evidence.py`
+
+Deliverables:
+
+- A holdout-split audit command or extension and tests that fail on trajectory overlap and report split counts, roles, and limitations.
+
+Definition of done:
+
+- The audit passes on current fixtures, tests cover overlap failure, focused checks pass, and this task is removed after the split-independence result is available from a local command.
+
+Boundaries: No calibration, no parameter tuning, no external validation claim, no operational claims, and no Balfrin access.
+
+### TB-469: Add A Calibration-Separation Preflight
+
+Goal: Verify that calibration experiment outputs are not silently treated as validation acceptance evidence.
+
+Capability gap reduced: Calibration is currently missing for claim purposes, and future work needs a local guardrail that keeps calibration, validation, and selected parameters separate.
+
+Why this outranks alternatives: It prevents scientific claim drift before anyone starts tuning or adding calibration-oriented tasks.
+
+Inspect first:
+
+- `calibration/README.md`
+- `calibration/experiments/scarring_single_impact_v0_4/selected_parameters.yaml`
+- `validation/cases/`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+
+Deliverables:
+
+- A local calibration-separation preflight and tests that enumerate calibration outputs, validation cases, and prohibited claim crossings.
+
+Definition of done:
+
+- The preflight reports current calibration artifacts as diagnostic/non-default, tests cover a forbidden validation reference shape, focused checks pass, and this task is removed after calibration separation is executable.
+
+Boundaries: No tuning, no selected-parameter promotion, no physical-credibility upgrade, no operational claims, and no Balfrin access.
+
+### TB-470: Package A Local Scientific Backlog Recommendation
+
+Goal: Generate a compact recommendation report for the next local scientific backlog after the first local audits land.
+
+Capability gap reduced: Backlog refill currently depends on manual interpretation of several helper outputs.
+
+Why this outranks alternatives: It consolidates the new local evidence surfaces into the next small worker queue without reopening Balfrin or claim-upgrade work.
+
+Inspect first:
+
+- `scripts/print_agent_task_context.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `docs/task_backlog.md`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- A local recommendation command or extension and tests that ranks the next scientific tasks from denominator, traceability, fragility, second-site, holdout, and calibration-separation outputs.
+
+Definition of done:
+
+- The report ranks at least five local follow-ups with dependencies and claim boundaries, tests pass, and this task is removed only after it can guide another backlog refill.
+
+Boundaries: No live Balfrin access, no scale-up authorization, no operational claims, no physical-probability claims, and no distributed execution.
+
+### TB-471: Refresh Scientific State Docs From Local Evidence
+
+Goal: Refresh the current maturity and local onboarding docs so they point to the new local scientific progress commands.
+
+Capability gap reduced: Once the local evidence commands exist, worker-facing docs need to route future work to them instead of broad manual reading.
+
+Why this outranks alternatives: It prevents the new local scientific workflow from becoming another hidden helper surface.
+
+Inspect first:
+
+- `docs/current_maturity_snapshot.md`
+- `docs/onboarding.md`
+- `AGENTS.md`
+- `docs/task_backlog.md`
+
+Deliverables:
+
+- Focused documentation updates that name the local scientific progress commands, their boundaries, and the next non-Balfrin workflow.
+
+Definition of done:
+
+- Docs point workers to the new commands, consistency checks pass, the completed work is logged, and this task is removed only after the backlog is empty or explicitly refilled with the next smallest local tasks.
+
+Boundaries: Documentation must not claim physical credibility, annual frequency, operational use, scale-up, distributed execution, or Balfrin authorization changes.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
