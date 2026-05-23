@@ -143,10 +143,17 @@ cargo run -- validate --all
 PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
 
-For a faster local parity check against the Python GitHub Actions job, run:
+For a faster local parity check against the clean-checkout Python GitHub Actions
+job, run:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
+```
+
+Artifact-rich developer machines can still run the complete local Python suite:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python-full
 ```
 
 For active implementation work, use `docs/task_backlog.md` and the compact task

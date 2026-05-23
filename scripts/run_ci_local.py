@@ -22,8 +22,26 @@ class Command:
     argv: tuple[str, ...]
 
 
+CLEAN_CHECKOUT_EXCLUDED_MARKERS = (
+    "data/processed/swisstopo/",
+    "hazard/results/",
+    "validation/private/",
+)
+
+
 def python_command(*args: str) -> tuple[str, ...]:
     return (sys.executable, *args)
+
+
+def clean_checkout_test_modules() -> tuple[str, ...]:
+    modules: list[str] = []
+    for path in sorted((ROOT / "tests").glob("test_*.py")):
+        text = path.read_text(encoding="utf-8")
+        if any(marker in text for marker in CLEAN_CHECKOUT_EXCLUDED_MARKERS):
+            continue
+        relative_module = path.relative_to(ROOT).with_suffix("")
+        modules.append(relative_module.as_posix().replace("/", "."))
+    return tuple(modules)
 
 
 def build_commands(args: argparse.Namespace) -> dict[str, list[Command]]:
@@ -51,7 +69,13 @@ def build_commands(args: argparse.Namespace) -> dict[str, list[Command]]:
         ],
         "python-tests": [
             Command(
-                "python unit tests",
+                "clean-checkout Python unit tests",
+                python_command("-m", "unittest", *clean_checkout_test_modules()),
+            ),
+        ],
+        "python-full-tests": [
+            Command(
+                "full Python unit tests",
                 python_command("-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"),
             ),
         ],
@@ -75,6 +99,7 @@ def build_commands(args: argparse.Namespace) -> dict[str, list[Command]]:
 
 SUITE_ALIASES = {
     "python": ("python-tests", "repo-consistency"),
+    "python-full": ("python-full-tests", "repo-consistency"),
     "performance": ("performance-standard",),
     "ci": (
         "lint",
@@ -125,11 +150,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=(
             "ci",
             "python",
+            "python-full",
             "performance",
             "lint",
             "rust-tests",
             "verify",
             "python-tests",
+            "python-full-tests",
             "repo-consistency",
             "performance-standard",
         ),
