@@ -75,6 +75,7 @@ Related non-script interface fixture:
 
 - `scripts/audit_case_schema.py`
 - `scripts/audit_local_artifacts.py`
+- `scripts/check_calibration_separation_preflight.py`
 - `scripts/check_repo_consistency.py`
 - `scripts/inventory_workflow_shell_coupling.py`
 - `scripts/performance_ci_tracking.py`

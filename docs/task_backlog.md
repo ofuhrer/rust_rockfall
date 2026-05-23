@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-469: Add A Calibration-Separation Preflight
-
-Goal: Verify that calibration experiment outputs are not silently treated as validation acceptance evidence.
-
-Capability gap reduced: Calibration is currently missing for claim purposes, and future work needs a local guardrail that keeps calibration, validation, and selected parameters separate.
-
-Why this outranks alternatives: It prevents scientific claim drift before anyone starts tuning or adding calibration-oriented tasks.
-
-Inspect first:
-
-- `calibration/README.md`
-- `calibration/experiments/scarring_single_impact_v0_4/selected_parameters.yaml`
-- `validation/cases/`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A local calibration-separation preflight and tests that enumerate calibration outputs, validation cases, and prohibited claim crossings.
-
-Definition of done:
-
-- The preflight reports current calibration artifacts as diagnostic/non-default, tests cover a forbidden validation reference shape, focused checks pass, and this task is removed after calibration separation is executable.
-
-Boundaries: No tuning, no selected-parameter promotion, no physical-credibility upgrade, no operational claims, and no Balfrin access.
-
 ### TB-470: Package A Local Scientific Backlog Recommendation
 
 Goal: Generate a compact recommendation report for the next local scientific backlog after the first local audits land.

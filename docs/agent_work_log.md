@@ -6415,3 +6415,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only split audit only; no calibration, no parameter tuning, no external validation claim, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
 - Next task: `TB-469`
+
+### TB-469: Add A Calibration-Separation Preflight
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: add a local guardrail that keeps calibration selected-parameter artifacts separate from validation acceptance evidence.
+- Files changed: `scripts/check_calibration_separation_preflight.py`, `tests/test_calibration_separation_preflight.py`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a read-only calibration-separation preflight that inventories committed calibration selected-parameter records as diagnostic/non-default.
+  - Scanned validation case YAML for prohibited selected-parameter fields and direct references to calibration selected-parameter artifacts.
+  - Added a forbidden-reference fixture test that blocks as `blocked_forbidden_validation_reference`.
+  - Registered the helper in the script inventory and removed TB-469 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_calibration_separation_preflight -v`
+  - `.venv/bin/python scripts/check_calibration_separation_preflight.py --format text`
+- Result/status: implemented_measured
+- Boundaries: local read-only preflight only; no tuning, no selected-parameter promotion, no physical-credibility upgrade, no operational claim, no annual-frequency or physical-probability claim, and no Balfrin access.
+- Next task: `TB-470`
