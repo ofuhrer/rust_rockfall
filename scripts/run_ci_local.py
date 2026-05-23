@@ -41,6 +41,7 @@ CLEAN_CHECKOUT_EXCLUDED_MODULES = {
     "tests.test_local_scientific_backlog_recommendation",
     "tests.test_multi_zone_reducer_pressure",
     "tests.test_plan_pragmatic_release_plan",
+    "tests.test_public_geodata_cache_stager",
     "tests.test_release_candidate_zero_result_diagnostic",
     "tests.test_scenario_storage_output_tier_pressure",
     "tests.test_swiss_wide_execution_envelope",
