@@ -206,6 +206,34 @@ not a Swiss-wide production hazard service. New contributors should assume:
   acquisition pack; actual physical validation and calibration data are still
   absent.
 
+## Local Scientific Progress Path
+
+Before proposing Balfrin work or broad scientific rewrites, run the local
+scientific audit surface:
+
+```bash
+.venv/bin/python scripts/summarize_local_scientific_progress.py --format text
+.venv/bin/python scripts/recommend_local_scientific_backlog.py --format text
+```
+
+The current local-only commands are:
+
+- `scripts/audit_conditional_denominator_provenance.py`
+- `scripts/audit_trajectory_deposition_traceability.py`
+- `scripts/rank_local_hazard_layer_fragility.py`
+- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
+- `scripts/inventory_second_site_local_blockers.py`
+- `scripts/audit_chant_sura_holdout_split.py`
+- `scripts/check_calibration_separation_preflight.py`
+
+These commands improve auditability and backlog routing only. They do not
+establish physical probability, annual frequency, operational use, risk,
+exposure, vulnerability, scale-up, distributed execution, or Balfrin
+authorization. The current recommendation surface ranks the next local work as
+Chant Sura terrain extent QA, public-context staging review, extreme-layer
+support/nodata sensitivity, denominator/deposition interpretation gating,
+holdout/calibration guardrail integration, and documentation refresh.
+
 For current maturity, read `docs/current_maturity_snapshot.md` before adding
 new backlog tasks. If `scripts/print_agent_task_context.py` reports
 `backlog_refill_needed=true`, do a scoped gap-analysis/refill pass before

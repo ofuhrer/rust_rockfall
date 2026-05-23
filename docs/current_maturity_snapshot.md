@@ -49,9 +49,28 @@ current single-node/postproc constraints. These updates clarified the regional
 split comparison path, AOI/QGIS review readiness, candidate and scenario
 separation, and the next ranked executable milestone without changing the
 measured scale boundary.
-The
-Chant Sura
-real-input gate distinguishes real, fixture-backed, partial, missing, and
+TB-462 through TB-470 added a local-only scientific audit layer for work that
+does not require Balfrin: `scripts/summarize_local_scientific_progress.py`,
+`scripts/audit_conditional_denominator_provenance.py`,
+`scripts/audit_trajectory_deposition_traceability.py`,
+`scripts/rank_local_hazard_layer_fragility.py`,
+`scripts/summarize_extreme_layer_sensitivity_smoke.py`,
+`scripts/inventory_second_site_local_blockers.py`,
+`scripts/audit_chant_sura_holdout_split.py`,
+`scripts/check_calibration_separation_preflight.py`, and
+`scripts/recommend_local_scientific_backlog.py`. These surfaces make the
+conditional denominator, trajectory/deposition traceability, extreme-layer
+fragility, Chant Sura second-site blockers, holdout split independence, and
+calibration/validation separation executable locally. They remain diagnostic
+and routing evidence only: they do not establish physical probability, annual
+frequency, operational use, risk/exposure/vulnerability, scale-up, distributed
+execution, or Balfrin authorization. The recommendation surface currently
+ranks the next local scientific queue as Chant Sura terrain extent QA, public
+context staging review, extreme-layer support/nodata sensitivity,
+denominator/deposition interpretation gating, holdout/calibration guardrail
+integration, and worker-facing doc refresh.
+
+The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
 core inputs are ready; and physical-evidence intake separates observed
 benchmark candidates, accepted/rejected intake packages, release-zone

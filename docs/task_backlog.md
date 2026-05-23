@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-471: Refresh Scientific State Docs From Local Evidence
-
-Goal: Refresh the current maturity and local onboarding docs so they point to the new local scientific progress commands.
-
-Capability gap reduced: Once the local evidence commands exist, worker-facing docs need to route future work to them instead of broad manual reading.
-
-Why this outranks alternatives: It prevents the new local scientific workflow from becoming another hidden helper surface.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/onboarding.md`
-- `AGENTS.md`
-- `docs/task_backlog.md`
-
-Deliverables:
-
-- Focused documentation updates that name the local scientific progress commands, their boundaries, and the next non-Balfrin workflow.
-
-Definition of done:
-
-- Docs point workers to the new commands, consistency checks pass, the completed work is logged, and this task is removed only after the backlog is empty or explicitly refilled with the next smallest local tasks.
-
-Boundaries: Documentation must not claim physical credibility, annual frequency, operational use, scale-up, distributed execution, or Balfrin authorization changes.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

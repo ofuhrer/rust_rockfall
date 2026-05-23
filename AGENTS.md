@@ -15,6 +15,9 @@ physics, output, versioning, HPC, or review-policy changes.
 - Sequential orchestration strategy: `docs/orchestration_strategy.md`.
 - Detailed project background: `docs/project_overview.md`.
 - Worker-facing scale status: `scripts/summarize_balfrin_scale_readiness_matrix.py`.
+- Local scientific audit summary: `scripts/summarize_local_scientific_progress.py`.
+- Local scientific backlog recommendation:
+  `scripts/recommend_local_scientific_backlog.py`.
 
 When files conflict, preserve hard safety/claim boundaries first, then update
 docs so the repository tells one consistent story.
@@ -39,6 +42,22 @@ helper only for orchestrator/review work.
 
 For AOI user-facing work, keep `docs/aoi_user_manual.md` as the compact front
 door and link out to detailed workflow docs only when needed.
+
+For local scientific work that does not require Balfrin, start with:
+
+```bash
+.venv/bin/python scripts/summarize_local_scientific_progress.py --format text
+.venv/bin/python scripts/recommend_local_scientific_backlog.py --format text
+```
+
+Use the focused local audit commands before broad manual interpretation:
+`audit_conditional_denominator_provenance.py`,
+`audit_trajectory_deposition_traceability.py`,
+`rank_local_hazard_layer_fragility.py`,
+`summarize_extreme_layer_sensitivity_smoke.py`,
+`inventory_second_site_local_blockers.py`,
+`audit_chant_sura_holdout_split.py`, and
+`check_calibration_separation_preflight.py`.
 
 Use `PYENV_VERSION=system uv run python ...`; avoid plain `python` or `python3`
 because local pyenv shims can point at unavailable interpreters.
@@ -112,6 +131,10 @@ scientific/operational claim upgrades.
   `partial_needs_followup` when that distinction matters.
 - For dataset or validation-case changes, keep calibration, validation, and
   operational input data separate.
+- Treat local scientific audit helpers as diagnostic/routing surfaces only:
+  they do not create physical-probability, annual-frequency, operational,
+  risk/exposure/vulnerability, scale-up, distributed-execution, or Balfrin
+  authorization claims.
 - For Swiss geodata changes, preserve CRS, vertical datum, resolution, extent,
   source-tile ids, and provenance; never commit large swisstopo raw products.
 - Append completed TB entries to the bottom of `docs/agent_work_log.md` using

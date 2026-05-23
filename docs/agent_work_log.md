@@ -6451,3 +6451,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local read-only recommendation only; no live Balfrin access, no distributed execution, no scale-up authorization, no operational claim, no annual-frequency or physical-probability claim, and no backlog mutation.
 - Next task: `TB-471`
+
+### TB-471: Refresh Scientific State Docs From Local Evidence
+
+- Date: 2026-05-23
+- Commit: to-be-recorded
+- Objective: route future workers to the new local scientific progress commands and preserve their claim boundaries in worker-facing docs.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/onboarding.md`, `AGENTS.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a local scientific progress path to onboarding with the summary, recommendation, and focused audit commands.
+  - Updated `AGENTS.md` so workers start local scientific tasks from the new audit and recommendation surfaces.
+  - Refreshed the maturity snapshot to name the new local evidence surfaces, current recommendation ranking, and diagnostic-only boundaries.
+  - Removed TB-471 from the active backlog, leaving the queue empty and ready for a scoped refill from the recommendation command.
+- Checks run:
+  - `.venv/bin/python scripts/recommend_local_scientific_backlog.py --format text`
+  - `.venv/bin/python scripts/print_agent_task_context.py --format json --no-live-checks`
+- Result/status: implemented_documented
+- Boundaries: documentation/routing only; no physical-credibility, annual-frequency, operational-use, risk/exposure/vulnerability, scale-up, distributed-execution, or Balfrin authorization change.
+- Next task: backlog refill needed
