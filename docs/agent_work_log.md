@@ -6550,3 +6550,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: Rust regression coverage only; no tuning, no validation claim upgrade, no operational claim, no Balfrin submission, and no broad model rewrite.
 - Next task: `TB-476`
+
+### TB-476: Reduce Extreme-Layer Instability In The Rust Model
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: reduce avoidable numerical instability that can feed extreme kinetic-energy and jump-height surfaces.
+- Files changed: `src/dynamics.rs`, `tests/physics.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Identified a contact-handling instability: translational contact response treated any negative normal velocity as an impact, including near-zero numerical drift at the contact surface.
+  - Added a `1.0e-7 m/s` impact-normal-speed tolerance in the Rust contact response so tiny near-surface downward drift is projected to contact without creating a rebound.
+  - Added `near_zero_normal_drift_does_not_create_rebound` to prove the targeted instability no longer creates an artificial upward velocity sample.
+  - Re-ran the existing extreme-layer sensitivity smoke. The committed artifact-level smoke metrics were unchanged and therefore no worse: `total_nodata_mismatch_count=90`, `minimum_nonzero_jaccard=0.7598039215686274`, `max_linf_abs_diff=3028.22579673`.
+  - Removed TB-476 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test physics near_zero_normal_drift_does_not_create_rebound -- --nocapture`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test physics horizontal_plane_rebound_matches_normal_restitution -- --nocapture`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test physics`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test config_io_terrain strict_dem_contact_response_propagates_terrain_errors_without_panicking -- --nocapture`
+  - `PYENV_VERSION=system uv run python scripts/summarize_extreme_layer_sensitivity_smoke.py --format json`
+  - `cargo fmt --check`
+- Result/status: implemented_measured
+- Boundaries: local Rust numerical/contact handling only; no parameter tuning, no new audit/report script, no physical-credibility upgrade claim, no operational claim, no Balfrin submission, and no annual-frequency semantics.
+- Next task: `TB-477`

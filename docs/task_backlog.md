@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-476: Reduce Extreme-Layer Instability In The Rust Model
-
-Goal: Investigate and reduce the instability behind `max_kinetic_energy` and `max_jump_height` using model or numerical changes rather than additional reporting.
-
-Capability gap reduced: Improves the most fragile current hazard-layer families.
-
-Why this outranks alternatives: Recent local evidence ranks these layers as the least stable scientific surfaces, and they directly affect hazard-map interpretability.
-
-Inspect first:
-
-- `src/dynamics.rs`
-- `src/integrator.rs`
-- `src/simulation.rs`
-- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
-
-Deliverables:
-
-- Identify one concrete model/numerical cause of avoidable extreme-layer sensitivity.
-- Implement the smallest Rust change that improves boundedness, interpolation, contact handling, energy accounting, or sampling stability.
-- Re-run the existing extreme-layer sensitivity smoke and relevant Rust tests to compare before/after behavior.
-
-Definition of done:
-
-- Focused checks pass, the measured extreme-layer sensitivity is no worse and at least one instability metric improves or the attempted model change is reverted with a smaller executable follow-up left in the backlog.
-
-Boundaries: No parameter tuning to fit outputs, no new audit/report script, no physical-credibility upgrade claim, no operational claim, no Balfrin submission, and no annual-frequency semantics.
-
 ### TB-477: Run Multi-Release-Zone Hazard Accumulation Locally
 
 Goal: Execute a small multi-release-zone local hazard accumulation run and aggregate outputs into combined conditional layers.

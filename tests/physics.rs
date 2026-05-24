@@ -62,6 +62,23 @@ fn horizontal_plane_rebound_matches_normal_restitution() {
 }
 
 #[test]
+fn near_zero_normal_drift_does_not_create_rebound() {
+    let terrain = Plane::horizontal(0.0);
+    let mut state = BodyState::new(
+        Vec3::new(0.0, 0.0, 0.5 - 1.0e-9),
+        Vec3::new(1.0, 0.0, -1.0e-9),
+    );
+
+    let response = resolve_sphere_contact(&mut state, &terrain, 0.5, 0.5, 1.0, 0.0);
+
+    assert!(!response.impacted);
+    assert!(response.sliding);
+    assert_abs_diff_eq!(state.position_m.z, 0.5, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(state.velocity_mps.z, 0.0, epsilon = 1.0e-12);
+    assert_abs_diff_eq!(state.velocity_mps.x, 1.0, epsilon = 1.0e-12);
+}
+
+#[test]
 fn sphere_above_terrain_has_no_contact_response() {
     let terrain = Plane::horizontal(0.0);
     let mut state = BodyState::new(Vec3::new(0.0, 0.0, 2.0), Vec3::new(1.0, 0.0, -1.0));

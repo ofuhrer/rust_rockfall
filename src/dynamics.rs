@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
 const ROLLING_RESIDUAL_TOLERANCE_MPS: f64 = 1.0e-6;
+const CONTACT_IMPACT_NORMAL_SPEED_TOLERANCE_MPS: f64 = 1.0e-7;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ContactResponse {
@@ -234,7 +235,7 @@ pub fn try_resolve_sphere_contact_with_normal(
     let normal_velocity = vn * normal;
     let tangential_velocity = state.velocity_mps - normal_velocity;
 
-    if vn < 0.0 {
+    if vn < -CONTACT_IMPACT_NORMAL_SPEED_TOLERANCE_MPS {
         let post_normal_velocity = -normal_restitution.clamp(0.0, 1.0) * normal_velocity;
         let requested_tangent_change =
             (1.0 - tangential_restitution.clamp(0.0, 1.0)) * tangential_velocity.norm();
