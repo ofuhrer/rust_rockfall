@@ -1,209 +1,121 @@
 # rust_rockfall
 
-`rust_rockfall` is an independent, open implementation for scalable rockfall
-trajectory simulation and hazard-map generation for Switzerland's Alpine
-terrain from public geodata, primarily swisstopo.
+`rust_rockfall` is an open, reproducible rockfall simulation and hazard-mapping
+toolkit for Alpine terrain.
 
 Current crate/model version: `v0.6.1`.
 
-## Current Status
+The project turns public geodata, terrain models, release-zone definitions, and
+ensemble trajectory simulations into reviewable hazard-map products. It is built
+around a Rust simulation core, Python workflow tools, and explicit provenance so
+that model runs can be inspected, repeated, scaled, and improved without relying
+on opaque processing steps.
 
-The repository currently supports a reproducible, non-operational conditional
-diagnostic workflow with measured Tschamut same-scale evidence and a measured
-Balfrin single-release-zone demonstration. The current Balfrin path includes a
-frozen demonstration contract, SLURM execution evidence, a live
-interruption/resume proof, a canonical evidence bundle, replay smoke checks,
-rebuildable reduced outputs, GIS/COG scope reporting, a metrics-remediation
-checklist, AOI-to-command-plan dry-run composition, and one explicitly
-authorized target-area probe. That bounded target-area probe completed on
-Balfrin as SLURM job `4329024` under
-`/scratch/mch/olifu/rust_rockfall/probes/tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517`.
-It provides measured runtime/output evidence for the frozen target-area
-contract. Peak-memory and split validation/hazard output metrics were then
-measured by the TB-307 metrics-completion rerun on `postproc` as SLURM job
-`4339889`; the earlier blocked/failed-closed attempts remain history, not
-current blockers. The smallest bounded multi-zone branch is now measured:
-TB-407 completed one `postproc` run with preserved metrics and a ready
-preservation gate. The newer regional split branch is not yet measured:
-TB-432 failed closed before `sbatch`; after remote-hygiene cleanup, the next
-ranked executable milestone is to regenerate the ready regional split package
-with a fresh passing access preflight and retry one bounded `postproc` probe.
-The current scale surface also includes reduced-output command-plan
-enforcement, validation-output replay/debug budget inventories, a local
-1/2/4/8/12-zone scaling ladder, a measured four-zone post-processing/reducer
-package on Balfrin `postproc`, a read-only Balfrin run-root output-budget
-auditor, and a compact scale evidence dashboard for workers with a deterministic
-next-probe ranking. These surfaces
-distinguish `measured_on_balfrin`,
-`measured_on_balfrin_postproc_microbenchmark`, `fixture_backed`,
-`scratch_local`, `projection_only`, `blocked_pre_submit`, and `failed_closed`
-evidence so blocked, local, synthetic, or failed-closed branches are not
-promoted to measured hazard scale capability.
-The user has granted standing clearance for GPT-5.5 workers to submit and
-actively monitor Balfrin jobs on the `postproc` partition, including multiple
-concurrent jobs and filling that partition. If the work would keep `postproc`
-fully busy for more than 6 hours, the run plan must be rediscussed. This
-clearance does not relax access, readiness, authorization-record/audit,
-output-budget, preservation, or evidence gates, and it does not authorize
-non-postproc partitions, distributed execution, scale-up claims, or scientific
-or operational claim upgrades.
+The long-term goal is straightforward: make scientifically traceable rockfall
+hazard modelling easier to run, easier to review, and easier to extend for real
+Swiss terrain.
 
-Swiss-wide automation is still emerging. The repo now has deterministic
-dry-run helpers for AOI product discovery, public-geodata cache verification,
-mode-gated public-geodata staging, AOI terrain preprocessing from staged
-tiles, terrain-driven release-zone candidate stability checks, generic
-candidate-source-zone scenario generation, second-site acquisition planning,
-site-level case-skeleton handoff, and planning-only GIS scope summaries. The
-AOI-to-map user path now has a guided front door, a compact AOI user manual, a
-fixture-backed bounds-to-review-map regression, an AOI hazard-map packager, a
-static QA review surface, and a manifest-only QGIS Processing connector
-prototype. These expose layer inventory, warnings, provenance, observed overlay
-status, style assets, and the next recommended command. They do not yet
-download all
-public inputs by default, run arbitrary real AOIs end to end, execute
-second-site ensembles, or generate physically annualized intensity-frequency
-products. The canonical quickstart documents the `workflow --format text`
-front door, which prints `workflow_status`, `first_blocker`, `next_command`,
-required inputs, generated outputs, and claim boundaries in one
-copy-pasteable summary.
+## What This Project Provides
 
-TB-338/TB-445 added and refreshed the current management-facing scale synthesis:
-`docs/swiss_scale_feasibility_projection.md` and
-`docs/balfrin_scale_demonstration_management_package.md`. The current answer is
-that 10-zone single-AOI work is feasible under the present single-node/postproc
-boundary, 100-zone work is conditionally feasible but deferred, regional split
-work is the next executable milestone but remains failed-closed/no-submit
-evidence, and Swiss-wide execution is out of reach until public-geodata
-automation, release/scenario generation, multi-zone hazard execution,
-reducer/manifest pressure, and GIS/COG packaging blockers are reduced with
-measured evidence. TB-340 through TB-445 moved the next workflow layer forward:
-real-AOI
-public-geodata acquisition and cache-integrity planning, real-AOI terrain and
-context preprocessing, release-zone candidate sweep/stability/review tooling,
-candidate scenario pressure gates, an AOI prepared-pilot compiler, large-AOI GIS
-manifest repair, regenerated multi-zone Balfrin submit contracts, fail-closed
-two-zone/four-zone submit evidence, measured four-zone postproc/reducer
-pressure, hazard-throughput no-op boundaries, QGIS/connector review guards,
-regional split retry ranking, and the latest Swiss-scale projection refresh.
-These changes improve automation and evidence separation, but they still do not
-provide measured regional or Swiss-wide hazard execution.
+- A Rust rockfall simulation engine with deterministic test cases and validation
+  hooks.
+- Tools for preparing terrain, release-zone, scenario, and hazard-map workflows
+  from public geodata.
+- Ensemble and probabilistic workflow building blocks for conditional hazard
+  layers.
+- GIS-oriented outputs, map-package manifests, and review surfaces.
+- Reproducible local and CI checks for model logic, workflow helpers, and
+  repository consistency.
+- A documented path for scaling from local development to larger HPC-backed
+  experiments.
 
-The compact AOI front door lives in
-[`docs/aoi_user_manual.md`](docs/aoi_user_manual.md). Use that page for the
-command-level bounds-to-review-map walkthrough and QGIS review entry point
-instead of duplicating AOI helper steps in new docs. The QGIS Processing bridge
-is intentionally only a checked manifest prototype at
-`tests/fixtures/qgis_processing_connector_manifest_v1.json`; it is not a plugin
-or a second workflow layer.
+This repository is research and engineering software. It is not an official
+hazard product, regulatory map, warning system, or risk/exposure/vulnerability
+model.
 
-Current next-backlog recommendations are deliberately execution- or
-acquisition-oriented: acquire and preprocess real public geodata for arbitrary
-AOIs, make release-zone and scenario generation defensible on real terrain,
-regenerate the failed-closed regional split package with a fresh passing
-preflight before live regional scale steps, measure bounded multi-zone Balfrin
-hazard execution, and pursue performance work only from measured bottlenecks.
-The active backlog is currently empty after TB-445 and needs refill before the
-next implementation cycle. Physical-frequency, calibration,
-risk/exposure/vulnerability, and operational claims remain deferred.
+## Quick Start
 
-The front-door `scripts/run_aoi_hazard_workflow.py status` mode now reports a
-normalized `workflow_status`, `first_blocker`, `next_command`,
-`expected_inputs`, and `expected_outputs` set so the next step is visible
-without digging through nested helper reports.
+Install Rust, `cargo`, `rustfmt`, `clippy`, and `uv`. See
+[`docs/onboarding.md`](docs/onboarding.md) for setup details.
 
-The second-site and physical-evidence boundaries are stricter than in earlier
-milestones: Chant Sura / Fluelapass real-core inputs are classified as real,
-fixture-backed, partial, missing, or metadata-mismatched before any
-prepared-pilot dry run can look ready; observed benchmark intake now accepts or
-rejects real packages deterministically; AOI map packages can carry accepted
-observed runout/deposition or field-supported release-zone provenance overlays;
-and release-zone provenance, block-population evidence, calibration inputs,
-holdout evidence, and source-frequency records remain separated from
-conditional sampling weights and hazard outputs.
-
-Current products are diagnostic or sampling-weighted conditional hazard layers.
-They are not annualized, not risk maps, and not operational Swiss hazard
-products. Scientific closure remains inconclusive and physical credibility is
-not established. Optional observed-evidence overlays are map-review evidence,
-not calibration, physical probability, annual frequency, risk, or operational
-approval. Risk, exposure, vulnerability, warning, and regulatory semantics are
-out of scope.
-
-## Quickstart
-
-Prerequisites are Rust with `cargo`, `rustfmt`, and `clippy`, plus the
-project-local `uv` Python environment. See `docs/onboarding.md` for setup.
+Run the main local checks:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
-cargo test
-cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
-cargo run -- verify --all
-cargo run -- validate --all
-PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
 
-For a faster local parity check against the clean-checkout Python GitHub Actions
-job, run:
+Run the Rust tests directly:
+
+```bash
+cargo test
+```
+
+Run a small example simulation:
+
+```bash
+cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
+```
+
+Verify benchmark and validation cases:
+
+```bash
+cargo run -- verify --all
+cargo run -- validate --all
+```
+
+## Working With AOIs
+
+For area-of-interest workflows, start with the user manual:
+
+[`docs/aoi_user_manual.md`](docs/aoi_user_manual.md)
+
+It is the compact entry point for preparing an AOI, checking required public
+inputs, producing reviewable map packages, and understanding the next command in
+the workflow.
+
+## Development Workflow
+
+Use the repository CI runner when changing code:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
+```
+
+For the clean-checkout Python suite used by GitHub Actions:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
 ```
 
-The module list for that job is tracked in `tests/python_test_tiers.toml`.
-New Python test modules must be classified there; repository consistency checks
-fail if the manifest drifts from `tests/test_*.py` or if clean-checkout tests
-reference ignored local artifact roots.
-
-Artifact-rich developer machines can still run the complete local Python suite:
+For the full local Python suite on machines that also have local/generated
+artifacts:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python-full
 ```
 
-For active implementation work, use `docs/task_backlog.md` and the compact task
-context helper:
+The Python test tiers are tracked in
+[`tests/python_test_tiers.toml`](tests/python_test_tiers.toml), so new test
+modules must be classified deliberately.
 
-```bash
-PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-xxx --format json
-```
+## Documentation Map
 
-Canonical AOI quickstart:
-[`docs/aoi_user_manual.md`](docs/aoi_user_manual.md) for the shortest user
-path, with deeper helper details linked from there.
-
-Local repository Python commands should use `PYENV_VERSION=system uv run python ...`
-so pyenv shims and global packages do not affect results. GitHub Actions may
-install `requirements-tools.txt` into its system Python; that file is kept in
-sync with `pyproject.toml` for CI compatibility, not as a separate local policy.
-The canonical CI command definitions live in
-[`scripts/run_ci_local.py`](scripts/run_ci_local.py); GitHub Actions invokes the
-same entrypoint for Python and performance jobs.
-
-If the helper reports `backlog_refill_needed`, do a scoped gap-analysis and
-backlog-refill pass before launching implementation workers.
-
-## Key Documentation
-
-- `docs/project_overview.md` - detailed model, validation, GIS, and workflow background.
-- `AGENTS.md` - compact worker fast path for automated agents.
-- `docs/agent_reference.md` - detailed agent policy for broad changes.
-- `docs/task_backlog.md` - authoritative active TB task queue.
-- `docs/current_maturity_snapshot.md` - current project maturity and capability gaps.
-- `docs/balfrin_probe_slurm_driver.md` - SLURM-first Balfrin execution flow.
-- `docs/balfrin_single_job_execution_sufficiency.md` - measured Balfrin runtime/output evidence.
-- `docs/swiss_scale_feasibility_projection.md` - current measured-evidence Swiss-scale feasibility projection.
-- `docs/balfrin_scale_demonstration_management_package.md` - management-facing Balfrin scale synthesis.
-- `docs/output_budget_reducer_scaling_gate.md` - output/reducer budget and run-root audit contract.
-- `docs/multi_zone_reducer_pressure_probe.md` - multi-zone pressure and local scaling ladder evidence.
-- `docs/decision_log.md` - durable decisions.
-- `docs/agent_work_log.md` - chronological completed TB history.
-- `docs/swisstopo_data_strategy.md` - public geodata strategy and boundaries.
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md` - second-site public-context staging decision.
-- `docs/target_area_physical_evidence_acquisition_pack.md` - physical-evidence acquisition and claim-boundary pack.
-- `docs/orchestration_strategy.md` - sequential worker orchestration and log-monitoring strategy.
-- `docs/validation_maturity_framework.md` - claim levels and validation maturity.
-- `docs/opennhm_learnings_report.md` - OpenNHM/AvaFrame/DebrisFrame workflow lessons relevant to future user-facing GIS and AOI workflow design.
+- [`docs/project_overview.md`](docs/project_overview.md) - detailed model and
+  workflow background.
+- [`docs/onboarding.md`](docs/onboarding.md) - local setup.
+- [`docs/aoi_user_manual.md`](docs/aoi_user_manual.md) - AOI workflow front
+  door.
+- [`docs/hazard_layers.md`](docs/hazard_layers.md) - hazard-layer outputs and
+  semantics.
+- [`docs/model_design.md`](docs/model_design.md) - model architecture.
+- [`docs/validation_maturity_framework.md`](docs/validation_maturity_framework.md)
+  - validation levels and claim boundaries.
+- [`docs/swisstopo_data_strategy.md`](docs/swisstopo_data_strategy.md) - public
+  geodata strategy.
+- [`docs/current_maturity_snapshot.md`](docs/current_maturity_snapshot.md) -
+  current project maturity snapshot.
+- [`docs/task_backlog.md`](docs/task_backlog.md) - active implementation queue.
+- [`AGENTS.md`](AGENTS.md) - compact guide for automated coding agents.
 
 ## Local Git Hooks
 
@@ -213,7 +125,5 @@ Install the lightweight pre-commit hook with:
 scripts/install_git_hooks.sh
 ```
 
-The hook runs `cargo fmt --check` and YAML syntax checks. There is no repository
-pre-push hook; run task-specific tests and repository consistency checks before
-committing or pushing. CI remains the source of truth for full regression
-coverage.
+The hook runs `cargo fmt --check` and YAML syntax checks. GitHub Actions remains
+the source of truth for full regression coverage.
