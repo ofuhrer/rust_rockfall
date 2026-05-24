@@ -6573,3 +6573,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local Rust numerical/contact handling only; no parameter tuning, no new audit/report script, no physical-credibility upgrade claim, no operational claim, no Balfrin submission, and no annual-frequency semantics.
 - Next task: `TB-477`
+
+### TB-477: Run Multi-Release-Zone Hazard Accumulation Locally
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: execute a small local multi-release-zone hazard accumulation run and aggregate outputs into combined conditional layers.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the existing hazard accumulation benchmark into ignored output root `hazard/results/local_multi_zone_accumulation_tb477`.
+  - The `smallest_multi_zone_baseline` run completed with chunked local reducer execution (`worker_count=2`, `chunk_count=2`, merge order `sorted_chunk_id`).
+  - Measured summary from the baseline hazard manifest: `trajectory_count=2`, `output_file_count=16`, `output_bytes=279433`, `accumulation_seconds=0.07117466701311059`.
+  - Combined hazard layers produced: `reach_probability`, `max_kinetic_energy`, `max_jump_height`, `kinetic_energy_exceedance_1j`, `kinetic_energy_exceedance_5j`, `jump_height_exceedance_0p25m`, `velocity_exceedance_0p75mps`, `deposition_density`, and `significant_impact_density`.
+  - Removed TB-477 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/local_multi_zone_accumulation_tb477`
+  - `jq '{case_id, completion_status, trajectory_count:.performance.trajectory_count, output_file_count:.performance.output_file_count, output_bytes:.performance.output_bytes, accumulation_seconds:.performance.accumulation_seconds, layers:[.outputs[]|select(.kind=="hazard_layer")|.layer_name], reducer:.conditional_execution.reducer}' hazard/results/local_multi_zone_accumulation_tb477/smallest_multi_zone_baseline/output/baseline/hazard/smallest_multi_zone_baseline_hazard_accumulation_benchmark_manifest.json`
+  - `.venv/bin/python -m unittest tests.test_hazard_accumulation_benchmark -v`
+- Result/status: implemented_measured
+- Boundaries: local fixture-backed multi-zone accumulation only; no new orchestration scripts, no Balfrin submission, no scale-up authorization, no annualized probability, no operational claim, and no risk/exposure/vulnerability output.
+- Next task: `TB-478`

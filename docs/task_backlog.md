@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-477: Run Multi-Release-Zone Hazard Accumulation Locally
-
-Goal: Execute a small multi-release-zone local hazard accumulation run and aggregate outputs into combined conditional layers.
-
-Capability gap reduced: Moves from single-zone demonstrations toward practical AOI hazard-map generation.
-
-Why this outranks alternatives: Real hazard products need multiple source areas; local multi-zone execution finds aggregation and output issues before larger HPC work.
-
-Inspect first:
-
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/build_hazard_layers.py`
-- `tests/fixtures/aoi_scenario_preview/multi_zone_review_package_a.yaml`
-- `tests/fixtures/hazard/ensemble_case.yaml`
-
-Deliverables:
-
-- Run or adapt existing multi-zone fixture/input paths to produce combined conditional hazard layers locally.
-- Measure runtime, trajectory count, layer count, and output size from the run.
-
-Definition of done:
-
-- The multi-zone local run produces combined hazard layers, focused hazard accumulation tests pass, and the task is removed only after the measured output summary is recorded in the work log.
-
-Boundaries: No new orchestration scripts, no Balfrin submission, no scale-up authorization, no annualized probability, no operational claim, and no risk/exposure/vulnerability output.
-
 ### TB-478: Compare Simulated Runout Against One Observed Fixture
 
 Goal: Compare one existing simulated runout/deposition output against an observed runout or deposition fixture using existing validation machinery.
