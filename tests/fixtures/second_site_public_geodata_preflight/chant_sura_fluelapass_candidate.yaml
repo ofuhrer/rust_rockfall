@@ -11,8 +11,8 @@ site_extent:
   crs: EPSG:2056
   xmin: 2793000.0
   ymin: 1180200.0
-  xmax: 2793800.0
-  ymax: 1180800.0
+  xmax: 2793008.0
+  ymax: 1180208.0
 source_zone_scenario_contract:
   source_zone_id_pattern: chant_sura_*
   source_zone_geometry: LV95 polygon

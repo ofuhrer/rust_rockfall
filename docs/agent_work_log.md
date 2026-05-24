@@ -6469,3 +6469,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_documented
 - Boundaries: documentation/routing only; no physical-credibility, annual-frequency, operational-use, risk/exposure/vulnerability, scale-up, distributed-execution, or Balfrin authorization change.
 - Next task: backlog refill needed
+
+### TB-472: Repair Chant Sura Terrain Coverage
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: make the Chant Sura / Fluelapass local terrain input cover the configured AOI so second-site local execution can advance beyond terrain QA.
+- Files changed: `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`, `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`, `tests/test_second_site_local_blockers.py`, `tests/test_aoi_terrain_preprocessing.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Aligned the Chant Sura / Fluelapass candidate AOI extent and acquisition fixture to the tracked real-staged 2 m terrain crop extent (`2793000.0,1180200.0` to `2793008.0,1180208.0`).
+  - Preserved the existing oversized-AOI failure coverage by making that regression test supply an explicit oversized extent.
+  - Verified the existing terrain preprocessing command now returns `ready_with_warnings` instead of `blocked_terrain_qa`; the remaining warning is the expected zero-margin warning for the tiny tracked crop.
+  - Verified the second-site blocker inventory now advances `first_blocking_group` from `terrain_inputs` to `public_context_inputs`.
+  - Removed TB-472 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/inventory_second_site_local_blockers.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_terrain_preprocessing.py --repo-root . --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `.venv/bin/python -m unittest tests.test_second_site_local_blockers -v`
+  - `.venv/bin/python -m unittest tests.test_aoi_terrain_preprocessing -v`
+  - `.venv/bin/python -m unittest tests.test_second_site_public_geodata_preflight -v`
+- Result/status: implemented_measured
+- Boundaries: local terrain/configuration repair only; no new Python scripts, no new contracts, no tuning, no second-site ensemble claim, no operational claim, no scale-up authorization, and no Balfrin access.
+- Next task: `TB-473`

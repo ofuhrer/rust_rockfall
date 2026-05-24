@@ -83,7 +83,16 @@ class AoiTerrainPreprocessingTests(unittest.TestCase):
     def test_domain_qa_blocks_when_configured_aoi_exceeds_crop(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)
-            config_path = self._write_candidate_config(repo_root)
+            config_path = self._write_candidate_config(
+                repo_root,
+                site_extent={
+                    "crs": "EPSG:2056",
+                    "xmin": 2793000.0,
+                    "ymin": 1180200.0,
+                    "xmax": 2793800.0,
+                    "ymax": 1180800.0,
+                },
+            )
             staging.stage_minimal_inputs(
                 repo_root=repo_root,
                 site_config=config_path,

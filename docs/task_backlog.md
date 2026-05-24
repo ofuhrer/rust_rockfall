@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-472: Repair Chant Sura Terrain Coverage
-
-Goal: Make the Chant Sura / Fluelapass terrain input cover the configured AOI so second-site local execution can advance.
-
-Capability gap reduced: Removes the current first local blocker: the staged DEM crop does not contain the configured AOI extent.
-
-Why this outranks alternatives: Terrain coverage is the first measured blocker before release-zone, scenario, or hazard execution can produce meaningful second-site evidence.
-
-Inspect first:
-
-- `scripts/inventory_second_site_local_blockers.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml`
-
-Deliverables:
-
-- Correct the smallest configuration, metadata, crop, or preprocessing mismatch needed for the configured Chant Sura AOI to pass terrain extent QA using existing workflow code.
-- Run the existing second-site blocker inventory and terrain preprocessing path to show the terrain group is no longer the first blocker.
-
-Definition of done:
-
-- Focused terrain and second-site checks pass, the next first blocker has advanced beyond terrain coverage, no new contract/checker/report script is added, and the task is removed from this backlog only after the changed path is executable locally.
-
-Boundaries: No new Python scripts, no new contracts, no tuning, no operational claims, no scale-up authorization, no Balfrin submission, no distributed execution, and no second-site ensemble claim.
-
 ### TB-473: Execute A Minimal Chant Sura Local Trajectory Run
 
 Goal: Run the repaired Chant Sura local terrain/release inputs through an existing validation or simulation path and produce actual trajectory output.

@@ -11,8 +11,8 @@ vertical_datum: LN02
 site_extent:
   xmin: 2793000.0
   ymin: 1180200.0
-  xmax: 2793800.0
-  ymax: 1180800.0
+  xmax: 2793008.0
+  ymax: 1180208.0
 expected_processed_input_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input
 expected_processed_context_root: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context
 expected_validation_private_root: validation/private/chant_sura_fluelapass_portability_example_v1
