@@ -2,6 +2,9 @@
 //! size mismatches, and clamped fallback behaviour.
 
 use rust_rockfall::terrain::{ClampedDemGrid, DemGrid, Terrain, TerrainError};
+use rust_rockfall::{
+    simulate_one_trajectory, SimulationConfig, SphereBlock, TerrainConfig, TrajectoryRequest,
+};
 
 // ─── DEM header / construction errors ─────────────────────────────────────
 
@@ -141,5 +144,83 @@ fn clamped_dem_normal_outside_grid_is_unit_length() {
     assert!(
         (norm - 1.0).abs() < 1.0e-10,
         "normal must be unit length, got norm={norm}"
+    );
+}
+
+#[test]
+fn real_tschamut_dem_trajectory_has_finite_bounded_physics() {
+    let terrain_path = format!(
+        "{}/data/processed/tschamut2014/terrain.asc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let terrain = DemGrid::from_ascii_grid(&terrain_path).unwrap();
+    let radius_m = 0.30;
+    let start_x = -25.0;
+    let start_y = 300.0;
+    let start_ground_z = terrain.try_height(start_x, start_y).unwrap();
+    let config = SimulationConfig {
+        block: SphereBlock::new(radius_m, 100.0),
+        initial_position_m: [start_x, start_y, start_ground_z + radius_m + 1.0],
+        initial_velocity_mps: [8.0, -3.0, 0.0],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::EsriAsciiGrid { path: terrain_path },
+        dt_s: 0.02,
+        max_time_s: 2.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.25,
+        tangential_restitution: 0.85,
+        friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: Default::default(),
+        soil_interaction_model: Default::default(),
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: Default::default(),
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.05,
+        random_seed: None,
+        release_perturbation: Default::default(),
+    };
+
+    let run = simulate_one_trajectory(
+        &config,
+        TrajectoryRequest::new("real_tschamut_dem_golden", "trajectory_000000", None),
+    )
+    .unwrap();
+
+    assert!(
+        run.samples.len() > 10,
+        "trajectory should contain time history"
+    );
+    assert!(run.summary.runout_m > 5.0, "runout should be non-trivial");
+    assert!(
+        run.summary.final_position_m[0] > start_x,
+        "trajectory should move generally east/down-slope on the fixture"
+    );
+    assert!(run.summary.max_kinetic_energy_j.is_finite());
+    assert!(run.summary.max_kinetic_energy_j >= 0.0);
+    assert!(
+        run.summary.max_kinetic_energy_j < 100_000.0,
+        "unexpected kinetic-energy spike: {}",
+        run.summary.max_kinetic_energy_j
+    );
+
+    let max_jump_height_m = run
+        .samples
+        .iter()
+        .map(|sample| {
+            let ground = terrain.try_height(sample.x_m, sample.y_m).unwrap();
+            sample.z_m - ground - radius_m
+        })
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert!(max_jump_height_m.is_finite());
+    assert!(max_jump_height_m >= -1.0e-6);
+    assert!(
+        max_jump_height_m < 20.0,
+        "unexpected jump-height spike: {max_jump_height_m}"
     );
 }

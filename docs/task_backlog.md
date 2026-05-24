@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-475: Add A Rust Real-Terrain Golden Trajectory Test
-
-Goal: Add a small Rust-level regression test that exercises terrain-driven trajectory behavior on a committed real-terrain fixture.
-
-Capability gap reduced: Gives the simulation core a meaningful terrain regression that can catch physical or numerical regressions without Python workflow indirection.
-
-Why this outranks alternatives: Core model regressions should be caught in Rust close to the dynamics and terrain code, especially before expanding AOI workflows.
-
-Inspect first:
-
-- `src/simulation.rs`
-- `src/terrain.rs`
-- `tests/terrain_edge_cases.rs`
-- `data/processed/tschamut2014/terrain.asc`
-
-Deliverables:
-
-- Add a Rust test using a small existing terrain fixture and deterministic release state.
-- Assert physically meaningful invariants such as finite samples, nonnegative energy, bounded jump height, plausible stop behavior, and no terrain lookup failure.
-
-Definition of done:
-
-- `cargo test` or the focused Rust test target passes, the test fails on obvious invalid terrain/trajectory behavior, and no Python script, contract, or administrative document is added.
-
-Boundaries: No tuning, no validation claim upgrade, no operational claim, no Balfrin submission, and no broad model rewrite unless required by the failing test.
-
 ### TB-476: Reduce Extreme-Layer Instability In The Rust Model
 
 Goal: Investigate and reduce the instability behind `max_kinetic_energy` and `max_jump_height` using model or numerical changes rather than additional reporting.

@@ -6532,3 +6532,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: conditional local hazard packaging only; no annualized probability, no risk/exposure/vulnerability, no operational map claim, no Balfrin submission, and no new workflow layer.
 - Next task: `TB-475`
+
+### TB-475: Add A Rust Real-Terrain Golden Trajectory Test
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: add a Rust-level real-terrain regression test that exercises the simulation core on a committed DEM fixture.
+- Files changed: `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `real_tschamut_dem_trajectory_has_finite_bounded_physics` to the Rust terrain edge-case test target.
+  - The test runs `simulate_one_trajectory` against `data/processed/tschamut2014/terrain.asc` using a deterministic release state.
+  - It asserts a non-trivial time history, down-slope/eastward movement, finite nonnegative and bounded kinetic energy, finite nonnegative and bounded jump height, and successful terrain lookups along the simulated path.
+  - Removed TB-475 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases real_tschamut_dem_trajectory_has_finite_bounded_physics -- --nocapture`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases`
+- Result/status: implemented_measured
+- Boundaries: Rust regression coverage only; no tuning, no validation claim upgrade, no operational claim, no Balfrin submission, and no broad model rewrite.
+- Next task: `TB-476`
