@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-473: Execute A Minimal Chant Sura Local Trajectory Run
-
-Goal: Run the repaired Chant Sura local terrain/release inputs through an existing validation or simulation path and produce actual trajectory output.
-
-Capability gap reduced: Converts second-site readiness from input preparation into a runnable local model case.
-
-Why this outranks alternatives: A real local trajectory run is the next scientific step after terrain coverage and exposes model/runtime issues earlier than more planning.
-
-Inspect first:
-
-- `validation/cases/chant_sura_contact.yaml`
-- `validation/cases/chant_sura_contact_heldout.yaml`
-- `data/processed/chant_sura_2020/terrain_rf16_contact.asc`
-- `src/validation.rs`
-
-Deliverables:
-
-- Reuse or minimally adjust an existing Chant Sura validation/simulation case so it writes trajectory output from local data.
-- Preserve generated outputs in the existing validation or ignored results location, and summarize the measured run count, stop count, and any failed trajectories in the work log.
-
-Definition of done:
-
-- The selected Chant Sura command runs locally from a clean checkout with tracked inputs, focused Rust/validation checks pass, no new orchestration/admin script is added, and the task is removed only after measured trajectory output exists.
-
-Boundaries: No parameter tuning, no new contracts, no operational claims, no annual-frequency or physical-probability claim, no Balfrin submission, and no scale-up claim.
-
 ### TB-474: Produce A Real Local AOI Hazard Layer Package
 
 Goal: Generate conditional hazard layers and a reviewable map package from one local real-terrain AOI run.

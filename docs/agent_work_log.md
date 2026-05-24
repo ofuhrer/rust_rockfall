@@ -6491,3 +6491,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local terrain/configuration repair only; no new Python scripts, no new contracts, no tuning, no second-site ensemble claim, no operational claim, no scale-up authorization, and no Balfrin access.
 - Next task: `TB-473`
+
+### TB-473: Execute A Minimal Chant Sura Local Trajectory Run
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: run a minimal Chant Sura local terrain/release case through the existing validation path and produce measured trajectory output.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reused the existing `validation/cases/chant_sura_contact.yaml` validation case with tracked Chant Sura terrain and observation inputs.
+  - Ran the local Rust validation command successfully; it returned `Passed`.
+  - Produced ignored local outputs at `validation/results/chant_sura_contact_metrics.json` and `validation/results/chant_sura_contact_trajectory.csv`.
+  - Measured output summary: validation trajectory count metric `3.0`, observed trajectory samples `153.0`, one simulated trajectory id in the written trajectory CSV, `231` trajectory rows plus header, contact-state rows `airborne=205`, `impact=10`, `sliding=16`, stopped rows `0`, and failed trajectories `0` from the successful validation result.
+  - Removed TB-473 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/cases/chant_sura_contact.yaml`
+  - `wc -l validation/results/chant_sura_contact_trajectory.csv`
+  - `awk -F, 'NR>1 {states[$14]++; traj[$1]=1} END {for (s in states) print s, states[s]; c=0; for (t in traj) c++; print "trajectory_ids", c}' validation/results/chant_sura_contact_trajectory.csv`
+- Result/status: implemented_measured
+- Boundaries: local validation execution only; no parameter tuning, no new contracts, no operational claim, no annual-frequency or physical-probability claim, no Balfrin submission, and no scale-up claim.
+- Next task: `TB-474`
