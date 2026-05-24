@@ -20,6 +20,10 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from scripts.hazard_output_manifests import output_manifest_entry
 from scripts.hazard_output_writers import sha256_file, write_text
 from scripts import generate_aoi_map_qa_review as qa_review
@@ -37,7 +41,6 @@ except ImportError as exc:  # pragma: no cover - environment setup.
     raise SystemExit("PyYAML is required. Run this script with `PYENV_VERSION=system uv run python ...`; CI may use `requirements-tools.txt`") from exc
 
 
-ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "aoi_hazard_map_package_v1"
 EVIDENCE_OVERLAY_HOOK_SCHEMA_VERSION = "aoi_observed_evidence_overlay_hook_v1"
 DIAGNOSTIC_HAZARD_OUTPUT_ROLE = "diagnostic_hazard_outputs"

@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-474: Produce A Real Local AOI Hazard Layer Package
-
-Goal: Generate conditional hazard layers and a reviewable map package from one local real-terrain AOI run.
-
-Capability gap reduced: Moves the project from runnable trajectories toward inspectable hazard-map products.
-
-Why this outranks alternatives: The core project goal is hazard mapping; a small end-to-end AOI product exposes the real integration gaps across terrain, trajectories, accumulation, and GIS output.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/package_aoi_hazard_map.py`
-- `hazard/README.md`
-
-Deliverables:
-
-- Use existing commands to create conditional reach/deposition/intensity layers from a small local AOI trajectory set.
-- Package the outputs with existing QGIS styles and manifests so they can be opened for review.
-
-Definition of done:
-
-- A local AOI hazard package is generated from tracked or reproducibly prepared local inputs, the package opens against existing style assets, focused hazard/package tests pass, and no new contract/checker/admin script is introduced.
-
-Boundaries: Conditional hazard only; no annualized probability, no risk/exposure/vulnerability, no operational map claim, no Balfrin submission, and no new workflow layer.
-
 ### TB-475: Add A Rust Real-Terrain Golden Trajectory Test
 
 Goal: Add a small Rust-level regression test that exercises terrain-driven trajectory behavior on a committed real-terrain fixture.

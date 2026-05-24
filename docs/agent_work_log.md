@@ -6511,3 +6511,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local validation execution only; no parameter tuning, no new contracts, no operational claim, no annual-frequency or physical-probability claim, no Balfrin submission, and no scale-up claim.
 - Next task: `TB-474`
+
+### TB-474: Produce A Real Local AOI Hazard Layer Package
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: produce a reviewable local AOI hazard-map package from existing real-terrain conditional hazard outputs.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fixed the existing AOI hazard-map packager so it can be run directly as `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py ...` from the repository root.
+  - Reused the existing Tschamut public target-gate hazard output root, which already contains conditional reach, deposition, energy, jump-height, velocity, and impact-density GeoTIFF layers plus map-package manifests.
+  - Packaged the local AOI hazard outputs into `hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package` as an ignored generated artifact.
+  - The generated package reported `package_status=map_package_ready`, `review_surface_status=review_ready_with_warnings`, `22` raster layers, `2` vector overlays, QGIS style references, and conditional map semantics (`sampling_weighted_conditional`, `conditioned_on_filter`).
+  - Removed TB-474 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --help`
+  - `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --input-root hazard/results/tschamut_public_pilot/target_gate_v1 --output-root hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package --overwrite --format json`
+  - `jq '{package_status, review_surface_status, raster_count:(.raster_outputs|length), vector_count:(.vector_overlays|length), map_product_id, probability_mode, normalization_scope}' hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package/aoi_hazard_map_package_manifest.json`
+  - `.venv/bin/python -m unittest tests.test_aoi_hazard_map_packager -v`
+- Result/status: implemented_measured
+- Boundaries: conditional local hazard packaging only; no annualized probability, no risk/exposure/vulnerability, no operational map claim, no Balfrin submission, and no new workflow layer.
+- Next task: `TB-475`
