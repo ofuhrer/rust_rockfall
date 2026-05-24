@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import subprocess
 import sys
 import time
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PYTHON_TEST_TIERS_PATH = ROOT / "tests" / "python_test_tiers.toml"
 
 
 @dataclass(frozen=True)
@@ -22,50 +25,45 @@ class Command:
     argv: tuple[str, ...]
 
 
-CLEAN_CHECKOUT_EXCLUDED_MARKERS = (
-    "data/processed/swisstopo/",
-    "hazard/results/",
-    "validation/private/",
-)
-
-CLEAN_CHECKOUT_EXCLUDED_MODULES = {
-    "tests.test_aoi_scenario_preview",
-    "tests.test_balfrin_demonstration_replay_smoke",
-    "tests.test_balfrin_management_demo_package",
-    "tests.test_balfrin_multi_release_zone_demo_handoff",
-    "tests.test_balfrin_physical_credibility_evidence_gaps",
-    "tests.test_balfrin_scale_readiness_matrix",
-    "tests.test_conditional_denominator_provenance",
-    "tests.test_execute_management_aoi_balfrin_run",
-    "tests.test_extreme_layer_sensitivity_smoke",
-    "tests.test_local_scientific_backlog_recommendation",
-    "tests.test_multi_zone_reducer_pressure",
-    "tests.test_plan_pragmatic_release_plan",
-    "tests.test_public_geodata_cache_stager",
-    "tests.test_release_candidate_zero_result_diagnostic",
-    "tests.test_scenario_storage_output_tier_pressure",
-    "tests.test_swiss_wide_execution_envelope",
-    "tests.test_trajectory_deposition_traceability",
-    "tests.test_tschamut_block_scenario_table_generation",
-}
-
-
 def python_command(*args: str) -> tuple[str, ...]:
     return (sys.executable, *args)
 
 
+def load_python_test_tiers() -> dict[str, tuple[str, ...]]:
+    data = tomllib.loads(PYTHON_TEST_TIERS_PATH.read_text(encoding="utf-8"))
+    tiers = data.get("tiers")
+    if not isinstance(tiers, dict):
+        raise SystemExit(f"{PYTHON_TEST_TIERS_PATH} is missing [tiers]")
+    return {
+        name: tuple(modules)
+        for name, modules in tiers.items()
+        if isinstance(name, str) and isinstance(modules, list)
+    }
+
+
 def clean_checkout_test_modules() -> tuple[str, ...]:
-    modules: list[str] = []
-    for path in sorted((ROOT / "tests").glob("test_*.py")):
-        text = path.read_text(encoding="utf-8")
-        if any(marker in text for marker in CLEAN_CHECKOUT_EXCLUDED_MARKERS):
+    tiers = load_python_test_tiers()
+    modules = tiers.get("clean_checkout_ci")
+    if not modules:
+        raise SystemExit(f"{PYTHON_TEST_TIERS_PATH} has no clean_checkout_ci tier")
+    return modules
+
+
+def print_python_environment_banner() -> None:
+    packages = ("yaml", "numpy", "pyarrow", "pyproj", "PIL", "scipy")
+    versions: list[str] = []
+    for package in packages:
+        try:
+            module = __import__(package)
+        except Exception:
+            versions.append(f"{package}=unavailable")
             continue
-        relative_module = path.relative_to(ROOT).with_suffix("")
-        module = relative_module.as_posix().replace("/", ".")
-        if module in CLEAN_CHECKOUT_EXCLUDED_MODULES:
-            continue
-        modules.append(module)
-    return tuple(modules)
+        versions.append(f"{package}={getattr(module, '__version__', 'unknown')}")
+    print("\nPython environment:", flush=True)
+    print(f"- executable: {sys.executable}", flush=True)
+    print(f"- version: {sys.version.split()[0]}", flush=True)
+    print(f"- platform: {platform.platform()}", flush=True)
+    print(f"- packages: {', '.join(versions)}", flush=True)
 
 
 def build_commands(args: argparse.Namespace) -> dict[str, list[Command]]:
@@ -154,6 +152,8 @@ def run_command(command: Command, *, dry_run: bool) -> int:
 
     env = os.environ.copy()
     env.setdefault("PYENV_VERSION", "system")
+    if command.argv[:3] == (sys.executable, "-m", "unittest"):
+        print_python_environment_banner()
     started = time.perf_counter()
     result = subprocess.run(command.argv, cwd=ROOT, env=env, check=False)
     elapsed = time.perf_counter() - started

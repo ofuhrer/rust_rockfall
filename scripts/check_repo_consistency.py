@@ -79,6 +79,7 @@ except ModuleNotFoundError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PYTHON_TEST_TIERS_PATH = ROOT / "tests" / "python_test_tiers.toml"
 # Backlog/work-log hygiene and hazard claim hygiene live in importable modules.
 # The entrypoint keeps orchestration plus the remaining cross-document guards.
 GENERATED_PREFIXES = (
@@ -114,6 +115,11 @@ IGNORED_ARTIFACT_ROOT_PREFIXES = (
     "validation/private/",
     "data/processed/swisstopo/",
     "/scratch/",
+)
+IGNORED_REPO_ARTIFACT_ROOT_PREFIXES = (
+    "hazard/results/",
+    "validation/private/",
+    "data/processed/swisstopo/",
 )
 IGNORED_ARTIFACT_READ_METHODS = (
     "read_text(",
@@ -304,6 +310,7 @@ def main() -> int:
     errors.extend(check_balfrin_target_gate_reproduction())
     errors.extend(check_balfrin_single_job_execution_sufficiency())
     errors.extend(check_pilot_obstacle_scope_contract())
+    errors.extend(check_python_test_tier_manifest())
     errors.extend(check_ignored_artifact_test_dependencies())
 
     if errors:
@@ -378,6 +385,88 @@ def build_ignored_artifact_test_audit(test_paths: Iterable[Path] | None = None) 
                 f"{relative} has ignored-artifact dependency classifications: {', '.join(categories)}"
             )
     return {"entries": entries, "violations": violations}
+
+
+def _module_name_for_test_path(path: Path) -> str:
+    return path.relative_to(ROOT).with_suffix("").as_posix().replace("/", ".")
+
+
+def _load_python_test_tier_manifest() -> dict[str, Any]:
+    return tomllib.loads(PYTHON_TEST_TIERS_PATH.read_text(encoding="utf-8"))
+
+
+def check_python_test_tier_manifest() -> list[str]:
+    errors: list[str] = []
+    if not PYTHON_TEST_TIERS_PATH.exists():
+        return [f"missing Python test tier manifest {PYTHON_TEST_TIERS_PATH.relative_to(ROOT)}"]
+
+    try:
+        manifest = _load_python_test_tier_manifest()
+    except tomllib.TOMLDecodeError as exc:
+        return [f"{PYTHON_TEST_TIERS_PATH.relative_to(ROOT)} is invalid TOML: {exc}"]
+
+    if manifest.get("schema_version") != "python_test_tiers_v1":
+        errors.append("tests/python_test_tiers.toml schema_version must be python_test_tiers_v1")
+
+    tiers = manifest.get("tiers")
+    if not isinstance(tiers, dict):
+        return errors + ["tests/python_test_tiers.toml is missing [tiers]"]
+
+    required_tiers = {"clean_checkout_ci", "artifact_rich_local"}
+    missing_tiers = required_tiers - set(tiers)
+    for tier in sorted(missing_tiers):
+        errors.append(f"tests/python_test_tiers.toml is missing tier {tier}")
+
+    discovered = {
+        _module_name_for_test_path(path)
+        for path in sorted((ROOT / "tests").glob("test_*.py"))
+    }
+    classified: dict[str, str] = {}
+    duplicate_modules: set[str] = set()
+
+    for tier, modules in sorted(tiers.items()):
+        if not isinstance(modules, list):
+            errors.append(f"tests/python_test_tiers.toml tier {tier} must be a list")
+            continue
+        previous = ""
+        for module in modules:
+            if not isinstance(module, str):
+                errors.append(f"tests/python_test_tiers.toml tier {tier} contains a non-string module")
+                continue
+            if previous and module <= previous:
+                errors.append(f"tests/python_test_tiers.toml tier {tier} is not strictly sorted near {module}")
+            previous = module
+            if module in classified:
+                duplicate_modules.add(module)
+            classified[module] = tier
+            module_path = ROOT / (module.replace(".", "/") + ".py")
+            if not module_path.exists():
+                errors.append(f"tests/python_test_tiers.toml tier {tier} references missing module {module}")
+
+    missing_modules = discovered - set(classified)
+    unexpected_modules = set(classified) - discovered
+    for module in sorted(missing_modules):
+        errors.append(f"tests/python_test_tiers.toml does not classify {module}")
+    for module in sorted(unexpected_modules):
+        errors.append(f"tests/python_test_tiers.toml classifies nonexistent module {module}")
+    for module in sorted(duplicate_modules):
+        errors.append(f"tests/python_test_tiers.toml classifies {module} in multiple tiers")
+
+    clean_modules = tiers.get("clean_checkout_ci", [])
+    if isinstance(clean_modules, list):
+        for module in clean_modules:
+            if not isinstance(module, str):
+                continue
+            module_path = ROOT / (module.replace(".", "/") + ".py")
+            if not module_path.exists():
+                continue
+            text = module_path.read_text(encoding="utf-8")
+            for prefix in IGNORED_REPO_ARTIFACT_ROOT_PREFIXES:
+                if prefix in text:
+                    errors.append(
+                        f"{module} is in clean_checkout_ci but references ignored artifact root {prefix}"
+                    )
+    return errors
 
 
 def check_ignored_artifact_test_dependencies() -> list[str]:

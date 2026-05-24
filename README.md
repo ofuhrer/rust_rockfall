@@ -150,6 +150,11 @@ job, run:
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
 ```
 
+The module list for that job is tracked in `tests/python_test_tiers.toml`.
+New Python test modules must be classified there; repository consistency checks
+fail if the manifest drifts from `tests/test_*.py` or if clean-checkout tests
+reference ignored local artifact roots.
+
 Artifact-rich developer machines can still run the complete local Python suite:
 
 ```bash
