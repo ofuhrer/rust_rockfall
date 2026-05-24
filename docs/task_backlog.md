@@ -39,6 +39,268 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+### TB-472: Repair Chant Sura Terrain Coverage
+
+Goal: Make the Chant Sura / Fluelapass terrain input cover the configured AOI so second-site local execution can advance.
+
+Capability gap reduced: Removes the current first local blocker: the staged DEM crop does not contain the configured AOI extent.
+
+Why this outranks alternatives: Terrain coverage is the first measured blocker before release-zone, scenario, or hazard execution can produce meaningful second-site evidence.
+
+Inspect first:
+
+- `scripts/inventory_second_site_local_blockers.py`
+- `scripts/plan_aoi_terrain_preprocessing.py`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+- `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/terrain_metadata.yaml`
+
+Deliverables:
+
+- Correct the smallest configuration, metadata, crop, or preprocessing mismatch needed for the configured Chant Sura AOI to pass terrain extent QA using existing workflow code.
+- Run the existing second-site blocker inventory and terrain preprocessing path to show the terrain group is no longer the first blocker.
+
+Definition of done:
+
+- Focused terrain and second-site checks pass, the next first blocker has advanced beyond terrain coverage, no new contract/checker/report script is added, and the task is removed from this backlog only after the changed path is executable locally.
+
+Boundaries: No new Python scripts, no new contracts, no tuning, no operational claims, no scale-up authorization, no Balfrin submission, no distributed execution, and no second-site ensemble claim.
+
+### TB-473: Execute A Minimal Chant Sura Local Trajectory Run
+
+Goal: Run the repaired Chant Sura local terrain/release inputs through an existing validation or simulation path and produce actual trajectory output.
+
+Capability gap reduced: Converts second-site readiness from input preparation into a runnable local model case.
+
+Why this outranks alternatives: A real local trajectory run is the next scientific step after terrain coverage and exposes model/runtime issues earlier than more planning.
+
+Inspect first:
+
+- `validation/cases/chant_sura_contact.yaml`
+- `validation/cases/chant_sura_contact_heldout.yaml`
+- `data/processed/chant_sura_2020/terrain_rf16_contact.asc`
+- `src/validation.rs`
+
+Deliverables:
+
+- Reuse or minimally adjust an existing Chant Sura validation/simulation case so it writes trajectory output from local data.
+- Preserve generated outputs in the existing validation or ignored results location, and summarize the measured run count, stop count, and any failed trajectories in the work log.
+
+Definition of done:
+
+- The selected Chant Sura command runs locally from a clean checkout with tracked inputs, focused Rust/validation checks pass, no new orchestration/admin script is added, and the task is removed only after measured trajectory output exists.
+
+Boundaries: No parameter tuning, no new contracts, no operational claims, no annual-frequency or physical-probability claim, no Balfrin submission, and no scale-up claim.
+
+### TB-474: Produce A Real Local AOI Hazard Layer Package
+
+Goal: Generate conditional hazard layers and a reviewable map package from one local real-terrain AOI run.
+
+Capability gap reduced: Moves the project from runnable trajectories toward inspectable hazard-map products.
+
+Why this outranks alternatives: The core project goal is hazard mapping; a small end-to-end AOI product exposes the real integration gaps across terrain, trajectories, accumulation, and GIS output.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/build_hazard_layers.py`
+- `scripts/package_aoi_hazard_map.py`
+- `hazard/README.md`
+
+Deliverables:
+
+- Use existing commands to create conditional reach/deposition/intensity layers from a small local AOI trajectory set.
+- Package the outputs with existing QGIS styles and manifests so they can be opened for review.
+
+Definition of done:
+
+- A local AOI hazard package is generated from tracked or reproducibly prepared local inputs, the package opens against existing style assets, focused hazard/package tests pass, and no new contract/checker/admin script is introduced.
+
+Boundaries: Conditional hazard only; no annualized probability, no risk/exposure/vulnerability, no operational map claim, no Balfrin submission, and no new workflow layer.
+
+### TB-475: Add A Rust Real-Terrain Golden Trajectory Test
+
+Goal: Add a small Rust-level regression test that exercises terrain-driven trajectory behavior on a committed real-terrain fixture.
+
+Capability gap reduced: Gives the simulation core a meaningful terrain regression that can catch physical or numerical regressions without Python workflow indirection.
+
+Why this outranks alternatives: Core model regressions should be caught in Rust close to the dynamics and terrain code, especially before expanding AOI workflows.
+
+Inspect first:
+
+- `src/simulation.rs`
+- `src/terrain.rs`
+- `tests/terrain_edge_cases.rs`
+- `data/processed/tschamut2014/terrain.asc`
+
+Deliverables:
+
+- Add a Rust test using a small existing terrain fixture and deterministic release state.
+- Assert physically meaningful invariants such as finite samples, nonnegative energy, bounded jump height, plausible stop behavior, and no terrain lookup failure.
+
+Definition of done:
+
+- `cargo test` or the focused Rust test target passes, the test fails on obvious invalid terrain/trajectory behavior, and no Python script, contract, or administrative document is added.
+
+Boundaries: No tuning, no validation claim upgrade, no operational claim, no Balfrin submission, and no broad model rewrite unless required by the failing test.
+
+### TB-476: Reduce Extreme-Layer Instability In The Rust Model
+
+Goal: Investigate and reduce the instability behind `max_kinetic_energy` and `max_jump_height` using model or numerical changes rather than additional reporting.
+
+Capability gap reduced: Improves the most fragile current hazard-layer families.
+
+Why this outranks alternatives: Recent local evidence ranks these layers as the least stable scientific surfaces, and they directly affect hazard-map interpretability.
+
+Inspect first:
+
+- `src/dynamics.rs`
+- `src/integrator.rs`
+- `src/simulation.rs`
+- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
+
+Deliverables:
+
+- Identify one concrete model/numerical cause of avoidable extreme-layer sensitivity.
+- Implement the smallest Rust change that improves boundedness, interpolation, contact handling, energy accounting, or sampling stability.
+- Re-run the existing extreme-layer sensitivity smoke and relevant Rust tests to compare before/after behavior.
+
+Definition of done:
+
+- Focused checks pass, the measured extreme-layer sensitivity is no worse and at least one instability metric improves or the attempted model change is reverted with a smaller executable follow-up left in the backlog.
+
+Boundaries: No parameter tuning to fit outputs, no new audit/report script, no physical-credibility upgrade claim, no operational claim, no Balfrin submission, and no annual-frequency semantics.
+
+### TB-477: Run Multi-Release-Zone Hazard Accumulation Locally
+
+Goal: Execute a small multi-release-zone local hazard accumulation run and aggregate outputs into combined conditional layers.
+
+Capability gap reduced: Moves from single-zone demonstrations toward practical AOI hazard-map generation.
+
+Why this outranks alternatives: Real hazard products need multiple source areas; local multi-zone execution finds aggregation and output issues before larger HPC work.
+
+Inspect first:
+
+- `scripts/hazard_accumulation_benchmark.py`
+- `scripts/build_hazard_layers.py`
+- `tests/fixtures/aoi_scenario_preview/multi_zone_review_package_a.yaml`
+- `tests/fixtures/hazard/ensemble_case.yaml`
+
+Deliverables:
+
+- Run or adapt existing multi-zone fixture/input paths to produce combined conditional hazard layers locally.
+- Measure runtime, trajectory count, layer count, and output size from the run.
+
+Definition of done:
+
+- The multi-zone local run produces combined hazard layers, focused hazard accumulation tests pass, and the task is removed only after the measured output summary is recorded in the work log.
+
+Boundaries: No new orchestration scripts, no Balfrin submission, no scale-up authorization, no annualized probability, no operational claim, and no risk/exposure/vulnerability output.
+
+### TB-478: Compare Simulated Runout Against One Observed Fixture
+
+Goal: Compare one existing simulated runout/deposition output against an observed runout or deposition fixture using existing validation machinery.
+
+Capability gap reduced: Connects model output to observed evidence instead of only internal consistency.
+
+Why this outranks alternatives: A direct observed-vs-simulated comparison is the shortest path from technical workflow progress toward scientific credibility.
+
+Inspect first:
+
+- `validation/data/processed/tschamut/observed_deposition.csv`
+- `validation/data/processed/chant_sura_2020/observed_trajectories_contact.csv`
+- `src/validation.rs`
+- `validation/cases/validation_tschamut_baseline.yaml`
+
+Deliverables:
+
+- Run an existing validation case or make the smallest code/test adjustment needed to compute a clear observed-vs-simulated runout/deposition comparison.
+- Record the measured agreement metric and the main model discrepancy exposed by the comparison.
+
+Definition of done:
+
+- The comparison is executable locally, focused validation tests pass, the result is documented in the work log, and no new standalone report/checker script is added.
+
+Boundaries: No calibration, no parameter tuning, no external validation claim upgrade, no operational claim, no annual-frequency or physical-probability semantics, and no Balfrin submission.
+
+### TB-479: Improve Release-Zone Generation On Real Terrain
+
+Goal: Make existing terrain-based release-zone generation produce reviewable candidate zones on a real local AOI.
+
+Capability gap reduced: Reduces dependence on hand-authored or synthetic source-zone fixtures.
+
+Why this outranks alternatives: Real AOI hazard mapping cannot scale until candidate release zones are useful enough for human review.
+
+Inspect first:
+
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `src/geodata.rs`
+- `qgis/styles/candidate_source_zone.qml`
+
+Deliverables:
+
+- Use existing release-zone candidate code on a real local terrain input and improve the underlying selection or output shape if the candidates are empty, implausible, or hard to review.
+- Produce a candidate release-zone layer that loads with the existing QGIS style.
+
+Definition of done:
+
+- The candidate generation command produces non-empty, spatially plausible candidates for the selected AOI, focused release-zone tests pass, and no new planning/admin script is added.
+
+Boundaries: Human-review candidates only; no final source-zone interpretation, no tuning against outcomes, no operational claim, no Balfrin submission, and no scale-up claim.
+
+### TB-480: Make QGIS Hazard Outputs Immediately Reviewable
+
+Goal: Improve the generated hazard package contents so a reviewer can open the layers in QGIS with clear names, CRS, styles, and legends.
+
+Capability gap reduced: Turns hazard outputs into practical review products instead of raw files that require internal knowledge.
+
+Why this outranks alternatives: Scientific outputs need fast visual inspection; poor GIS packaging slows every real AOI iteration.
+
+Inspect first:
+
+- `scripts/package_aoi_hazard_map.py`
+- `scripts/hazard_output_writers.py`
+- `qgis/styles/aoi_qgis_style_bundle.json`
+- `tests/test_aoi_hazard_map_packager.py`
+
+Deliverables:
+
+- Improve existing package-writing code or style references so generated AOI packages include clear layer names, CRS metadata, style links, and review-ready ordering.
+- Verify the improvement against an existing package fixture or a freshly generated local AOI package.
+
+Definition of done:
+
+- Focused package tests pass, one generated package contains review-ready metadata/style references, and the work does not add a new connector, contract, or administrative layer.
+
+Boundaries: Packaging and usability only; no operational-map claim, no new QGIS plugin, no risk/exposure/vulnerability content, no Balfrin submission, and no annualized semantics.
+
+### TB-481: Profile And Optimize One Local Ensemble Hotspot
+
+Goal: Reduce runtime or memory for one actual local ensemble or hazard-layer run by profiling and optimizing the dominant hotspot.
+
+Capability gap reduced: Improves the practical path from local development to larger AOI ensembles.
+
+Why this outranks alternatives: Scaling progress should come from measured runtime or memory bottlenecks, not from more orchestration.
+
+Inspect first:
+
+- `src/simulation.rs`
+- `src/terrain.rs`
+- `scripts/hazard_accumulation_benchmark.py`
+- `validation/cases/performance_smoke.yaml`
+
+Deliverables:
+
+- Profile an existing local ensemble or performance smoke run.
+- Implement one targeted Rust or existing workflow-code optimization.
+- Record before/after runtime or memory on the same input.
+
+Definition of done:
+
+- The optimized path preserves test results, shows a measured runtime or memory improvement on the selected local case, and avoids adding new benchmark/admin scripts unless an existing benchmark entry is extended.
+
+Boundaries: No scale-up claim beyond the measured local case, no Balfrin submission, no distributed execution, no output semantics change, and no broad refactor without measured need.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
