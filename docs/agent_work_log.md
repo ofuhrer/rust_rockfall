@@ -6593,3 +6593,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local fixture-backed multi-zone accumulation only; no new orchestration scripts, no Balfrin submission, no scale-up authorization, no annualized probability, no operational claim, and no risk/exposure/vulnerability output.
 - Next task: `TB-478`
+
+### TB-478: Compare Simulated Runout Against One Observed Fixture
+
+- Date: 2026-05-24
+- Commit: to-be-recorded
+- Objective: compare simulated Tschamut runout/deposition against observed deposition evidence using existing validation machinery.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the existing `validation/cases/validation_tschamut_baseline.yaml` validation case against the committed Tschamut observed deposition fixture.
+  - The validation completed with `Passed` and wrote ignored local outputs at `validation/results/tschamut_baseline_metrics.json`, `validation/results/tschamut_baseline_trajectory.csv`, and `validation/results/tschamut_baseline_ensemble_deposition.csv`.
+  - Measured agreement metrics: `validation_release_count=10`, `validation_simulated_trajectory_count=60`, `observed_mean_runout_m=102.84352800000002`, `simulated_mean_runout_m=71.23501092796347`, `runout_distance_error_m=31.60851707203655`, `deposition_centroid_error_m=30.905269411165524`, `deposition_cloud_mean_nearest_error_m=25.230329123228408`, `deposition_cloud_overlap_fraction=0.43333333333333335`, and `lateral_spread_error_m=16.60955428373063`.
+  - Main exposed discrepancy: the current uncalibrated baseline under-runs the observed mean Tschamut runout by about `31.6 m` and leaves a roughly `30.9 m` deposition centroid error.
+  - Removed TB-478 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/cases/validation_tschamut_baseline.yaml`
+  - `jq '.metrics | {validation_release_count, validation_simulated_trajectory_count, observed_mean_runout_m, simulated_mean_runout_m, runout_distance_error_m, deposition_centroid_error_m, deposition_cloud_mean_nearest_error_m, deposition_cloud_overlap_fraction, lateral_spread_error_m}' validation/results/tschamut_baseline_metrics.json`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test config_io_terrain tschamut_validation_fixture_runs_reproducibly -- --nocapture`
+- Result/status: implemented_measured
+- Boundaries: local observed-vs-simulated comparison only; no calibration, no parameter tuning, no external validation claim upgrade, no operational claim, no annual-frequency or physical-probability semantics, and no Balfrin submission.
+- Next task: `TB-479`

@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-478: Compare Simulated Runout Against One Observed Fixture
-
-Goal: Compare one existing simulated runout/deposition output against an observed runout or deposition fixture using existing validation machinery.
-
-Capability gap reduced: Connects model output to observed evidence instead of only internal consistency.
-
-Why this outranks alternatives: A direct observed-vs-simulated comparison is the shortest path from technical workflow progress toward scientific credibility.
-
-Inspect first:
-
-- `validation/data/processed/tschamut/observed_deposition.csv`
-- `validation/data/processed/chant_sura_2020/observed_trajectories_contact.csv`
-- `src/validation.rs`
-- `validation/cases/validation_tschamut_baseline.yaml`
-
-Deliverables:
-
-- Run an existing validation case or make the smallest code/test adjustment needed to compute a clear observed-vs-simulated runout/deposition comparison.
-- Record the measured agreement metric and the main model discrepancy exposed by the comparison.
-
-Definition of done:
-
-- The comparison is executable locally, focused validation tests pass, the result is documented in the work log, and no new standalone report/checker script is added.
-
-Boundaries: No calibration, no parameter tuning, no external validation claim upgrade, no operational claim, no annual-frequency or physical-probability semantics, and no Balfrin submission.
-
 ### TB-479: Improve Release-Zone Generation On Real Terrain
 
 Goal: Make existing terrain-based release-zone generation produce reviewable candidate zones on a real local AOI.
