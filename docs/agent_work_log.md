@@ -8661,3 +8661,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: analysis only; no run, no operational claim, no physical-probability claim, no scale-up authorization, and no benchmark-as-validation claim.
 - Next task: `TB-569`
+
+### TB-569: Build A 16-Zone Reduced-Output Handoff Without Submission
+
+- Date: 2026-05-25
+- Commit: `0fa7c53`
+- Objective: generate a 16-zone reduced-output Balfrin handoff without submitting a job and preserve its exact pass/fail package status.
+- Files changed: `docs/balfrin_16_zone_handoff_tb569.md`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Ran a read-only Balfrin access preflight and fast-forwarded the Balfrin checkout to current `origin/main` before package review.
+  - Generated the 16-zone no-submit package under `/tmp/rust_rockfall/tb569_16_zone_handoff` with pressure scratch root `/tmp/rust_rockfall/tb569_16_zone_pressure`.
+  - Confirmed the package fails closed with `package_constraint_status: blocked`, no `sbatch`, and no submitted Balfrin job.
+  - Recorded concrete first blockers: scenario/reducer gate `release_zone_count` and handoff output-budget projection `output_file_count`.
+  - Added a regression test proving the 16-zone package stays fail-closed and exposes the recovery command.
+  - Removed TB-569 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb569_balfrin_preflight.json`
+  - `ssh ... 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD && git status --porcelain=v1 -uall'`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb569_16_zone_handoff --pressure-probe-root /tmp/rust_rockfall/tb569_16_zone_pressure --requested-release-zone-batch-size 16 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json --json-output /tmp/rust_rockfall/tb569_16_zone_handoff/package.json --text-output /tmp/rust_rockfall/tb569_16_zone_handoff/package.txt`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+- Result/status: implemented_blocked_report
+- Boundaries: no `sbatch`, no live submission, no distributed execution, no Swiss-wide claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-570`
