@@ -8534,3 +8534,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no downloads, no local copy, no staged geodata mutation, no second-site ensemble, no validation claim, and no operational claim.
 - Next task: `backlog_refill_needed`
+
+### TB-563: Sync Balfrin Checkout And Capture Live Capacity Window
+
+- Date: 2026-05-25
+- Commit: `44046a4`
+- Objective: align the Balfrin checkout with current `origin/main` and capture a live `postproc` capacity classification before any large-run action.
+- Files changed: `docs/balfrin_capacity_window_tb563.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded `/users/olifu/work/rust_rockfall` from `24bdc5d8ae61aa79b654151265613c5cf869c2dd` to `c4f5e202e30d9a1bb1cc1b398e0a87290e4065f9`.
+  - Preserved the sync transcript at `/tmp/tb563_balfrin_sync.txt`.
+  - Captured a fresh Balfrin access preflight at `/tmp/tb563_balfrin_preflight.json`; it reported `ready_for_read_only_collection`, `ready_for_pre_submit: true`, hygiene `pass`, and zero dirty paths.
+  - Captured a `postproc` queue/capacity snapshot at `/tmp/tb563_postproc_capacity_snapshot.txt` at `2026-05-25T19:07:05Z`.
+  - Classified the current run window as `run_now` because 11 `postproc` nodes were idle and no `olifu` jobs were present.
+  - Removed TB-563 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb563_balfrin_preflight.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin '...sinfo/squeue postproc snapshot...' >/tmp/tb563_postproc_capacity_snapshot.txt`
+- Result/status: implemented_measured
+- Boundaries: no `sbatch`, no generated artifact deletion, no non-`postproc` work, no scale-up claim, and no operational claim.
+- Next task: `TB-564`
