@@ -6942,3 +6942,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: regression/invariant coverage only; no new source-zone semantics, no tuning, no review vocabulary change, no operational claim, and no Balfrin dependency.
 - Next task: `TB-496`
+
+### TB-496: Regenerate Extreme-Layer Support Fixtures
+
+- Date: 2026-05-25
+- Commit: `c7ac0e2`
+- Objective: make extreme-layer support-count metadata executable in the local sensitivity smoke rather than relying only on historical manifests.
+- Files changed: `scripts/summarize_extreme_layer_sensitivity_smoke.py`, `tests/test_extreme_layer_sensitivity_smoke.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the existing extreme-layer smoke to look for `max_kinetic_energy_sample_count` and `max_jump_height_sample_count` beside the maximum-value layers.
+  - Added sample-support deltas for supported-cell counts, support Jaccard, support mismatch count, and support-count magnitude differences.
+  - Updated classification and text output so max-jump-height sensitivity can be tied to support/nodata and sample-count behavior, not only value-grid nodata.
+  - Fixture-generated small manifests now include both extreme value layers and their support-count layers, proving the metadata is present and consumed locally.
+  - The historical default manifests still measure value-layer deltas but report sample support metadata as missing, preserving backward-compatible fail-soft behavior.
+  - Removed TB-496 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_extreme_layer_sensitivity_smoke -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_extreme_layer_sensitivity_smoke.py --format json --json-output /tmp/tb496_extreme_smoke.json >/tmp/tb496_extreme_smoke_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_extreme_layer_sensitivity_smoke.py tests/test_extreme_layer_sensitivity_smoke.py tests/test_hazard_layers.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: local fixture/regression and smoke-summary support only; no layer value tuning, no hazard-meaning change, no operational claim, and no Balfrin dependency.
+- Next task: `TB-497`
