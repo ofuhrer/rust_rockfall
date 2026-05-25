@@ -60,6 +60,20 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report, second_report)
             self.assertEqual(first_report["probe_status"], "measured_scratch_root")
             self.assertEqual(first_report["manifest_mode"], "full")
+            generated = first_report["generated_scratch_root"]
+            self.assertEqual(Path(generated["root"]), probe_root.resolve())
+            self.assertEqual(generated["root_file_count"], first_report["root_file_count"])
+            self.assertEqual(generated["root_byte_count"], first_report["root_byte_count"])
+            self.assertEqual(generated["output_file_count"], first_report["output_file_count"])
+            self.assertEqual(generated["output_byte_count"], first_report["output_byte_count"])
+            self.assertEqual(
+                set(generated["manifest_paths"]),
+                {"command_plan", "probe_manifest", "regional_split_plan", "output_manifest", "merge_manifest"},
+            )
+            for path in generated["manifest_paths"].values():
+                self.assertTrue(Path(path).exists())
+            for byte_count in generated["manifest_size_by_path"].values():
+                self.assertGreater(byte_count, 0)
             self.assertEqual(first_report["regional_split_plan_schema_version"], "regional_split_execution_plan_v1")
             self.assertEqual(first_report["regional_split_plan_status"], "ready")
             self.assertEqual(first_report["merge_manifest"]["schema_version"], "regional_split_merge_manifest_v1")

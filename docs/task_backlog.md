@@ -66,32 +66,6 @@ Definition of done:
 
 Boundaries: No new live run, no silent fixture substitution, no scale-up claim, no distributed execution.
 
-### TB-552: Regenerate Reducer-Pressure Scratch Roots Deterministically
-
-Goal: Provide a deterministic command path that rematerializes the reducer-pressure scratch roots required by Balfrin scale planning.
-
-Capability gap reduced: Makes reducer-pressure evidence reproducible instead of depending on stale `/tmp` state.
-
-Why this outranks alternatives: TB-551 can make missing roots fail closed, but planning still needs a cheap way to rebuild the scratch evidence.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_reducer_pressure_gate.py`
-
-Deliverables:
-
-- Add or document an existing command that materializes the needed compact reducer-pressure roots under a caller-supplied scratch root.
-- Report the generated manifest paths and byte/file counts.
-
-Definition of done:
-
-- A focused test proves the scratch roots can be regenerated in `/tmp` and then consumed by the reducer-pressure gate.
-
-Boundaries: Local scratch generation only; no Balfrin submission, no large ensemble, no distributed execution.
-
 ### TB-553: Sync The Balfrin Remote Checkout To A Reviewed Commit
 
 Goal: Align the Balfrin remote checkout with the reviewed repository commit before any further package or submission work.

@@ -42,6 +42,16 @@ class MultiZoneReducerPressureGateTests(unittest.TestCase):
             self.assertEqual(report["gate_status"], "fixture_backed_ready")
             self.assertEqual(report["threshold_provenance"], "fixture_backed")
             self.assertEqual(report["target_profile"]["output_family_mix"], list(MODULE.DEFAULT_OUTPUT_FAMILY_MIX))
+            generated = report["target_profile"]["generated_scratch_root"]
+            self.assertEqual(Path(generated["root"]), probe_root.resolve())
+            self.assertGreater(generated["root_file_count"], report["target_profile"]["output_file_count"])
+            self.assertGreater(generated["root_byte_count"], report["target_profile"]["output_byte_count"])
+            self.assertEqual(
+                set(generated["manifest_paths"]),
+                {"command_plan", "probe_manifest", "regional_split_plan", "output_manifest", "merge_manifest"},
+            )
+            for path in generated["manifest_paths"].values():
+                self.assertTrue(Path(path).exists())
             self.assertEqual(report["validation_output_inventory"]["validation_output_mode"], "rebuildable_reduced_output")
             self.assertIn("trajectory_csv", report["validation_output_inventory"]["replay_critical_output_families"])
             self.assertIn("diagnostics_json", report["validation_output_inventory"]["replay_critical_output_families"])

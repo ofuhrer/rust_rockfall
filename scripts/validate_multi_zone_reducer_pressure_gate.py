@@ -141,6 +141,7 @@ def _profile_measurements(report: dict[str, Any]) -> dict[str, Any]:
         "sidecar_family_bytes": dict(report.get("sidecar_family_bytes") or {}),
         "primary_output_family_file_counts": dict(report.get("primary_output_family_file_counts") or {}),
         "primary_output_family_bytes": dict(report.get("primary_output_family_bytes") or {}),
+        "generated_scratch_root": dict(report.get("generated_scratch_root") or {}),
     }
 
 

@@ -445,6 +445,21 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     output_root = probe_root / "output"
     output_file_count = sum(1 for path in output_root.rglob("*") if path.is_file())
     output_byte_count = sum(path.stat().st_size for path in output_root.rglob("*") if path.is_file())
+    generated_scratch_root = {
+        "root": str(probe_root),
+        "manifest_paths": {
+            "command_plan": str(command_plan_path),
+            "probe_manifest": str(probe_manifest_path),
+            "regional_split_plan": str(regional_split_plan_path),
+            "output_manifest": str(output_manifest_path),
+            "merge_manifest": str(merge_manifest_path),
+        },
+        "manifest_size_by_path": manifest_size_by_path,
+        "root_file_count": root_file_count,
+        "root_byte_count": root_byte_count,
+        "output_file_count": output_file_count,
+        "output_byte_count": output_byte_count,
+    }
     budget_totals = measure_output_budget(
         output_family_file_counts=output_family_file_counts,
         output_family_bytes=output_family_bytes,
@@ -473,6 +488,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "regional_split_plan_path": str(regional_split_plan_path),
         "output_manifest_path": str(output_manifest_path),
         "merge_manifest_path": str(merge_manifest_path),
+        "generated_scratch_root": generated_scratch_root,
         "regional_split_plan_schema_version": regional_split_plan.get("schema_version"),
         "regional_split_plan_status": regional_split_plan.get("status"),
         "regional_split_plan": regional_split_plan,
