@@ -69,6 +69,10 @@ def build_report() -> dict[str, Any]:
     source_reports = build_source_reports()
     active_tasks = task_context.parse_active_tasks(task_context.read_backlog())
     recommendations = build_recommendations(source_reports)
+    interpretation_gate = build_local_map_interpretation_gate(
+        source_reports["denominator"],
+        source_reports["traceability"],
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -76,6 +80,7 @@ def build_report() -> dict[str, Any]:
         "active_task_count": len(active_tasks),
         "active_task_ids": [task.task_id for task in active_tasks],
         "source_report_statuses": source_statuses(source_reports),
+        "local_map_interpretation_gate": interpretation_gate,
         "ranked_followups": recommendations,
         "claim_boundaries": {
             "live_balfrin_access_required": False,
@@ -88,6 +93,56 @@ def build_report() -> dict[str, Any]:
             "backlog_modified": False,
         },
         "recommended_backlog_size": len(recommendations),
+}
+
+
+def build_local_map_interpretation_gate(
+    denominator_report: dict[str, Any],
+    traceability_report: dict[str, Any],
+) -> dict[str, Any]:
+    denominator_ready = denominator_report.get("audit_status") == "complete"
+    traceability_ready = traceability_report.get("audit_status") == "traceable"
+    failing_evidence = []
+    if not denominator_ready:
+        failing_evidence.append(
+            {
+                "audit": "conditional_denominator_provenance",
+                "status": denominator_report.get("audit_status", "unknown"),
+                "missing_or_failed": list(denominator_report.get("missing_evidence") or []),
+                "next_local_follow_up": denominator_report.get("next_local_follow_up", ""),
+            }
+        )
+    if not traceability_ready:
+        failing_evidence.append(
+            {
+                "audit": "trajectory_deposition_traceability",
+                "status": traceability_report.get("audit_status", "unknown"),
+                "missing_or_failed": list(traceability_report.get("missing_or_failed_checks") or []),
+                "next_local_follow_up": traceability_report.get("next_local_follow_up", ""),
+            }
+        )
+    return {
+        "schema_version": "local_map_interpretation_gate_v1",
+        "gate_status": "ready_for_conditional_map_interpretation" if not failing_evidence else "blocked_missing_interpretation_evidence",
+        "denominator_audit_status": denominator_report.get("audit_status", "unknown"),
+        "traceability_audit_status": traceability_report.get("audit_status", "unknown"),
+        "failing_evidence": failing_evidence,
+        "required_command": (
+            "PYENV_VERSION=system uv run python scripts/audit_conditional_denominator_provenance.py --format json "
+            "&& PYENV_VERSION=system uv run python scripts/audit_trajectory_deposition_traceability.py --format json"
+        ),
+        "next_local_recovery_command": (
+            failing_evidence[0]["next_local_follow_up"]
+            if failing_evidence
+            else "Proceed only with conditional diagnostic map interpretation; preserve denominator and deposition traceability in the interpretation note."
+        ),
+        "claim_boundaries": {
+            "conditional_diagnostic_interpretation_only": True,
+            "annual_frequency_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "operational_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+        },
     }
 
 
@@ -164,7 +219,7 @@ def build_recommendations(source_reports: dict[str, dict[str, Any]]) -> list[dic
             "task_seed": "Promote Denominator And Deposition Audits Into A Local Interpretation Gate",
             "track_id": "conditional_layer_interpretation_gate",
             "source_reports": ["denominator", "traceability"],
-            "dependency_status": f"denominator={denominator_report['audit_status']}; traceability={traceability_report['audit_status']}",
+            "dependency_status": build_local_map_interpretation_gate(denominator_report, traceability_report)["gate_status"],
             "why_now": "The denominator and deposition traceability checks are complete and can guard future map interpretation tasks.",
             "suggested_command": "PYENV_VERSION=system uv run python scripts/audit_conditional_denominator_provenance.py --format json && PYENV_VERSION=system uv run python scripts/audit_trajectory_deposition_traceability.py --format json",
             "expected_measurement": "one local gate report names denominator provenance and deposition traceability before map interpretation",
@@ -218,6 +273,16 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("claim_boundaries:")
     for key, value in report["claim_boundaries"].items():
         lines.append(f"  {key}: {value}")
+    gate = report["local_map_interpretation_gate"]
+    lines.append("local_map_interpretation_gate:")
+    lines.append(f"  gate_status: {gate['gate_status']}")
+    lines.append(f"  denominator_audit_status: {gate['denominator_audit_status']}")
+    lines.append(f"  traceability_audit_status: {gate['traceability_audit_status']}")
+    lines.append(f"  required_command: {gate['required_command']}")
+    if gate["failing_evidence"]:
+        lines.append("  failing_evidence:")
+        for item in gate["failing_evidence"]:
+            lines.append(f"    - {item['audit']}: {item['status']}")
     lines.append("ranked_followups:")
     for item in report["ranked_followups"]:
         lines.append(f"  {item['rank']}. {item['track_id']}: {item['task_seed']}")

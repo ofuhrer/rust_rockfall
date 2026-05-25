@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-539: Promote Denominator And Deposition Audits Into A Single Interpretation Gate
-
-Goal: Make map interpretation fail closed unless conditional denominator provenance and trajectory-to-deposition traceability are both explicit.
-
-Capability gap reduced: Prevents local scientific summaries from treating deposition outputs as interpretable when the denominator or traceability semantics are ambiguous.
-
-Why this outranks alternatives: A combined interpretation gate removes a recurring source of false confidence without adding a new workflow surface.
-
-Inspect first:
-
-- `scripts/audit_conditional_denominator_provenance.py`
-- `scripts/audit_trajectory_deposition_traceability.py`
-- `scripts/recommend_local_scientific_backlog.py`
-- `tests/test_conditional_denominator_provenance.py`
-- `tests/test_trajectory_deposition_traceability.py`
-
-Deliverables:
-
-- Thread the two existing audits into one existing recommendation or audit output that clearly passes or fails map interpretation readiness.
-- Add focused tests for the combined fail-closed and pass cases.
-
-Definition of done:
-
-- The local recommendation or audit command reports one interpretation gate result with exact failing evidence and the next executable local recovery command.
-
-Boundaries: Consolidate existing audits only; no new standalone dashboard, no claim upgrade, no annual-frequency semantics, and no tuning.
-
 ### TB-540: Wire Holdout And Calibration Separation Into Validation Guardrails
 
 Goal: Ensure validation evidence summaries warn or fail closed when holdout overlap or selected-parameter leakage is detected.

@@ -17,6 +17,14 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         self.assertEqual(report["source_report_statuses"]["denominator"], "complete")
         self.assertEqual(report["source_report_statuses"]["traceability"], "traceable")
         self.assertEqual(report["source_report_statuses"]["sensitivity"], "measured")
+        self.assertEqual(
+            report["local_map_interpretation_gate"]["gate_status"],
+            "ready_for_conditional_map_interpretation",
+        )
+        self.assertIn(
+            "audit_conditional_denominator_provenance.py",
+            report["local_map_interpretation_gate"]["required_command"],
+        )
 
     def test_recommendations_include_dependencies_and_boundaries(self) -> None:
         report = recommendation.build_report()
@@ -35,11 +43,38 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         self.assertFalse(boundaries["operational_claims_allowed"])
         self.assertFalse(boundaries["backlog_modified"])
 
+        gate_boundaries = report["local_map_interpretation_gate"]["claim_boundaries"]
+        self.assertTrue(gate_boundaries["conditional_diagnostic_interpretation_only"])
+        self.assertFalse(gate_boundaries["physical_probability_claims_allowed"])
+
+    def test_interpretation_gate_fails_closed_on_missing_evidence(self) -> None:
+        gate = recommendation.build_local_map_interpretation_gate(
+            {
+                "audit_status": "blocked_missing_denominator_evidence",
+                "missing_evidence": ["missing denominator"],
+                "next_local_follow_up": "repair denominator command",
+            },
+            {
+                "audit_status": "blocked_missing_traceability",
+                "missing_or_failed_checks": ["hazard_deposition_density_layer"],
+                "next_local_follow_up": "repair traceability command",
+            },
+        )
+
+        self.assertEqual(gate["gate_status"], "blocked_missing_interpretation_evidence")
+        self.assertEqual([item["audit"] for item in gate["failing_evidence"]], [
+            "conditional_denominator_provenance",
+            "trajectory_deposition_traceability",
+        ])
+        self.assertEqual(gate["next_local_recovery_command"], "repair denominator command")
+
     def test_text_report_names_tracks(self) -> None:
         text = recommendation.render_text_report(recommendation.build_report())
 
         self.assertIn("second_site_terrain_crop_extent_repair", text)
         self.assertIn("conditional_layer_interpretation_gate", text)
+        self.assertIn("local_map_interpretation_gate:", text)
+        self.assertIn("ready_for_conditional_map_interpretation", text)
         self.assertIn("holdout_calibration_guardrail_integration", text)
         self.assertIn("scale_up_authorized: False", text)
 
