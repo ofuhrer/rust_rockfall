@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-484: Run Candidate-Based Tschamut Local Comparison
-
-Goal: Run a local Tschamut validation or hazard smoke using the reviewed candidate/scenario inputs and compare the output against the observed Tschamut fixture.
-
-Capability gap reduced: Produces direct scientific feedback on whether reviewed candidate inputs improve or worsen observed runout/deposition agreement.
-
-Why this outranks alternatives: The current measured baseline under-runs observed mean runout by about 31.6 m, and the next useful step is measured comparison, not more planning.
-
-Inspect first:
-
-- `validation/cases/validation_tschamut_baseline.yaml`
-- `validation/data/processed/tschamut/observed_deposition.csv`
-- `scripts/run_tschamut_calibration.py`
-- `tests/config_io_terrain.rs`
-
-Deliverables:
-
-- Execute the smallest existing local comparison path that uses the reviewed candidate/scenario inputs.
-- Record runout distance error, deposition centroid error, deposition overlap, and lateral spread error beside the previous baseline numbers.
-
-Definition of done:
-
-- The comparison command completes or fails with a concrete reproducible blocker, focused validation tests pass, and the task records whether the candidate/scenario change improved, degraded, or left unchanged the measured agreement.
-
-Boundaries: Comparison only; no parameter tuning, calibration, physical-probability, annual-frequency, operational, or external validation claim.
-
 ### TB-485: Add A Chant Sura Real-Terrain Rust Regression
 
 Goal: Add a Rust-level regression that exercises the simulation core on the committed Chant Sura / Fluelapass terrain fixture.

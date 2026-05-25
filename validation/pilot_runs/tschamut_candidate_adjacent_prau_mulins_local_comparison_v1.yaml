@@ -1,0 +1,76 @@
+schema_version: candidate_source_zone_local_comparison_v1
+record_id: tschamut_candidate_adjacent_prau_mulins_local_comparison_v1
+task_id: TB-484
+date: '2026-05-25'
+execution_status: completed
+scientific_interpretation: degraded_relative_to_observed_release_baseline
+classification_rationale: >
+  The reviewed adjacent Prau Mulins source-zone smoke completed locally against
+  the public Tschamut LV95 terrain and observed deposition fixture, but the
+  candidate-source runout and deposition cloud are much farther from the
+  observed fixture than the prior observed-release baseline. This is useful
+  negative scientific feedback: the adjacent reviewed candidate should not be
+  treated as improving the observed Tschamut comparison without different source
+  interpretation, calibration, or additional field evidence.
+inputs:
+  reviewed_source_zone_metadata: hazard/results/tb483_reviewed_adjacent_scenarios/source_zone_metadata.yaml
+  reviewed_release_rows: hazard/results/tb483_reviewed_adjacent_scenarios/release_rows.csv
+  reviewed_scenario_table: hazard/results/tb483_reviewed_adjacent_scenarios/scenario_table.csv
+  scratch_case: validation/results/tb484_candidate_local_comparison/candidate_release_zone_case.yaml
+  scratch_release_zone_metadata: validation/results/tb484_candidate_local_comparison/candidate_release_zone_metadata.yaml
+  terrain: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+  observed_deposition: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+candidate_local_smoke:
+  command: PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/results/tb484_candidate_local_comparison/candidate_release_zone_case.yaml
+  release_zone_point_count: 60.0
+  observed_mean_runout_m: 102.84352800000002
+  simulated_mean_runout_m: 5.741224328825325
+  runout_distance_error_m: 97.1023036711747
+  deposition_centroid_error_m: 235.77209866421458
+  deposition_cloud_mean_nearest_error_m: 204.92526761982197
+  deposition_cloud_overlap_fraction: 0.0
+  lateral_spread_error_m: 6.980220536346668
+prior_baselines:
+  observed_release_local_baseline:
+    source_record: validation/cases/validation_tschamut_baseline.yaml
+    validation_release_count: 10.0
+    validation_simulated_trajectory_count: 60.0
+    observed_mean_runout_m: 102.84352800000002
+    simulated_mean_runout_m: 71.23501092796347
+    runout_distance_error_m: 31.60851707203655
+    deposition_centroid_error_m: 30.905269411165524
+    deposition_cloud_mean_nearest_error_m: 25.230329123228408
+    deposition_cloud_overlap_fraction: 0.43333333333333335
+    lateral_spread_error_m: 16.60955428373063
+  public_target_gate_observed_release_baseline:
+    source_record: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+    validation_release_count: 10.0
+    validation_simulated_trajectory_count: 1000.0
+    observed_mean_runout_m: 102.84352800000002
+    simulated_mean_runout_m: 72.06819369632703
+    runout_distance_error_m: 30.77533430367299
+    deposition_centroid_error_m: 30.218287182188995
+    deposition_cloud_mean_nearest_error_m: 23.869086482077364
+    deposition_cloud_overlap_fraction: 0.761
+    lateral_spread_error_m: 16.857580834708518
+comparison:
+  runout_distance_error_delta_vs_local_baseline_m: 65.49378659913815
+  deposition_centroid_error_delta_vs_local_baseline_m: 204.86682925304906
+  deposition_overlap_delta_vs_local_baseline: -0.43333333333333335
+  lateral_spread_error_delta_vs_local_baseline_m: -9.629333747383962
+  runout_distance_error_delta_vs_public_target_gate_m: 66.3269693675017
+  deposition_centroid_error_delta_vs_public_target_gate_m: 205.55381148202558
+  deposition_overlap_delta_vs_public_target_gate: -0.761
+  lateral_spread_error_delta_vs_public_target_gate_m: -9.87736029836185
+notes:
+  - The scratch Rust release-zone metadata samples the reviewed candidate polygon
+    with 60 deterministic points to match the reviewed scenario trajectory-count
+    target for a local smoke comparison.
+  - The resulting candidate cloud is too short-runout and spatially displaced
+    from the observed Tschamut deposition fixture.
+  - The lower lateral-spread error is not an improvement signal because the
+    centroid, runout, and overlap metrics all degrade substantially.
+boundaries:
+  - No parameter tuning, calibration, annual frequency, physical probability, or
+    operational hazard claim is made.
+  - This record compares local diagnostic outputs only.

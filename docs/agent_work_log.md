@@ -6723,3 +6723,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: scenario inputs and preview only; no physical source frequency, annualized probability, risk/exposure/vulnerability, operational claim, scale-up claim, or Balfrin execution.
 - Next task: `TB-484`
+
+### TB-484: Run Candidate-Based Tschamut Local Comparison
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: run a local Tschamut comparison using reviewed candidate/scenario inputs and record whether agreement improves or degrades against the observed fixture.
+- Files changed: `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Created ignored scratch validation inputs under `validation/results/tb484_candidate_local_comparison` to run the reviewed adjacent Prau Mulins candidate polygon as a Rust `release_zone` against the public Tschamut LV95 terrain and observed deposition fixture.
+  - Used 60 deterministic source-zone samples to match the reviewed scenario `trajectory_count` target from TB-483 without adding a new workflow or tuning parameters.
+  - The local comparison completed and produced negative scientific feedback: `simulated_mean_runout_m=5.741224328825325`, `runout_distance_error_m=97.1023036711747`, `deposition_centroid_error_m=235.77209866421458`, `deposition_cloud_mean_nearest_error_m=204.92526761982197`, `deposition_cloud_overlap_fraction=0.0`, and `lateral_spread_error_m=6.980220536346668`.
+  - Recorded the result beside the prior observed-release baselines in `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`.
+  - Classified the candidate/scenario change as degraded relative to both the local observed-release baseline and the public target-gate observed-release baseline.
+  - Removed TB-484 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/results/tb484_candidate_local_comparison/candidate_release_zone_case.yaml`
+  - `jq '.metrics | {release_zone_point_count, observed_mean_runout_m, simulated_mean_runout_m, runout_distance_error_m, deposition_centroid_error_m, deposition_cloud_mean_nearest_error_m, deposition_cloud_overlap_fraction, lateral_spread_error_m}' validation/results/tb484_candidate_local_comparison/metrics.json`
+- Result/status: implemented_measured
+- Boundaries: local comparison only; no parameter tuning, calibration, annual frequency, physical probability, source-acceptance upgrade, operational claim, or Balfrin execution.
+- Next task: `TB-485`
