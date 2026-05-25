@@ -8337,3 +8337,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: clean-checkout fail-closed behavior only; no live run, silent fixture substitution, scale-up claim, or distributed execution.
 - Next task: `TB-553`
+
+### TB-553: Sync The Balfrin Remote Checkout To A Reviewed Commit
+
+- Date: 2026-05-25
+- Commit: `74b76a5`
+- Objective: align the Balfrin remote checkout with the reviewed repository commit before further package or submission work.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the Balfrin remote access preflight before mutation; SSH, remote clone, run-root visibility, scheduler query, and checkout hygiene all passed.
+  - Published the reviewed local commits to `origin/main` because the local reviewed HEAD was ahead of GitHub and therefore not fetchable from Balfrin.
+  - Fast-forwarded `/users/olifu/work/rust_rockfall` on Balfrin from `faef6d8ec055b0a9457932d4659a4c5f7f4c7399` to `34572af115b0997734f0a55142e0c3a3af6358da`.
+  - Reran the Balfrin access preflight; checkout hygiene remained `pass` with `dirty_path_count=0`.
+  - Generated a regional split package against the fresh preflight; remote-head alignment reported `ready_remote_head_aligned` and the package reported `ready_for_bounded_postproc_submission`.
+  - Removed TB-553 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb553_preflight_before.json`
+  - `git push origin main`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'cd /users/olifu/work/rust_rockfall && git fetch origin main && git merge --ff-only origin/main'`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb553_preflight_after.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --balfrin-access-preflight-json /tmp/tb553_preflight_after.json --artifact-dir /tmp/tb553_regional_split_package --format json >/tmp/tb553_regional_split_package.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package -v`
+- Result/status: implemented_measured
+- Boundaries: remote git hygiene only; no `sbatch`, no live run, no generated artifact deletion, no non-postproc partition, and no scale-up or operational claim.
+- Next task: `TB-554`
