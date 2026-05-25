@@ -8387,6 +8387,27 @@ scan thousands of lines of completed history.
 - Boundaries: evidence comparison only; no new live run, no Swiss-wide authorization, no physical-probability or annual-frequency semantics, and no new dashboard/report script.
 - Next task: `TB-556`
 
+### TB-556: Build The Next Reduced-Output Balfrin Probe Handoff
+
+- Date: 2026-05-25
+- Commit: `bc9b243`
+- Objective: generate a current reduced-output Balfrin probe handoff that is reviewable without submitting a job.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a structured `no_submit_handoff_contract` to the multi-release-zone handoff package with exact review and later submit-gate commands.
+  - Threaded ignored roots, rebuildable-reduced output defaults, measured reducer limits, scenario limits, no-submit semantics, and claim boundaries into one review surface.
+  - Kept the package fail-closed by returning a single first blocker with a recovery command when required inputs, reducer/scenario limits, or review readiness block the handoff.
+  - Isolated the handoff test's reducer-pressure scratch root so it no longer depends on a shared `/tmp` probe root.
+  - Materialized the TB-556 package at `/tmp/rust_rockfall/tb556_reduced_output_handoff`; it reported `ready_for_review`, `rebuildable_reduced_output`, and no submission attempts.
+  - Removed TB-556 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb556_reduced_output_handoff --pressure-probe-root /tmp/rust_rockfall/tb556_reduced_output_pressure_probe --format json >/tmp/tb556_handoff.json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb556_preflight.json`
+- Result/status: implemented_measured
+- Boundaries: no `sbatch`, no live submission, no scale-up claim, no distributed execution, and no operational semantics.
+- Next task: `TB-557`
+
 ### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
 
 - Date: 2026-05-25
