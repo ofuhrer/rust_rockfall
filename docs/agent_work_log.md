@@ -7572,3 +7572,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: rebuildability regression only; no new output mode, no operational claim, no remote execution, and no Balfrin dependency.
 - Next task: `TB-521`
+
+### TB-521: Vectorize A Hot Grid Reduction Loop
+
+- Date: 2026-05-25
+- Commit: `1fb5a47`
+- Objective: speed up exact-output grid reduction helpers used by hazard-layer normalization and reducer merging.
+- Files changed: `scripts/build_hazard_layers.py`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Replaced `scaled_grid()`'s copy-then-mutate path with a one-pass nested list construction that preserves `NODATA` exactly.
+  - Tightened `add_grid_into()` to use direct target/source row pairing and mutate the target row directly.
+  - Added focused helper coverage to prove exact values, `NODATA`, and source-grid immutability are preserved.
+  - Ran a local microbenchmark against the previous loop shape on a 180x180 grid: `scaled_grid` improved from `0.106483s` to `0.079174s` for 80 iterations (`1.345x`), and `add_grid_into` improved from `0.121681s` to `0.112571s` (`1.081x`).
+  - Ran the hazard accumulation benchmark; baseline/replay determinism and layer-signature parity remained true.
+  - Removed TB-521 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_grid_reduction_helpers_preserve_exact_values tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_accumulation_benchmark -v`
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --benchmark-root /tmp/tb521_hazard_accumulation_benchmark --format json --json-output /tmp/tb521_hazard_accumulation_benchmark.json > /tmp/tb521_hazard_accumulation_benchmark_stdout.json`
+  - local `timeit` microbenchmark comparing old/new `scaled_grid` and `add_grid_into` loop shapes
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/build_hazard_layers.py tests/test_hazard_layers.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local performance only; no output semantics change, no new dependency, no physics change, no claim upgrade, and no Balfrin dependency.
+- Next task: `TB-522`
