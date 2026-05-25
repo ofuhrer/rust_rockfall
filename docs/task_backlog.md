@@ -39,6 +39,325 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+### TB-482: Freeze Reviewed Adjacent Tschamut Source Zones
+
+Goal: Turn the existing adjacent real-terrain release-zone candidate review into a concrete accepted/rejected source-zone input for the next local run.
+
+Capability gap reduced: Moves release-zone generation from broad candidate output toward reviewable, reusable real-terrain source-zone evidence.
+
+Why this outranks alternatives: Scenario regeneration and scientific comparison need a reviewed source-zone subset rather than another unconstrained candidate sweep.
+
+Inspect first:
+
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review.csv`
+- `validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json`
+- `tests/test_plan_terrain_release_zone_candidates.py`
+
+Deliverables:
+
+- Apply the existing candidate-review path to produce an accepted/rejected adjacent Tschamut source-zone artifact or update the existing review output if it is stale.
+- Verify the accepted subset is non-empty, spatially inspectable as GeoJSON/mask output, and explicitly separates accepted, rejected, and unreviewed candidates.
+
+Definition of done:
+
+- Focused candidate-review tests pass, the accepted source-zone subset can be consumed by the existing scenario-generation path, and no new planning/admin script is added.
+
+Boundaries: Human-review source-zone evidence only; no release-frequency, physical-probability, calibration, operational, or final source-zone interpretation claim.
+
+### TB-483: Regenerate Scenarios From Reviewed Source Zones
+
+Goal: Generate a fresh scenario table from the reviewed adjacent Tschamut source-zone subset and run the smallest local scenario preview or smoke path that consumes it.
+
+Capability gap reduced: Connects reviewed release-zone evidence to executable scenario inputs instead of leaving candidates disconnected from simulations.
+
+Why this outranks alternatives: The next scientific comparison depends on running scenarios derived from reviewed source zones, not stale hand-authored tables.
+
+Inspect first:
+
+- `scripts/generate_candidate_source_zone_scenarios.py`
+- `scripts/generate_tschamut_block_scenario_tables.py`
+- `scripts/preview_aoi_scenario_cost_estimate.py`
+- `tests/test_candidate_source_zone_scenario_stress.py`
+- `tests/test_tschamut_block_scenario_table_generation.py`
+
+Deliverables:
+
+- Regenerate or update an existing scenario table from the reviewed candidate source zones.
+- Execute the existing scenario preview/cost-estimate path on that table and record concrete scenario counts, sampling weights, and expected output pressure.
+
+Definition of done:
+
+- Scenario-generation tests pass, the regenerated table is consumed by an existing preview command, and no new connector, contract, or standalone report script is added.
+
+Boundaries: Scenario inputs only; no physical source frequency, annualized probability, risk/exposure/vulnerability, or operational claim.
+
+### TB-484: Run Candidate-Based Tschamut Local Comparison
+
+Goal: Run a local Tschamut validation or hazard smoke using the reviewed candidate/scenario inputs and compare the output against the observed Tschamut fixture.
+
+Capability gap reduced: Produces direct scientific feedback on whether reviewed candidate inputs improve or worsen observed runout/deposition agreement.
+
+Why this outranks alternatives: The current measured baseline under-runs observed mean runout by about 31.6 m, and the next useful step is measured comparison, not more planning.
+
+Inspect first:
+
+- `validation/cases/validation_tschamut_baseline.yaml`
+- `validation/data/processed/tschamut/observed_deposition.csv`
+- `scripts/run_tschamut_calibration.py`
+- `tests/config_io_terrain.rs`
+
+Deliverables:
+
+- Execute the smallest existing local comparison path that uses the reviewed candidate/scenario inputs.
+- Record runout distance error, deposition centroid error, deposition overlap, and lateral spread error beside the previous baseline numbers.
+
+Definition of done:
+
+- The comparison command completes or fails with a concrete reproducible blocker, focused validation tests pass, and the task records whether the candidate/scenario change improved, degraded, or left unchanged the measured agreement.
+
+Boundaries: Comparison only; no parameter tuning, calibration, physical-probability, annual-frequency, operational, or external validation claim.
+
+### TB-485: Add A Chant Sura Real-Terrain Rust Regression
+
+Goal: Add a Rust-level regression that exercises the simulation core on the committed Chant Sura / Fluelapass terrain fixture.
+
+Capability gap reduced: Reduces second-site dependence on Python workflow checks by proving the Rust model can run on the second real terrain fixture.
+
+Why this outranks alternatives: Second-site portability is currently only partially proven; a Rust-level real-terrain test is a durable scientific and engineering guardrail.
+
+Inspect first:
+
+- `tests/terrain_edge_cases.rs`
+- `validation/cases/chant_sura_contact.yaml`
+- `data/processed/chant_sura_2020/terrain_rf16_contact.asc`
+- `src/simulation.rs`
+
+Deliverables:
+
+- Add a deterministic Chant Sura real-terrain trajectory regression to an existing Rust test target.
+- Assert finite bounded kinematics, non-trivial movement, and successful terrain lookup along the simulated path.
+
+Definition of done:
+
+- The focused Rust test and surrounding terrain edge-case tests pass, and the new test does not add generated fixtures or broaden runtime beyond committed local data.
+
+Boundaries: Regression coverage only; no calibration, tuning, validation claim upgrade, operational claim, or Balfrin execution.
+
+### TB-486: Reduce Extreme-Layer Support And Nodata Fragility
+
+Goal: Use the existing extreme-layer sensitivity smoke to implement one concrete mitigation for avoidable support/nodata instability in hazard layers.
+
+Capability gap reduced: Makes conditional intensity layers less brittle under small support or nodata perturbations.
+
+Why this outranks alternatives: Extreme kinetic-energy and jump-height layers are scientifically fragile; improving support stability is more useful than adding another audit surface.
+
+Inspect first:
+
+- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
+- `scripts/build_hazard_layers.py`
+- `tests/test_extreme_layer_sensitivity_smoke.py`
+- `tests/test_hazard_layers.py`
+
+Deliverables:
+
+- Identify the dominant support/nodata sensitivity exposed by the existing smoke output.
+- Implement one targeted hazard-layer or support-handling change that reduces the measured mismatch or clearly fails closed when the layer is unsupported.
+
+Definition of done:
+
+- Focused hazard-layer and extreme-sensitivity tests pass, before/after smoke metrics are recorded, and the change does not alter output semantics without an explicit measured reason.
+
+Boundaries: Local conditional-layer stability only; no tuning, no physical credibility upgrade, no annualized semantics, no operational claim, and no new audit script.
+
+### TB-487: Optimize The Next Hazard Writer Hotspot
+
+Goal: Profile the local hazard accumulation benchmark after compact chunk-state output and optimize the next dominant writer or serialization hotspot.
+
+Capability gap reduced: Improves local-to-scale throughput by reducing measured hazard-output overhead.
+
+Why this outranks alternatives: TB-481 removed one bottleneck; the next performance task should follow the profile rather than guessing.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/hazard_accumulation_benchmark.py`
+- `scripts/hazard_output_writers.py`
+- `tests/test_hazard_accumulation_benchmark.py`
+- `tests/test_hazard_layers.py`
+
+Deliverables:
+
+- Capture before/after profile and runtime measurements on the same benchmark root.
+- Implement one targeted optimization in an existing writer/serializer/reducer path and preserve output parity.
+
+Definition of done:
+
+- The optimized path shows measured runtime or output-size improvement on the selected local case, focused tests pass, and no new benchmark/admin script is added.
+
+Boundaries: Local performance optimization only; no output semantics change, no distributed execution, no scale-up claim, and no Balfrin submission.
+
+### TB-488: Extend The Local Multi-Zone Scaling Ladder
+
+Goal: Run the existing local multi-zone scaling ladder after recent reducer/writer changes and advance the first blocker by reducing one measured bottleneck if feasible.
+
+Capability gap reduced: Keeps scale decisions tied to current measured reducer/output behavior rather than stale ladder results.
+
+Why this outranks alternatives: Larger Balfrin runs should be informed by the latest local reducer and output-pressure evidence.
+
+Inspect first:
+
+- `scripts/summarize_multi_zone_scaling_ladder.py`
+- `scripts/summarize_bounded_reducer_runtime_scaling.py`
+- `scripts/validate_multi_zone_reducer_pressure_gate.py`
+- `tests/test_multi_zone_scaling_ladder.py`
+- `tests/test_bounded_reducer_runtime_scaling.py`
+
+Deliverables:
+
+- Re-run the existing local scaling ladder and record the current first blocker.
+- If the first blocker is a bounded local output/runtime issue, implement one targeted existing-path reduction and re-measure.
+
+Definition of done:
+
+- Scaling-ladder tests pass, before/after ladder metrics are recorded, and the next blocker is smaller, later, or explicitly unchanged with evidence.
+
+Boundaries: Local bounded scaling evidence only; no Swiss-wide claim, no distributed execution, no operational claim, and no new scale dashboard.
+
+### TB-489: Execute The Next Bounded Balfrin Postproc Probe
+
+Goal: Run the next repository-gated bounded Balfrin `postproc` probe that is ready after local candidate/scenario and output-pressure checks.
+
+Capability gap reduced: Converts scale readiness into measured execution evidence instead of projection-only status.
+
+Why this outranks alternatives: The current scale frontier needs measured larger multi-zone hazard execution, not another local-only summary.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/validate_output_budget_reducer_gate.py`
+- `scripts/submit_balfrin_probe.py`
+- `validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml`
+
+Deliverables:
+
+- Run the existing readiness/access/output-budget gates and submit only if they are ready under the standing `postproc` clearance.
+- Preserve the run root and collect runtime, memory, output-file, output-byte, reducer, and manifest metrics using existing collectors.
+
+Definition of done:
+
+- Either one bounded `postproc` run completes with preserved measured evidence, or the attempt fails closed before submission with a concrete blocker and the smallest next unblock action.
+
+Boundaries: `postproc` only under existing clearance; no non-postproc partition, distributed execution, Swiss-wide scale-up claim, operational claim, annual-frequency claim, or physical-probability claim.
+
+### TB-490: Compare Measured Regional Split Against Projections
+
+Goal: Thread the measured regional split evidence into the existing scenario-cardinality and output-tier projection surfaces so the next scale recommendation is based on measured deltas.
+
+Capability gap reduced: Replaces stale projection-only scale recommendations with measured regional-split comparison evidence.
+
+Why this outranks alternatives: The maturity snapshot says the regional split branch is now measured and the next blocker is comparison work before further live recommendation.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_regional_gis_cog_pressure.py`
+- `scripts/measure_scenario_storage_output_tier_pressure.py`
+- `scripts/summarize_management_aoi_scenario_pressure.py`
+- `tests/test_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Update existing scale/projection surfaces to consume the measured regional split metrics where they currently rely on older projection-only or failed-closed branches.
+- Produce one refreshed recommendation that names the next executable measured run or blocker.
+
+Definition of done:
+
+- Focused scale/projection tests pass, the refreshed output differentiates measured regional split evidence from projections, and no new dashboard/report script is added.
+
+Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
+
+### TB-491: Consolidate Scenario Pressure Helpers
+
+Goal: Reduce duplicated scenario/output-pressure logic by consolidating overlapping calculations into one existing helper path.
+
+Capability gap reduced: Simplifies the repo so scenario scale estimates remain maintainable as candidate/scenario workflows grow.
+
+Why this outranks alternatives: The repo has several scenario-pressure surfaces; reducing duplicated logic lowers drift while still supporting executable scale decisions.
+
+Inspect first:
+
+- `scripts/preview_aoi_scenario_cost_estimate.py`
+- `scripts/summarize_management_aoi_scenario_pressure.py`
+- `scripts/measure_scenario_storage_output_tier_pressure.py`
+- `tests/test_aoi_scenario_preview.py`
+- `tests/test_management_aoi_scenario_pressure.py`
+- `tests/test_scenario_storage_output_tier_pressure.py`
+
+Deliverables:
+
+- Move duplicated scenario-count/output-pressure calculations into one existing module or helper function.
+- Remove at least one redundant code path or reduce duplicated logic while preserving existing CLI outputs consumed by tests.
+
+Definition of done:
+
+- The focused scenario-pressure tests pass, repository consistency passes, and the diff shows simplification rather than another wrapper or report layer.
+
+Boundaries: Simplification only; no new script, no new contract, no status-vocabulary change unless tests prove compatibility.
+
+### TB-492: Consolidate Release-Candidate Review Logic
+
+Goal: Simplify the release-zone candidate generation/review path by consolidating duplicated candidate metrics, review CSV, and GeoJSON/mask emission logic.
+
+Capability gap reduced: Makes source-zone candidate review easier to maintain before adding more sites or candidate classes.
+
+Why this outranks alternatives: Candidate generation is now on the critical path; duplicated output logic will create drift as reviewed candidates feed scenarios.
+
+Inspect first:
+
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/plan_release_zone_heuristic_dry_run.py`
+- `tests/test_plan_terrain_release_zone_candidates.py`
+- `tests/test_release_candidate_zero_result_diagnostic.py`
+
+Deliverables:
+
+- Consolidate duplicated candidate-review output or metric-building logic inside existing candidate scripts.
+- Preserve existing manifest fields and outputs while reducing local duplication or deleting dead code.
+
+Definition of done:
+
+- Focused candidate tests pass, generated candidate artifacts remain loadable, and the change removes or consolidates code rather than adding a new workflow surface.
+
+Boundaries: Internal simplification only; no new source-zone semantics, no tuning, no operational claim, and no new script.
+
+### TB-493: Shrink Generated-Result Clutter
+
+Goal: Reduce generated-result clutter by tightening one existing output path, fixture path, or cleanup rule that currently leaves stale artifacts around local runs.
+
+Capability gap reduced: Keeps the repo easier to inspect and faster to test as more measured outputs are produced.
+
+Why this outranks alternatives: Scientific and scale work will keep generating artifacts; the repo needs active simplification to avoid accumulating stale ignored outputs and accidental fixtures.
+
+Inspect first:
+
+- `.gitignore`
+- `tests/test_hazard_layers.py`
+- `tests/test_bounded_validation_output_profile.py`
+- `scripts/check_repo_consistency.py`
+
+Deliverables:
+
+- Identify one duplicated or stale generated-result family under an ignored output root that is produced by existing tests or local workflows.
+- Tighten the existing writer, fixture setup, cleanup, or ignore/consistency rule so that family is no longer left behind unnecessarily.
+
+Definition of done:
+
+- Relevant tests and repository consistency pass, local generated clutter is measurably reduced or better contained, and no ignored generated outputs are accidentally committed.
+
+Boundaries: Repository simplification only; do not delete unique observed evidence, real-terrain inputs, provenance records, or current benchmark fixtures.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
