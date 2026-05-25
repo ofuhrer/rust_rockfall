@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-563: Sync Balfrin Checkout And Capture Live Capacity Window
-
-Goal: Align Balfrin with current `origin/main` and capture whether the `postproc` partition is actually available for opportunistic large-scale work.
-
-Capability gap reduced: Removes remote-head drift and prevents stale package generation or unsafe submission decisions.
-
-Why this outranks alternatives: The latest regional split package is currently blocked only by remote HEAD mismatch, and a large run should not be attempted without a fresh queue/capacity snapshot.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- Fast-forward `/users/olifu/work/rust_rockfall` on Balfrin to current `origin/main`.
-- Record a fresh Balfrin access preflight and a `postproc` queue/capacity snapshot under `/tmp`.
-- Classify whether the current queue state is `run_now`, `run_soon`, or `defer_due_to_capacity`.
-
-Definition of done:
-
-- Remote checkout hygiene is `pass`, remote HEAD matches local `origin/main`, the queue snapshot is captured with absolute timestamps, and the task is removed only if the run-window classification is explicit.
-
-Boundaries: No `sbatch`, no generated artifact deletion, no non-postproc work, no scale-up claim, and no operational claim.
-
 ### TB-564: Regenerate Current Regional Split Submission Package
 
 Goal: Rebuild the 12-split reduced-output regional Balfrin package against the synchronized Balfrin checkout.

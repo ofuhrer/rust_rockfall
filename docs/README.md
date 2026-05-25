@@ -126,6 +126,8 @@ starting context for implementation unless a task explicitly asks for them.
   `postproc` job `4350232`.
 - `balfrin_bounded_reduced_output_run_tb557.md`: TB-557 measured bounded
   reduced-output run-root metrics from completed `postproc` job `4366534`.
+- `balfrin_capacity_window_tb563.md`: TB-563 Balfrin checkout sync and live
+  `postproc` capacity-window classification.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
