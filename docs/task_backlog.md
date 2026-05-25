@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-538: Separate Extreme-Layer Support From Magnitude Sensitivity
-
-Goal: Make the local extreme-layer smoke explain whether changes come from support/nodata differences or from magnitude changes on shared support.
-
-Capability gap reduced: Reduces scientific ambiguity in max kinetic-energy and jump-height comparisons.
-
-Why this outranks alternatives: Extreme-layer sensitivity can otherwise look like physics variation when it is actually raster support or nodata behavior.
-
-Inspect first:
-
-- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
-- `scripts/rank_local_hazard_layer_fragility.py`
-- `tests/test_extreme_layer_sensitivity_smoke.py`
-- `tests/test_local_hazard_layer_fragility.py`
-
-Deliverables:
-
-- Update existing sensitivity output to report shared-support magnitude deltas separately from support/nodata deltas.
-- Add focused tests that exercise both support drift and same-support magnitude drift.
-
-Definition of done:
-
-- Local sensitivity tests pass and the report names which differences are interpretation-relevant versus support diagnostics.
-
-Boundaries: Existing tiny fixtures only; no new hazard model, no tuning, no operational threshold, and no physical-probability claim.
-
 ### TB-539: Promote Denominator And Deposition Audits Into A Single Interpretation Gate
 
 Goal: Make map interpretation fail closed unless conditional denominator provenance and trajectory-to-deposition traceability are both explicit.

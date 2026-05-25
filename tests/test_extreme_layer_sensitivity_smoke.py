@@ -49,13 +49,25 @@ class ExtremeLayerSensitivitySmokeTests(unittest.TestCase):
         self.assertEqual(report["smoke_status"], "measured")
         self.assertEqual(rows["max_kinetic_energy"]["summary_delta"]["linf_abs_diff"], 2.0)
         self.assertEqual(rows["max_kinetic_energy"]["support_delta"]["nonzero_jaccard"], 1.0)
+        self.assertEqual(rows["max_kinetic_energy"]["support_nodata_delta"]["interpretation_role"], "support_or_nodata_diagnostic")
         self.assertEqual(rows["max_kinetic_energy"]["sample_support_delta"]["support_metadata_status"], "measured")
         self.assertEqual(rows["max_kinetic_energy"]["sample_support_delta"]["support_count_linf_abs_diff"], 0.0)
+        self.assertEqual(rows["max_kinetic_energy"]["shared_support_magnitude_delta"]["compared_shared_support_cell_count"], 2)
+        self.assertEqual(rows["max_kinetic_energy"]["shared_support_magnitude_delta"]["linf_abs_diff"], 2.0)
+        self.assertEqual(
+            rows["max_kinetic_energy"]["shared_support_magnitude_delta"]["interpretation_role"],
+            "same_support_magnitude_delta",
+        )
         self.assertEqual(rows["max_jump_height"]["support_delta"]["nodata_mismatch_count"], 2)
         self.assertEqual(rows["max_jump_height"]["sample_support_delta"]["sample_support_mismatch_count"], 2)
+        self.assertEqual(rows["max_jump_height"]["support_nodata_delta"]["sample_support_mismatch_count"], 2)
+        self.assertEqual(rows["max_jump_height"]["shared_support_magnitude_delta"]["compared_shared_support_cell_count"], 1)
+        self.assertEqual(rows["max_jump_height"]["shared_support_magnitude_delta"]["excluded_by_nodata_count"], 2)
+        self.assertEqual(rows["max_jump_height"]["shared_support_magnitude_delta"]["excluded_by_sample_support_count"], 1)
         self.assertLess(rows["max_jump_height"]["sample_support_delta"]["support_jaccard"], 1.0)
         self.assertEqual(rows["max_jump_height"]["sensitivity_class"], "support_nodata_sensitive_extreme_layer")
         self.assertEqual(report["overall_metrics"]["total_sample_support_mismatch_count"], 2)
+        self.assertEqual(report["overall_metrics"]["max_shared_support_linf_abs_diff"], 2.0)
 
     def test_missing_extreme_layer_blocks_without_comparing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -85,6 +97,8 @@ class ExtremeLayerSensitivitySmokeTests(unittest.TestCase):
         self.assertIn("max_kinetic_energy", text)
         self.assertIn("max_jump_height", text)
         self.assertIn("sample_support_mismatch", text)
+        self.assertIn("support_nodata_role", text)
+        self.assertIn("shared_support_linf", text)
         self.assertIn("operational_claims_allowed: False", text)
         self.assertIn("physical_probability_claims_allowed: False", text)
         self.assertIn("next_measurement", text)
