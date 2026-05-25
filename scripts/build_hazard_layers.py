@@ -32,6 +32,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.hazard_output_manifests import (
     compact_output_manifest_entry,
+    execution_sidecar_manifest_entries,
     hazard_map_package_manifest_section,
     geotiff_raster_outputs,
     map_package_output_path,
@@ -3099,41 +3100,16 @@ def main_with_args(argv: list[str] | None = None) -> int:
     hazard_manifest_path = output_dir / f"{prefix}_manifest.json"
     if reducer_execution is not None:
         manifest["reducer_execution"] = reducer_execution
-        reducer_index_path = execution_index_path(output_dir, prefix)
-        reducer_merge_state = merge_state_path(output_dir, prefix)
-        manifest["outputs"].append(
-            output_manifest_entry(
-                execution_plan_path(output_dir, prefix),
-                "reducer_execution_plan",
-                "json",
+        manifest["outputs"].extend(
+            execution_sidecar_manifest_entries(
+                execution_plan_path=execution_plan_path(output_dir, prefix),
+                execution_index_path=execution_index_path(output_dir, prefix),
+                merge_state_path=merge_state_path(output_dir, prefix),
+                chunk_manifest_paths=chunk_manifest_paths,
+                kind_prefix="reducer",
                 output_file_metadata=output_file_metadata,
             )
         )
-        manifest["outputs"].append(
-            output_manifest_entry(
-                reducer_index_path,
-                "reducer_execution_index",
-                "json",
-                output_file_metadata=output_file_metadata,
-            )
-        )
-        manifest["outputs"].append(
-            output_manifest_entry(
-                reducer_merge_state,
-                "reducer_merge_state",
-                "json",
-                output_file_metadata=output_file_metadata,
-            )
-        )
-        for chunk_manifest_path in chunk_manifest_paths:
-            manifest["outputs"].append(
-                output_manifest_entry(
-                    chunk_manifest_path,
-                    "reducer_chunk_manifest",
-                    "json",
-                    output_file_metadata=output_file_metadata,
-                )
-            )
     if trajectory_execution is not None:
         manifest["trajectory_execution"] = {
             "plan_id": trajectory_execution.plan_id,
@@ -3156,39 +3132,16 @@ def main_with_args(argv: list[str] | None = None) -> int:
         assert trajectory_plan_path is not None
         assert trajectory_index_path is not None
         assert trajectory_merge_state_path is not None
-        manifest["outputs"].append(
-            output_manifest_entry(
-                trajectory_plan_path,
-                "trajectory_execution_plan",
-                "json",
+        manifest["outputs"].extend(
+            execution_sidecar_manifest_entries(
+                execution_plan_path=trajectory_plan_path,
+                execution_index_path=trajectory_index_path,
+                merge_state_path=trajectory_merge_state_path,
+                chunk_manifest_paths=trajectory_chunk_manifests,
+                kind_prefix="trajectory",
                 output_file_metadata=output_file_metadata,
             )
         )
-        manifest["outputs"].append(
-            output_manifest_entry(
-                trajectory_index_path,
-                "trajectory_execution_index",
-                "json",
-                output_file_metadata=output_file_metadata,
-            )
-        )
-        manifest["outputs"].append(
-            output_manifest_entry(
-                trajectory_merge_state_path,
-                "trajectory_merge_state",
-                "json",
-                output_file_metadata=output_file_metadata,
-            )
-        )
-        for chunk_manifest_path in trajectory_chunk_manifests:
-            manifest["outputs"].append(
-                output_manifest_entry(
-                    chunk_manifest_path,
-                    "trajectory_chunk_manifest",
-                    "json",
-                    output_file_metadata=output_file_metadata,
-                )
-            )
     if map_package_state is not None:
         package_path = map_package_output_path(map_package_state, output_dir, prefix)
         json_serialization_seconds += write_map_package_manifest(

@@ -907,6 +907,31 @@ class HazardLayerTests(unittest.TestCase):
     def test_map_package_manifest_helpers_write_the_expected_schema(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
+            plan_path = work / "execution_plan.json"
+            index_path = work / "execution_index.json"
+            merge_path = work / "merge_state.json"
+            chunk_path = work / "chunk_000_manifest.json"
+            for path in (plan_path, index_path, merge_path, chunk_path):
+                path.write_text("{}", encoding="utf-8")
+            sidecars = hazard_manifests.execution_sidecar_manifest_entries(
+                execution_plan_path=plan_path,
+                execution_index_path=index_path,
+                merge_state_path=merge_path,
+                chunk_manifest_paths=[chunk_path],
+                kind_prefix="reducer",
+            )
+            self.assertEqual(
+                [entry["kind"] for entry in sidecars],
+                [
+                    "reducer_execution_plan",
+                    "reducer_execution_index",
+                    "reducer_merge_state",
+                    "reducer_chunk_manifest",
+                ],
+            )
+            self.assertTrue(all(entry["format"] == "json" for entry in sidecars))
+            self.assertTrue(all(entry["file_count"] == 1 for entry in sidecars))
+
             map_package = hazard.HazardMapPackageState(
                 config=hazard.HazardMapPackageConfig(
                     map_product_id="phase1_zone_a_weighted",

@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-501: Consolidate Hazard Manifest Output Helpers
-
-Goal: Reduce duplicated hazard-output manifest bookkeeping in the hazard layer builder and manifest helper path.
-
-Capability gap reduced: Makes output-profile and scale-pressure work less brittle as more output families are added.
-
-Why this outranks alternatives: Recent support-count and manifest-pressure work touched multiple output metadata surfaces, increasing drift risk.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_output_manifests.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_hazard_output_profile.py`
-
-Deliverables:
-
-- Move one duplicated output-entry or file-accounting pattern into an existing helper and update callers.
-- Preserve manifest JSON shape consumed by existing tests.
-
-Definition of done:
-
-- Focused hazard manifest/output-profile tests pass and the diff removes duplicated manifest construction rather than adding a wrapper layer.
-
-Boundaries: Internal simplification only; no output semantics change, no new script, no operational claim, and no Balfrin dependency.
-
 ### TB-502: Make Candidate Review CSV Round-Trip Tested
 
 Goal: Add a focused round-trip test for candidate review CSV fields used by review-apply and scenario freezing.

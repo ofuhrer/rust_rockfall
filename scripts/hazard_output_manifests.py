@@ -69,6 +69,47 @@ def geotiff_raster_outputs(outputs: list[dict[str, Any]]) -> list[dict[str, Any]
     return raster_outputs
 
 
+def execution_sidecar_manifest_entries(
+    *,
+    execution_plan_path: Path,
+    execution_index_path: Path,
+    merge_state_path: Path,
+    chunk_manifest_paths: list[Path] | tuple[Path, ...],
+    kind_prefix: str,
+    output_file_metadata: dict[Path, dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    entries = [
+        output_manifest_entry(
+            execution_plan_path,
+            f"{kind_prefix}_execution_plan",
+            "json",
+            output_file_metadata=output_file_metadata,
+        ),
+        output_manifest_entry(
+            execution_index_path,
+            f"{kind_prefix}_execution_index",
+            "json",
+            output_file_metadata=output_file_metadata,
+        ),
+        output_manifest_entry(
+            merge_state_path,
+            f"{kind_prefix}_merge_state",
+            "json",
+            output_file_metadata=output_file_metadata,
+        ),
+    ]
+    entries.extend(
+        output_manifest_entry(
+            chunk_manifest_path,
+            f"{kind_prefix}_chunk_manifest",
+            "json",
+            output_file_metadata=output_file_metadata,
+        )
+        for chunk_manifest_path in chunk_manifest_paths
+    )
+    return entries
+
+
 def hazard_map_package_manifest_section(
     map_package: Any,
     probability: Any,
