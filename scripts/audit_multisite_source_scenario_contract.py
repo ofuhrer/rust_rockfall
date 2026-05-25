@@ -125,6 +125,11 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
     if not missing_second_site_fields:
         missing_second_site_fields = list(candidate_missing)
 
+    portability_semantics_summary = build_portability_semantics_summary(
+        classifications=classifications,
+        missing_second_site_fields=missing_second_site_fields,
+        next_required_artifact_records=next_required_artifacts(candidate_missing, required_path_patterns_or_manifest_keys),
+    )
     blocked_reason = candidate.get("blocked_reason", "none")
     source_scenario_contract_audit_status = "ready" if not candidate_missing and candidate.get("portability_preflight_status") == "ready" else "measured"
 
@@ -139,6 +144,13 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
         "field_classifications": classifications,
         "field_records": field_records,
         "semantic_portability_matrix": semantic_portability_matrix,
+        "portable_fields": classifications["portable_required"],
+        "site_specific_fields": unique_ordered(
+            classifications["site_specific_required"]
+            + classifications["missing_for_second_site"]
+            + classifications["tschamut_specific_heuristics"]
+        ),
+        "portability_semantics_summary": portability_semantics_summary,
         "synthetic_contract_fixture_status": {
             "chant_sura_candidate_manifest": "synthetic_contract_fixture",
             "chant_sura_source_scenario_policy": "synthetic_contract_fixture",
@@ -188,7 +200,7 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
                 "candidate portability remains blocked until required inputs are staged",
             ],
         },
-        "next_required_artifacts": next_required_artifacts(candidate_missing, required_path_patterns_or_manifest_keys),
+        "next_required_artifacts": portability_semantics_summary["next_required_artifacts"],
         "blocked_reason": blocked_reason,
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
@@ -743,6 +755,42 @@ def next_required_artifacts(
     ]
 
 
+def build_portability_semantics_summary(
+    *,
+    classifications: dict[str, list[str]],
+    missing_second_site_fields: list[str],
+    next_required_artifact_records: list[dict[str, str]],
+) -> dict[str, Any]:
+    portable_fields = classifications["portable_required"]
+    site_specific_fields = unique_ordered(
+        classifications["site_specific_required"]
+        + classifications["missing_for_second_site"]
+        + classifications["tschamut_specific_heuristics"]
+    )
+    deferred_fields = unique_ordered(
+        classifications["optional_or_deferred"] + classifications["out_of_scope_for_current_phase"]
+    )
+    first_blocker = missing_second_site_fields[0] if missing_second_site_fields else (site_specific_fields[0] if site_specific_fields else "")
+    next_action = (
+        f"stage local fixture/input for {first_blocker}, then rerun the audit"
+        if first_blocker
+        else "candidate source/scenario semantics are locally staged; rerun the contract audit before execution"
+    )
+    return {
+        "summary_status": "measured",
+        "portable_semantic_fields": portable_fields,
+        "site_specific_assumption_fields": site_specific_fields,
+        "deferred_or_out_of_scope_fields": deferred_fields,
+        "portable_semantic_count": len(portable_fields),
+        "site_specific_assumption_count": len(site_specific_fields),
+        "first_site_specific_blocker": first_blocker,
+        "next_local_fixture_or_staging_action": next_action,
+        "next_required_artifacts": next_required_artifact_records,
+        "portability_decision": "blocked_site_specific_inputs" if missing_second_site_fields else "portable_semantics_ready",
+        "claim_boundary": "metadata contract audit only; no source-zone validation, scale-up authorization, or operational claim",
+    }
+
+
 def unique_ordered(values: list[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -770,6 +818,9 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"blocked_reason: {report['blocked_reason']}",
         "portable_contract_fields: " + ", ".join(report["portable_contract_fields"]),
         "site_specific_contract_fields: " + ", ".join(report["site_specific_contract_fields"]),
+        f"portability_decision: {report['portability_semantics_summary']['portability_decision']}",
+        "next_local_fixture_or_staging_action: "
+        + report["portability_semantics_summary"]["next_local_fixture_or_staging_action"],
         "semantic_portability_matrix:",
     ]
     for site_name in ("tschamut", "chant_sura"):

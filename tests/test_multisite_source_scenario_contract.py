@@ -36,12 +36,15 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
 
         self.assertIn("source_zone_id_pattern", report["field_classifications"]["portable_required"])
         self.assertIn("source_zone_geometry", report["field_classifications"]["portable_required"])
+        self.assertIn("source_zone_id_pattern", report["portable_fields"])
+        self.assertIn("source_scenario_policy_path", report["site_specific_fields"])
         self.assertIn("terrain_crop_path", report["missing_second_site_fields"])
         self.assertIn("source_zone_metadata_path", report["missing_second_site_fields"])
         self.assertIn("scenario_table_path", report["missing_second_site_fields"])
         self.assertIn("source_scenario_policy_path", report["field_classifications"]["site_specific_required"])
         self.assertIn("terrain_crop", report["required_path_patterns_or_manifest_keys"])
         self.assertIn("terrain.asc", report["required_path_patterns_or_manifest_keys"]["terrain_crop"])
+        self.assertIn("stage local fixture/input for terrain_crop_path", report["portability_semantics_summary"]["next_local_fixture_or_staging_action"])
 
         heuristic_fields = {item["field"]: item["value"] for item in report["tschamut_specific_heuristics"]}
         self.assertEqual(heuristic_fields["release_sampling_mode"], "deterministic_grid")
@@ -51,6 +54,23 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
 
         self.assertTrue(report["validation_or_field_evidence_boundary"]["not_validation_evidence_by_itself"])
         self.assertIn("annual_frequency", report["probability_semantics_boundary"]["unsupported_claims"])
+
+    def test_portability_semantics_summary_separates_portable_from_site_specific(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate_config = self._write_candidate_config(Path(tmp))
+            report = audit.build_report(candidate_config)
+
+        summary = report["portability_semantics_summary"]
+        self.assertEqual(summary["summary_status"], "measured")
+        self.assertEqual(summary["portability_decision"], "blocked_site_specific_inputs")
+        self.assertIn("source_zone_geometry", summary["portable_semantic_fields"])
+        self.assertIn("sampling_weight_semantics", summary["portable_semantic_fields"])
+        self.assertIn("terrain_crop_path", summary["site_specific_assumption_fields"])
+        self.assertIn("source_zone_id", summary["site_specific_assumption_fields"])
+        self.assertEqual(summary["first_site_specific_blocker"], "terrain_crop_path")
+        self.assertIn("terrain_crop_path", summary["next_local_fixture_or_staging_action"])
+        self.assertIn("terrain_crop", {item["category"] for item in summary["next_required_artifacts"]})
+        self.assertIn("no source-zone validation", summary["claim_boundary"])
 
     def test_json_contract_keys_are_stable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -66,6 +86,7 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "fields_audited",
             "field_classifications",
             "semantic_portability_matrix",
+            "portability_semantics_summary",
             "synthetic_contract_fixture_status",
             "tschamut_available_fields",
             "second_site_available_fields",
@@ -73,6 +94,8 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "required_path_patterns_or_manifest_keys",
             "portable_contract_fields",
             "site_specific_contract_fields",
+            "portable_fields",
+            "site_specific_fields",
             "tschamut_specific_heuristics",
             "optional_or_deferred_fields",
             "out_of_scope_fields",
@@ -95,6 +118,7 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
         self.assertEqual(rows["source_zone_id_pattern"]["chant_sura"]["status"], "synthetic_contract_fixture")
         self.assertEqual(rows["source_zone_id"]["classification"], "tschamut_specific_heuristic")
         self.assertEqual(rows["source_zone_id"]["chant_sura"]["status"], "tschamut_heuristic_only")
+        self.assertEqual(rows["source_scenario_policy_path"]["classification"], "site_specific_required")
         self.assertEqual(rows["source_scenario_policy_path"]["chant_sura"]["status"], "synthetic_contract_fixture")
         self.assertEqual(rows["swissimage_context"]["chant_sura"]["status"], "deferred_public_context")
         self.assertEqual(rows["validation_or_field_evidence_boundary"]["classification"], "out_of_scope_for_current_phase")

@@ -89,7 +89,22 @@ class PilotCommandPlanTest(unittest.TestCase):
         }
 
     def _contract_measured(self) -> dict[str, object]:
-        return {"source_scenario_contract_audit_status": "measured"}
+        return {
+            "source_scenario_contract_audit_status": "measured",
+            "portability_semantics_summary": {
+                "summary_status": "measured",
+                "portable_semantic_fields": ["source_zone_geometry"],
+                "site_specific_assumption_fields": ["terrain_crop_path", "source_zone_id"],
+                "deferred_or_out_of_scope_fields": [],
+                "portable_semantic_count": 1,
+                "site_specific_assumption_count": 2,
+                "first_site_specific_blocker": "terrain_crop_path",
+                "next_local_fixture_or_staging_action": "stage local fixture/input for terrain_crop_path",
+                "next_required_artifacts": [{"category": "terrain_crop", "path_or_pattern": "terrain.asc"}],
+                "portability_decision": "blocked_site_specific_inputs",
+                "claim_boundary": "metadata contract audit only; no source-zone validation, scale-up authorization, or operational claim",
+            },
+        }
 
     def _fixture_report(self, site: str) -> dict[str, object]:
         with patch.object(MODULE.READINESS, "build_readiness_report", return_value=self._readiness_ready()), patch.object(
@@ -369,6 +384,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         )
         self.assertTrue(report["blocked_second_site_commands"])
         self.assertEqual(report["blocked_second_site_commands"][0]["blocked_status"], "template_only")
+        contract_audit_command = next(command for command in report["commands"] if command["id"] == "second_site_contract_audit")
+        self.assertIn("portable versus site-specific", contract_audit_command["description"])
+        self.assertIn("next local fixture/staging action", contract_audit_command["description"])
+        self.assertIn("portable and site-specific field names", contract_audit_command["expected_outputs"][0])
         planner_command = next(
             command for command in report["commands"] if command["id"] == "second_site_aoi_acquisition_dry_run_planner"
         )
@@ -405,6 +424,14 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("plan_release_plan_dry_run.py", release_plan_command["command"])
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
+        self.assertEqual(
+            contract_plan["portability_semantics_summary"]["portability_decision"],
+            "blocked_site_specific_inputs",
+        )
+        self.assertEqual(
+            report["second_site_portability_semantics_summary"]["first_site_specific_blocker"],
+            "terrain_crop_path",
+        )
         self.assertFalse(contract_plan["read_only"])
         self.assertIn(
             "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml",
@@ -470,6 +497,9 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("full_output_recovery_status: full_outputs_available_on_explicit_request", output)
         self.assertIn("full_output_case_path:", output)
         self.assertIn("tschamut_public_target_gate_case.yaml", output)
+        self.assertIn("second_site_portability_semantics:", output)
+        self.assertIn("first_site_specific_blocker: terrain_crop_path", output)
+        self.assertIn("next_local_fixture_or_staging_action:", output)
         self.assertIn("blocked_template_commands:", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)

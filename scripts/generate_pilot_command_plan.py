@@ -204,6 +204,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
             },
         ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
+        "second_site_portability_semantics_summary": contract_report.get("portability_semantics_summary", {}),
         "public_context_boundary_status": second_site_report["public_context_boundary_status"],
         "deferred_public_context_categories": second_site_report["deferred_public_context_categories"],
         "public_context_product_requirements": second_site_report["public_context_product_requirements"],
@@ -1191,7 +1192,10 @@ def build_second_site_plan(
             site="chant_sura_fluelapass",
             group="multisite_source_scenario_contract",
             command_id="second_site_contract_audit",
-            description="Audit which Tschamut source-zone and scenario-contract fields are portable to the candidate site.",
+            description=(
+                "Audit which Tschamut source-zone and scenario-contract fields are portable versus site-specific "
+                "and surface the next local fixture/staging action."
+            ),
             command=command_string(
                 [
                     "PYENV_VERSION=system",
@@ -1211,7 +1215,9 @@ def build_second_site_plan(
                 "validation/policies/tschamut_public_source_scenario_policy_v1.yaml",
                 "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml",
             ],
-            expected_outputs=["JSON portable vs site-specific contract audit"],
+            expected_outputs=[
+                "JSON portable vs site-specific contract audit with portable and site-specific field names plus next local fixture/staging action"
+            ],
             read_only=True,
             may_produce_ignored_outputs=False,
         ),
@@ -1523,6 +1529,7 @@ def build_second_site_plan(
         "claim_boundaries": second_site_report["claim_boundaries"],
         "blocked_reason": blocked_reason,
         "contract_audit_status": contract_report["source_scenario_contract_audit_status"],
+        "portability_semantics_summary": contract_report.get("portability_semantics_summary", {}),
         "output_profile_policy": OUTPUT_PROFILE_POLICY.summarize_output_profile_policies(
             output_profile_policies, label="chant_sura_fluelapass_command_plan"
         ),
@@ -1735,6 +1742,19 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"- {command_id}")
     else:
         lines.append("- none")
+    summary = report.get("second_site_portability_semantics_summary") or {}
+    if summary:
+        lines.extend(
+            [
+                "",
+                "second_site_portability_semantics:",
+                f"- portable_fields: {', '.join(summary.get('portable_semantic_fields', []))}",
+                f"- site_specific_fields: {', '.join(summary.get('site_specific_assumption_fields', []))}",
+                f"- decision: {summary.get('portability_decision')}",
+                f"- first_site_specific_blocker: {summary.get('first_site_specific_blocker')}",
+                f"- next_local_fixture_or_staging_action: {summary.get('next_local_fixture_or_staging_action')}",
+            ]
+        )
     lines.append("")
     lines.append("ignored_output_paths:")
     for path in report["ignored_output_paths"]:

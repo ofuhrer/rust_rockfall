@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-548: Strengthen Multisite Source/Scenario Portability Checks
-
-Goal: Make multisite audits distinguish portable source/scenario semantics from site-specific assumptions.
-
-Capability gap reduced: Reduces the risk that Tschamut-specific scenario assumptions silently contaminate Chant Sura or future sites.
-
-Why this outranks alternatives: Multisite scientific validation depends on knowing which assumptions travel and which must be restated per site.
-
-Inspect first:
-
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_multisite_source_scenario_contract.py`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- Update existing audit or command-plan output to name portable fields, site-specific fields, and the next local fixture/staging action for missing semantics.
-- Add focused tests for at least one portable and one site-specific field.
-
-Definition of done:
-
-- The multisite audit gives an actionable local result without requiring Balfrin and focused tests pass.
-
-Boundaries: No new contract file unless consolidation requires it, no new site onboarding, no live data acquisition, and no validation claim upgrade.
-
 ### TB-549: Add Observed-Evidence Intake Acceptance Smoke
 
 Goal: Exercise accepted and rejected observed runout/deposition evidence packages locally and explain why accepted intake is not yet validation evidence.
