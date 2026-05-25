@@ -7899,3 +7899,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: warning/classification only; no script deletion, no new wrapper, no workflow claim change, and no Balfrin dependency.
 - Next task: `TB-534`
+
+### TB-534: Create A Minimal User-Facing Smoke Path
+
+- Date: 2026-05-25
+- Commit: `2d0ad7a`
+- Objective: give new users a tiny deterministic checkout-to-output path before the full CI suite or AOI workflow.
+- Files changed: `README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted the existing `examples/inclined_plane.json` simulation into the README quick start as the smallest smoke example.
+  - Documented writing the trajectory CSV to `/tmp/rust_rockfall_minimal_smoke.csv` and inspecting it with `head -5`.
+  - Clarified that the smoke output is a deterministic trajectory CSV with time, position, velocity, energy diagnostics, and contact state columns.
+  - Kept the full local CI runner as the next quick-start step after the smoke path.
+  - Ran the documented command locally; it wrote 2,001 trajectory samples plus a CSV header and did not create tracked generated output.
+  - Removed TB-534 from the active backlog.
+- Checks run:
+  - `cargo run -- run --config examples/inclined_plane.json --output /tmp/rust_rockfall_minimal_smoke.csv`
+  - `wc -l /tmp/rust_rockfall_minimal_smoke.csv`
+  - `sed -n '1,5p' /tmp/rust_rockfall_minimal_smoke.csv`
+  - `rg -n "rust_rockfall_minimal_smoke|inclined_plane.json|head -5" README.md`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: minimal local smoke only; no new physics, no new dataset, no operational claim, and no Balfrin dependency.
+- Next task: `TB-535`
