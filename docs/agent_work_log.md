@@ -7947,3 +7947,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: navigation pruning only; no content deletion, no claim change, and no Balfrin dependency.
 - Next task: backlog refill needed.
+
+### TB-536: Repair Chant Sura Terrain Extent QA
+
+- Date: 2026-05-25
+- Commit: `47009ae`
+- Objective: make the local Chant Sura blocker inventory distinguish terrain crop, AOI tile coverage, and source-zone domain mismatches.
+- Files changed: `scripts/inventory_second_site_local_blockers.py`, `tests/test_second_site_local_blockers.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added AOI tile catalog coverage QA with a distinct `blocked_aoi_tile_qa` status and next local action.
+  - Added source-zone coordinate domain QA with distinct vertex and release-point outside-extent counts.
+  - Preserved the default clean fixture as ready for terrain/source/scenario inputs while making mismatch modes testable.
+  - Removed TB-536 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_local_blockers -v`
+  - `PYENV_VERSION=system uv run python scripts/inventory_second_site_local_blockers.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo/placeholder_second_site_v1 validation/private/placeholder_second_site_v1 hazard/results/placeholder_second_site_v1 validation/policies -path '*placeholder*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: local fixtures and metadata only; no downloads, new real data, ensemble run, operational claim, or validation claim upgrade.
+- Next task: `TB-537`
