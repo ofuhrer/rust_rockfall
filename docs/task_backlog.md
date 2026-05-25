@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-550: Consolidate Local Scientific Recommendation Output Into Next Executable Commands
-
-Goal: Make the local scientific backlog recommendation report map each top local follow-up to an exact executable command and expected measurement.
-
-Capability gap reduced: Turns local scientific prioritization into concrete execution guidance for the next autonomous worker.
-
-Why this outranks alternatives: The repo already has many local diagnostics; the highest leverage is making the next command unambiguous without adding more files.
-
-Inspect first:
-
-- `scripts/recommend_local_scientific_backlog.py`
-- `scripts/lib/local_scientific_progress.py`
-- `tests/test_local_scientific_backlog_recommendation.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Update existing recommendation output so each ranked local scientific follow-up includes one executable command and the measurement or artifact it should produce.
-- Add focused tests that guard against recommendations with no next command.
-
-Definition of done:
-
-- The recommendation command passes focused tests and its top local-only entries are directly executable from the repository checkout.
-
-Boundaries: No new roadmap document, no new backlog generator, no Balfrin dependency, no claim upgrade, and no placeholder commands.
-
 ### TB-551: Make Balfrin Decision Helpers Clean-Checkout Safe
 
 Goal: Make the Balfrin scale-readiness and next-live-run decision helpers fail closed instead of crashing when scratch reducer-pressure artifacts are absent.

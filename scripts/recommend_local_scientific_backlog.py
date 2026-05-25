@@ -68,7 +68,7 @@ def build_progress_report() -> dict[str, Any]:
 def build_report() -> dict[str, Any]:
     source_reports = build_source_reports()
     active_tasks = task_context.parse_active_tasks(task_context.read_backlog())
-    recommendations = build_recommendations(source_reports)
+    recommendations = attach_next_execution_plans(build_recommendations(source_reports))
     interpretation_gate = build_local_map_interpretation_gate(
         source_reports["denominator"],
         source_reports["traceability"],
@@ -81,6 +81,7 @@ def build_report() -> dict[str, Any]:
         "active_task_ids": [task.task_id for task in active_tasks],
         "source_report_statuses": source_statuses(source_reports),
         "local_map_interpretation_gate": interpretation_gate,
+        "next_command_coverage": build_next_command_coverage(recommendations),
         "ranked_followups": recommendations,
         "claim_boundaries": {
             "live_balfrin_access_required": False,
@@ -251,6 +252,64 @@ def build_recommendations(source_reports: dict[str, dict[str, Any]]) -> list[dic
     return items
 
 
+def attach_next_execution_plans(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    planned: list[dict[str, Any]] = []
+    for item in items:
+        command = normalize_repo_command(str(item["suggested_command"]))
+        expected_measurement = str(item["expected_measurement"])
+        planned_item = dict(item)
+        planned_item["suggested_command"] = command
+        planned_item["next_executable_command"] = command
+        planned_item["expected_artifact_or_measurement"] = expected_measurement
+        planned_item["next_execution"] = {
+            "command": command,
+            "expected_artifact_or_measurement": expected_measurement,
+            "local_only": True,
+            "repo_checkout_executable": True,
+            "placeholder_command": contains_placeholder(command),
+            "measurement_required": bool(expected_measurement.strip()),
+        }
+        planned.append(planned_item)
+    return planned
+
+
+def build_next_command_coverage(items: list[dict[str, Any]]) -> dict[str, Any]:
+    missing_command_track_ids = [
+        str(item["track_id"])
+        for item in items
+        if not str(item.get("next_executable_command") or "").strip()
+    ]
+    placeholder_command_track_ids = [
+        str(item["track_id"])
+        for item in items
+        if item.get("next_execution", {}).get("placeholder_command")
+    ]
+    missing_measurement_track_ids = [
+        str(item["track_id"])
+        for item in items
+        if not str(item.get("expected_artifact_or_measurement") or "").strip()
+    ]
+    return {
+        "coverage_status": "ready"
+        if not missing_command_track_ids and not placeholder_command_track_ids and not missing_measurement_track_ids
+        else "blocked_incomplete_next_execution",
+        "total_ranked_followups": len(items),
+        "entries_with_next_command": len(items) - len(missing_command_track_ids),
+        "entries_with_expected_measurement": len(items) - len(missing_measurement_track_ids),
+        "missing_command_track_ids": missing_command_track_ids,
+        "placeholder_command_track_ids": placeholder_command_track_ids,
+        "missing_measurement_track_ids": missing_measurement_track_ids,
+    }
+
+
+def normalize_repo_command(command: str) -> str:
+    return command.replace(str(ROOT) + "/", "")
+
+
+def contains_placeholder(command: str) -> bool:
+    return "<" in command or ">" in command or "TODO" in command
+
+
 def public_context_status(second_site_report: dict[str, Any]) -> str:
     group = next((item for item in second_site_report["blocker_groups"] if item["group_id"] == "public_context_inputs"), {})
     return str(group.get("status") or "unknown")
@@ -283,11 +342,17 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append("  failing_evidence:")
         for item in gate["failing_evidence"]:
             lines.append(f"    - {item['audit']}: {item['status']}")
+    coverage = report["next_command_coverage"]
+    lines.append("next_command_coverage:")
+    lines.append(f"  coverage_status: {coverage['coverage_status']}")
+    lines.append(f"  entries_with_next_command: {coverage['entries_with_next_command']}")
+    lines.append(f"  entries_with_expected_measurement: {coverage['entries_with_expected_measurement']}")
     lines.append("ranked_followups:")
     for item in report["ranked_followups"]:
         lines.append(f"  {item['rank']}. {item['track_id']}: {item['task_seed']}")
         lines.append(f"     dependency_status: {item['dependency_status']}")
-        lines.append(f"     suggested_command: {item['suggested_command']}")
+        lines.append(f"     next_executable_command: {item['next_executable_command']}")
+        lines.append(f"     expected_artifact_or_measurement: {item['expected_artifact_or_measurement']}")
     return "\n".join(lines)
 
 

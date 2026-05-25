@@ -25,6 +25,11 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
             "audit_conditional_denominator_provenance.py",
             report["local_map_interpretation_gate"]["required_command"],
         )
+        self.assertEqual(report["next_command_coverage"]["coverage_status"], "ready")
+        self.assertEqual(
+            report["next_command_coverage"]["entries_with_next_command"],
+            len(report["ranked_followups"]),
+        )
 
     def test_recommendations_include_dependencies_and_boundaries(self) -> None:
         report = recommendation.build_report()
@@ -32,8 +37,16 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         for item in report["ranked_followups"]:
             self.assertTrue(item["dependency_status"])
             self.assertTrue(item["suggested_command"])
+            self.assertTrue(item["next_executable_command"])
             self.assertTrue(item["claim_boundary"])
             self.assertTrue(item["expected_measurement"])
+            self.assertEqual(item["next_execution"]["command"], item["next_executable_command"])
+            self.assertEqual(item["next_execution"]["expected_artifact_or_measurement"], item["expected_artifact_or_measurement"])
+            self.assertTrue(item["next_execution"]["local_only"])
+            self.assertTrue(item["next_execution"]["repo_checkout_executable"])
+            self.assertFalse(item["next_execution"]["placeholder_command"])
+            self.assertTrue(item["next_execution"]["measurement_required"])
+            self.assertNotIn(str(recommendation.ROOT), item["next_executable_command"])
 
         boundaries = report["claim_boundaries"]
         self.assertFalse(boundaries["live_balfrin_access_required"])
@@ -46,6 +59,29 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         gate_boundaries = report["local_map_interpretation_gate"]["claim_boundaries"]
         self.assertTrue(gate_boundaries["conditional_diagnostic_interpretation_only"])
         self.assertFalse(gate_boundaries["physical_probability_claims_allowed"])
+
+    def test_next_command_coverage_fails_closed_for_missing_or_placeholder_commands(self) -> None:
+        coverage = recommendation.build_next_command_coverage(
+            recommendation.attach_next_execution_plans(
+                [
+                    {
+                        "track_id": "missing_command",
+                        "suggested_command": "",
+                        "expected_measurement": "measurement",
+                    },
+                    {
+                        "track_id": "placeholder_command",
+                        "suggested_command": "PYENV_VERSION=system uv run python scripts/<placeholder>.py",
+                        "expected_measurement": "",
+                    },
+                ]
+            )
+        )
+
+        self.assertEqual(coverage["coverage_status"], "blocked_incomplete_next_execution")
+        self.assertIn("missing_command", coverage["missing_command_track_ids"])
+        self.assertIn("placeholder_command", coverage["placeholder_command_track_ids"])
+        self.assertIn("placeholder_command", coverage["missing_measurement_track_ids"])
 
     def test_interpretation_gate_fails_closed_on_missing_evidence(self) -> None:
         gate = recommendation.build_local_map_interpretation_gate(
@@ -74,6 +110,9 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         self.assertIn("second_site_terrain_crop_extent_repair", text)
         self.assertIn("conditional_layer_interpretation_gate", text)
         self.assertIn("local_map_interpretation_gate:", text)
+        self.assertIn("next_command_coverage:", text)
+        self.assertIn("next_executable_command:", text)
+        self.assertIn("expected_artifact_or_measurement:", text)
         self.assertIn("ready_for_conditional_map_interpretation", text)
         self.assertIn("holdout_calibration_guardrail_integration", text)
         self.assertIn("scale_up_authorized: False", text)
