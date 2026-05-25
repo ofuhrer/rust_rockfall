@@ -7748,3 +7748,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: existing front-door routing only; no new script, no new data source, no operational claim, and no Balfrin dependency.
 - Next task: `TB-528`
+
+### TB-528: Merge One Redundant Status Summary Into Maturity Snapshot
+
+- Date: 2026-05-25
+- Commit: `afc5608`
+- Objective: reduce active status-doc sprawl by archiving one dated scale review while preserving its current interpretation in active docs.
+- Files changed: `docs/archive/hazard_workflow_scale_review.md`, `docs/current_maturity_snapshot.md`, `docs/hazard_layers.md`, `docs/README.md`, `docs/archive/README.md`, `scripts/check_repo_consistency.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Moved `docs/hazard_workflow_scale_review.md` to `docs/archive/hazard_workflow_scale_review.md`.
+  - Added an archive status note to the moved review and indexed it in `docs/archive/README.md`.
+  - Preserved the current actionable interpretation in `docs/current_maturity_snapshot.md`: current scale interpretation should come from the maturity snapshot, scale readiness matrix, and output-profile contract rather than the dated review.
+  - Updated `docs/hazard_layers.md` to point at the archived review only as historical context.
+  - Removed the stale active-doc entry from `docs/README.md` and updated repository consistency checks to validate the archive path.
+  - Removed TB-528 from the active backlog.
+- Checks run:
+  - `rg -n "hazard_workflow_scale_review" README.md docs scripts tests validation`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/check_repo_consistency.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: documentation consolidation only; no claim upgrade, no deletion of unique evidence, and no Balfrin dependency.
+- Next task: `TB-529`
