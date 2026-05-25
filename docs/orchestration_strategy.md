@@ -29,6 +29,17 @@ Worker prompts should include only:
 Do not paste unrelated backlog tasks or broad reference docs. Use
 `--detail full` only for orchestrator/review work.
 
+When Balfrin access is unavailable, use:
+
+```bash
+PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --local-only --format json --no-live-checks
+```
+
+This preserves the full active-task order in the report while surfacing
+`next_local_task`, `local_active_tasks`, and `balfrin_required_tasks` so the
+worker can select the first executable non-Balfrin task without changing
+backlog headings or task-status vocabulary.
+
 ## Output Monitoring
 
 Use file-backed worker logs by default:

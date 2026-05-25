@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 import unittest
 import tempfile
 from pathlib import Path
@@ -15,6 +16,14 @@ assert SPEC is not None
 check_repo_consistency = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(check_repo_consistency)
+
+TASK_CONTEXT_PATH = ROOT / "scripts" / "print_agent_task_context.py"
+TASK_CONTEXT_SPEC = importlib.util.spec_from_file_location("print_agent_task_context", TASK_CONTEXT_PATH)
+assert TASK_CONTEXT_SPEC is not None
+print_agent_task_context = importlib.util.module_from_spec(TASK_CONTEXT_SPEC)
+assert TASK_CONTEXT_SPEC.loader is not None
+sys.modules[TASK_CONTEXT_SPEC.name] = print_agent_task_context
+TASK_CONTEXT_SPEC.loader.exec_module(print_agent_task_context)
 
 
 class HazardClaimHygieneTests(unittest.TestCase):
@@ -128,6 +137,20 @@ class HazardClaimHygieneTests(unittest.TestCase):
             check_repo_consistency.find_missing_active_backlog_inspect_first_paths(backlog_text, root=ROOT),
             [],
         )
+
+    def test_agent_task_context_can_select_first_local_task_without_balfrin(self) -> None:
+        report = print_agent_task_context.build_report(run_checks=False, local_only=True)
+
+        self.assertEqual(report["agent_task_context_status"], "ready")
+        self.assertEqual(report["task_selection_scope"], "local_only")
+        self.assertEqual(report["local_only_selection_status"], "selected_first_local_task")
+        self.assertIsNotNone(report["selected_task"])
+        self.assertEqual(report["selected_task"]["task_id"], report["next_local_task"]["task_id"])
+        self.assertTrue(report["selected_task"]["local_only_eligible"])
+        self.assertTrue(report["local_active_tasks"])
+        self.assertTrue(all(task["local_only_eligible"] for task in report["local_active_tasks"]))
+        self.assertTrue(report["balfrin_required_tasks"])
+        self.assertTrue(any(task.get("balfrin_access_required") for task in report["balfrin_required_tasks"]))
 
     def test_active_backlog_inspect_first_paths_detect_missing_file(self) -> None:
         backlog_text = """## Active Tasks

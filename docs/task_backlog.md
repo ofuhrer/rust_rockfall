@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-508: Simplify Agent Task Context For Local-Only Work
-
-Goal: Make the existing task-context helper surface local-only tasks cleanly when Balfrin access is unavailable.
-
-Capability gap reduced: Reduces orchestration friction by separating executable local work from Balfrin-required work without changing task order semantics.
-
-Why this outranks alternatives: The current active queue mixes Balfrin-required and local-only tasks, and no-Balfrin sessions need a cleaner way to select eligible tasks.
-
-Inspect first:
-
-- `scripts/print_agent_task_context.py`
-- `docs/orchestration_strategy.md`
-- `tests/test_repo_consistency_claim_hygiene.py`
-- `docs/task_backlog.md`
-
-Deliverables:
-
-- Extend the existing task-context helper or documentation path so a worker can list or select non-Balfrin active tasks without adding a new tool.
-- Add focused coverage if the helper behavior changes.
-
-Definition of done:
-
-- Focused tests or helper smoke checks pass, and no-Balfrin task selection is clearer while preserving the existing backlog schema.
-
-Boundaries: Orchestration helper simplification only; no new admin script, no task-status vocabulary change in headings, no Balfrin access attempt, and no execution claim.
-
 ### TB-509: Clear The Eight-Zone Local Scaling Blocker
 
 Goal: Move the local multi-zone scaling ladder past the eight-zone blocker rather than only reducing its manifest pressure.

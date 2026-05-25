@@ -84,6 +84,7 @@ class ActiveTask:
             "task_id": self.task_id,
             "title": self.title,
         }
+        summary["local_only_eligible"] = not self.requires_balfrin_access()
         if include_routing:
             routing = self.balfrin_routing()
             if routing:
@@ -247,6 +248,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="summarize canonical commands without running read-only checks",
     )
+    parser.add_argument(
+        "--local-only",
+        action="store_true",
+        help="select the first active task that does not require Balfrin access when --task is omitted",
+    )
     return parser.parse_args()
 
 
@@ -396,15 +402,28 @@ def relevant_helpers(task: ActiveTask | None, *, detail: str) -> list[dict[str, 
     return selected
 
 
-def build_report(task_id: str | None = None, *, run_checks: bool = True, detail: str = "compact") -> dict[str, Any]:
+def build_report(
+    task_id: str | None = None,
+    *,
+    run_checks: bool = True,
+    detail: str = "compact",
+    local_only: bool = False,
+) -> dict[str, Any]:
     backlog_text = read_backlog()
     active_tasks = parse_active_tasks(backlog_text)
-    task = next((candidate for candidate in active_tasks if candidate.task_id == task_id), None) if task_id else None
+    local_tasks = [candidate for candidate in active_tasks if not candidate.requires_balfrin_access()]
+    balfrin_tasks = [candidate for candidate in active_tasks if candidate.requires_balfrin_access()]
+    requested_task = next((candidate for candidate in active_tasks if candidate.task_id == task_id), None) if task_id else None
+    task = requested_task
+    if task is None and local_only and task_id is None:
+        task = local_tasks[0] if local_tasks else None
     backlog_refill_needed = not active_tasks
 
     status = "ready"
     if task_id and task is None:
         status = "blocked_missing_task"
+    elif local_only and task is not None and task.requires_balfrin_access():
+        status = "blocked_balfrin_required_task"
 
     report: dict[str, Any] = {
         "agent_task_context_status": status,
@@ -414,7 +433,23 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
         "python_invocation": PYTHON_INVOCATION,
         "requested_task_id": task_id,
         "detail": detail,
+        "task_selection_scope": "local_only" if local_only else "all_active_tasks",
+        "local_only_selection_status": local_only_selection_status(
+            task=task,
+            local_tasks=local_tasks,
+            active_tasks=active_tasks,
+            local_only=local_only,
+        ),
         "selected_task": task.summary(include_details=True, include_routing=True) if task else None,
+        "next_local_task": local_tasks[0].summary(include_details=True, include_routing=True) if local_tasks else None,
+        "local_active_tasks": [
+            candidate.summary(include_details=(detail == "full" or candidate == task), include_routing=False)
+            for candidate in local_tasks
+        ],
+        "balfrin_required_tasks": [
+            candidate.summary(include_details=(detail == "full" or candidate == task), include_routing=True)
+            for candidate in balfrin_tasks
+        ],
         "active_tasks": [
             candidate.summary(
                 include_details=(detail == "full" or candidate == task),
@@ -451,7 +486,7 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
             ],
         },
         "read_only": True,
-        "recommended_first_commands": recommended_first_commands(task_id),
+        "recommended_first_commands": recommended_first_commands(task.task_id if local_only and task else task_id, local_only=local_only),
         "worker_output_guidance": build_worker_output_guidance(),
         "live_checks": {},
     }
@@ -482,13 +517,34 @@ def build_report(task_id: str | None = None, *, run_checks: bool = True, detail:
     return report
 
 
-def recommended_first_commands(task_id: str | None) -> list[str]:
+def local_only_selection_status(
+    *,
+    task: ActiveTask | None,
+    local_tasks: list[ActiveTask],
+    active_tasks: list[ActiveTask],
+    local_only: bool,
+) -> str:
+    if not active_tasks:
+        return "backlog_empty"
+    if not local_only:
+        return "not_requested"
+    if task is None:
+        return "blocked_no_local_tasks"
+    if task.requires_balfrin_access():
+        return "blocked_selected_task_requires_balfrin"
+    if local_tasks and task == local_tasks[0]:
+        return "selected_first_local_task"
+    return "selected_explicit_local_task"
+
+
+def recommended_first_commands(task_id: str | None, *, local_only: bool = False) -> list[str]:
     commands = [
         "cd /Users/fuhrer/Desktop/rust_rockfall/main",
         "git pull --ff-only origin main",
     ]
     task_arg = f" --task {task_id}" if task_id else ""
-    commands.append(f"{PYTHON_INVOCATION} scripts/print_agent_task_context.py{task_arg} --format json")
+    local_arg = " --local-only" if local_only else ""
+    commands.append(f"{PYTHON_INVOCATION} scripts/print_agent_task_context.py{task_arg}{local_arg} --format json")
     return commands
 
 
@@ -526,6 +582,8 @@ def render_text(report: dict[str, Any]) -> str:
         f"running_from_repo_root: {str(report['running_from_repo_root']).lower()}",
         f"python_invocation: {report['python_invocation']}",
         f"requested_task_id: {report.get('requested_task_id') or ''}",
+        f"task_selection_scope: {report['task_selection_scope']}",
+        f"local_only_selection_status: {report['local_only_selection_status']}",
     ]
     selected = report.get("selected_task")
     if selected:
@@ -533,8 +591,16 @@ def render_text(report: dict[str, Any]) -> str:
         if selected["inspect_first"]:
             lines.append("inspect_first:")
             lines.extend(f"- {item}" for item in selected["inspect_first"])
+    if report.get("next_local_task"):
+        lines.append(f"next_local_task: {format_task(report['next_local_task'])}")
     lines.append("active_tasks:")
     for task in report["active_tasks"]:
+        lines.append(f"- {format_task(task)}")
+    lines.append("local_active_tasks:")
+    for task in report["local_active_tasks"]:
+        lines.append(f"- {format_task(task)}")
+    lines.append("balfrin_required_tasks:")
+    for task in report["balfrin_required_tasks"]:
         lines.append(f"- {format_task(task)}")
     if report.get("backlog_note"):
         lines.append(f"backlog_note: {report['backlog_note']}")
@@ -571,7 +637,12 @@ def render_text(report: dict[str, Any]) -> str:
 
 def main() -> int:
     args = parse_args()
-    report = build_report(args.task, run_checks=not args.no_live_checks, detail=args.detail)
+    report = build_report(
+        args.task,
+        run_checks=not args.no_live_checks,
+        detail=args.detail,
+        local_only=args.local_only,
+    )
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
