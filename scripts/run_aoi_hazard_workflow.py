@@ -2186,6 +2186,12 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
     hazard_manifest_json = json.loads(hazard_manifest.read_text(encoding="utf-8"))
     map_package_json = json.loads(map_package_manifest.read_text(encoding="utf-8"))
     pilot_gis_json = json.loads(pilot_gis_manifest.read_text(encoding="utf-8"))
+    hazard_layer_outputs = [
+        output
+        for output in hazard_manifest_json.get("outputs", [])
+        if isinstance(output, dict) and output.get("kind") == "hazard_layer"
+    ]
+    trajectory_sample_count = count_csv_data_rows(validation_trajectory)
 
     return {
         "schema_version": "aoi_local_tiny_smoke_run_v1",
@@ -2243,6 +2249,18 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
         "hazard_manifest": hazard_manifest_json,
         "map_package_manifest_json": map_package_json,
         "pilot_gis_package_manifest_json": pilot_gis_json,
+        "micro_validation_smoke": {
+            "schema_version": "local_tschamut_micro_validation_smoke_v1",
+            "verification_status": "passed"
+            if trajectory_sample_count > 0 and hazard_layer_outputs
+            else "blocked_missing_smoke_artifact",
+            "trajectory_sample_count": trajectory_sample_count,
+            "hazard_layer_count": len(hazard_layer_outputs),
+            "first_hazard_layer": hazard_layer_outputs[0].get("layer_name", "") if hazard_layer_outputs else "",
+            "trajectory_artifact": str(validation_trajectory),
+            "hazard_manifest": str(hazard_manifest),
+            "output_root": str(smoke_output_root),
+        },
         "workflow_summary": {
             "command_focus": "run-local-smoke",
             "workflow_classification": "smoke_completed",
@@ -2255,6 +2273,13 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
             "ready_for_next_step": {"status": "smoke_completed", "next_step": "none"},
         },
     }
+
+
+def count_csv_data_rows(path: Path) -> int:
+    if not path.exists():
+        return 0
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return max(sum(1 for _ in handle) - 1, 0)
 
 
 class FrontDoorStatusInvalidInputError(ValueError):

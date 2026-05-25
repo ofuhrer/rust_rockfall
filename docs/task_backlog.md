@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-541: Create A Local Tschamut Micro-Validation Smoke From Existing Fixtures
-
-Goal: Provide one tiny local command path that produces a trajectory sample and one hazard layer from existing Tschamut-compatible fixtures.
-
-Capability gap reduced: Gives contributors a reproducible local scientific smoke that exercises simulation-to-layer plumbing without large data or Balfrin.
-
-Why this outranks alternatives: A small executable proof is more useful than another overview when validating local changes to scientific plumbing.
-
-Inspect first:
-
-- `validation/cases/probabilistic_phase1_smoke.yaml`
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/test_hazard_layers.py`
-- `README.md`
-
-Deliverables:
-
-- Document or wire an existing tiny local command that writes outputs under an ignored scratch root and verifies one trajectory artifact plus one hazard layer.
-- Add a focused test or fixture-backed command proof that keeps runtime small.
-
-Definition of done:
-
-- The micro-smoke command is discoverable from existing repo surfaces, runs locally without Balfrin, and its focused test passes.
-
-Boundaries: No large AOI run, no live data acquisition, no new workflow framework, no operational claim, and no statistical validation claim.
-
 ### TB-542: Add Deterministic Energy-Budget Checks To Minimal Smoke
 
 Goal: Verify that the minimal trajectory smoke preserves deterministic sample count and bounded energy fields.

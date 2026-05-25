@@ -1453,6 +1453,13 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                     smoke["hazard_manifest"]["conditional_execution"]["conditional_curve_export"]["mode"],
                     "summary-only",
                 )
+                micro_smoke = smoke["micro_validation_smoke"]
+                self.assertEqual(micro_smoke["schema_version"], "local_tschamut_micro_validation_smoke_v1")
+                self.assertEqual(micro_smoke["verification_status"], "passed")
+                self.assertGreater(micro_smoke["trajectory_sample_count"], 0)
+                self.assertGreaterEqual(micro_smoke["hazard_layer_count"], 1)
+                self.assertTrue(Path(micro_smoke["trajectory_artifact"]).exists())
+                self.assertTrue(Path(micro_smoke["hazard_manifest"]).exists())
                 self.assertFalse(smoke["hazard_manifest"]["performance"]["plots_enabled"])
                 self.assertEqual(
                     smoke["pilot_gis_package_manifest_json"]["probability_claim_boundary"]["annualized"],

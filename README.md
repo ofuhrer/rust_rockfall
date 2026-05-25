@@ -50,6 +50,19 @@ velocity, energy diagnostics, and contact state. The example uses only
 [`examples/inclined_plane.json`](examples/inclined_plane.json) and does not
 download data.
 
+Run a tiny validation-to-hazard smoke:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke \
+  --smoke-output-root /tmp/rust_rockfall_micro_validation_smoke \
+  --format json
+```
+
+This uses the tracked `probabilistic_phase1_smoke` fixture, writes outputs
+under `/tmp`, and verifies that at least one trajectory artifact and one hazard
+layer were produced. It is a reproducibility smoke, not a scientific validation
+claim.
+
 Run the main local checks:
 
 ```bash
