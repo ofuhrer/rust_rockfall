@@ -7522,3 +7522,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local second-site smoke only; no private data, no public-context claim upgrade, no validation claim, no operational claim, and no Balfrin dependency.
 - Next task: `TB-519`
+
+### TB-519: Improve Candidate Endpoint Comparison Metrics
+
+- Date: 2026-05-25
+- Commit: `e87ffac`
+- Objective: make candidate endpoint comparison less centroid-only by adding deterministic endpoint-cloud shape metrics.
+- Files changed: `scripts/summarize_tschamut_closure_gap_deltas.py`, `tests/test_tschamut_closure_gap_deltas.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added committed-record endpoint-shape accounting to the Tschamut candidate geometry ablation: mean-nearest endpoint error, lateral-spread error, combined endpoint-shape error, and source-aligned deltas.
+  - Added a shape classifier that distinguishes centroid-only improvement from endpoint-shape degradation, centroid and shape degradation together, spread-dominated failures, and inconclusive shape deltas.
+  - Added reusable deterministic point-cloud helpers for nearest-neighbor distance, RMS radial spread, principal orientation, orientation difference, and percentile nearest-neighbor error.
+  - Extended text output with the endpoint-shape interpretation and shape-error delta.
+  - Added focused synthetic point-cloud tests for orientation/shape metrics and classifier behavior, plus committed-record assertions for the Tschamut ablation.
+  - CLI proof reported `endpoint_shape_interpretation=centroid_and_endpoint_shape_degrade_together`, mean-nearest delta `179.694938` m, and endpoint-shape delta `170.065605` m.
+  - Removed TB-519 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json --json-output /tmp/tb519_closure_gap_deltas.json > /tmp/tb519_closure_gap_deltas_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_tschamut_closure_gap_deltas.py tests/test_tschamut_closure_gap_deltas.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: diagnostic metrics only; no tuning, no candidate acceptance upgrade, no operational claim, no physical-probability claim, and no Balfrin dependency.
+- Next task: `TB-520`
