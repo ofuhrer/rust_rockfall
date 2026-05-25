@@ -8641,3 +8641,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence promotion only; no new run, no operational claim, no scale-up authorization, no annual-frequency claim, and no physical-probability claim.
 - Next task: `TB-568`
+
+### TB-568: Quantify Current Balfrin Efficiency Against CI And Historical Runs
+
+- Date: 2026-05-25
+- Commit: `98a653d`
+- Objective: add a compact performance comparison surface for TB-566 versus historical Balfrin runs, local projection, and separately reported CI benchmark context.
+- Files changed: `scripts/performance_ci_tracking.py`, `tests/test_performance_ci_tracking.py`, `docs/performance_ci_tracking.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `performance_ci_tracking.py balfrin-efficiency` to emit JSON and Markdown reports.
+  - Compared TB-566 against TB-448, TB-557, and the scale-matrix projection for scheduler elapsed time, collector wall time, MaxRSS, memory peak, output bytes, file counts, and conditional rows.
+  - Kept CI benchmark data in a separate `ci_standard_profile` section so GitHub runner timings are not mixed into Balfrin scheduler evidence.
+  - Made missing Balfrin trajectory counts explicit instead of inventing a value from preserved metrics.
+  - Removed TB-568 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_performance_ci_tracking -v`
+  - `PYENV_VERSION=system uv run python scripts/performance_ci_tracking.py balfrin-efficiency --output-json /tmp/tb568_balfrin_efficiency.json --output-markdown /tmp/tb568_balfrin_efficiency.md`
+  - `PYENV_VERSION=system uv run python -m json.tool /tmp/tb568_balfrin_efficiency.json >/dev/null`
+- Result/status: implemented_measured
+- Boundaries: analysis only; no run, no operational claim, no physical-probability claim, no scale-up authorization, and no benchmark-as-validation claim.
+- Next task: `TB-569`
