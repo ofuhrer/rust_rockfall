@@ -8749,3 +8749,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local profile and fixture-backed handoff validation only; no `sbatch`, no Balfrin run, no non-postproc partition, no distributed execution, no physics changes, no scale-up claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-573`
+
+### TB-573: Rebuild The 16-Zone Handoff Under The Diagnostic Profile
+
+- Date: 2026-05-26
+- Commit: `c448df0`
+- Objective: regenerate the 16-zone diagnostic handoff from the Balfrin checkout and preserve the no-submit preflight evidence.
+- Files changed: `docs/balfrin_16_zone_handoff_tb573.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to `b7957e44eeed03930e9914c96d1b8ba4055eadac` and generated the package under `$SCRATCH/rust_rockfall/tb573_16_zone_handoff`.
+  - Preserved package hashes, submit command, run root, access/preflight status, and no-submit status in the TB-573 evidence note.
+  - Confirmed the diagnostic budget profile is accepted and the old manifest-size budget blocker is gone.
+  - Recorded the remaining blocker as the reducer/scenario envelope: 16 simultaneous release zones versus measured max 8; removed TB-573 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir "$SCRATCH/rust_rockfall/tb573_16_zone_handoff" --candidate-output-root "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/candidate_outputs" --target-area-output-root "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/target_area_handoff" --pressure-probe-root "$SCRATCH/rust_rockfall/tb573_16_zone_pressure" --requested-release-zone-batch-size 16 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json" --authorization-record "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml" --balfrin-access-preflight-json "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/balfrin_preflight_final.json" --format json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json" --authorization-record "$SCRATCH/rust_rockfall/tb573_16_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml" --validation-mode budget-thresholds --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_waiting_report
+- Boundaries: no `sbatch`, no Balfrin measurement, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-574`
