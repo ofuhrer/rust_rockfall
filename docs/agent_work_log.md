@@ -8272,3 +8272,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local recommendation output only; no new roadmap document, backlog generator, Balfrin dependency, claim upgrade, or placeholder commands.
 - Next task: `TB-551`
+
+### TB-552: Regenerate Reducer-Pressure Scratch Roots Deterministically
+
+- Date: 2026-05-25
+- Commit: `1bca703`
+- Objective: report deterministic reducer-pressure scratch-root manifest paths and byte/file counts so local gates can be regenerated under caller-supplied `/tmp` roots.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `generated_scratch_root` to the multi-zone reducer-pressure probe report with manifest paths, manifest byte counts, root file/byte counts, and output file/byte counts.
+  - Threaded that scratch-root summary into the reducer-pressure gate target profile.
+  - Added focused tests proving materialized `/tmp` roots expose existing manifest paths and are consumed by the gate.
+  - Removed TB-552 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
+  - `rm -rf /tmp/tb552_reducer_pressure_gate && PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py --materialize-root /tmp/tb552_reducer_pressure_gate --format json >/tmp/tb552_gate.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb552_gate.json >/dev/null`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_fixture_backed
+- Boundaries: local scratch generation only; no Balfrin submission, large ensemble, distributed execution, scale-up authorization, or claim upgrade.
+- Next task: `TB-559`
