@@ -291,7 +291,21 @@ def build_report(
     scenario_table_file_count = int(scenario_table_bundle_measurements.get("file_count") or 0)
     scenario_row_count = int(scenario_table_generation.get("scenario_row_count") or 0)
     scenario_rows = [row for row in scenario_table_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
-    generated_cardinality = AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
+    if scenario_rows:
+        generated_cardinality = AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
+    else:
+        generated_cardinality = {
+            "scenario_family_cardinality": list(
+                scenario_table_generation.get("scenario_family_cardinality")
+                or scenario_table_generation.get("scenario_family_template_cardinality")
+                or []
+            ),
+            "release_zone_cardinality": list(
+                scenario_table_generation.get("release_zone_cardinality")
+                or scenario_table_generation.get("source_zone_family_cardinality")
+                or []
+            ),
+        }
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -342,6 +356,7 @@ def build_report(
             "scenario_table_runtime_seconds": float(scenario_table_generation.get("runtime_seconds") or 0.0),
             "scenario_table_output_root": scenario_table_generation.get("scenario_table_output_root", ""),
             "scenario_table_review_application_root": scenario_table_generation.get("review_application_output_root", ""),
+            "row_payload_materialization": scenario_table_generation.get("row_payload_materialization", {}),
             "manifest_pressure": {
                 "scenario_table_manifest_pressure": "ready",
                 "candidate_bundle_manifest_bytes": bundle_measurements["manifest_bytes"],
@@ -550,6 +565,7 @@ def build_generated_scenario_table_report(
         output_root=scenario_output_root,
         trajectory_count=60,
         seed=34014,
+        retain_row_payloads=False,
     )
     freeze_seconds = time.perf_counter() - freeze_started
     total_seconds = review_seconds + freeze_seconds
@@ -581,10 +597,13 @@ def build_generated_scenario_table_report(
             "file_count": len(scenario_table_files),
             "bundle_measurements": measure_bundle_pressure(scenario_table_output_root),
             "scenario_table_manifest": scenario_table_manifest_payload,
+            "scenario_family_cardinality": list(scenario_table_manifest_payload.get("scenario_family_cardinality") or []),
+            "release_zone_cardinality": list(scenario_table_manifest_payload.get("release_zone_cardinality") or []),
             "source_zone_family_cardinality": list(scenario_table_manifest_payload.get("source_zone_family_cardinality") or []),
             "block_family_cardinality": list(scenario_table_manifest_payload.get("block_family_cardinality") or []),
             "scenario_family_template_cardinality": list(scenario_table_manifest_payload.get("scenario_family_template_cardinality") or []),
             "scenario_table_rows": freezer_report.get("scenario_table_rows") or [],
+            "row_payload_materialization": freezer_report.get("row_payload_materialization") or {},
             "manifest_compaction": freezer_report.get("manifest_compaction") or {},
         },
     }

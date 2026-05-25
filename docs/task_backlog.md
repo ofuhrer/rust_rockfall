@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-515: Reduce Scenario Table Memory Footprint
-
-Goal: Reduce memory or materialization pressure when generating large candidate scenario tables.
-
-Capability gap reduced: Lets local scenario-cardinality experiments scale further before requiring cluster execution.
-
-Why this outranks alternatives: Candidate expansion and storage pressure tasks depend on scenario generation not holding redundant row payloads.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_scenario_storage_output_tier_pressure.py`
-
-Deliverables:
-
-- Profile or inspect the candidate scenario generation path and remove one redundant in-memory or on-disk row family while preserving deterministic output.
-- Record before/after row count, file count, byte count, or memory proxy in scratch output.
-
-Definition of done:
-
-- Focused candidate/storage tests pass and before/after evidence shows reduced materialization pressure or a bounded no-op with the next pressure source named.
-
-Boundaries: Local scenario generation only; no probability semantics, no annual-frequency claim, no new storage report, and no Balfrin dependency.
-
 ### TB-516: Add Cross-Language Fixture Replay Check
 
 Goal: Verify that a small Python-generated hazard input fixture replays consistently through the Rust simulation path.

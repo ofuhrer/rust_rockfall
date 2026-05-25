@@ -369,6 +369,48 @@ class CandidateSourceZoneScenarioStressTests(unittest.TestCase):
         path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
         return path
 
+    def test_freezer_can_omit_duplicate_row_payloads_after_writing_outputs(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            tmp_root = Path(tmp)
+            review_package = self._write_review_package(
+                tmp_root / "review_package.yaml",
+                self._build_review_package_payload(candidate_count=4),
+            )
+
+            retained = MODULE.build_freezer_report(
+                review_package_path=review_package,
+                accepted_candidate_ids=None,
+                output_root=tmp_root / "retained",
+                trajectory_count=6,
+                seed=MODULE.DEFAULT_FREEZER_SEED,
+                retain_row_payloads=True,
+            )
+            omitted = MODULE.build_freezer_report(
+                review_package_path=review_package,
+                accepted_candidate_ids=None,
+                output_root=tmp_root / "omitted",
+                trajectory_count=6,
+                seed=MODULE.DEFAULT_FREEZER_SEED,
+                retain_row_payloads=False,
+            )
+            omitted_scenario_table_exists = Path(omitted["output_paths"]["scenario_table"]).exists()
+            omitted_manifest_exists = Path(omitted["output_paths"]["manifest"]).exists()
+
+        self.assertIn("scenario_table_rows", retained)
+        self.assertIn("release_rows", retained)
+        self.assertNotIn("scenario_table_rows", omitted)
+        self.assertNotIn("release_rows", omitted)
+        self.assertEqual(retained["scenario_row_count"], omitted["scenario_row_count"])
+        self.assertEqual(retained["accepted_candidate_ids"], omitted["accepted_candidate_ids"])
+        self.assertEqual(
+            omitted["row_payload_materialization"]["status"],
+            "omitted_after_csv_and_manifest_write",
+        )
+        self.assertGreater(omitted["row_payload_materialization"]["delta"]["bytes"], 0)
+        self.assertTrue(omitted_scenario_table_exists)
+        self.assertTrue(omitted_manifest_exists)
+        self.assertEqual(retained["manifest_compaction"]["after"]["field_count"], omitted["manifest_compaction"]["after"]["field_count"])
+
     def test_missing_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
             output_root = Path(tmp) / "validation/private/tschamut_public_pilot/candidate_source_zone_stress_v1"

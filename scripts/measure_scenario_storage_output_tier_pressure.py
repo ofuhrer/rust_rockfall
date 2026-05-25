@@ -182,6 +182,7 @@ def build_fixture_scenario_measurement(*, review_package_path: Path, output_root
         output_root=output_root,
         trajectory_count=DEFAULT_FIXTURE_TRAJECTORY_COUNT,
         seed=SCENARIO_FREEZER.DEFAULT_FREEZER_SEED,
+        retain_row_payloads=False,
     )
     bundle = measure_root(output_root, label="fixture_scenario_table", evidence_label="fixture_backed")
     manifest_path = Path(str(report["output_paths"]["manifest"]))
@@ -197,6 +198,7 @@ def build_fixture_scenario_measurement(*, review_package_path: Path, output_root
         "scenario_table_csv_bytes": safe_path_bytes(Path(str(report["output_paths"]["scenario_table"]))),
         "scenario_manifest_bytes": safe_path_bytes(manifest_path),
         "manifest_compaction": dict(report.get("manifest_compaction") or {}),
+        "row_payload_materialization": dict(report.get("row_payload_materialization") or {}),
         "scenario_bundle": bundle,
         "scenario_family_cardinality": list(manifest.get("block_family_cardinality") or []),
     }
@@ -233,7 +235,21 @@ def build_real_candidate_measurement(
     )
     scenario_generation = dict(generated.get("scenario_table_generation") or {})
     scenario_rows = [row for row in scenario_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
-    cardinality = MANAGEMENT_PRESSURE.AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
+    if scenario_rows:
+        cardinality = MANAGEMENT_PRESSURE.AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
+    else:
+        cardinality = {
+            "scenario_family_cardinality": list(
+                scenario_generation.get("scenario_family_cardinality")
+                or scenario_generation.get("scenario_family_template_cardinality")
+                or []
+            ),
+            "release_zone_cardinality": list(
+                scenario_generation.get("release_zone_cardinality")
+                or scenario_generation.get("source_zone_family_cardinality")
+                or []
+            ),
+        }
     review_summary = dict(candidate_review.get("review_summary") or {})
     candidate_summary = dict(candidate_metrics.get("candidate_summary") or {})
     status = "ready" if generated.get("scenario_table_status") == "ready" else str(generated.get("scenario_table_status") or "unknown")
@@ -250,6 +266,7 @@ def build_real_candidate_measurement(
         "scenario_table_csv_bytes": int(scenario_generation.get("csv_bytes") or 0),
         "scenario_manifest_bytes": int(scenario_generation.get("manifest_bytes") or 0),
         "manifest_compaction": dict(scenario_generation.get("manifest_compaction") or {}),
+        "row_payload_materialization": dict(scenario_generation.get("row_payload_materialization") or {}),
         "scenario_table_total_bytes": int(scenario_generation.get("total_bytes") or 0),
         "release_plan_root": scenario_generation.get("review_application_output_root", ""),
         "scenario_table_output_root": scenario_generation.get("scenario_table_output_root", ""),

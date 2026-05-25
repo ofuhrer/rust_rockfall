@@ -30,12 +30,24 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
             report["fixture_measurement"]["manifest_compaction"]["before"]["bytes"],
             report["fixture_measurement"]["manifest_compaction"]["after"]["bytes"],
         )
+        self.assertEqual(
+            report["fixture_measurement"]["row_payload_materialization"]["status"],
+            "omitted_after_csv_and_manifest_write",
+        )
+        self.assertGreater(
+            report["fixture_measurement"]["row_payload_materialization"]["delta"]["bytes"],
+            0,
+        )
         self.assertEqual(report["real_aoi_candidate_measurement"]["measurement_status"], "ready")
         self.assertEqual(report["real_aoi_candidate_measurement"]["scenario_row_count"], 3)
         self.assertGreater(report["real_aoi_candidate_measurement"]["candidate_bundle"]["total_bytes"], 0)
         self.assertGreater(
             report["real_aoi_candidate_measurement"]["manifest_compaction"]["before"]["bytes"],
             report["real_aoi_candidate_measurement"]["manifest_compaction"]["after"]["bytes"],
+        )
+        self.assertEqual(
+            report["real_aoi_candidate_measurement"]["row_payload_materialization"]["retained_in_report"],
+            False,
         )
 
         ladder = report["expanded_candidate_set_measurements"]
@@ -122,7 +134,7 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
                     "tier_id": "minimal",
                     "tier_role": "scenario table plus release-plan manifest only",
                     "file_count": 5,
-                    "total_bytes": 14299,
+                    "total_bytes": 15162,
                     "replay_suitability": "insufficient_missing_trajectory_outputs",
                 },
                 {

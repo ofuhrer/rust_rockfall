@@ -1297,6 +1297,8 @@ def compact_freezer_manifest(report: dict[str, Any]) -> dict[str, Any]:
         "block_scenario_ids": list(report.get("block_scenario_ids") or []),
         "conditional_weight_total": report.get("conditional_weight_total"),
         "conditional_weight_semantics": report.get("conditional_weight_semantics"),
+        "scenario_family_cardinality": list(report.get("scenario_family_cardinality") or []),
+        "release_zone_cardinality": list(report.get("release_zone_cardinality") or []),
         "forest_realization_plan": dict(report.get("forest_realization_plan") or {}),
         "release_sampling_geometry_check": dict(report.get("release_sampling_geometry_check") or {}),
         "claim_boundaries": dict(report.get("claim_boundaries") or {}),
@@ -1978,6 +1980,7 @@ def build_freezer_report(
     policy_output: Path | None = None,
     manifest_output: Path | None = None,
     block_scenarios: list[dict[str, Any]] | None = None,
+    retain_row_payloads: bool = True,
 ) -> dict[str, Any]:
     if review_package_path is None:
         raise CandidateSourceZoneFreezerError("review-package is required in freeze mode")
@@ -2121,6 +2124,16 @@ def build_freezer_report(
     write_freezer_csv(scenario_table_output, scenario_rows, FREEZER_SCENARIO_TABLE_COLUMNS)
     policy_output.write_text(yaml.safe_dump(policy, sort_keys=False), encoding="utf-8")
 
+    row_payloads = {
+        "source_zone_metadata": source_zone_metadata,
+        "release_rows": release_rows,
+        "scenario_table_rows": scenario_rows,
+        "policy": policy,
+    }
+    row_payload_materialization = summarize_freezer_row_payload_materialization(
+        row_payloads,
+        retained=retain_row_payloads,
+    )
     report = {
         "schema_version": FREEZER_SCHEMA_VERSION,
         "freezer_status": "ready",
@@ -2145,14 +2158,13 @@ def build_freezer_report(
         "block_scenario_ids": [text_value(scenario.get("block_scenario_id")) for scenario in block_scenarios],
         "conditional_weight_total": conditional_weight_total,
         "conditional_weight_semantics": "conditional_sampling_only",
+        "scenario_family_cardinality": summarize_group_cardinality(scenario_rows, "block_family_id"),
+        "release_zone_cardinality": summarize_group_cardinality(scenario_rows, "candidate_release_zone_id"),
         "forest_realization_plan": build_forest_realization_plan(
             review_package.get("forest_context_intake") if isinstance(review_package.get("forest_context_intake"), dict) else None
         ),
         "release_sampling_geometry_check": release_sampling_geometry_check,
-        "source_zone_metadata": source_zone_metadata,
-        "release_rows": release_rows,
-        "scenario_table_rows": scenario_rows,
-        "policy": policy,
+        "row_payload_materialization": row_payload_materialization,
         "claim_boundaries": policy.get("claim_boundary", {}),
         "output_paths": {
             "source_zone_metadata": display_path(source_zone_metadata_output),
@@ -2162,10 +2174,42 @@ def build_freezer_report(
             "manifest": display_path(manifest_output),
         },
     }
-    compact_manifest = compact_freezer_manifest(report)
+    if retain_row_payloads:
+        report.update(row_payloads)
+    full_report_for_compaction = dict(report)
+    full_report_for_compaction.update(row_payloads)
+    compact_manifest = compact_freezer_manifest(full_report_for_compaction)
     manifest_output.write_text(json.dumps(compact_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    report["manifest_compaction"] = summarize_manifest_compaction(report, compact_manifest)
+    report["manifest_compaction"] = summarize_manifest_compaction(full_report_for_compaction, compact_manifest)
     return report
+
+
+def summarize_freezer_row_payload_materialization(row_payloads: dict[str, Any], *, retained: bool) -> dict[str, Any]:
+    before = measure_json_payload(row_payloads)
+    after = measure_json_payload(row_payloads if retained else {})
+    return {
+        "schema_version": "freezer_row_payload_materialization_v1",
+        "retained_in_report": retained,
+        "status": "retained_for_compatibility" if retained else "omitted_after_csv_and_manifest_write",
+        "omitted_row_families": [] if retained else sorted(row_payloads),
+        "before": before,
+        "after": after,
+        "delta": {
+            "bytes": before["bytes"] - after["bytes"],
+            "field_count": before["field_count"] - after["field_count"],
+        },
+        "reconstruction_contract": {
+            "status": "ready",
+            "deterministic_outputs_retained": [
+                "source_zone_metadata.yaml",
+                "release_rows.csv",
+                "scenario_table.csv",
+                "source_scenario_policy.yaml",
+                "scenario_table_manifest.json",
+            ],
+            "claim_boundary": "row-payload materialization only; no sampling-weight or probability semantic change",
+        },
+    }
 
 
 def candidate_repeat_count_from_records(candidate_records: list[dict[str, Any]]) -> int:

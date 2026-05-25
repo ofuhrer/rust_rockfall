@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import csv
 import json
 import tempfile
 import unittest
@@ -245,6 +246,8 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
                 output_root=tmp_root / "scenario_pressure_adjacent",
                 scenario_output_root=tmp_root / "scenario_table_adjacent",
             )
+            with Path(report["scenario_table_generation"]["scenario_table_csv"]).open(encoding="utf-8", newline="") as handle:
+                first_row = next(csv.DictReader(handle))
 
         self.assertEqual(report["scenario_pressure_status"], "ready")
         self.assertEqual(report["candidate_evidence"]["review_summary"]["candidate_count"], 1)
@@ -313,9 +316,11 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
             [row["row_count"] for row in report["scenario_generation_pressure"]["policy_block_family_cardinality"]],
             [3, 3, 3],
         )
-        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["conditional_weight"], 3.0)
-        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["annual_frequency_per_year"], "")
-        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"][0]["scenario_probability"], "")
+        self.assertEqual(report["scenario_table_generation"]["row_payload_materialization"]["retained_in_report"], False)
+        self.assertEqual(report["scenario_table_generation"]["scenario_table_rows"], [])
+        self.assertEqual(float(first_row["conditional_weight"]), 3.0)
+        self.assertEqual(first_row["annual_frequency_per_year"], "")
+        self.assertEqual(first_row["scenario_probability"], "")
 
     def test_candidate_expansion_threshold_fail_closes_when_budget_search_overruns(self) -> None:
         candidate_review = {
