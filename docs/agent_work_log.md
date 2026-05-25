@@ -7471,3 +7471,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: compatibility regression only; no new physics, no new external data, no operational claim, no validation claim upgrade, and no Balfrin dependency.
 - Next task: `TB-517`
+
+### TB-517: Tighten Output Family Budget Accounting
+
+- Date: 2026-05-25
+- Commit: `17257b6`
+- Objective: align output-family file/byte accounting between reducer pressure and scenario storage pressure.
+- Files changed: `scripts/lib/output_family_accounting.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Moved the storage-pressure path-family classifier into `scripts/lib/output_family_accounting.py`.
+  - Updated scenario storage measurement to use the shared classifier.
+  - Added reducer-pressure `storage_pressure_family_file_counts`, `storage_pressure_family_bytes`, and `output_family_accounting_alignment` fields derived from the same classifier.
+  - Added focused coverage comparing reducer pressure’s normalized `trajectory`, `deposition`, and `impact_events` file/byte counts against scenario storage `measure_root()` on the same scratch output directory.
+  - Ran a compact reducer-pressure CLI probe; `output_family_accounting_alignment.status` reported `ready`.
+  - Removed TB-517 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure.MultiZoneReducerPressureProbeTests.test_materialized_probe_is_deterministic_and_reports_pressure tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/tb517_reducer_pressure --manifest-mode compact --format json --json-output /tmp/tb517_reducer_pressure.json > /tmp/tb517_reducer_pressure_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_scenario_storage_output_tier_pressure -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/lib/output_family_accounting.py scripts/summarize_multi_zone_reducer_pressure.py scripts/measure_scenario_storage_output_tier_pressure.py tests/test_multi_zone_reducer_pressure.py tests/test_scenario_storage_output_tier_pressure.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: internal accounting simplification only; no output threshold change, no scale-up claim, no operational claim, and no Balfrin dependency.
+- Next task: `TB-518`
