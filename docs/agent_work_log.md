@@ -8251,3 +8251,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: fixture-backed intake smoke only; no new observed dataset, no calibration claim, no validation claim, no annual-frequency claim, and no operational or scale-up claim.
 - Next task: `TB-550`
+
+### TB-550: Consolidate Local Scientific Recommendation Output Into Next Executable Commands
+
+- Date: 2026-05-25
+- Commit: `0456481`
+- Objective: make local scientific follow-up recommendations directly executable from the repository checkout.
+- Files changed: `scripts/recommend_local_scientific_backlog.py`, `tests/test_local_scientific_backlog_recommendation.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added normalized `next_executable_command`, `expected_artifact_or_measurement`, and structured `next_execution` fields to each ranked follow-up.
+  - Added `next_command_coverage` so recommendations fail closed when commands, measurements, or placeholder command strings are missing.
+  - Updated text rendering to show command coverage and concrete next commands instead of vague recommendations.
+  - Removed TB-550 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_local_scientific_backlog_recommendation -v`
+  - `PYENV_VERSION=system uv run python scripts/recommend_local_scientific_backlog.py --format json >/tmp/tb550_recommendations.json && python3 -m json.tool /tmp/tb550_recommendations.json >/dev/null`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_measured
+- Boundaries: local recommendation output only; no new roadmap document, backlog generator, Balfrin dependency, claim upgrade, or placeholder commands.
+- Next task: `TB-551`
