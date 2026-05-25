@@ -2254,6 +2254,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
     next_action_recommendation = report["next_action_recommendation"]
+    intake_smoke = report["intake_acceptance_smoke_summary"]
     lines = [
         f"schema_version: {report['schema_version']}",
         f"observed_runout_deposition_intake_status: {report['observed_runout_deposition_intake_status']}",
