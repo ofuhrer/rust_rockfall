@@ -7925,3 +7925,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: minimal local smoke only; no new physics, no new dataset, no operational claim, and no Balfrin dependency.
 - Next task: `TB-535`
+
+### TB-535: Prune One Generated-Or-Archived Reference From Active Navigation
+
+- Date: 2026-05-25
+- Commit: `0917a26`
+- Objective: remove one direct dated archive pointer from active maturity navigation while preserving the historical record in the archive index.
+- Files changed: `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Replaced the active maturity snapshot's direct pointer to `docs/archive/hazard_workflow_scale_review.md` with the maintained `docs/archive/README.md` archive index.
+  - Kept the archived hazard workflow scale review reachable from `docs/archive/README.md`.
+  - Preserved the current interpretation guidance: use the maturity snapshot, scale readiness matrix, and output-profile contract instead of dated archived reviews.
+  - Removed TB-535 from the active backlog.
+- Checks run:
+  - `rg -n "hazard_workflow_scale_review|docs/archive/README.md|archive/README.md" docs/current_maturity_snapshot.md docs/archive/README.md docs/agent_reference.md README.md`
+  - `test -f docs/archive/README.md && rg -n "hazard_workflow_scale_review" docs/archive/README.md`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: navigation pruning only; no content deletion, no claim change, and no Balfrin dependency.
+- Next task: none local; remaining active tasks require Balfrin access.
