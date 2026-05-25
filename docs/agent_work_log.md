@@ -6993,3 +6993,31 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local manifest/output simplification only; no distributed execution, no Balfrin submission, no Swiss-wide claim, and no operational claim.
 - Next task: `TB-498`
+
+### TB-498: Optimize The Next Local Reducer Hotspot
+
+- Date: 2026-05-25
+- Commit: `3ed24df`
+- Objective: profile the local hazard/reducer benchmark after the CSV writer optimization and remove the next measured hotspot.
+- Files changed: `scripts/build_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the before benchmark under ignored root `hazard/results/tb498_before` and a cProfile run under `hazard/results/tb498_profile_before`.
+  - The profile identified `build_conditional_intensity_exceedance_curves` as the next largest self-contained hotspot, with before cumulative time `0.45835 s`; repeated `grid.center` calls contributed `0.01799 s`.
+  - Precomputed x/y grid center vectors once per conditional-curve build and cached row-local values while preserving row ordering and output values.
+  - After profile under `hazard/results/tb498_profile_after` reduced conditional-curve cumulative time to `0.416379 s` and removed `grid.center` calls from the curve path.
+  - The output-heavy benchmark accumulation time moved from `0.038356542005203664 s` to `0.03806112502934411 s`; the smallest baseline remained within noise (`0.03578770800959319 s` to `0.03659695800160989 s`).
+  - Deterministic replay remained clean: `baseline_replay_match=true`, `layer_signature_match=true`, and stable manifest hashes matched after the change.
+  - Removed TB-498 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/tb498_before --json-output /tmp/tb498_before.json >/tmp/tb498_before_stdout.json`
+  - `PYENV_VERSION=system uv run python -m cProfile -o /tmp/tb498_before.prof scripts/hazard_accumulation_benchmark.py --format text --benchmark-root hazard/results/tb498_profile_before >/tmp/tb498_profile_stdout.txt`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_accumulation_benchmark tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests -v`
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/tb498_after --json-output /tmp/tb498_after.json >/tmp/tb498_after_stdout.json`
+  - `PYENV_VERSION=system uv run python -m cProfile -o /tmp/tb498_after.prof scripts/hazard_accumulation_benchmark.py --format text --benchmark-root hazard/results/tb498_profile_after >/tmp/tb498_profile_after_stdout.txt`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/build_hazard_layers.py tests/test_hazard_accumulation_benchmark.py tests/test_hazard_layers.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local performance only; no physics change, no output contract break, no new benchmark framework, no operational claim, and no Balfrin dependency.
+- Next task: `TB-499`
