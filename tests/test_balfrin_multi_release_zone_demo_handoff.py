@@ -132,9 +132,9 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(output_budget_projection["reducer_worker_count"], 2)
         self.assertEqual(output_budget_projection["primary_output_file_count"], 6)
         self.assertEqual(output_budget_projection["sidecar_file_count"], 9)
-        self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 2)
-        self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 394)
-        self.assertEqual(output_budget_projection["output_file_count"], 19)
+        self.assertEqual(output_budget_projection["reducer_manifest_file_count"], 0)
+        self.assertEqual(output_budget_projection["reducer_manifest_bytes"], 0)
+        self.assertEqual(output_budget_projection["output_file_count"], 17)
         self.assertEqual(
             output_budget_projection["replay_critical_retained_output_families"],
             ["trajectory_csv", "deposition_csv", "impact_events_csv", "trajectory_merge_state", "reducer_merge_state"],
@@ -256,12 +256,12 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(manifest_pruning["before"]["sidecar_file_count"], 9)
         self.assertEqual(manifest_pruning["after"]["sidecar_file_count"], 9)
-        self.assertEqual(manifest_pruning["before"]["output_file_count"], 19)
-        self.assertEqual(manifest_pruning["after"]["output_file_count"], 19)
-        self.assertEqual(manifest_pruning["before"]["reducer_manifest_file_count"], 2)
-        self.assertEqual(manifest_pruning["after"]["reducer_manifest_file_count"], 2)
-        self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 394)
-        self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 394)
+        self.assertEqual(manifest_pruning["before"]["output_file_count"], 17)
+        self.assertEqual(manifest_pruning["after"]["output_file_count"], 17)
+        self.assertEqual(manifest_pruning["before"]["reducer_manifest_file_count"], 0)
+        self.assertEqual(manifest_pruning["after"]["reducer_manifest_file_count"], 0)
+        self.assertEqual(manifest_pruning["before"]["reducer_manifest_bytes"], 0)
+        self.assertEqual(manifest_pruning["after"]["reducer_manifest_bytes"], 0)
         self.assertNotIn("exact_blocking_fields", manifest_pruning)
         self.assertEqual(
             manifest_pruning["replay_critical_output_families"],
@@ -785,8 +785,10 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(
             report["handoff_output_budget_projection"]["first_bottleneck_labels"]["first_blocked"],
-            "output_file_count",
+            "manifest_size_bytes",
         )
+        self.assertEqual(report["handoff_output_budget_projection"]["reducer_manifest_file_count"], 0)
+        self.assertEqual(report["handoff_output_budget_projection"]["reducer_manifest_bytes"], 0)
         first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
         self.assertEqual(first_blocker["status"], "blocked_reducer_or_scenario_limits")
         self.assertIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", first_blocker["reason"])

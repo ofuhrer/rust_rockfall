@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-571: Rebuild The 16-Zone Handoff After Reducer Optimization
-
-Goal: Re-run the 16-zone no-submit handoff after TB-570 to determine whether the package is live-run eligible.
-
-Capability gap reduced: Converts reducer optimization into a concrete pass/fail pre-submit decision for the next Balfrin scale step.
-
-Why this outranks alternatives: A larger live run should be attempted only after the optimized package passes the same review gates as smaller measured runs.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Generate the optimized 16-zone handoff on a clean Balfrin-aligned checkout.
-- Run authorization, output-budget, submit-contract, and remote-head alignment gates without submitting.
-- Record exact ready/blocked status and later submit command.
-
-Definition of done:
-
-- The handoff is either `ready_for_bounded_postproc_submission` or fails closed with one concrete blocker that can be addressed before execution.
-
-Boundaries: No `sbatch`, no live run, no non-postproc partition, no distributed execution, and no scientific/operational claim upgrade.
-
 ### TB-572: Execute One Optimized 16-Zone Postproc Probe If Gates Pass
 
 Goal: Run one optimized 16-zone reduced-output Balfrin probe when TB-571 and the queue window both permit it.
