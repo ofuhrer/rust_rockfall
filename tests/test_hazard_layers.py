@@ -601,6 +601,30 @@ class HazardLayerTests(unittest.TestCase):
 
             max_ke = read_layer(output_dir / "hazard_fixture_plane_max_kinetic_energy.csv", "max_kinetic_energy")
             self.assertAlmostEqual(max(max_ke.values()), 12.0)
+            max_ke_support = read_layer(
+                output_dir / "hazard_fixture_plane_max_kinetic_energy_sample_count.csv",
+                "max_kinetic_energy_sample_count",
+            )
+            self.assertGreater(max(max_ke_support.values()), 0.0)
+            max_jump_support = read_layer(
+                output_dir / "hazard_fixture_plane_max_jump_height_sample_count.csv",
+                "max_jump_height_sample_count",
+            )
+            self.assertGreater(max(max_jump_support.values()), 0.0)
+            max_ke_cellwise = next(
+                layer for layer in manifest["cellwise_layers"] if layer["key"] == "max_kinetic_energy"
+            )
+            self.assertEqual(
+                max_ke_cellwise["extreme_layer_support_metadata_layer"],
+                "max_kinetic_energy_sample_count",
+            )
+            max_jump_cellwise = next(
+                layer for layer in manifest["cellwise_layers"] if layer["key"] == "max_jump_height"
+            )
+            self.assertEqual(
+                max_jump_cellwise["extreme_layer_support_metadata_layer"],
+                "max_jump_height_sample_count",
+            )
 
             asc_header = (output_dir / "hazard_fixture_plane_reach_probability.asc").read_text().splitlines()[:6]
             self.assertEqual(asc_header[0], "ncols 5")

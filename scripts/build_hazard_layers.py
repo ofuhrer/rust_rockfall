@@ -1967,6 +1967,8 @@ class HazardAccumulator:
         self.weighted_reach = zeros(grid) if probability else None
         self.max_ke = nodata_grid(grid)
         self.max_jump = nodata_grid(grid)
+        self.max_ke_sample_count = zeros(grid)
+        self.max_jump_sample_count = zeros(grid)
         self.kinetic_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
         self.jump_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
         self.velocity_samples = sample_value_grid(grid) if statistics.conditional_statistics_surfaces else None
@@ -2068,6 +2070,7 @@ class HazardAccumulator:
         kinetic = sample.kinetic_j
         if kinetic is not None:
             self.max_ke[row][col] = max(self.max_ke[row][col], kinetic) if self.max_ke[row][col] != NODATA else kinetic
+            self.max_ke_sample_count[row][col] += 1.0
             if self.kinetic_samples is not None:
                 self.kinetic_samples[row][col].append(kinetic)
             for threshold in kinetic_exceeded:
@@ -2086,6 +2089,7 @@ class HazardAccumulator:
             self.terrain_warning_emitted = True
         elif jump is not None:
             self.max_jump[row][col] = max(self.max_jump[row][col], jump) if self.max_jump[row][col] != NODATA else jump
+            self.max_jump_sample_count[row][col] += 1.0
             if self.jump_samples is not None:
                 self.jump_samples[row][col].append(jump)
             for threshold in jump_exceeded:
@@ -2190,6 +2194,8 @@ class HazardAccumulator:
         add_grid_into(self.reach, other.reach)
         merge_max_grid_into(self.max_ke, other.max_ke)
         merge_max_grid_into(self.max_jump, other.max_jump)
+        add_grid_into(self.max_ke_sample_count, other.max_ke_sample_count)
+        add_grid_into(self.max_jump_sample_count, other.max_jump_sample_count)
         merge_sample_value_grid_into(self.kinetic_samples, other.kinetic_samples)
         merge_sample_value_grid_into(self.jump_samples, other.jump_samples)
         merge_sample_value_grid_into(self.velocity_samples, other.velocity_samples)
@@ -2261,11 +2267,35 @@ class HazardAccumulator:
             layers.append(RasterLayer("max_kinetic_energy", "Maximum kinetic energy", "J", self.max_ke, nodata=True))
             layers.append(
                 RasterLayer(
+                    "max_kinetic_energy_sample_count",
+                    "Maximum kinetic energy sample count",
+                    "sample rows",
+                    self.max_ke_sample_count,
+                    note=(
+                        "Finite kinetic-energy sample support for the maximum kinetic-energy layer; "
+                        "use this support count when comparing extreme layers across runs."
+                    ),
+                )
+            )
+            layers.append(
+                RasterLayer(
                     "max_jump_height",
                     "Maximum jump height",
                     "m above terrain plus block radius",
                     self.max_jump,
                     nodata=True,
+                )
+            )
+            layers.append(
+                RasterLayer(
+                    "max_jump_height_sample_count",
+                    "Maximum jump height sample count",
+                    "sample rows",
+                    self.max_jump_sample_count,
+                    note=(
+                        "Finite terrain-evaluated sample support for the maximum jump-height layer; "
+                        "cells with zero support are intentionally unsupported for jump-height comparison."
+                    ),
                 )
             )
             layers.extend(self.conditional_statistics_layers())
@@ -4569,6 +4599,12 @@ def deserialize_grid(raw: Any) -> list[list[float]]:
     return values
 
 
+def deserialize_grid_or_default(raw: Any, grid: GridSpec) -> list[list[float]]:
+    if raw is None:
+        return zeros(grid)
+    return deserialize_grid(raw)
+
+
 def serialize_threshold_grids(threshold_grids: dict[float, list[list[float]]]) -> dict[str, list[list[float]]]:
     return {str(threshold): serialize_grid(grid) for threshold, grid in threshold_grids.items()}
 
@@ -4629,6 +4665,8 @@ def serialize_chunk_accumulator_state(
             "reach": serialize_grid(accumulator.reach),
             "max_ke": serialize_grid(accumulator.max_ke),
             "max_jump": serialize_grid(accumulator.max_jump),
+            "max_ke_sample_count": serialize_grid(accumulator.max_ke_sample_count),
+            "max_jump_sample_count": serialize_grid(accumulator.max_jump_sample_count),
             "kinetic_samples": serialize_sample_value_grid(accumulator.kinetic_samples),
             "jump_samples": serialize_sample_value_grid(accumulator.jump_samples),
             "velocity_samples": serialize_sample_value_grid(accumulator.velocity_samples),
@@ -4684,6 +4722,14 @@ def load_chunk_accumulator_state(
     accumulator.reach = deserialize_grid(grids.get("reach"))
     accumulator.max_ke = deserialize_grid(grids.get("max_ke"))
     accumulator.max_jump = deserialize_grid(grids.get("max_jump"))
+    accumulator.max_ke_sample_count = deserialize_grid_or_default(
+        grids.get("max_ke_sample_count"),
+        grid,
+    )
+    accumulator.max_jump_sample_count = deserialize_grid_or_default(
+        grids.get("max_jump_sample_count"),
+        grid,
+    )
     accumulator.kinetic_samples = deserialize_sample_value_grid(grids.get("kinetic_samples"))
     accumulator.jump_samples = deserialize_sample_value_grid(grids.get("jump_samples"))
     accumulator.velocity_samples = deserialize_sample_value_grid(grids.get("velocity_samples"))
@@ -6762,6 +6808,14 @@ def is_conditional_statistic_layer(layer_key: str) -> bool:
     return conditional_statistic_parts(layer_key) is not None
 
 
+def maximum_extreme_support_layer(layer_key: str) -> str | None:
+    if layer_key == "max_kinetic_energy":
+        return "max_kinetic_energy_sample_count"
+    if layer_key == "max_jump_height":
+        return "max_jump_height_sample_count"
+    return None
+
+
 def is_conditional_statistic_value_layer(layer_key: str) -> bool:
     parts = conditional_statistic_parts(layer_key)
     return parts is not None and parts[1] in {"median", "q90", "q95", "q99", "maximum"}
@@ -7629,6 +7683,13 @@ def cellwise_layers_from_outputs(outputs: list[dict[str, Any]]) -> list[dict[str
             entry["statistic"] = statistic
             entry["sample_support_metadata_layer"] = f"{variable}_sample_count"
             entry["insufficient_sample_flag_layer"] = f"{variable}_insufficient_samples"
+        max_support_layer = maximum_extreme_support_layer(layer_name)
+        if max_support_layer is not None:
+            entry["extreme_layer_support_metadata_layer"] = max_support_layer
+            entry["support_semantics"] = (
+                "finite trajectory sample rows used to compute the cellwise maximum; "
+                "zero-support cells are unsupported for extreme-layer comparison"
+            )
         cellwise_layers[layer_name] = entry
     return [cellwise_layers[key] for key in sorted(cellwise_layers)]
 
@@ -7719,7 +7780,9 @@ def layer_source(layer_key: str) -> str:
         "weighted_reach_probability",
         "reach_probability_standard_error",
         "max_kinetic_energy",
+        "max_kinetic_energy_sample_count",
         "max_jump_height",
+        "max_jump_height_sample_count",
     } or "exceedance" in layer_key:
         return "trajectory_csv"
     if layer_key in {"deposition_density", "weighted_deposition_density"}:

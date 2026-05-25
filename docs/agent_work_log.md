@@ -6761,3 +6761,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: Rust regression coverage only; no calibration, tuning, validation-claim upgrade, operational claim, new fixture generation, or Balfrin execution.
 - Next task: `TB-486`
+
+### TB-486: Reduce Extreme-Layer Support And Nodata Fragility
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: use the existing extreme-layer smoke to implement one concrete mitigation for support/nodata fragility in hazard layers.
+- Files changed: `scripts/build_hazard_layers.py`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the existing extreme-layer smoke before the change. The dominant support issue was `max_jump_height`: `nodata_mismatch_count=45`, `nonzero_jaccard=0.7598039215686274`, and `sensitivity_class=support_nodata_sensitive_extreme_layer`.
+  - Added explicit `max_kinetic_energy_sample_count` and `max_jump_height_sample_count` layers to future hazard builds.
+  - Linked `max_kinetic_energy` and `max_jump_height` manifest entries to those support layers with `extreme_layer_support_metadata_layer` and documented zero-support cells as unsupported for extreme-layer comparison.
+  - Preserved existing maximum-layer values and reducer merge semantics; the change adds support metadata rather than changing the physical/statistical meaning of existing layers.
+  - Updated chunk serialization/deserialization to carry the support grids, with a default-zero fallback for older partial states.
+  - Re-ran the smoke after the change against the existing historical manifests. The measured historical deltas are unchanged, as expected, because those artifacts have not been regenerated: `total_nodata_mismatch_count=90`, `minimum_nonzero_jaccard=0.7598039215686274`, and `max_linf_abs_diff=3028.22579673`.
+  - Removed TB-486 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_extreme_layer_sensitivity_smoke.py --format json --json-output /tmp/tb486_before.json`
+  - `.venv/bin/python -m unittest tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable -v`
+  - `.venv/bin/python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests tests.test_hazard_layers.HazardLayerTests.test_trajectory_chunked_generation_records_artifacts_and_linkage tests.test_extreme_layer_sensitivity_smoke -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_extreme_layer_sensitivity_smoke.py --format json --json-output /tmp/tb486_after.json`
+- Result/status: implemented_measured
+- Boundaries: local hazard-layer support metadata only; no tuning, no physical credibility upgrade, no annualized semantics, no operational claim, no new audit script, and no Balfrin execution.
+- Next task: `TB-487`

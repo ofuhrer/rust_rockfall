@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-486: Reduce Extreme-Layer Support And Nodata Fragility
-
-Goal: Use the existing extreme-layer sensitivity smoke to implement one concrete mitigation for avoidable support/nodata instability in hazard layers.
-
-Capability gap reduced: Makes conditional intensity layers less brittle under small support or nodata perturbations.
-
-Why this outranks alternatives: Extreme kinetic-energy and jump-height layers are scientifically fragile; improving support stability is more useful than adding another audit surface.
-
-Inspect first:
-
-- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_extreme_layer_sensitivity_smoke.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Identify the dominant support/nodata sensitivity exposed by the existing smoke output.
-- Implement one targeted hazard-layer or support-handling change that reduces the measured mismatch or clearly fails closed when the layer is unsupported.
-
-Definition of done:
-
-- Focused hazard-layer and extreme-sensitivity tests pass, before/after smoke metrics are recorded, and the change does not alter output semantics without an explicit measured reason.
-
-Boundaries: Local conditional-layer stability only; no tuning, no physical credibility upgrade, no annualized semantics, no operational claim, and no new audit script.
-
 ### TB-487: Optimize The Next Hazard Writer Hotspot
 
 Goal: Profile the local hazard accumulation benchmark after compact chunk-state output and optimize the next dominant writer or serialization hotspot.
