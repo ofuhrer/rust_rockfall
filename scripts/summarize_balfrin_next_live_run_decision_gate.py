@@ -79,6 +79,12 @@ class BalfrinNextLiveRunDecisionGateError(ValueError):
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--evidence-json", type=Path, default=None, help="Optional evidence bundle JSON override.")
+    parser.add_argument(
+        "--balfrin-access-preflight-json",
+        type=Path,
+        default=None,
+        help="Optional current Balfrin access preflight JSON to thread into the decision refresh.",
+    )
     parser.add_argument("--format", choices=("json", "text"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--text-output", type=Path, default=None)
@@ -115,7 +121,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
     try:
-        report = build_report(load_evidence_override(args.evidence_json))
+        report = build_report(
+            load_evidence_override(args.evidence_json),
+            balfrin_access_preflight=load_access_preflight(args.balfrin_access_preflight_json),
+        )
     except BalfrinNextLiveRunDecisionGateError as exc:
         print(f"balfrin next live-run decision gate error: {exc}", file=sys.stderr)
         return 2
@@ -140,15 +149,34 @@ def load_evidence_override(path: Path | None) -> dict[str, Any] | None:
     return payload
 
 
-def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, Any]:
+def load_access_preflight(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    if not path.exists():
+        raise BalfrinNextLiveRunDecisionGateError(f"Balfrin access preflight is missing: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise BalfrinNextLiveRunDecisionGateError("Balfrin access preflight must be a JSON object")
+    return payload
+
+
+def build_report(
+    evidence_override: dict[str, Any] | None = None,
+    *,
+    balfrin_access_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if evidence_override is None:
         try:
-            evidence_override = build_current_evidence_bundle()
+            evidence_override = build_current_evidence_bundle(balfrin_access_preflight=balfrin_access_preflight)
         except FileNotFoundError as exc:
             return blocked_reducer_pressure_scratch_report(exc)
 
     if isinstance(evidence_override.get("decision_gate_report"), dict):
         return dict(evidence_override["decision_gate_report"])
+
+    if balfrin_access_preflight is not None:
+        evidence_override = dict(evidence_override)
+        evidence_override["balfrin_access"] = build_balfrin_access_from_preflight(balfrin_access_preflight)
 
     if evidence_override.get("missing_inputs"):
         return blocked_missing_inputs_report(_safe_list(evidence_override.get("missing_inputs")))
@@ -206,7 +234,10 @@ def normalize_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_current_evidence_bundle() -> dict[str, Any]:
+def build_current_evidence_bundle(
+    *,
+    balfrin_access_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     default_bundle = _load_json(DEFAULT_EVIDENCE_BUNDLE)
     if default_bundle is None:
         raise BalfrinNextLiveRunDecisionGateError(f"default evidence bundle is missing: {DEFAULT_EVIDENCE_BUNDLE}")
@@ -233,7 +264,9 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         ),
         "scientific_value": _copy_mapping(default_bundle.get("scientific_value")),
         "portability_value": _copy_mapping(default_bundle.get("portability_value")),
-        "balfrin_access": _copy_mapping(default_bundle.get("balfrin_access")),
+        "balfrin_access": build_balfrin_access_from_preflight(balfrin_access_preflight)
+        if balfrin_access_preflight is not None
+        else _copy_mapping(default_bundle.get("balfrin_access")),
         "second_site_progress": _copy_mapping(default_bundle.get("second_site_progress")),
         "physical_evidence_acquisition": _copy_mapping(default_bundle.get("physical_evidence_acquisition")),
         "hazard_builder_optimization": _copy_mapping(default_bundle.get("hazard_builder_optimization")),
@@ -241,6 +274,34 @@ def build_current_evidence_bundle() -> dict[str, Any]:
         "candidate_stability": candidate_report,
         "post_tb_221_evidence": _safe_list(default_bundle.get("post_tb_221_evidence")),
         "source_paths": _copy_mapping(default_bundle.get("source_paths")),
+    }
+
+
+def build_balfrin_access_from_preflight(access_report: dict[str, Any]) -> dict[str, Any]:
+    status = str(access_report.get("status") or "blocked_missing_access_preflight")
+    hygiene = _copy_mapping(access_report.get("remote_checkout_hygiene"))
+    ready = bool(access_report.get("ready_for_pre_submit")) and status == "ready_for_read_only_collection"
+    blockers: list[str] = []
+    if not ready:
+        blockers.append(status)
+        hygiene_status = str(hygiene.get("status") or "")
+        if hygiene_status and hygiene_status != "pass":
+            blockers.append(f"remote_checkout_hygiene:{hygiene_status}")
+    return {
+        "status": status,
+        "path_state": "ready_for_pre_submit" if ready else "blocked",
+        "ssh_access_state": "ready" if ready else status,
+        "live_submission_authorized": bool(access_report.get("live_submission_authorized")),
+        "blockers": blockers,
+        "remote_head": access_report.get("remote_head"),
+        "remote_checkout_hygiene_status": hygiene.get("status"),
+        "remote_dirty_path_count": hygiene.get("dirty_path_count"),
+        "ready_for_pre_submit": bool(access_report.get("ready_for_pre_submit")),
+        "summary": (
+            "Balfrin access preflight is current, remote checkout hygiene passed, and the checkout is ready for pre-submit gates."
+            if ready
+            else "Balfrin access preflight is not ready for pre-submit gates."
+        ),
     }
 
 
@@ -562,6 +623,10 @@ def build_balfrin_access_criteria(access: dict[str, Any]) -> dict[str, Any]:
         "hard_live_run_blocker": status in hard_blocked_statuses,
         "live_submission_authorized": _bool(access.get("live_submission_authorized")),
         "blockers": _safe_list(access.get("blockers")),
+        "remote_head": access.get("remote_head"),
+        "remote_checkout_hygiene_status": access.get("remote_checkout_hygiene_status"),
+        "remote_dirty_path_count": access.get("remote_dirty_path_count"),
+        "ready_for_pre_submit": _bool(access.get("ready_for_pre_submit")),
         "summary": str(
             access.get("summary")
             or "Remote Balfrin SSH access was not checked because this helper is a deterministic local decision refresh."

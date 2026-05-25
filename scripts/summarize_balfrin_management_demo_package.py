@@ -81,6 +81,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="optional override JSON file for tests or alternate package snapshots",
     )
+    parser.add_argument(
+        "--balfrin-access-preflight-json",
+        type=Path,
+        default=None,
+        help="optional current Balfrin access preflight JSON to thread into the next-decision section",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -88,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
             run_root=args.run_root,
             artifact_dir=args.artifact_dir,
             evidence_override=load_evidence_override(args.evidence_json),
+            balfrin_access_preflight=next_live_decision.load_access_preflight(args.balfrin_access_preflight_json),
         )
     except BalfrinManagementDemoPackageError as exc:
         print(f"balfrin management demo package error: {exc}", file=sys.stderr)
@@ -118,9 +125,14 @@ def build_report(
     run_root: Path,
     artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
     evidence_override: dict[str, Any] | None = None,
+    balfrin_access_preflight: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if evidence_override is None:
-        return build_current_report(run_root=run_root, artifact_dir=artifact_dir)
+        return build_current_report(
+            run_root=run_root,
+            artifact_dir=artifact_dir,
+            balfrin_access_preflight=balfrin_access_preflight,
+        )
     if evidence_override.get("missing_inputs"):
         missing_inputs = [str(item) for item in evidence_override.get("missing_inputs", [])]
         return blocked_report(
@@ -187,7 +199,12 @@ def build_report(
     return build_current_report(run_root=run_root, artifact_dir=artifact_dir)
 
 
-def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFACT_DIR) -> dict[str, Any]:
+def build_current_report(
+    *,
+    run_root: Path,
+    artifact_dir: Path = DEFAULT_ARTIFACT_DIR,
+    balfrin_access_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if not run_root.exists():
         return blocked_report(
             [str(run_root)],
@@ -255,7 +272,9 @@ def build_current_report(*, run_root: Path, artifact_dir: Path = DEFAULT_ARTIFAC
         output_tier_report=output_tier.build_report(dict(bundle_report.get("probe_metrics") or {})),
         preservation_report=preservation_gate.build_report(run_root=run_root),
         multi_zone_handoff_report=multi_zone_handoff.build_report(artifact_dir=multi_zone_handoff_artifact_dir),
-        next_live_decision_report=next_live_decision.build_report(),
+        next_live_decision_report=next_live_decision.build_report(
+            balfrin_access_preflight=balfrin_access_preflight
+        ),
     )
     return package_report
 
@@ -798,6 +817,8 @@ def build_readiness_matrix(
             "next_action": next_action.get("action_id"),
             "scenario_batching_cap": scenario_cap.get("scenario_batching_cap"),
             "selected_candidate_id": candidate_result.get("selected_candidate_id"),
+            "balfrin_access_status": (next_criteria.get("balfrin_access") or {}).get("status"),
+            "balfrin_remote_head": (next_criteria.get("balfrin_access") or {}).get("remote_head"),
         },
     }
 

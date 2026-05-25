@@ -253,6 +253,28 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertNotEqual(report["ranked_actions"][0]["action_id"], "metrics_completion_rerun")
         self.assertIn("second-site public-context acquisition", report["recommended_next_action"]["summary"])
 
+    def test_current_evidence_with_ready_access_prefers_reducer_first(self) -> None:
+        access = {
+            "status": "ready_for_read_only_collection",
+            "ready_for_pre_submit": True,
+            "remote_head": "reviewed-head",
+            "remote_checkout_hygiene": {"status": "pass", "dirty_path_count": 0},
+            "live_submission_authorized": False,
+        }
+
+        report = MODULE.build_report(balfrin_access_preflight=access)
+
+        self.assertEqual(report["decision_status"], "defer")
+        self.assertEqual(report["recommended_next_action"]["action_id"], "reducer_pressure_optimization")
+        self.assertEqual(report["recommended_next_action"]["classification"], "reducer_first")
+        self.assertEqual(report["criteria"]["balfrin_access"]["status"], "ready_for_read_only_collection")
+        self.assertEqual(report["criteria"]["balfrin_access"]["path_state"], "ready_for_pre_submit")
+        self.assertEqual(report["criteria"]["balfrin_access"]["remote_head"], "reviewed-head")
+        self.assertEqual(report["criteria"]["balfrin_access"]["remote_checkout_hygiene_status"], "pass")
+        self.assertEqual(report["criteria"]["reducer_pressure"]["probe_status"], "measured_scratch_root")
+        self.assertEqual(report["criteria"]["scenario_batching_cap"]["status"], "ready")
+        self.assertEqual(report["criteria"]["candidate_stability_result"]["status"], "ready")
+
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_dir = Path(tmpdir) / "validation/private/tschamut_public_pilot/balfrin_next_live_run_decision_gate_v1"

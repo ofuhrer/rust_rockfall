@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-554: Recompute Balfrin Decision Gate After Access And Scratch Repair
-
-Goal: Recompute the next-live-run decision gate after clean-checkout and Balfrin remote-head blockers are resolved.
-
-Capability gap reduced: Restores one current downstream decision surface for the next executable Balfrin action.
-
-Why this outranks alternatives: The current decision gate should be rerun only after the helper no longer crashes and the remote checkout is aligned.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-- `tests/test_balfrin_management_demo_package.py`
-
-Deliverables:
-
-- Updated decision/demo outputs that name the next executable action and exact remaining blockers.
-- Focused regression coverage for the current reducer-first ranking.
-
-Definition of done:
-
-- The decision gate and management demo package run from a clean local state and reflect current access, reducer, scenario, replay, and candidate evidence.
-
-Boundaries: Decision refresh only; no live submission, no operational claim, no scale-up authorization beyond existing postproc rules.
-
 ### TB-555: Compare Measured Regional Split Against Scenario And Output Projections
 
 Goal: Thread measured regional split evidence into scenario-cardinality and output-tier projection surfaces.

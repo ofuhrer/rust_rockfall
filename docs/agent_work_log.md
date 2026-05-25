@@ -8273,48 +8273,6 @@ scan thousands of lines of completed history.
 - Boundaries: local recommendation output only; no new roadmap document, backlog generator, Balfrin dependency, claim upgrade, or placeholder commands.
 - Next task: `TB-551`
 
-### TB-552: Regenerate Reducer-Pressure Scratch Roots Deterministically
-
-- Date: 2026-05-25
-- Commit: `1bca703`
-- Objective: report deterministic reducer-pressure scratch-root manifest paths and byte/file counts so local gates can be regenerated under caller-supplied `/tmp` roots.
-- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/task_backlog.md`
-- Implementation summary:
-  - Added `generated_scratch_root` to the multi-zone reducer-pressure probe report with manifest paths, manifest byte counts, root file/byte counts, and output file/byte counts.
-  - Threaded that scratch-root summary into the reducer-pressure gate target profile.
-  - Added focused tests proving materialized `/tmp` roots expose existing manifest paths and are consumed by the gate.
-  - Removed TB-552 from the active backlog.
-- Checks run:
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
-  - `rm -rf /tmp/tb552_reducer_pressure_gate && PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py --materialize-root /tmp/tb552_reducer_pressure_gate --format json >/tmp/tb552_gate.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb552_gate.json >/dev/null`
-  - `git diff --check`
-  - `scripts/git-hooks/pre-commit`
-- Result/status: implemented_fixture_backed
-- Boundaries: local scratch generation only; no Balfrin submission, large ensemble, distributed execution, scale-up authorization, or claim upgrade.
-- Next task: `TB-559`
-
-### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
-
-- Date: 2026-05-25
-- Commit: `c067e5a`
-- Objective: update the Swiss-scale feasibility projection from the latest bounded-run, reducer-pressure, and output evidence without authorizing Swiss-wide execution.
-- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/current_maturity_snapshot.md`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`
-- Implementation summary:
-  - Added a structured `swiss_scale_feasibility_projection` to the Balfrin scale-readiness matrix.
-  - Named the current practical ceiling as a 10-zone single-AOI planning class, with reducer pressure and replay/metadata growth as the first bottleneck.
-  - Separated measured, projection-only, failed-closed, blocked pre-submit, and deferred evidence classes in the helper output and documentation.
-  - Isolated reducer-pressure ladder scratch roots used by the scale matrix and Swiss-wide envelope coefficient loader to avoid shared `/tmp` races.
-  - Removed TB-559 from the active backlog.
-- Checks run:
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
-  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json >/tmp/tb559_scale_matrix.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb559_scale_matrix.json >/dev/null`
-  - `git diff --check`
-  - `scripts/git-hooks/pre-commit`
-  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
-- Result/status: implemented_fixture_backed
-- Boundaries: projection refresh only; no Swiss-wide run, no operational claim, no distributed execution phase change, and no Balfrin submission.
-- Next task: `TB-551`
-
 ### TB-551: Make Balfrin Decision Helpers Clean-Checkout Safe
 
 - Date: 2026-05-25
@@ -8337,6 +8295,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: clean-checkout fail-closed behavior only; no live run, silent fixture substitution, scale-up claim, or distributed execution.
 - Next task: `TB-553`
+
+### TB-552: Regenerate Reducer-Pressure Scratch Roots Deterministically
+
+- Date: 2026-05-25
+- Commit: `1bca703`
+- Objective: report deterministic reducer-pressure scratch-root manifest paths and byte/file counts so local gates can be regenerated under caller-supplied `/tmp` roots.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `generated_scratch_root` to the multi-zone reducer-pressure probe report with manifest paths, manifest byte counts, root file/byte counts, and output file/byte counts.
+  - Threaded that scratch-root summary into the reducer-pressure gate target profile.
+  - Added focused tests proving materialized `/tmp` roots expose existing manifest paths and are consumed by the gate.
+  - Removed TB-552 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
+  - `rm -rf /tmp/tb552_reducer_pressure_gate && PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py --materialize-root /tmp/tb552_reducer_pressure_gate --format json >/tmp/tb552_gate.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb552_gate.json >/dev/null`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_fixture_backed
+- Boundaries: local scratch generation only; no Balfrin submission, large ensemble, distributed execution, scale-up authorization, or claim upgrade.
+- Next task: `TB-559`
 
 ### TB-553: Sync The Balfrin Remote Checkout To A Reviewed Commit
 
@@ -8361,3 +8339,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: remote git hygiene only; no `sbatch`, no live run, no generated artifact deletion, no non-postproc partition, and no scale-up or operational claim.
 - Next task: `TB-554`
+### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
+
+- Date: 2026-05-25
+- Commit: `c067e5a`
+- Objective: update the Swiss-scale feasibility projection from the latest bounded-run, reducer-pressure, and output evidence without authorizing Swiss-wide execution.
+- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/current_maturity_snapshot.md`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a structured `swiss_scale_feasibility_projection` to the Balfrin scale-readiness matrix.
+  - Named the current practical ceiling as a 10-zone single-AOI planning class, with reducer pressure and replay/metadata growth as the first bottleneck.
+  - Separated measured, projection-only, failed-closed, blocked pre-submit, and deferred evidence classes in the helper output and documentation.
+  - Isolated reducer-pressure ladder scratch roots used by the scale matrix and Swiss-wide envelope coefficient loader to avoid shared `/tmp` races.
+  - Removed TB-559 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json >/tmp/tb559_scale_matrix.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb559_scale_matrix.json >/dev/null`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: projection refresh only; no Swiss-wide run, no operational claim, no distributed execution phase change, and no Balfrin submission.
+- Next task: `TB-551`

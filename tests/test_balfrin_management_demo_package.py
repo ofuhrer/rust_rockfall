@@ -105,7 +105,17 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
     def test_readiness_matrix_tracks_required_gates_and_claim_boundaries(self) -> None:
         run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
 
-        report = package.build_report(run_root=run_root, artifact_dir=Path("/tmp/balfrin_management_demo_package_v1"))
+        report = package.build_report(
+            run_root=run_root,
+            artifact_dir=Path("/tmp/balfrin_management_demo_package_v1"),
+            balfrin_access_preflight={
+                "status": "ready_for_read_only_collection",
+                "ready_for_pre_submit": True,
+                "remote_head": "reviewed-head",
+                "remote_checkout_hygiene": {"status": "pass", "dirty_path_count": 0},
+                "live_submission_authorized": False,
+            },
+        )
         matrix = report["readiness_matrix"]
 
         self.assertEqual(matrix["schema_version"], "balfrin_full_scale_readiness_matrix_v1")
@@ -113,6 +123,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(matrix["clean_checkout_probe"]["status"], "blocked_missing_run_root")
         self.assertEqual(matrix["recommended_next_milestone"]["recommendation"], "reducer-pressure optimization")
         self.assertEqual(matrix["recommended_next_milestone"]["source_action_id"], "reducer_pressure_optimization")
+        self.assertEqual(matrix["current_evidence"]["balfrin_access_status"], "ready_for_read_only_collection")
+        self.assertEqual(matrix["current_evidence"]["balfrin_remote_head"], "reviewed-head")
 
         gates = {row["gate"] for row in matrix["rows"]}
         self.assertEqual(
