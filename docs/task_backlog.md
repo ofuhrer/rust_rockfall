@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-567: Promote Current Regional Split Evidence Into Decision Surfaces
-
-Goal: Thread the TB-566 measured regional split evidence into the evidence bundle, scale readiness matrix, and next live-run decision gate.
-
-Capability gap reduced: Prevents stale recommendations after the new measured Balfrin run and keeps management/demo surfaces aligned with actual evidence.
-
-Why this outranks alternatives: The current decision gate still ranks reducer-pressure optimization from local scratch evidence; that must be recomputed after a current measured large run.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `tests/test_balfrin_evidence_bundle.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Promote the TB-566 run as current regional split evidence with job id, run root, output footprints, memory, and preservation status.
-- Refresh scale-readiness and next-action logic without upgrading scientific claims.
-- Add focused tests proving the new measured evidence is current and recommendation boundaries remain closed.
-
-Definition of done:
-
-- Focused tests pass, decision surfaces no longer rely on stale TB-448/TB-557-only evidence for the regional branch, and the next recommended action is justified by measured TB-566 data.
-
-Boundaries: Evidence promotion only; no new run, no operational claim, no scale-up authorization, and no physical-probability claim.
-
 ### TB-568: Quantify Current Balfrin Efficiency Against CI And Historical Runs
 
 Goal: Compare the TB-566 Balfrin regional split runtime, memory, and output footprint against CI performance, TB-557, TB-448, and local projections.

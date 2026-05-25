@@ -274,6 +274,16 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["criteria"]["reducer_pressure"]["probe_status"], "measured_scratch_root")
         self.assertEqual(report["criteria"]["scenario_batching_cap"]["status"], "ready")
         self.assertEqual(report["criteria"]["candidate_stability_result"]["status"], "ready")
+        self.assertEqual(report["criteria"]["multi_zone_balfrin_evidence"]["task_id"], "TB-565")
+        self.assertEqual(report["criteria"]["multi_zone_balfrin_evidence"]["slurm_job_id"], "4367244")
+        self.assertEqual(
+            report["criteria"]["multi_zone_balfrin_evidence"]["scaling_frontier_branch"],
+            "measured_regional_split_boundary",
+        )
+        self.assertEqual(
+            report["criteria"]["multi_zone_balfrin_evidence"]["output_budget_audit_status"],
+            "blocked_missing_replay_artifacts",
+        )
 
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

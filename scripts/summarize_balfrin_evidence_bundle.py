@@ -205,6 +205,47 @@ TB557_BOUNDED_REDUCED_OUTPUT_PROBE = {
         "TB-557 completed one bounded reduced-output Balfrin postproc probe with complete metrics and a ready preservation gate."
     ),
 }
+TB565_REGIONAL_SPLIT_PROBE = {
+    "task_id": "TB-565",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_multi_zone_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "run_id": "tschamut_public_balfrin_multi_release_zone_v1",
+    "source_paths": [
+        "docs/balfrin_regional_split_postproc_run_tb565.md",
+        "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+    ],
+    "git_commit": "0008dcc",
+    "slurm_job_id": "4367244",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:24",
+    "batch_max_rss": "5512K",
+    "memory_peak_mb": 172.921875,
+    "total_wall_seconds": 5.261369686049875,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_330,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 57_670_915,
+    "conditional_curve_row_count": 729_600,
+    "release_zone_count": 12,
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "authorization_status": "standing_postproc_clearance_used",
+    "output_mode": "regional_split_reduced_output",
+    "output_budget_audit_status": "blocked_missing_replay_artifacts",
+    "latest_prior_measured_task": "TB-557",
+    "claim_boundary": "measured runtime/output/reducer evidence only; no operational or physical-probability claim",
+    "summary": (
+        "TB-565/TB-566 completed and preserved one current regional split Balfrin postproc probe with complete metrics and a ready preservation gate; output-budget promotion remains blocked by replay-critical artifacts and compactness thresholds."
+    ),
+}
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -409,7 +450,7 @@ def build_current_report() -> dict[str, Any]:
         build_post_run_evidence(single_job_summary=single_job_summary, gis_report=gis_report, probe_metrics=probe_metrics)
     )
     source_paths = build_source_paths(single_job_summary=single_job_summary, gis_report=gis_report)
-    source_paths["multi_zone_balfrin_evidence"] = dict(TB557_BOUNDED_REDUCED_OUTPUT_PROBE)
+    source_paths["multi_zone_balfrin_evidence"] = dict(TB565_REGIONAL_SPLIT_PROBE)
     return build_bundle_report(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
@@ -654,7 +695,7 @@ def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict
     interpretation_evidence = {
         "pilot_id": DEFAULT_PILOT_ID,
         "run_id": evidence.get("run_id") or "latest_bounded_balfrin_probe",
-        "contract_path": "docs/balfrin_bounded_reduced_output_run_tb557.md",
+        "contract_path": first_source_path(evidence, "docs/balfrin_bounded_reduced_output_run_tb557.md"),
         "readiness_check": {
             "status": "ready" if measured else "blocked_missing_inputs",
             "summary": evidence.get("summary") or "Latest bounded Balfrin probe evidence is available.",
@@ -662,12 +703,14 @@ def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict
         "convergence_stability_check": {
             "status": "inconclusive",
             "summary": (
-                "The TB-557 run measures runtime/output/reducer feasibility; it does not by itself establish "
+                "The latest bounded Balfrin run measures runtime/output/reducer feasibility; it does not by itself establish "
                 "a convergence or physical-probability claim."
             ),
         },
         "output_check": {
-            "status": "bounded_reduced_output" if output_ready else "blocked_missing_inputs",
+            "status": str(evidence.get("output_mode") or "bounded_reduced_output")
+            if output_ready
+            else "blocked_missing_inputs",
             "summary": (
                 f"Validation output: {evidence.get('validation_output_file_count')} files / "
                 f"{evidence.get('validation_output_bytes')} bytes; hazard output: "
@@ -690,6 +733,16 @@ def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict
             "blockers": ["preservation_gate_status"],
         }
     return post_run_gate.build_report(interpretation_evidence)
+
+
+def first_source_path(evidence: dict[str, Any], default: str) -> str:
+    source_paths = evidence.get("source_paths")
+    if isinstance(source_paths, list):
+        for path in source_paths:
+            text = str(path or "").strip()
+            if text:
+                return text
+    return default
 
 
 def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]:
@@ -762,6 +815,10 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         "hazard_output_file_count": evidence.get("hazard_output_file_count"),
         "hazard_output_bytes": evidence.get("hazard_output_bytes"),
         "conditional_curve_row_count": evidence.get("conditional_curve_row_count"),
+        "required_run_root_entries_status": evidence.get("required_run_root_entries_status"),
+        "output_family_status": evidence.get("output_family_status"),
+        "output_budget_audit_status": evidence.get("output_budget_audit_status"),
+        "latest_prior_measured_task": evidence.get("latest_prior_measured_task"),
         "metrics_json_promoted": bool(evidence.get("metrics_json_promoted")),
         "preservation_checked": bool(evidence.get("preservation_checked")),
         "preservation_gate_status": evidence.get("preservation_gate_status"),

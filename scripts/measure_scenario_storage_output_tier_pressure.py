@@ -43,16 +43,17 @@ DEFAULT_FULL_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/
 DEFAULT_GIS_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_FIXTURE_TRAJECTORY_COUNT = 6
 DEFAULT_EXPANDED_CANDIDATE_REPEAT_COUNTS = (1, 3, 8)
+MAX_CSV_ROW_COUNT_SCAN_BYTES = 5_000_000
 MEASURED_REGIONAL_SPLIT = {
-    "task_id": "TB-448",
-    "job_id": "4350232",
+    "task_id": "TB-566",
+    "job_id": "4367244",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
     "validation_output_file_count": 130,
-    "validation_output_bytes": 34_565_323,
-    "hazard_output_file_count": 53,
-    "hazard_output_bytes": 55_837_701,
+    "validation_output_bytes": 34_565_330,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 57_670_915,
     "conditional_curve_rows": 729_600,
-    "collector_wall_seconds": 6.738646155004972,
+    "collector_wall_seconds": 5.261369686049875,
     "collector_peak_memory_mb": 172.921875,
 }
 COMPACT_BATCH_CAP_REGRESSION_LIMITS = {
@@ -676,6 +677,8 @@ def classify_file_family(path: Path) -> str:
 
 def count_csv_data_rows(path: Path) -> int:
     try:
+        if path.stat().st_size > MAX_CSV_ROW_COUNT_SCAN_BYTES:
+            return -1
         with path.open("r", encoding="utf-8", newline="") as handle:
             return max(0, sum(1 for _ in csv.reader(handle)) - 1)
     except UnicodeDecodeError:

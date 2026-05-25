@@ -354,7 +354,7 @@ def build_current_evidence_bundle(
         "multi_zone_reducer_pressure_report": reducer_report,
         "multi_zone_handoff_report": multi_zone_handoff.build_report(),
         "multi_zone_balfrin_evidence": evidence_bundle.build_multi_zone_balfrin_evidence(
-            default_bundle.get("multi_zone_balfrin_evidence")
+            current_bundle.get("multi_zone_balfrin_evidence")
         ),
         "scientific_value": _copy_mapping(default_bundle.get("scientific_value")),
         "portability_value": _copy_mapping(default_bundle.get("portability_value")),
@@ -668,12 +668,17 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "status": "measured" if measured else "blocked" if blocked else status,
         "evidence_status": status,
         "evidence_type": evidence_type,
+        "task_id": evidence.get("task_id"),
         "root_class": _status(evidence.get("root_class"), "blocked_pre_authorization"),
         "release_zone_count": release_zone_count,
         "first_bottleneck_label": first_bottleneck,
         "preflight_status": _status(evidence.get("preflight_status"), "not_supplied"),
         "authorization_record_status": _status(evidence.get("authorization_record_status"), "not_supplied"),
         "slurm_job_id": evidence.get("slurm_job_id"),
+        "required_run_root_entries_status": evidence.get("required_run_root_entries_status"),
+        "output_family_status": evidence.get("output_family_status"),
+        "output_budget_audit_status": evidence.get("output_budget_audit_status"),
+        "latest_prior_measured_task": evidence.get("latest_prior_measured_task"),
         "metrics_json_promoted": bool(evidence.get("metrics_json_promoted")),
         "preservation_gate_promoted": bool(evidence.get("preservation_gate_promoted")),
         "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
@@ -681,6 +686,8 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "scaling_frontier_branch": (
             "measured_two_zone_boundary"
             if measured and release_zone_count == 2
+            else "measured_regional_split_boundary"
+            if measured and isinstance(release_zone_count, int) and release_zone_count > 2
             else "failed_closed_two_zone_boundary"
             if failed_closed and release_zone_count == 2
             else "blocked_pre_authorization"
@@ -690,6 +697,8 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "next_safe_expansion": (
             "prepare reviewed next-larger package only after explicit authorization; this helper does not authorize it"
             if measured and release_zone_count == 2
+            else "thread measured regional split replay/output-budget blockers into the next package before any larger live recommendation"
+            if measured and isinstance(release_zone_count, int) and release_zone_count > 2
             else "repair or rerun the reviewed two-zone package before any live scale action; this helper does not authorize it"
             if failed_closed and release_zone_count == 2
             else f"no-go until {first_bottleneck} reducer-budget blocker and missing authorization record are resolved"

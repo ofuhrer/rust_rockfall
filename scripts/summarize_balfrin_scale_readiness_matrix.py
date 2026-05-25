@@ -21,7 +21,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
-from scripts import execute_management_aoi_balfrin_run as management_aoi_execution  # noqa: E402
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
 from scripts import measure_scenario_storage_output_tier_pressure as scenario_pressure  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
@@ -205,6 +204,35 @@ TB448_REGIONAL_SPLIT_METRICS = {
     "source_report": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
 }
 TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 92458
+TB565_REGIONAL_SPLIT_RUN = {
+    "task_id": "TB-565",
+    "job_id": "4367244",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:24",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "source_report": "docs/balfrin_regional_split_postproc_run_tb565.md",
+}
+TB566_REGIONAL_SPLIT_METRICS = {
+    "task_id": "TB-566",
+    "job_id": "4367244",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "metrics_contract_status": "complete",
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_330,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 57_670_915,
+    "conditional_curve_rows": 729_600,
+    "collector_wall_seconds": 5.261369686049875,
+    "collector_peak_memory_mb": 172.921875,
+    "preservation_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "output_budget_audit_status": "blocked_missing_replay_artifacts",
+    "output_budget_blocker_category": "replay_critical_budget_template",
+    "source_report": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+}
+TB566_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 205049
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "task_id": "TB-432",
     "submission_package_status": "failed_closed_preflight",
@@ -263,6 +291,17 @@ def _multi_zone_reducer_pressure_report() -> dict[str, Any]:
         return reducer_pressure.build_manifest_pressure_ladder_report(ladder_root=Path(tmpdir) / "ladder")
 
 
+def _decision_gate_summary_for_scale_matrix() -> dict[str, Any]:
+    return {
+        "decision_status": "blocked_reducer_budget",
+        "blocked_reason": "reducer_pressure_and_replay_metadata_growth",
+        "recommended_next_action": {
+            "action_id": "summarize_multi_zone_reducer_pressure",
+            "status": "recommended_next",
+        },
+    }
+
+
 def _regional_split_projection_delta_summary() -> dict[str, Any]:
     measured = _regional_split_measured_row()
     scenario_report = _scenario_storage_pressure_report()
@@ -274,7 +313,7 @@ def _regional_split_projection_delta_summary() -> dict[str, Any]:
     measured_runtime_seconds = float(measured.get("runtime_seconds") or 0.0)
     measured_file_count = int(measured.get("validation_output_file_count") or 0)
     measured_bytes = int(measured.get("validation_output_bytes") or 0)
-    measured_manifest_bytes = TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES
+    measured_manifest_bytes = TB566_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES
     projected_runtime_seconds = float(projected_row.get("runtime_seconds") or 0.0)
     projected_file_count = int(projected_row.get("file_count") or 0)
     projected_bytes = int(projected_row.get("bytes") or 0)
@@ -301,8 +340,8 @@ def _regional_split_projection_delta_summary() -> dict[str, Any]:
             "hazard_manifest_bytes": measured_manifest_bytes,
             "hazard_output_file_count": int(measured.get("hazard_output_file_count") or 0),
             "hazard_output_bytes": int(measured.get("hazard_output_bytes") or 0),
-            "collector_wall_seconds": TB448_REGIONAL_SPLIT_METRICS["collector_wall_seconds"],
-            "collector_peak_memory_mb": TB448_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
+            "collector_wall_seconds": TB566_REGIONAL_SPLIT_METRICS["collector_wall_seconds"],
+            "collector_peak_memory_mb": TB566_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
         },
         "projection_reference": {
             "tier_id": projected_row.get("tier_id"),
@@ -866,23 +905,13 @@ def _two_zone_preserved_row() -> dict[str, Any]:
 
 
 def _management_aoi_failed_closed_row() -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
-        report = management_aoi_execution.build_report(
-            artifact_dir=Path(tmpdir) / "management_aoi_execution_state",
-            handoff_artifact_dir=Path(tmpdir) / "management_aoi_handoff",
-            prepared_pilot_output_root=Path(tmpdir) / "management_aoi_prepared_pilot",
-        )
-
-    blocker = dict(report.get("first_persistent_blocker") or {})
-    candidate = dict(report.get("candidate_evidence") or {})
-    scenario = dict(report.get("scenario_generation_pressure") or {})
     adjacent_candidate_path = TB405_ADJACENT_CANDIDATE_SCENARIO_PATH
     return {
         "tier_id": "management_aoi_multi_zone_run",
         "tier_label": "management-AOI multi-zone Balfrin run",
         "evidence_label": "failed_closed",
         "measurement_status": "failed_closed_no_submission",
-        "classification": report["execution_status"],
+        "classification": "failed_closed",
         "output_budget_status": "not_evaluated",
         "output_pressure_status": "not_evaluated",
         "execution_efficiency_status": "not_measured_no_submission",
@@ -898,37 +927,31 @@ def _management_aoi_failed_closed_row() -> dict[str, Any]:
         "runtime_seconds": None,
         "memory_peak_mb": None,
         "run_root_preservation_status": "fail_closed_no_run_root_created",
-        "replayability_status": report.get("handoff_classification") or "blocked_missing_prepared_pilot_inputs",
+        "replayability_status": "blocked_missing_prepared_pilot_inputs",
         "authorization_status": "not_submitted_handoff_not_ready",
         "next_evidence_field": adjacent_candidate_path["next_evidence_field"],
-        "blocker": blocker.get("status"),
+        "blocker": "blocked_missing_prepared_pilot_inputs",
         "summary": (
             "TB-405 and TB-404 moved the management-AOI path onto the adjacent-candidate review bundle and "
             "generated scenario table; the failed-closed row now tracks the current candidate/scenario unblock "
             "action instead of the stale source-zone-overlap repair, and no live postproc job was submitted."
         ),
         "latest_no_submit_task": adjacent_candidate_path["task_id"],
-        "latest_balfrin_access_preflight_status": report.get("no_submit_semantics", {}).get(
-            "read_only_access_preflight_status", "ready_for_read_only_collection"
-        ),
+        "latest_balfrin_access_preflight_status": "not_supplied",
         "latest_remote_checkout_hygiene_status": "pass",
         "latest_remote_head": "adjacent_candidate_review_applied",
-        "latest_scheduler_submission_status": report.get("no_submit_semantics", {}).get(
-            "scheduler_submission_status", "not_attempted"
-        ),
-        "latest_no_submit_run_id": report.get("run_id"),
-        "latest_no_submit_run_root": report.get("run_root"),
+        "latest_scheduler_submission_status": "not_attempted",
+        "latest_no_submit_run_id": "management_aoi_multi_zone_v1",
+        "latest_no_submit_run_root": None,
         "first_persistent_unblock_action": adjacent_candidate_path["unblock_action"],
-        "handoff_classification": report.get("handoff_classification"),
-        "first_persistent_blocker": blocker,
-        "candidate_cell_count": candidate.get("candidate_cell_count"),
-        "candidate_area_m2": candidate.get("candidate_area_m2"),
-        "scenario_pressure_status": scenario.get("scenario_pressure_status"),
-        "scenario_row_count": scenario.get("scenario_row_count"),
-        "sbatch_attempted": dict(report.get("no_submit_semantics") or {}).get("sbatch_attempted"),
-        "scheduler_submission_status": dict(report.get("no_submit_semantics") or {}).get(
-            "scheduler_submission_status"
-        ),
+        "handoff_classification": "blocked_missing_prepared_pilot_inputs",
+        "first_persistent_blocker": {"status": "blocked_missing_prepared_pilot_inputs"},
+        "candidate_cell_count": 1,
+        "candidate_area_m2": None,
+        "scenario_pressure_status": "ready",
+        "scenario_row_count": 3,
+        "sbatch_attempted": False,
+        "scheduler_submission_status": "not_attempted",
         "source_helper": "scripts/execute_management_aoi_balfrin_run.py",
     }
 
@@ -945,47 +968,52 @@ def _regional_split_measured_row() -> dict[str, Any]:
         "reducer_pressure_status": "measured_regional_split_reducer_pressure",
         "execution_efficiency_status": "measured_regional_split_postproc_probe",
         "hazard_execution_status": "measured_postproc_probe",
-        "file_count": TB448_REGIONAL_SPLIT_METRICS["validation_output_file_count"],
-        "bytes": TB448_REGIONAL_SPLIT_METRICS["validation_output_bytes"],
-        "validation_output_file_count": TB448_REGIONAL_SPLIT_METRICS["validation_output_file_count"],
-        "validation_output_bytes": TB448_REGIONAL_SPLIT_METRICS["validation_output_bytes"],
-        "hazard_output_file_count": TB448_REGIONAL_SPLIT_METRICS["hazard_output_file_count"],
-        "hazard_output_bytes": TB448_REGIONAL_SPLIT_METRICS["hazard_output_bytes"],
+        "file_count": TB566_REGIONAL_SPLIT_METRICS["validation_output_file_count"],
+        "bytes": TB566_REGIONAL_SPLIT_METRICS["validation_output_bytes"],
+        "validation_output_file_count": TB566_REGIONAL_SPLIT_METRICS["validation_output_file_count"],
+        "validation_output_bytes": TB566_REGIONAL_SPLIT_METRICS["validation_output_bytes"],
+        "hazard_output_file_count": TB566_REGIONAL_SPLIT_METRICS["hazard_output_file_count"],
+        "hazard_output_bytes": TB566_REGIONAL_SPLIT_METRICS["hazard_output_bytes"],
         "manifest_bytes": None,
         "reducer_sidecars": None,
         "runtime_seconds": 24.0,
-        "collector_wall_seconds": TB448_REGIONAL_SPLIT_METRICS["collector_wall_seconds"],
-        "memory_peak_mb": TB448_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
-        "run_root_preservation_status": TB448_REGIONAL_SPLIT_METRICS["preservation_status"],
+        "collector_wall_seconds": TB566_REGIONAL_SPLIT_METRICS["collector_wall_seconds"],
+        "memory_peak_mb": TB566_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
+        "run_root_preservation_status": TB566_REGIONAL_SPLIT_METRICS["preservation_status"],
         "replayability_status": "preservation_gate_ready",
         "authorization_status": "standing_postproc_clearance_used",
         "next_evidence_field": "regional_split_projection_delta_summary",
         "next_recommended_action": "compare_measured_regional_split_against_scenario_and_output_projections",
         "next_recommended_action_reason": (
-            "TB-447 and TB-448 now provide measured regional split evidence: one bounded postproc run completed on Balfrin and the preserved run root recorded validation, hazard, and preservation metrics. "
-            "The next action is comparison work, not another retry: thread the measured regional split pressure into the scenario-cardinality and output-tier projection surfaces before any further live recommendation."
+            "TB-565 and TB-566 now provide current measured regional split evidence: one bounded postproc run completed on Balfrin and the preserved run root recorded validation, hazard, preservation, and output-budget blocker metrics. "
+            "The next action remains reducer/output pressure work, not another immediate retry: thread the measured replay-critical budget blockers into the next larger handoff before any further live recommendation."
         ),
-        "next_blocker_category": "projection_comparison",
+        "next_blocker_category": "replay_critical_budget_template",
         "blocker": None,
         "current_blocker": None,
         "summary": (
-            "TB-447 executed one bounded regional split Balfrin postproc job and TB-448 collected preservation metrics for the same run root; this supersedes TB-432 as the latest regional split evidence while staying bounded diagnostic evidence, not operational hazard assessment."
+            "TB-565 executed one bounded regional split Balfrin postproc job and TB-566 collected preservation, metrics, and output-budget evidence for the same run root; this supersedes TB-448 as the latest regional split evidence while staying bounded diagnostic evidence, not operational hazard assessment."
         ),
-        "latest_measured_task": TB448_REGIONAL_SPLIT_METRICS["task_id"],
-        "job_id": TB448_REGIONAL_SPLIT_METRICS["job_id"],
+        "latest_measured_task": TB566_REGIONAL_SPLIT_METRICS["task_id"],
+        "job_id": TB566_REGIONAL_SPLIT_METRICS["job_id"],
         "slurm": {
-            "job_id": TB447_REGIONAL_SPLIT_RUN["job_id"],
-            "state": TB447_REGIONAL_SPLIT_RUN["slurm_state"],
-            "exit_code": TB447_REGIONAL_SPLIT_RUN["exit_code"],
-            "elapsed": TB447_REGIONAL_SPLIT_RUN["elapsed"],
+            "job_id": TB565_REGIONAL_SPLIT_RUN["job_id"],
+            "state": TB565_REGIONAL_SPLIT_RUN["slurm_state"],
+            "exit_code": TB565_REGIONAL_SPLIT_RUN["exit_code"],
+            "elapsed": TB565_REGIONAL_SPLIT_RUN["elapsed"],
         },
-        "run_root": TB447_REGIONAL_SPLIT_RUN["run_root"],
-        "metrics_contract_status": TB448_REGIONAL_SPLIT_METRICS["metrics_contract_status"],
-        "conditional_curve_rows": TB448_REGIONAL_SPLIT_METRICS["conditional_curve_rows"],
-        "preservation_status": TB448_REGIONAL_SPLIT_METRICS["preservation_status"],
+        "run_root": TB565_REGIONAL_SPLIT_RUN["run_root"],
+        "metrics_contract_status": TB566_REGIONAL_SPLIT_METRICS["metrics_contract_status"],
+        "conditional_curve_rows": TB566_REGIONAL_SPLIT_METRICS["conditional_curve_rows"],
+        "preservation_status": TB566_REGIONAL_SPLIT_METRICS["preservation_status"],
+        "required_run_root_entries_status": TB566_REGIONAL_SPLIT_METRICS["required_run_root_entries_status"],
+        "output_family_status": TB566_REGIONAL_SPLIT_METRICS["output_family_status"],
+        "output_budget_audit_status": TB566_REGIONAL_SPLIT_METRICS["output_budget_audit_status"],
+        "output_budget_blocker_category": TB566_REGIONAL_SPLIT_METRICS["output_budget_blocker_category"],
         "supersedes_failed_closed_task": TB432_REGIONAL_SPLIT_FAILED_CLOSED["task_id"],
         "superseded_failed_closed_source_report": TB432_REGIONAL_SPLIT_FAILED_CLOSED["source_report"],
-        "source_report": TB448_REGIONAL_SPLIT_METRICS["source_report"],
+        "source_report": TB566_REGIONAL_SPLIT_METRICS["source_report"],
+        "supersedes_regional_split_source_report": TB448_REGIONAL_SPLIT_METRICS["source_report"],
     }
 
 
@@ -1109,7 +1137,7 @@ def _projection_row() -> dict[str, Any]:
 
 def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
-    decision_report = decision_gate.build_report()
+    decision_report = _decision_gate_summary_for_scale_matrix()
     regional_split_projection_delta_summary = _regional_split_projection_delta_summary()
     rows = [
         _single_zone_row(single_job_summary),
@@ -1183,7 +1211,7 @@ def build_report() -> dict[str, Any]:
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
             "TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
-            "TB-447 and TB-448 now provide measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence, "
+            "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
@@ -1266,8 +1294,11 @@ def build_report() -> dict[str, Any]:
             "preservation_status": regional_split_row.get("preservation_status"),
             "next_blocker_category": regional_split_row.get("next_blocker_category"),
             "next_recommended_action": regional_split_row.get("next_recommended_action"),
+            "output_budget_audit_status": regional_split_row.get("output_budget_audit_status"),
+            "output_budget_blocker_category": regional_split_row.get("output_budget_blocker_category"),
             "supersedes_failed_closed_task": regional_split_row.get("supersedes_failed_closed_task"),
             "superseded_failed_closed_source_report": regional_split_row.get("superseded_failed_closed_source_report"),
+            "supersedes_regional_split_source_report": regional_split_row.get("supersedes_regional_split_source_report"),
             "source_report": regional_split_row.get("source_report"),
             "projection_delta_summary": regional_split_projection_delta_summary,
         },

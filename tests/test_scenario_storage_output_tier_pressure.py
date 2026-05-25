@@ -170,16 +170,16 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         )
         regional = report["measured_regional_split_comparison"]
         self.assertEqual(regional["measurement_status"], "measured_existing_balfrin_artifacts")
-        self.assertEqual(regional["job_id"], "4350232")
+        self.assertEqual(regional["job_id"], "4367244")
         self.assertEqual(regional["validation_output_file_count"], 130)
-        self.assertEqual(regional["hazard_output_file_count"], 53)
+        self.assertEqual(regional["hazard_output_file_count"], 57)
         self.assertEqual(
             regional["vs_rebuildable_reduced_tier"]["classification"],
             "measured_larger_than_rebuildable_reduced",
         )
         self.assertEqual(
             regional["vs_gis_tier"]["classification"],
-            "measured_within_current_gis_package_band",
+            "measured_exceeds_current_gis_package_band",
         )
         self.assertEqual(
             regional["batching_rule_alignment"]["classification"],
@@ -195,7 +195,7 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         self.assertIn("cap_summary: 3-repeat / 30-candidate / 300-row cap", rendered)
         self.assertIn("storage_output_tier_bands:", rendered)
         self.assertIn("measured_regional_split_comparison:", rendered)
-        self.assertIn("vs_gis_tier: measured_within_current_gis_package_band", rendered)
+        self.assertIn("vs_gis_tier: measured_exceeds_current_gis_package_band", rendered)
 
     def test_missing_real_candidate_inputs_block_candidate_without_blocking_fixture_tiers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
