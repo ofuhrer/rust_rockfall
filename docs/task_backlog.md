@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-573: Rebuild The 16-Zone Handoff Under The Diagnostic Profile
-
-Goal: Regenerate the 16-zone package using the diagnostic profile and preserve the exact pass/fail pre-submit evidence.
-
-Capability gap reduced: Converts the softened profile into a concrete submit/no-submit decision while the Balfrin checkout and queue are favorable.
-
-Why this outranks alternatives: It is the last pre-submit checkpoint before using Balfrin for the currently waiting 16-zone measurement.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Generate a fresh 16-zone diagnostic package from a clean Balfrin-aligned checkout.
-- Run access, budget, diagnostic-profile, submit, and remote-head checks without submitting.
-- Record the exact later submit command, package hashes, run root, and ready/waiting status.
-
-Definition of done:
-
-- The package reports either diagnostic-measurement ready or does not pass with one concrete blocker that is smaller than the TB-571 blocker.
-
-
 ### TB-574: Execute One 16-Zone Diagnostic Postproc Probe If Checks Pass
 
 Goal: Submit and monitor one 16-zone diagnostic reduced-output Balfrin `postproc` job from the reviewed diagnostic package if TB-573 passes.

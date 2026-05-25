@@ -137,6 +137,8 @@ starting context for implementation unless a task explicitly asks for them.
 - `balfrin_16_zone_handoff_tb569.md`: TB-569 16-zone handoff package record.
 - `balfrin_16_zone_handoff_tb571.md`: TB-571 refreshed 16-zone handoff package
   record.
+- `balfrin_16_zone_handoff_tb573.md`: TB-573 diagnostic-profile 16-zone
+  handoff evidence from the Balfrin checkout.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
