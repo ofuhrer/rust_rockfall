@@ -290,26 +290,8 @@ def build_report(
     scenario_table_manifest = dict(scenario_table_generation.get("scenario_table_manifest") or {})
     scenario_table_file_count = int(scenario_table_bundle_measurements.get("file_count") or 0)
     scenario_row_count = int(scenario_table_generation.get("scenario_row_count") or 0)
-    scenario_rows = list(scenario_table_generation.get("scenario_table_rows") or [])
-    block_family_counts: dict[str, int] = {}
-    release_zone_counts: dict[str, int] = {}
-    for row in scenario_rows:
-        if not isinstance(row, dict):
-            continue
-        block_family_id = text_value(row.get("block_family_id"))
-        release_zone_id = text_value(row.get("candidate_release_zone_id"))
-        if block_family_id:
-            block_family_counts[block_family_id] = block_family_counts.get(block_family_id, 0) + 1
-        if release_zone_id:
-            release_zone_counts[release_zone_id] = release_zone_counts.get(release_zone_id, 0) + 1
-    generated_scenario_family_cardinality = [
-        {"scenario_family_id": family_id, "row_count": count}
-        for family_id, count in sorted(block_family_counts.items())
-    ]
-    generated_release_zone_cardinality = [
-        {"release_zone_id": release_zone_id, "row_count": count}
-        for release_zone_id, count in sorted(release_zone_counts.items())
-    ]
+    scenario_rows = [row for row in scenario_table_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
+    generated_cardinality = AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -347,8 +329,8 @@ def build_report(
         },
         "scenario_generation_pressure": {
             "scenario_row_count": scenario_row_count,
-            "scenario_family_cardinality": generated_scenario_family_cardinality,
-            "release_zone_cardinality": generated_release_zone_cardinality,
+            "scenario_family_cardinality": generated_cardinality["scenario_family_cardinality"],
+            "release_zone_cardinality": generated_cardinality["release_zone_cardinality"],
             "policy_block_family_cardinality": [
                 {**family, "row_count": scenario_row_count}
                 for family in policy_block_families
@@ -773,13 +755,7 @@ def build_candidate_expansion_pressure_report(
                 projected_bytes=pressure["projected_bytes"],
                 budget_summary=budget_summary,
             )
-            output_pressure_labels = {
-                "target": execution_target["target"],
-                "target_status": execution_target["target_status"],
-                "local": execution_target["local_assessment"]["status"],
-                "balfrin": execution_target["balfrin_assessment"]["status"],
-                "budget_exceeded": execution_target["target_status"] == AOI_PREVIEW.BLOCKED_TARGET,
-            }
+            output_pressure_labels = AOI_PREVIEW.build_output_pressure_labels(execution_target)
             row = {
                 "candidate_count": candidate_count,
                 "candidate_release_zone_record_count": int(freezer_report.get("accepted_candidate_count") or 0),
@@ -796,16 +772,12 @@ def build_candidate_expansion_pressure_report(
                     "estimated_runtime_seconds": pressure["estimated_runtime_seconds"],
                 },
                 "execution_target": execution_target,
-                "output_budget_assessment": {
-                    "local": execution_target["local_assessment"],
-                    "balfrin": execution_target["balfrin_assessment"],
-                    "budget_exceeded": execution_target["target_status"] == AOI_PREVIEW.BLOCKED_TARGET,
-                },
-                "scenario_cardinality": {
-                    "source_zone_count": int(freezer_report.get("accepted_candidate_count") or 0),
-                    "scenario_family_count": block_family_count,
-                    "row_count": int(freezer_report.get("scenario_row_count") or 0),
-                },
+                "output_budget_assessment": AOI_PREVIEW.build_output_budget_assessment(execution_target),
+                "scenario_cardinality": AOI_PREVIEW.build_scenario_cardinality(
+                    source_zone_count=int(freezer_report.get("accepted_candidate_count") or 0),
+                    scenario_family_count=block_family_count,
+                    row_count=int(freezer_report.get("scenario_row_count") or 0),
+                ),
             }
             ladder.append(row)
             if smallest_useful is None and not row["output_budget_assessment"]["budget_exceeded"]:

@@ -223,15 +223,7 @@ def build_real_candidate_measurement(
     )
     scenario_generation = dict(generated.get("scenario_table_generation") or {})
     scenario_rows = [row for row in scenario_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
-    scenario_family_counts: dict[str, int] = {}
-    release_zone_counts: dict[str, int] = {}
-    for row in scenario_rows:
-        block_family_id = str(row.get("block_family_id") or "")
-        release_zone_id = str(row.get("candidate_release_zone_id") or "")
-        if block_family_id:
-            scenario_family_counts[block_family_id] = scenario_family_counts.get(block_family_id, 0) + 1
-        if release_zone_id:
-            release_zone_counts[release_zone_id] = release_zone_counts.get(release_zone_id, 0) + 1
+    cardinality = MANAGEMENT_PRESSURE.AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
     review_summary = dict(candidate_review.get("review_summary") or {})
     candidate_summary = dict(candidate_metrics.get("candidate_summary") or {})
     status = "ready" if generated.get("scenario_table_status") == "ready" else str(generated.get("scenario_table_status") or "unknown")
@@ -252,14 +244,8 @@ def build_real_candidate_measurement(
         "release_plan_root": scenario_generation.get("review_application_output_root", ""),
         "scenario_table_output_root": scenario_generation.get("scenario_table_output_root", ""),
         "candidate_bundle": measure_root(candidate_metrics_manifest.parent, label="real_candidate_bundle"),
-        "scenario_family_cardinality": [
-            {"scenario_family_id": family_id, "row_count": count}
-            for family_id, count in sorted(scenario_family_counts.items())
-        ],
-        "release_zone_cardinality": [
-            {"release_zone_id": release_zone_id, "row_count": count}
-            for release_zone_id, count in sorted(release_zone_counts.items())
-        ],
+        "scenario_family_cardinality": cardinality["scenario_family_cardinality"],
+        "release_zone_cardinality": cardinality["release_zone_cardinality"],
         "blocked_reason": generated.get("blocked_reason", ""),
     }
 

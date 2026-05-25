@@ -93,34 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-491: Consolidate Scenario Pressure Helpers
-
-Goal: Reduce duplicated scenario/output-pressure logic by consolidating overlapping calculations into one existing helper path.
-
-Capability gap reduced: Simplifies the repo so scenario scale estimates remain maintainable as candidate/scenario workflows grow.
-
-Why this outranks alternatives: The repo has several scenario-pressure surfaces; reducing duplicated logic lowers drift while still supporting executable scale decisions.
-
-Inspect first:
-
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `tests/test_aoi_scenario_preview.py`
-- `tests/test_management_aoi_scenario_pressure.py`
-- `tests/test_scenario_storage_output_tier_pressure.py`
-
-Deliverables:
-
-- Move duplicated scenario-count/output-pressure calculations into one existing module or helper function.
-- Remove at least one redundant code path or reduce duplicated logic while preserving existing CLI outputs consumed by tests.
-
-Definition of done:
-
-- The focused scenario-pressure tests pass, repository consistency passes, and the diff shows simplification rather than another wrapper or report layer.
-
-Boundaries: Simplification only; no new script, no new contract, no status-vocabulary change unless tests prove compatibility.
-
 ### TB-492: Consolidate Release-Candidate Review Logic
 
 Goal: Simplify the release-zone candidate generation/review path by consolidating duplicated candidate metrics, review CSV, and GeoJSON/mask emission logic.

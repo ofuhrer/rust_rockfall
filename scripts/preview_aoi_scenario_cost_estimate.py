@@ -319,11 +319,7 @@ def build_report(
         "estimated_runtime_seconds": projected_runtime_seconds,
         "budget_summary": budget_summary,
         "execution_target": target,
-        "output_budget_assessment": {
-            "local": target["local_assessment"],
-            "balfrin": target["balfrin_assessment"],
-            "budget_exceeded": target["target_status"] == BLOCKED_TARGET,
-        },
+        "output_budget_assessment": build_output_budget_assessment(target),
     }
     return report
 
@@ -591,11 +587,11 @@ def build_aoi_cost_projection_rows(
             coefficients.memory_peak_mb_high,
             precision=3,
         )
-        scenario_cardinality = {
-            "source_zone_count": zone_count,
-            "scenario_family_count": block_family_count,
-            "row_count": zone_count * block_family_count,
-        }
+        scenario_cardinality = build_scenario_cardinality(
+            source_zone_count=zone_count,
+            scenario_family_count=block_family_count,
+            row_count=zone_count * block_family_count,
+        )
         rows.append(
             {
                 "projection_zone_count": zone_count,
@@ -873,17 +869,54 @@ def summarize_preview_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     scenario_family_ids = sorted({row.get("scenario_family_id", "") for row in rows if row.get("scenario_family_id")})
     source_zone_count = len(source_zone_ids)
     scenario_family_count = len(scenario_family_ids)
-    scenario_cardinality = {
-        "source_zone_count": source_zone_count,
-        "scenario_family_count": scenario_family_count,
-        "row_count": len(rows),
-    }
+    scenario_cardinality = build_scenario_cardinality(
+        source_zone_count=source_zone_count,
+        scenario_family_count=scenario_family_count,
+        row_count=len(rows),
+    )
     blocking_labels: list[str] = []
     return {
         "source_zone_count": source_zone_count,
         "scenario_family_count": scenario_family_count,
         "scenario_cardinality": scenario_cardinality,
         "blocking_labels": blocking_labels,
+    }
+
+
+def build_scenario_cardinality(
+    *,
+    source_zone_count: int,
+    scenario_family_count: int,
+    row_count: int,
+) -> dict[str, int]:
+    return {
+        "source_zone_count": int(source_zone_count),
+        "scenario_family_count": int(scenario_family_count),
+        "row_count": int(row_count),
+    }
+
+
+def summarize_scenario_table_rows(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    scenario_family_counts: dict[str, int] = {}
+    release_zone_counts: dict[str, int] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        block_family_id = str(row.get("block_family_id") or "")
+        release_zone_id = str(row.get("candidate_release_zone_id") or row.get("source_zone_id") or "")
+        if block_family_id:
+            scenario_family_counts[block_family_id] = scenario_family_counts.get(block_family_id, 0) + 1
+        if release_zone_id:
+            release_zone_counts[release_zone_id] = release_zone_counts.get(release_zone_id, 0) + 1
+    return {
+        "scenario_family_cardinality": [
+            {"scenario_family_id": family_id, "row_count": count}
+            for family_id, count in sorted(scenario_family_counts.items())
+        ],
+        "release_zone_cardinality": [
+            {"release_zone_id": release_zone_id, "row_count": count}
+            for release_zone_id, count in sorted(release_zone_counts.items())
+        ],
     }
 
 
@@ -995,6 +1028,24 @@ def recommend_execution_target(
             "projected_files": projected_files,
             "projected_bytes": projected_bytes,
         },
+    }
+
+
+def build_output_pressure_labels(execution_target: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "target": execution_target["target"],
+        "target_status": execution_target["target_status"],
+        "local": execution_target["local_assessment"]["status"],
+        "balfrin": execution_target["balfrin_assessment"]["status"],
+        "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
+    }
+
+
+def build_output_budget_assessment(execution_target: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "local": execution_target["local_assessment"],
+        "balfrin": execution_target["balfrin_assessment"],
+        "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
     }
 
 
@@ -1275,11 +1326,11 @@ def build_selected_zone_pressure_report(
                 "block_family_ids": list(freezer_report.get("block_family_ids", [])),
                 "conditional_weight_summary": conditional_weight_summary,
                 "candidate_release_zone_record_count": freezer_report["accepted_candidate_count"],
-                "scenario_cardinality": {
-                    "source_zone_count": freezer_report["accepted_candidate_count"],
-                    "scenario_family_count": block_family_count,
-                    "row_count": freezer_report["scenario_row_count"],
-                },
+                "scenario_cardinality": build_scenario_cardinality(
+                    source_zone_count=freezer_report["accepted_candidate_count"],
+                    scenario_family_count=block_family_count,
+                    row_count=freezer_report["scenario_row_count"],
+                ),
                 "scenario_row_count": freezer_report["scenario_row_count"],
                 "storage_measurements": {
                     "csv_bytes": csv_bytes,
@@ -1296,11 +1347,7 @@ def build_selected_zone_pressure_report(
                 "output_paths": freezer_report["output_paths"],
                 "expected_output_file_count": len(freezer_report["output_paths"]),
                 "execution_target": execution_target,
-                "output_budget_assessment": {
-                    "local": execution_target["local_assessment"],
-                    "balfrin": execution_target["balfrin_assessment"],
-                    "budget_exceeded": execution_target["target_status"] == BLOCKED_TARGET,
-                },
+                "output_budget_assessment": build_output_budget_assessment(execution_target),
             }
         )
 
