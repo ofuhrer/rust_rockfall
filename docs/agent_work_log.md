@@ -7097,3 +7097,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: internal simplification only; no output semantics change, no new script, no operational claim, and no Balfrin dependency.
 - Next task: `TB-502`
+
+### TB-502: Make Candidate Review CSV Round-Trip Tested
+
+- Date: 2026-05-25
+- Commit: `c440ecc`
+- Objective: add focused round-trip coverage for candidate review CSV fields that feed review application and scenario freezing.
+- Files changed: `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `test_review_csv_round_trip_preserves_freezer_critical_fields` to the existing reviewed-candidate freezer tests.
+  - The test creates the existing review-applied fixture, reads the emitted review CSV with `csv.DictReader`, and compares review decisions, boolean flags, provenance, sensitivity labels, release-cell counts, and semicolon-encoded release-cell ids against the review manifest rows.
+  - The same test then runs the freezer and checks accepted candidate ids and release-cell counts survive into freezer release rows.
+  - Kept the change to test/serialization hardening only; no review status vocabulary or freezer semantics changed.
+  - Removed TB-502 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_review_csv_round_trip_preserves_freezer_critical_fields tests.test_candidate_source_zone_freezer -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_review_apply_edits_candidates_and_validates_provenance -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/test_candidate_source_zone_freezer.py tests/test_plan_terrain_release_zone_candidates.py scripts/plan_terrain_release_zone_candidates.py scripts/generate_candidate_source_zone_scenarios.py docs/task_backlog.md` (only pre-existing planner helper names containing `stub` plus intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: test/serialization hardening only; no new review workflow, no status vocabulary change, no source-zone semantics change, and no Balfrin dependency.
+- Next task: `TB-503`
