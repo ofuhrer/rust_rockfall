@@ -1261,6 +1261,13 @@ class HazardLayerTests(unittest.TestCase):
             self.assertTrue(
                 any(output["kind"] == "conditional_intensity_exceedance_curves" for output in manifest["outputs"])
             )
+            curve_output = next(
+                output
+                for output in manifest["outputs"]
+                if output["kind"] == "conditional_intensity_exceedance_curves"
+            )
+            self.assertEqual(curve_output["sha256"], hazard.sha256_file(curve_path))
+            self.assertEqual(curve_output["total_bytes"], curve_path.stat().st_size)
             self.assertIn(
                 "kinetic_energy_exceedance_10j",
                 manifest["hazard_statistics"]["generated_layer_names"],

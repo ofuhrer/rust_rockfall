@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-512: Optimize Real-Terrain Hazard Build Runtime
-
-Goal: Reduce runtime for one repeated real-terrain hazard build path used by local scientific iteration.
-
-Capability gap reduced: Makes local validation and candidate experiments faster without changing output semantics.
-
-Why this outranks alternatives: The backlog increasingly depends on repeated local hazard builds; runtime improvements compound across scientific and scaling tasks.
-
-Inspect first:
-
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_accumulation_benchmark.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Run the existing benchmark/profile, identify the current dominant local hotspot, and implement one scoped optimization with before/after metrics.
-- Preserve stable hashes or deterministic output signatures.
-
-Definition of done:
-
-- Focused benchmark/hazard tests pass and before/after metrics show a measurable runtime reduction or a clearly bounded no-op with the next hotspot named.
-
-Boundaries: Local performance only; no output contract break, no physics change, no new benchmark framework, and no Balfrin dependency.
-
 ### TB-513: Compare Candidate Footprint Against Terrain Support
 
 Goal: Measure whether reviewed candidate footprints occupy terrain cells with enough support for meaningful local trajectory evaluation.

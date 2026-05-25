@@ -6624,49 +6624,12 @@ def write_conditional_intensity_exceedance_curves(
     output_write_kind_bytes: dict[str, int],
 ) -> None:
     started = time.perf_counter()
+    digest = hashlib.sha256()
     with path.open("w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(
-            [
-                "row",
-                "col",
-                "x_center_m",
-                "y_center_m",
-                "intensity_measure",
-                "threshold",
-                "threshold_units",
-                "layer_name",
-                "probability_mode",
-                "normalization_scope",
-                "numerator",
-                "denominator",
-                "conditional_fraction",
-                "standard_error",
-                "weighted",
-                "annualized",
-            ]
-        )
-        for row in rows:
-            writer.writerow(
-                [
-                    row.row,
-                    row.col,
-                    f"{row.x_center_m:.6f}",
-                    f"{row.y_center_m:.6f}",
-                    row.intensity_measure,
-                    f"{row.threshold:.12g}",
-                    row.threshold_units,
-                    row.layer_name,
-                    row.probability_mode,
-                    row.normalization_scope,
-                    f"{row.numerator:.12g}",
-                    f"{row.denominator:.12g}",
-                    f"{row.conditional_fraction:.12g}",
-                    "" if row.standard_error is None else f"{row.standard_error:.12g}",
-                    str(row.weighted).lower(),
-                    str(row.annualized).lower(),
-                ]
-            )
+        tracked_file = _OutputByteTracker(file, digest)
+        tracked_file.write(",".join(CONDITIONAL_CURVE_TABLE_COLUMNS) + "\r\n")
+        tracked_file.write("".join(conditional_curve_csv_line(row) for row in rows))
+        tracked_file.flush()
     _register_written_output(
         path,
         "csv_table",
@@ -6674,8 +6637,19 @@ def write_conditional_intensity_exceedance_curves(
         output_write_kind_seconds,
         output_write_kind_bytes,
         elapsed_seconds=time.perf_counter() - started,
-        total_bytes=path.stat().st_size,
-        sha256_hex=sha256_file(path),
+        total_bytes=tracked_file.bytes_written,
+        sha256_hex=digest.hexdigest(),
+    )
+
+
+def conditional_curve_csv_line(row: ConditionalCurveRow) -> str:
+    standard_error = "" if row.standard_error is None else f"{row.standard_error:.12g}"
+    return (
+        f"{row.row},{row.col},{row.x_center_m:.6f},{row.y_center_m:.6f},"
+        f"{row.intensity_measure},{row.threshold:.12g},{row.threshold_units},{row.layer_name},"
+        f"{row.probability_mode},{row.normalization_scope},{row.numerator:.12g},"
+        f"{row.denominator:.12g},{row.conditional_fraction:.12g},{standard_error},"
+        f"{str(row.weighted).lower()},{str(row.annualized).lower()}\r\n"
     )
 
 
