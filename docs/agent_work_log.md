@@ -8772,3 +8772,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_waiting_report
 - Boundaries: no `sbatch`, no Balfrin measurement, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-574`
+
+### TB-574: Execute One 16-Zone Diagnostic Postproc Probe If Checks Pass
+
+- Date: 2026-05-26
+- Commit: `188dc22`
+- Objective: attempt the 16-zone diagnostic `postproc` submission only if the reviewed package checks pass, and otherwise record the exact no-submit reason.
+- Files changed: `docs/balfrin_16_zone_postproc_run_tb574.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Used the TB-573 package and final authorization preflight evidence to evaluate whether submission checks passed.
+  - Did not submit because the authorization preflight remained `blocked_reducer_budget`.
+  - Recorded the intended package, run root, hashes, scheduler non-interaction, and exact remaining blocker in a tracked no-submit decision note.
+  - Removed TB-574 from the active backlog.
+- Checks run:
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_waiting_report
+- Boundaries: no `sbatch`, no job id, no runtime/MaxRSS metrics, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-575`
