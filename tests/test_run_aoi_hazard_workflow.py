@@ -1445,6 +1445,13 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 self.assertFalse(smoke["claim_boundaries"]["operational_claims_allowed"])
                 self.assertFalse(smoke["claim_boundaries"]["scale_up_authorized"])
                 self.assertFalse(smoke["claim_boundaries"]["physical_probability_claims_allowed"])
+                clean_checkout_contract = smoke["clean_checkout_contract"]
+                self.assertEqual(clean_checkout_contract["status"], "tracked_fixture_inputs")
+                self.assertFalse(clean_checkout_contract["requires_ignored_roots"])
+                self.assertEqual(clean_checkout_contract["untracked_or_missing_input_paths"], [])
+                self.assertIn("validation/cases/probabilistic_phase1_smoke.yaml", clean_checkout_contract["input_paths"])
+                self.assertEqual(clean_checkout_contract["output_root_policy"], "/tmp-only")
+                self.assertTrue(str(smoke_root).startswith("/tmp/"))
                 self.assertTrue((validation_root / "probabilistic_phase1_smoke_trajectory.csv").exists())
                 self.assertTrue((validation_root / "probabilistic_phase1_smoke_trajectory_metadata.csv").exists())
                 self.assertTrue((validation_root / "probabilistic_phase1_smoke_deposition.csv").exists())

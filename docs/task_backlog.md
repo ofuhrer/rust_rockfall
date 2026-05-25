@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-561: Add A Clean-Checkout AOI Workflow Smoke Regression
-
-Goal: Ensure the user-facing AOI workflow can run its smallest local smoke path without ignored artifacts.
-
-Capability gap reduced: Protects onboarding and user-facing workflow reliability from hidden local-state assumptions.
-
-Why this outranks alternatives: A clean checkout must be able to demonstrate the workflow without private Tschamut/Balfrin roots.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `README.md`
-
-Deliverables:
-
-- A focused clean-checkout-safe smoke test or helper mode using tracked tiny fixtures.
-- README command remains accurate and bounded.
-
-Definition of done:
-
-- The smoke path writes reduced local artifacts under `/tmp` and does not require ignored roots.
-
-Boundaries: Tiny fixture only; no real geodata download, no Balfrin, no operational map claim.
-
 ### TB-562: Measure Real-AOI Public-Geodata Acquisition Dry Run
 
 Goal: Exercise the public-geodata acquisition/staging dry-run path for a real AOI without downloading or claiming readiness.

@@ -2125,6 +2125,11 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
     smoke_case = yaml.safe_load(smoke_case_path.read_text(encoding="utf-8"))
     if not isinstance(smoke_case, dict):
         raise ValueError(f"smoke case must be a mapping: {smoke_case_path}")
+    clean_checkout_contract = build_smoke_clean_checkout_contract(
+        repo_root=repo_root,
+        smoke_case_path=smoke_case_path,
+        smoke_case=smoke_case,
+    )
     smoke_case = rewrite_smoke_case(smoke_case, smoke_output_root)
     smoke_case_copy = smoke_output_root / smoke_case_path.name
     smoke_case_copy.write_text(yaml.safe_dump(smoke_case, sort_keys=False), encoding="utf-8")
@@ -2221,6 +2226,7 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
             "physical_probability_claims_allowed": False,
             "risk_exposure_vulnerability_claims_allowed": False,
         },
+        "clean_checkout_contract": clean_checkout_contract,
         "expected_paths": {
             "validation_manifest": str(validation_manifest),
             "validation_trajectory": str(validation_trajectory),
@@ -2278,6 +2284,82 @@ def execute_local_smoke_run(*, repo_root: Path, smoke_case_path: Path, smoke_out
             "ready_for_next_step": {"status": "smoke_completed", "next_step": "none"},
         },
     }
+
+
+def build_smoke_clean_checkout_contract(
+    *,
+    repo_root: Path,
+    smoke_case_path: Path,
+    smoke_case: dict[str, Any],
+) -> dict[str, Any]:
+    input_paths = collect_smoke_case_input_paths(
+        repo_root=repo_root,
+        smoke_case_path=smoke_case_path,
+        smoke_case=smoke_case,
+    )
+    tracked_paths = set(git_tracked_paths(repo_root=repo_root, paths=input_paths))
+    untracked = [path for path in input_paths if path not in tracked_paths]
+    output_root_policy = "/tmp-only"
+    return {
+        "schema_version": "aoi_local_smoke_clean_checkout_contract_v1",
+        "status": "tracked_fixture_inputs" if not untracked else "blocked_untracked_fixture_inputs",
+        "input_paths": input_paths,
+        "tracked_input_paths": [path for path in input_paths if path in tracked_paths],
+        "untracked_or_missing_input_paths": untracked,
+        "output_root_policy": output_root_policy,
+        "requires_ignored_roots": bool(untracked),
+        "summary": (
+            "The local AOI smoke uses only tracked tiny fixture inputs and writes generated artifacts under /tmp."
+            if not untracked
+            else "The local AOI smoke references one or more untracked or missing inputs."
+        ),
+    }
+
+
+def collect_smoke_case_input_paths(*, repo_root: Path, smoke_case_path: Path, smoke_case: dict[str, Any]) -> list[str]:
+    raw_paths = [
+        smoke_case_path,
+        smoke_case.get("terrain", {}).get("path"),
+        smoke_case.get("terrain", {}).get("metadata_path"),
+        smoke_case.get("release_zone", {}).get("metadata_path"),
+        smoke_case.get("probabilistic_metadata", {}).get("source_zone_metadata_path"),
+        smoke_case.get("probabilistic_metadata", {}).get("scenario_table_path"),
+        smoke_case.get("hazard_map_package", {}).get("source_zone_metadata_path"),
+        smoke_case.get("hazard_map_package", {}).get("scenario_table_path"),
+    ]
+    paths: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_paths:
+        if not raw:
+            continue
+        candidate = Path(str(raw))
+        if candidate.is_absolute():
+            try:
+                path = str(candidate.resolve().relative_to(repo_root.resolve()))
+            except ValueError:
+                continue
+        else:
+            path = str(candidate)
+        if path in seen:
+            continue
+        seen.add(path)
+        paths.append(path)
+    return paths
+
+
+def git_tracked_paths(*, repo_root: Path, paths: list[str]) -> list[str]:
+    if not paths:
+        return []
+    proc = subprocess.run(
+        ["git", "ls-files", "--", *paths],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
 
 
 def count_csv_data_rows(path: Path) -> int:
