@@ -8514,3 +8514,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: tiny tracked fixture only; no real geodata download, no Balfrin run, no operational map claim, and no claim upgrade.
 - Next task: `TB-562`
+
+### TB-562: Measure Real-AOI Public-Geodata Acquisition Dry Run
+
+- Date: 2026-05-25
+- Commit: `9b0ff4e`
+- Objective: exercise the real-AOI public-geodata acquisition planner without downloading, staging, or promoting synthetic fixture evidence.
+- Files changed: `scripts/plan_swisstopo_aoi_acquisition.py`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `real_aoi_acquisition_dry_run_manifest` to the swisstopo AOI acquisition planner.
+  - The manifest lists the real AOI site, resolved swisstopo tile IDs, required public products, metadata records, expected staging paths, missing/deferred inputs, and next acquisition actions.
+  - Added explicit no-download/no-local-copy/no-manifest-mutation boundaries and a `synthetic_fixture_used_as_evidence: false` guard.
+  - Extended planner tests to assert the Chant Sura / Flüelapass dry-run remains an actionable blocked acquisition report for tile `2793-1180`.
+  - Ran the dry-run command into `/tmp/tb562_real_aoi_acquisition_dry_run.json`; it reported six missing/deferred public-context actions and no download authorization.
+  - Removed TB-562 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --mode dry-run --format json >/tmp/tb562_real_aoi_acquisition_dry_run.json`
+- Result/status: implemented_measured
+- Boundaries: no downloads, no local copy, no staged geodata mutation, no second-site ensemble, no validation claim, and no operational claim.
+- Next task: `backlog_refill_needed`
