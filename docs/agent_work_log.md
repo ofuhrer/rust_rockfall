@@ -6874,3 +6874,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: internal simplification only; no new source-zone semantics, no threshold tuning, no candidate acceptance upgrade, no operational claim, no new script, and no Balfrin execution.
 - Next task: `TB-493`
+
+### TB-493: Shrink Generated-Result Clutter
+
+- Date: 2026-05-25
+- Commit: `d4c30b3`
+- Objective: reduce local generated-result clutter and add a guard against accidental generated copy-suffix artifacts.
+- Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a repository-consistency check that scans ignored generated result roots for Finder-style duplicate/copy-suffix files such as `* 2.json` and `* copy.csv`.
+  - Added a focused regression for generated copy-suffix artifact detection while preserving the existing tracked documentation copy-suffix check.
+  - Removed 165 existing ignored generated copy-suffix files under result roots from the local workspace; the post-cleanup count is 0.
+  - Removed TB-493 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_repo_consistency_claim_hygiene tests.test_repo_consistency_module_split tests.test_bounded_validation_output_profile -v`
+  - `find validation/results hazard/results verification/results calibration/results -type f \( -name '* copy.*' -o -name '* [0-9].*' \) -print | wc -l`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite repo-consistency`
+- Result/status: implemented
+- Boundaries: repository simplification only; no tracked evidence, real-terrain inputs, provenance records, benchmark fixtures, physics, tuning, operational claim, or Balfrin execution were changed.
+- Next task: `TB-489` and `TB-490` remain Balfrin-access required and were not executed under the current no-Balfrin scope.
