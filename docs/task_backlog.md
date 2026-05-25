@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-527: Route One AOI Workflow Through A Single Existing Front Door
-
-Goal: Make one documented AOI path runnable through `scripts/run_aoi_hazard_workflow.py` or another existing front-door command instead of a chain of individually invoked helper scripts.
-
-Capability gap reduced: Converts a multi-script user workflow into a simpler command path while preserving existing helper internals.
-
-Why this outranks alternatives: Users should not need to learn low-level helper names before they can produce or inspect a local AOI package.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/aoi_user_manual.md`
-- `scripts/generate_pilot_command_plan.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- Add or tighten one front-door mode, option, or documented invocation that delegates to existing helpers for a bounded local AOI workflow.
-- Update focused tests or fixtures so the front-door command remains the documented path.
-
-Definition of done:
-
-- The focused AOI/front-door tests pass and the user manual no longer requires direct invocation of at least one lower-level helper for that path.
-
-Boundaries: Existing front-door routing only; no new script, no new data source, no operational claim, and no Balfrin dependency.
-
 ### TB-528: Merge One Redundant Status Summary Into Maturity Snapshot
 
 Goal: Remove or demote one redundant status/report document by preserving its still-useful content in `docs/current_maturity_snapshot.md` or an existing archive.

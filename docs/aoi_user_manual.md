@@ -101,16 +101,17 @@ helpers unless this manual explicitly says otherwise.
 5. Generate the diagnostic package.
 
    ```bash
-   PYTHONPATH=$PWD PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py \
-     --input-root hazard/results/tschamut_public_pilot/target_gate_v1 \
-     --output-root /tmp/aoi_review_package \
+   PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map \
+     --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 \
+     --package-output-root /tmp/aoi_review_package \
      --overwrite \
      --format json
    ```
 
-   This copies the tracked QGIS style bundle into `/tmp/aoi_review_package/styles/`
-   and annotates raster/vector inventory entries with the matching `.qml`
-   references where one exists.
+   When `--package-output-root` is supplied, the front door delegates to the
+   package builder, copies the tracked QGIS style bundle into
+   `/tmp/aoi_review_package/styles/`, and annotates raster/vector inventory
+   entries with the matching `.qml` references where one exists.
 
 6. Use the front-door packaging gate when you want the compact readiness
    report for an existing hazard root.
@@ -137,7 +138,7 @@ these lower-level helpers:
 | `scripts/plan_terrain_release_zone_candidates.py` | `scripts/run_aoi_hazard_workflow.py candidate-review` |
 | `scripts/audit_gis_cog_package_readiness.py` | `scripts/run_aoi_hazard_workflow.py package-map` |
 | `scripts/generate_tschamut_same_scale_cases.py` | `scripts/generate_pilot_command_plan.py` |
-| `scripts/package_aoi_hazard_map.py` | `scripts/run_aoi_hazard_workflow.py package-map` first; use the direct helper only when building a package from a known hazard root |
+| `scripts/package_aoi_hazard_map.py` | `scripts/run_aoi_hazard_workflow.py package-map --package-output-root ...` |
 
 ## QGIS Review Path
 

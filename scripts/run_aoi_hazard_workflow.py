@@ -192,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
             artifact_root=args.artifact_root,
             smoke_case_path=args.smoke_case_path,
             smoke_output_root=args.smoke_output_root,
+            package_output_root=args.package_output_root,
             prepared_pilot_report_path=args.prepared_pilot_report_path,
             prepared_pilot_output_root=args.prepared_pilot_output_root,
             validation_case_path=args.validation_case_path,
@@ -598,6 +599,7 @@ def build_report(
     artifact_root: Path | None = None,
     smoke_case_path: Path | None = None,
     smoke_output_root: Path | None = None,
+    package_output_root: Path | None = None,
     prepared_pilot_report_path: Path | None = None,
     prepared_pilot_output_root: Path | None = None,
     validation_case_path: Path | None = None,
@@ -621,6 +623,12 @@ def build_report(
             prepared_pilot_report_path=prepared_pilot_report_path,
             prepared_pilot_output_root=prepared_pilot_output_root,
             validation_case_path=validation_case_path or DEFAULT_PREPARED_PILOT_VALIDATION_CASE,
+            overwrite=overwrite,
+        )
+    if command == "package-map" and package_output_root is not None:
+        return build_package_map_front_door_report(
+            artifact_root=artifact_root or DEFAULT_ARTIFACT_ROOT,
+            package_output_root=package_output_root,
             overwrite=overwrite,
         )
 
@@ -2870,6 +2878,68 @@ def build_package_report(artifact_root: Path) -> dict[str, Any]:
                 "risk_exposure_vulnerability_claims_allowed": False,
             },
         }
+
+
+def build_package_map_front_door_report(
+    *,
+    artifact_root: Path,
+    package_output_root: Path,
+    overwrite: bool,
+) -> dict[str, Any]:
+    artifact_root = Path(artifact_root)
+    package_output_root = Path(package_output_root)
+    readiness_report = build_package_report(artifact_root)
+    package_report = PACKAGE_AOI.package_aoi_hazard_map(
+        artifact_root,
+        package_output_root,
+        overwrite=overwrite,
+    )
+    status = str(package_report.get("status") or "blocked_missing_inputs")
+    blocked = status.startswith("blocked")
+    first_blocker = {
+        "step_id": "package-map",
+        "label": "Package hazard map",
+        "status": status,
+        "blocked_reason": "" if not blocked else str(
+            (
+                package_report.get("missing_hazard_outputs")
+                or package_report.get("cog_blockers")
+                or ["map packaging failed"]
+            )[0]
+        ),
+        "missing_inputs": list(package_report.get("missing_hazard_outputs") or []),
+    }
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": "package-map",
+        "status": status,
+        "next_action": "inspect package" if not blocked else "package-map",
+        "first_blocker": first_blocker,
+        "expected_paths": {
+            "artifact_root": [str(artifact_root)],
+            "package_output_root": str(package_output_root),
+        },
+        "claim_boundaries": dict(
+            package_report.get("claim_boundary")
+            or package_report.get("claim_boundaries")
+            or readiness_report.get("claim_boundaries")
+            or {}
+        ),
+        "workflow_summary": {
+            "front_door_delegates_to": "scripts/package_aoi_hazard_map.py",
+            "writes_package": True,
+            "readiness_status": readiness_report.get("gis_cog_readiness_status", ""),
+        },
+        "delegate_statuses": {
+            "gis_cog_audit": readiness_report.get("gis_cog_readiness_status", "blocked_missing_inputs"),
+            "aoi_package": status,
+        },
+        "delegate_reports": {
+            "gis_cog_schema_version": readiness_report.get("schema_version", ""),
+            "aoi_package_schema_version": package_report.get("schema_version", ""),
+        },
+        "package_output_root": str(package_output_root),
+    }
 
 
 def resolve_status(

@@ -682,6 +682,49 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(package_report["expected_paths"]["artifact_root"], [str(missing_artifact_root)])
         self.assertFalse(package_report["claim_boundaries"]["operational_claims_allowed"])
 
+    def test_package_map_front_door_delegates_to_package_helper_when_output_root_is_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_root = Path(tmp)
+            config_path = self._write_candidate_config(repo_root)
+            artifact_root = repo_root / "hazard/results/example"
+            package_output_root = repo_root / "package"
+
+            with mock.patch.object(
+                workflow,
+                "build_package_report",
+                return_value={
+                    "schema_version": "gis_cog_stub_v1",
+                    "gis_cog_readiness_status": "gis_package_ready",
+                    "claim_boundaries": {"operational_claims_allowed": False},
+                },
+            ), mock.patch.object(
+                workflow.PACKAGE_AOI,
+                "package_aoi_hazard_map",
+                return_value={
+                    "schema_version": "aoi_hazard_map_package_v1",
+                    "status": "map_package_ready",
+                    "claim_boundary": {"operational_claims_allowed": False},
+                },
+            ) as package_mock:
+                report = workflow.build_report(
+                    command="package-map",
+                    site_config=config_path,
+                    repo_root=repo_root,
+                    artifact_root=artifact_root,
+                    package_output_root=package_output_root,
+                    overwrite=True,
+                )
+
+        package_mock.assert_called_once_with(artifact_root, package_output_root, overwrite=True)
+        self.assertEqual(report["command"], "package-map")
+        self.assertEqual(report["status"], "map_package_ready")
+        self.assertEqual(report["next_action"], "inspect package")
+        self.assertEqual(report["workflow_summary"]["front_door_delegates_to"], "scripts/package_aoi_hazard_map.py")
+        self.assertTrue(report["workflow_summary"]["writes_package"])
+        self.assertEqual(report["delegate_statuses"]["aoi_package"], "map_package_ready")
+        self.assertEqual(report["expected_paths"]["package_output_root"], str(package_output_root))
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
     def test_clean_checkout_candidate_review_and_workflow_front_doors_fail_closed_without_ignored_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as smoke_tmp:
             repo_root = Path(tmp)
