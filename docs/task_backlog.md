@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-507: Add Scenario Storage Batch-Cap Regression
-
-Goal: Pin the compact candidate-batch storage cap with a focused regression that catches future manifest-size drift.
-
-Capability gap reduced: Keeps scenario storage growth bounded while candidate pools increase.
-
-Why this outranks alternatives: The next local and Balfrin-adjacent steps depend on compact scenario packages not regressing in size or file count.
-
-Inspect first:
-
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_scenario_storage_output_tier_pressure.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-
-Deliverables:
-
-- Add an assertion or focused measurement that fails when the recommended compact batch cap grows past the current measured envelope without an explicit update.
-- Keep the test fixture-backed and deterministic.
-
-Definition of done:
-
-- Focused storage/candidate scenario tests pass and batch-cap/file-count/manifest-byte drift is guarded.
-
-Boundaries: Regression guard only; no new storage report, no live execution, no output claim upgrade, and no Balfrin dependency.
-
 ### TB-508: Simplify Agent Task Context For Local-Only Work
 
 Goal: Make the existing task-context helper surface local-only tasks cleanly when Balfrin access is unavailable.

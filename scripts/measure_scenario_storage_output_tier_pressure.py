@@ -42,6 +42,14 @@ DEFAULT_FULL_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/
 DEFAULT_GIS_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_FIXTURE_TRAJECTORY_COUNT = 6
 DEFAULT_EXPANDED_CANDIDATE_REPEAT_COUNTS = (1, 3, 8)
+COMPACT_BATCH_CAP_REGRESSION_LIMITS = {
+    "max_candidate_repeat_count": 3,
+    "max_candidate_release_zone_record_count": 30,
+    "max_scenario_row_count": 300,
+    "max_output_file_count": 4,
+    "max_manifest_bytes": 211_277,
+    "max_total_bytes": 595_867,
+}
 
 REBUILD_REQUIRED_FAMILIES = (
     "trajectory",
@@ -127,6 +135,7 @@ def build_report(
         output_families=output_families,
     )
     recommendation = recommend_balfrin_replay_tier(tier_comparison)
+    batching_rule = recommend_candidate_batching_rule(expanded_candidate_sets)
     next_bottleneck = determine_next_bottleneck(real_candidate=real_candidate, tier_comparison=tier_comparison)
     storage_output_tier_bands = [
         {
@@ -148,7 +157,8 @@ def build_report(
         "fixture_measurement": fixture_scenario,
         "real_aoi_candidate_measurement": real_candidate,
         "expanded_candidate_set_measurements": expanded_candidate_sets,
-        "next_balfrin_package_batching_rule": recommend_candidate_batching_rule(expanded_candidate_sets),
+        "next_balfrin_package_batching_rule": batching_rule,
+        "compact_batch_cap_regression_guard": build_compact_batch_cap_regression_guard(batching_rule),
         "output_family_measurements": output_families,
         "tier_comparison": tier_comparison,
         "storage_output_tier_bands": storage_output_tier_bands,
@@ -317,6 +327,7 @@ def build_expanded_candidate_set_measurements(
                 "csv_bytes": int(storage.get("csv_bytes") or 0),
                 "manifest_bytes": int(storage.get("manifest_bytes") or 0),
                 "total_bytes": int(storage.get("total_bytes") or 0),
+                "output_file_count": len(generated.get("output_paths") or {}),
                 "scenario_family_template_cardinality": list(manifest.get("scenario_family_template_cardinality") or []),
                 "source_zone_family_cardinality": list(manifest.get("source_zone_family_cardinality") or []),
                 "block_family_cardinality": list(manifest.get("block_family_cardinality") or []),
@@ -368,12 +379,60 @@ def recommend_candidate_batching_rule(candidate_measurements: list[dict[str, Any
             "csv_bytes": int(cap_measurement.get("csv_bytes") or 0),
             "manifest_bytes": int(cap_measurement.get("manifest_bytes") or 0),
             "total_bytes": int(cap_measurement.get("total_bytes") or 0),
+            "output_file_count": int(cap_measurement.get("output_file_count") or 0),
         },
         "reason": (
             "batch at the largest measured candidate-repeat level at or below 3; "
             "the 8-repeat step grows to 800 rows and roughly 1.2 MB of manifest bytes, "
             "so larger candidate pools should be split into 3-repeat / 30-candidate chunks"
         ),
+    }
+
+
+def build_compact_batch_cap_regression_guard(batching_rule: dict[str, Any]) -> dict[str, Any]:
+    limits = dict(COMPACT_BATCH_CAP_REGRESSION_LIMITS)
+    cap = dict(batching_rule.get("cap_measurement") or {})
+    checks = [
+        {
+            "metric": "candidate_repeat_count",
+            "value": int(cap.get("candidate_repeat_count") or 0),
+            "max_allowed": limits["max_candidate_repeat_count"],
+        },
+        {
+            "metric": "candidate_release_zone_record_count",
+            "value": int(cap.get("candidate_release_zone_record_count") or 0),
+            "max_allowed": limits["max_candidate_release_zone_record_count"],
+        },
+        {
+            "metric": "scenario_row_count",
+            "value": int(cap.get("scenario_row_count") or 0),
+            "max_allowed": limits["max_scenario_row_count"],
+        },
+        {
+            "metric": "output_file_count",
+            "value": int(cap.get("output_file_count") or 0),
+            "max_allowed": limits["max_output_file_count"],
+        },
+        {
+            "metric": "manifest_bytes",
+            "value": int(cap.get("manifest_bytes") or 0),
+            "max_allowed": limits["max_manifest_bytes"],
+        },
+        {
+            "metric": "total_bytes",
+            "value": int(cap.get("total_bytes") or 0),
+            "max_allowed": limits["max_total_bytes"],
+        },
+    ]
+    exceeded = [check for check in checks if check["value"] > check["max_allowed"]]
+    return {
+        "schema_version": "compact_batch_cap_regression_guard_v1",
+        "guard_status": "pass" if not exceeded else "fail",
+        "limits": limits,
+        "checks": checks,
+        "exceeded_limits": exceeded,
+        "explicit_update_required": bool(exceeded),
+        "guard_scope": "fixture-backed compact candidate batch cap only; no live execution or scale-up authorization",
     }
 
 

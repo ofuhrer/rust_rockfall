@@ -42,6 +42,7 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         self.assertEqual([row["candidate_repeat_count"] for row in ladder], [1, 3, 8])
         self.assertEqual([row["candidate_release_zone_record_count"] for row in ladder], [10, 30, 80])
         self.assertEqual([row["scenario_row_count"] for row in ladder], [100, 300, 800])
+        self.assertEqual([row["output_file_count"] for row in ladder], [4, 4, 4])
         self.assertEqual(
             ladder[0]["scenario_family_template_cardinality"],
             [
@@ -86,7 +87,33 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
             report["next_balfrin_package_batching_rule"]["cap_summary"],
             "3-repeat / 30-candidate / 300-row cap",
         )
+        self.assertEqual(
+            report["next_balfrin_package_batching_rule"]["cap_measurement"],
+            {
+                "candidate_repeat_count": 3,
+                "candidate_release_zone_record_count": 30,
+                "scenario_row_count": 300,
+                "csv_bytes": 162304,
+                "manifest_bytes": 211277,
+                "total_bytes": 595867,
+                "output_file_count": 4,
+            },
+        )
         self.assertIn("3-repeat", report["next_balfrin_package_batching_rule"]["reason"])
+        self.assertEqual(report["compact_batch_cap_regression_guard"]["guard_status"], "pass")
+        self.assertFalse(report["compact_batch_cap_regression_guard"]["explicit_update_required"])
+        self.assertEqual(
+            report["compact_batch_cap_regression_guard"]["limits"],
+            {
+                "max_candidate_repeat_count": 3,
+                "max_candidate_release_zone_record_count": 30,
+                "max_scenario_row_count": 300,
+                "max_output_file_count": 4,
+                "max_manifest_bytes": 211277,
+                "max_total_bytes": 595867,
+            },
+        )
+        self.assertEqual(report["compact_batch_cap_regression_guard"]["exceeded_limits"], [])
 
         self.assertEqual(
             report["storage_output_tier_bands"],
@@ -95,7 +122,7 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
                     "tier_id": "minimal",
                     "tier_role": "scenario table plus release-plan manifest only",
                     "file_count": 5,
-                    "total_bytes": 13685,
+                    "total_bytes": 14299,
                     "replay_suitability": "insufficient_missing_trajectory_outputs",
                 },
                 {
@@ -169,6 +196,27 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
         self.assertEqual(
             report["balfrin_demonstration_replay_recommendation"]["recommended_tier"],
             "research_full",
+        )
+
+    def test_compact_batch_cap_guard_fails_on_manifest_drift(self) -> None:
+        guard = MODULE.build_compact_batch_cap_regression_guard(
+            {
+                "cap_measurement": {
+                    "candidate_repeat_count": 3,
+                    "candidate_release_zone_record_count": 30,
+                    "scenario_row_count": 300,
+                    "output_file_count": 4,
+                    "manifest_bytes": 211278,
+                    "total_bytes": 595867,
+                }
+            }
+        )
+
+        self.assertEqual(guard["guard_status"], "fail")
+        self.assertTrue(guard["explicit_update_required"])
+        self.assertEqual(
+            guard["exceeded_limits"],
+            [{"metric": "manifest_bytes", "value": 211278, "max_allowed": 211277}],
         )
 
 
