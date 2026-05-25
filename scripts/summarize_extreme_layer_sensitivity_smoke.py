@@ -27,6 +27,10 @@ SCHEMA_VERSION = "extreme_layer_sensitivity_smoke_v1"
 DEFAULT_GATE_MANIFEST = ROOT / "hazard/results/tschamut_public_pilot/gate_v1/validation_tschamut_public_conditional_gate_v1_manifest.json"
 DEFAULT_TARGET_MANIFEST = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json"
 EXTREME_LAYERS = ("max_kinetic_energy", "max_jump_height")
+EXTREME_SUPPORT_LAYERS = {
+    "max_kinetic_energy": "max_kinetic_energy_sample_count",
+    "max_jump_height": "max_jump_height_sample_count",
+}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -97,7 +101,18 @@ def build_report(*, gate_manifest: Path = DEFAULT_GATE_MANIFEST, target_manifest
     layer_summaries = []
     for layer_key in EXTREME_LAYERS:
         comparison = convergence.compare_cellwise_layer(gate_layers[layer_key], target_layers[layer_key])
-        layer_summaries.append(summarize_layer(comparison))
+        support_layer_key = EXTREME_SUPPORT_LAYERS[layer_key]
+        layer_summaries.append(
+            summarize_layer(
+                comparison,
+                sample_support_delta=summarize_sample_support_delta(
+                    layer_key=layer_key,
+                    support_layer_key=support_layer_key,
+                    gate_layer=gate_layers.get(support_layer_key),
+                    target_layer=target_layers.get(support_layer_key),
+                ),
+            )
+        )
 
     return {
         **base_report(gate_manifest=gate_manifest, target_manifest=target_manifest),
@@ -165,13 +180,14 @@ def missing_layer_summary(item: dict[str, Any]) -> dict[str, Any]:
         "layer_key": item["layer_key"],
         "presence_status": item["presence_status"],
         "support_delta": {},
+        "sample_support_delta": {},
         "summary_delta": {},
         "sensitivity_class": "blocked_missing_layer",
         "interpretation": "Sensitivity cannot be measured until the layer is present in both manifests.",
     }
 
 
-def summarize_layer(comparison: dict[str, Any]) -> dict[str, Any]:
+def summarize_layer(comparison: dict[str, Any], *, sample_support_delta: dict[str, Any]) -> dict[str, Any]:
     value_metrics = comparison["value_metrics"]
     nonzero_metrics = comparison["nonzero_metrics"]
     missing_metrics = comparison["missing_cell_metrics"]
@@ -200,18 +216,67 @@ def summarize_layer(comparison: dict[str, Any]) -> dict[str, Any]:
             "l1_abs_diff": float(value_metrics["l1_abs_diff"]),
             "rmse": float(value_metrics["rmse"]),
         },
+        "sample_support_delta": sample_support_delta,
         "sensitivity_class": classify_sensitivity(
             layer_key=comparison["layer_key"],
             nodata_mismatch_count=nodata_mismatch,
+            sample_support_mismatch_count=int(sample_support_delta.get("sample_support_mismatch_count", 0) or 0),
             linf_abs_diff=float(value_metrics["linf_abs_diff"]),
             nonzero_jaccard=float(nonzero_metrics["nonzero_jaccard"]),
         ),
-        "interpretation": interpret_layer(comparison["layer_key"], nodata_mismatch),
+        "interpretation": interpret_layer(
+            comparison["layer_key"],
+            nodata_mismatch,
+            int(sample_support_delta.get("sample_support_mismatch_count", 0) or 0),
+        ),
     }
 
 
-def classify_sensitivity(*, layer_key: str, nodata_mismatch_count: int, linf_abs_diff: float, nonzero_jaccard: float) -> str:
-    if nodata_mismatch_count > 0 and layer_key == "max_jump_height":
+def summarize_sample_support_delta(
+    *,
+    layer_key: str,
+    support_layer_key: str,
+    gate_layer: convergence.CellwiseLayer | None,
+    target_layer: convergence.CellwiseLayer | None,
+) -> dict[str, Any]:
+    if gate_layer is None or target_layer is None:
+        return {
+            "support_metadata_status": "missing",
+            "support_layer_key": support_layer_key,
+            "gate_support_present": gate_layer is not None,
+            "target_support_present": target_layer is not None,
+            "sample_support_mismatch_count": 0,
+            "support_count_linf_abs_diff": 0.0,
+        }
+    support_comparison = convergence.compare_cellwise_layer(gate_layer, target_layer)
+    return {
+        "support_metadata_status": "measured",
+        "support_layer_key": support_layer_key,
+        "gate_support_present": True,
+        "target_support_present": True,
+        "gate_supported_cell_count": int(support_comparison["nonzero_metrics"]["reference_nonzero_cell_count"]),
+        "target_supported_cell_count": int(support_comparison["nonzero_metrics"]["compare_nonzero_cell_count"]),
+        "shared_supported_cell_count": int(support_comparison["nonzero_metrics"]["nonzero_overlap_count"]),
+        "support_jaccard": float(support_comparison["nonzero_metrics"]["nonzero_jaccard"]),
+        "sample_support_mismatch_count": int(support_comparison["nonzero_metrics"]["nonzero_union_count"])
+        - int(support_comparison["nonzero_metrics"]["nonzero_overlap_count"]),
+        "support_count_linf_abs_diff": float(support_comparison["value_metrics"]["linf_abs_diff"]),
+        "support_count_l1_abs_diff": float(support_comparison["value_metrics"]["l1_abs_diff"]),
+        "interpretation": (
+            f"{layer_key} support metadata distinguishes cells with finite sample support from unsupported cells."
+        ),
+    }
+
+
+def classify_sensitivity(
+    *,
+    layer_key: str,
+    nodata_mismatch_count: int,
+    sample_support_mismatch_count: int,
+    linf_abs_diff: float,
+    nonzero_jaccard: float,
+) -> str:
+    if (nodata_mismatch_count > 0 or sample_support_mismatch_count > 0) and layer_key == "max_jump_height":
         return "support_nodata_sensitive_extreme_layer"
     if linf_abs_diff > 0.0 and layer_key == "max_kinetic_energy":
         return "magnitude_sensitive_extreme_layer"
@@ -220,11 +285,11 @@ def classify_sensitivity(*, layer_key: str, nodata_mismatch_count: int, linf_abs
     return "measured_no_detected_delta"
 
 
-def interpret_layer(layer_key: str, nodata_mismatch_count: int) -> str:
+def interpret_layer(layer_key: str, nodata_mismatch_count: int, sample_support_mismatch_count: int) -> str:
     if layer_key == "max_kinetic_energy":
         return "Cellwise maximum energy remains a high-priority local sensitivity surface."
-    if nodata_mismatch_count > 0:
-        return "Maximum jump height remains tied to support/nodata behavior in the local manifests."
+    if nodata_mismatch_count > 0 or sample_support_mismatch_count > 0:
+        return "Maximum jump height remains tied to support/nodata and sample-count behavior in the local manifests."
     return "Maximum jump height is measured here as a local extreme-layer sensitivity surface."
 
 
@@ -236,6 +301,10 @@ def summarize_overall(layer_summaries: list[dict[str, Any]]) -> dict[str, Any]:
         "max_rmse": max((row["summary_delta"]["rmse"] for row in layer_summaries), default=0.0),
         "total_l1_abs_diff": sum(row["summary_delta"]["l1_abs_diff"] for row in layer_summaries),
         "total_nodata_mismatch_count": sum(row["support_delta"]["nodata_mismatch_count"] for row in layer_summaries),
+        "total_sample_support_mismatch_count": sum(
+            int(row["sample_support_delta"].get("sample_support_mismatch_count", 0) or 0)
+            for row in layer_summaries
+        ),
         "minimum_nonzero_jaccard": min((row["support_delta"]["nonzero_jaccard"] for row in layer_summaries), default=1.0),
     }
 
@@ -248,6 +317,7 @@ def empty_overall_metrics() -> dict[str, Any]:
         "max_rmse": 0.0,
         "total_l1_abs_diff": 0.0,
         "total_nodata_mismatch_count": 0,
+        "total_sample_support_mismatch_count": 0,
         "minimum_nonzero_jaccard": 1.0,
     }
 
@@ -278,7 +348,8 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"l1={row['summary_delta']['l1_abs_diff']:.6g} "
                 f"rmse={row['summary_delta']['rmse']:.6g} "
                 f"nonzero_jaccard={row['support_delta']['nonzero_jaccard']:.6g} "
-                f"nodata_mismatch={row['support_delta']['nodata_mismatch_count']}"
+                f"nodata_mismatch={row['support_delta']['nodata_mismatch_count']} "
+                f"sample_support_mismatch={row['sample_support_delta'].get('sample_support_mismatch_count', 0)}"
             )
     lines.append(f"next_measurement: {report['next_measurement']}")
     return "\n".join(lines)

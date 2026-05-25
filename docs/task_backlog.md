@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-496: Regenerate Extreme-Layer Support Fixtures
-
-Goal: Exercise the new extreme-layer support-count metadata on freshly generated local hazard layers instead of only historical manifests.
-
-Capability gap reduced: Makes the support/nodata mitigation testable on current outputs and usable for future layer comparisons.
-
-Why this outranks alternatives: TB-486 added support metadata, but historical smoke output cannot prove the regenerated support layers behave as intended.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_extreme_layer_sensitivity_smoke.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_extreme_layer_sensitivity_smoke.py`
-
-Deliverables:
-
-- Regenerate or fixture-generate a small hazard-layer output that includes `max_kinetic_energy_sample_count` and `max_jump_height_sample_count`.
-- Update focused tests so extreme-layer comparisons use support counts to distinguish unsupported cells from true value differences.
-
-Definition of done:
-
-- Focused hazard-layer and extreme-layer smoke tests pass, and the regenerated output proves support metadata is present and consumed.
-
-Boundaries: Local fixture/regeneration only; no layer value tuning, no hazard-meaning change, no operational claim, and no Balfrin dependency.
-
 ### TB-497: Reduce Eight-Zone Manifest Pressure Locally
 
 Goal: Reduce the remaining local eight-zone manifest-size blocker in the multi-zone scaling ladder.

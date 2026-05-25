@@ -28,14 +28,18 @@ class ExtremeLayerSensitivitySmokeTests(unittest.TestCase):
                 root / "gate_manifest.json",
                 {
                     "max_kinetic_energy": [[0.0, 1.0], [2.0, -9999.0]],
+                    "max_kinetic_energy_sample_count": [[0.0, 2.0], [1.0, 0.0]],
                     "max_jump_height": [[0.0, 0.5], [-9999.0, 1.0]],
+                    "max_jump_height_sample_count": [[0.0, 2.0], [0.0, 1.0]],
                 },
             )
             target_manifest = write_manifest(
                 root / "target_manifest.json",
                 {
                     "max_kinetic_energy": [[0.0, 3.0], [2.0, -9999.0]],
+                    "max_kinetic_energy_sample_count": [[0.0, 2.0], [1.0, 0.0]],
                     "max_jump_height": [[0.0, -9999.0], [0.2, 1.4]],
+                    "max_jump_height_sample_count": [[0.0, 0.0], [1.0, 1.0]],
                 },
             )
 
@@ -45,8 +49,13 @@ class ExtremeLayerSensitivitySmokeTests(unittest.TestCase):
         self.assertEqual(report["smoke_status"], "measured")
         self.assertEqual(rows["max_kinetic_energy"]["summary_delta"]["linf_abs_diff"], 2.0)
         self.assertEqual(rows["max_kinetic_energy"]["support_delta"]["nonzero_jaccard"], 1.0)
+        self.assertEqual(rows["max_kinetic_energy"]["sample_support_delta"]["support_metadata_status"], "measured")
+        self.assertEqual(rows["max_kinetic_energy"]["sample_support_delta"]["support_count_linf_abs_diff"], 0.0)
         self.assertEqual(rows["max_jump_height"]["support_delta"]["nodata_mismatch_count"], 2)
+        self.assertEqual(rows["max_jump_height"]["sample_support_delta"]["sample_support_mismatch_count"], 2)
+        self.assertLess(rows["max_jump_height"]["sample_support_delta"]["support_jaccard"], 1.0)
         self.assertEqual(rows["max_jump_height"]["sensitivity_class"], "support_nodata_sensitive_extreme_layer")
+        self.assertEqual(report["overall_metrics"]["total_sample_support_mismatch_count"], 2)
 
     def test_missing_extreme_layer_blocks_without_comparing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,6 +84,7 @@ class ExtremeLayerSensitivitySmokeTests(unittest.TestCase):
 
         self.assertIn("max_kinetic_energy", text)
         self.assertIn("max_jump_height", text)
+        self.assertIn("sample_support_mismatch", text)
         self.assertIn("operational_claims_allowed: False", text)
         self.assertIn("physical_probability_claims_allowed: False", text)
         self.assertIn("next_measurement", text)
@@ -85,16 +95,19 @@ def write_manifest(path: Path, grids: dict[str, list[list[float]]]) -> Path:
     for layer_key, cells in grids.items():
         grid_path = path.parent / f"{path.stem}_{layer_key}.json"
         grid_path.write_text(json.dumps({"nodata_value": -9999, "cells": cells}), encoding="utf-8")
-        layers.append(
-            {
-                "key": layer_key,
-                "layer_name": layer_key,
-                "format": "json",
-                "grid_path": grid_path.name,
-                "kind": "hazard_layer",
-                "thresholds": [],
-            }
-        )
+        layer = {
+            "key": layer_key,
+            "layer_name": layer_key,
+            "format": "json",
+            "grid_path": grid_path.name,
+            "kind": "hazard_layer",
+            "thresholds": [],
+        }
+        if layer_key == "max_kinetic_energy":
+            layer["extreme_layer_support_metadata_layer"] = "max_kinetic_energy_sample_count"
+        if layer_key == "max_jump_height":
+            layer["extreme_layer_support_metadata_layer"] = "max_jump_height_sample_count"
+        layers.append(layer)
     path.write_text(
         json.dumps({"case_id": path.stem, "layers": [], "outputs": [], "cellwise_layers": layers}),
         encoding="utf-8",
