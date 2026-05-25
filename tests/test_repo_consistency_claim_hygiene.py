@@ -46,6 +46,23 @@ class HazardClaimHygieneTests(unittest.TestCase):
             ],
         )
 
+    def test_rejects_stale_task_result_roots(self) -> None:
+        paths = [
+            "hazard/results/tb497_before/zones_02/command_plan.json",
+            "hazard/results/tschamut_public_pilot/gate_v1/manifest.json",
+            "validation/results/tb499_stable_candidate_local_comparison/metrics.json",
+            "validation/results/tschamut_baseline_metrics.json",
+            "verification/results/tb999_not_in_guard.json",
+        ]
+
+        self.assertEqual(
+            check_repo_consistency.find_stale_task_result_root_paths(paths),
+            [
+                "hazard/results/tb497_before",
+                "validation/results/tb499_stable_candidate_local_comparison",
+            ],
+        )
+
     def test_current_roadmap_target_authority_is_unambiguous(self) -> None:
         self.assertEqual(check_repo_consistency.check_roadmap_target_authority(), [])
 

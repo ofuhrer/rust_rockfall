@@ -103,6 +103,11 @@ GENERATED_COPY_SUFFIX_PREFIXES = (
     "hazard/results/",
 )
 GENERATED_COPY_SUFFIX_PATTERN = re.compile(r"(?:^|/)[^/]+(?: copy| [0-9]+)\.[^/]+$")
+STALE_TASK_RESULT_ROOT_PREFIXES = (
+    "validation/results/",
+    "hazard/results/",
+)
+STALE_TASK_RESULT_ROOT_PATTERN = re.compile(r"^tb\d{3}(?:_|$)")
 TOP_LEVEL_HISTORICAL_DOC_MARKERS = (
     "Historical status note:",
     "Status: historical",
@@ -274,6 +279,7 @@ def main() -> int:
     errors.extend(check_staged_generated_outputs())
     errors.extend(check_tracked_copy_suffix_docs())
     errors.extend(check_generated_copy_suffix_artifacts())
+    errors.extend(check_stale_task_result_roots())
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_python_execution_policy_guidance())
     errors.extend(check_roadmap_target_authority())
@@ -2235,6 +2241,42 @@ def find_generated_copy_suffix_artifact_paths(paths: list[str]) -> list[str]:
         if path.startswith(GENERATED_COPY_SUFFIX_PREFIXES)
         and GENERATED_COPY_SUFFIX_PATTERN.search(path)
     ]
+
+
+def check_stale_task_result_roots() -> list[str]:
+    ignored = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            "--",
+            *STALE_TASK_RESULT_ROOT_PREFIXES,
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    ).stdout.splitlines()
+    return [
+        f"ignored stale task result root should be cleaned: {path}"
+        for path in find_stale_task_result_root_paths(ignored)
+        if (ROOT / path).exists()
+    ]
+
+
+def find_stale_task_result_root_paths(paths: list[str]) -> list[str]:
+    roots: set[str] = set()
+    for path in paths:
+        for prefix in STALE_TASK_RESULT_ROOT_PREFIXES:
+            if not path.startswith(prefix):
+                continue
+            remainder = path[len(prefix):]
+            root_name = remainder.split("/", 1)[0]
+            if STALE_TASK_RESULT_ROOT_PATTERN.match(root_name):
+                roots.add(f"{prefix}{root_name}")
+    return sorted(roots)
 
 
 def check_python_tool_dependency_metadata() -> list[str]:

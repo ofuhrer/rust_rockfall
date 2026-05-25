@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-505: Reduce Ignored Result Root Noise Further
-
-Goal: Remove or guard one additional stale ignored result family that is not unique scientific evidence.
-
-Capability gap reduced: Keeps local result roots inspectable as more measured outputs are produced.
-
-Why this outranks alternatives: TB-493 removed copy-suffix clutter; other stale generated families still make local state noisy and harder to audit.
-
-Inspect first:
-
-- `.gitignore`
-- `scripts/check_repo_consistency.py`
-- `tests/test_repo_consistency_claim_hygiene.py`
-- `tests/test_bounded_validation_output_profile.py`
-
-Deliverables:
-
-- Identify one stale ignored generated-result family and either clean it with a narrow local rule or add a consistency guard that prevents reaccumulation.
-- Do not delete unique observed evidence, tracked fixtures, or current benchmark roots.
-
-Definition of done:
-
-- Relevant repo-consistency tests pass, the local ignored clutter count for that family is reduced or guarded, and no tracked files are removed.
-
-Boundaries: Repository hygiene only; no scientific data deletion, no workflow claim change, no new admin script, and no Balfrin dependency.
-
 ### TB-506: Strengthen Output-Profile Policy Reuse
 
 Goal: Consolidate one duplicated output-profile policy decision across command-plan, AOI preview, and hazard rebuild checks.
