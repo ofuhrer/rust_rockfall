@@ -17,12 +17,35 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
   --format text
 ```
 
+## Supported Local Commands
+
+The AOI user-facing surface is intentionally small:
+
+- `scripts/run_aoi_hazard_workflow.py workflow` shows current AOI status, the
+  first blocker, and the next command.
+- `scripts/run_aoi_hazard_workflow.py describe-config` explains the effective
+  site configuration and paths.
+- `scripts/run_aoi_hazard_workflow.py prepare` checks staged public inputs and
+  stops before simulation work.
+- `scripts/run_aoi_hazard_workflow.py candidate-review` writes the bounded
+  candidate-review package and review overlays.
+- `scripts/run_aoi_hazard_workflow.py run-local-smoke` and
+  `scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local` are the local
+  bounded execution paths.
+- `scripts/run_aoi_hazard_workflow.py package-map` reports packaging readiness
+  for an existing hazard root.
+- `scripts/generate_pilot_command_plan.py` emits portable pilot command plans
+  without running them.
+
+Other Python files in `scripts/` are developer, diagnostic, or implementation
+helpers unless this manual explicitly says otherwise.
+
 ## Command Path
 
 1. Plan the public-geodata acquisition command set.
 
    ```bash
-   PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py \
+   PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py plan \
      --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
      --format text
    ```
@@ -100,6 +123,21 @@ PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow \
 
    This stays diagnostic. It reports packaging readiness for an existing hazard
    root; it does not create a QGIS project or claim operational readiness.
+
+## Internal Helper Routing
+
+Prefer the supported local commands above instead of direct user invocation of
+these lower-level helpers:
+
+| Helper | Reach it through |
+| --- | --- |
+| `scripts/plan_swisstopo_aoi_acquisition.py` | `scripts/run_aoi_hazard_workflow.py plan` or `workflow` |
+| `scripts/check_second_site_public_geodata_preflight.py` | `scripts/run_aoi_hazard_workflow.py prepare` or `workflow` |
+| `scripts/plan_aoi_terrain_preprocessing.py` | `scripts/run_aoi_hazard_workflow.py prepare` |
+| `scripts/plan_terrain_release_zone_candidates.py` | `scripts/run_aoi_hazard_workflow.py candidate-review` |
+| `scripts/audit_gis_cog_package_readiness.py` | `scripts/run_aoi_hazard_workflow.py package-map` |
+| `scripts/generate_tschamut_same_scale_cases.py` | `scripts/generate_pilot_command_plan.py` |
+| `scripts/package_aoi_hazard_map.py` | `scripts/run_aoi_hazard_workflow.py package-map` first; use the direct helper only when building a package from a known hazard root |
 
 ## QGIS Review Path
 

@@ -73,6 +73,25 @@ It is the compact entry point for preparing an AOI, checking required public
 inputs, producing reviewable map packages, and understanding the next command in
 the workflow.
 
+## Public Command Surface
+
+Most files under `scripts/` are internal helpers used by tests, diagnostics, or
+the AOI front door. New users should start with this smaller command surface:
+
+- `cargo run -- run --config ... --output ...` for one simulation.
+- `cargo test`, `cargo run -- verify --all`, and `cargo run -- validate --all`
+  for Rust model checks.
+- `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci` for
+  the local CI-equivalent check path.
+- `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py ...`
+  for AOI status, preparation, candidate review, local smoke runs, and map
+  packaging readiness.
+- `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py`
+  for portable pilot command plans without executing them.
+
+Specialist scripts remain available for developers and agents, but they should
+normally be reached through these commands or through a documented workflow.
+
 ## Development Workflow
 
 Use the repository CI runner when changing code:

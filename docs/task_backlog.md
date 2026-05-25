@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-524: Define The Public Command Surface
-
-Goal: Make the intended user-facing command set explicit and small so new users do not have to choose among hundreds of helper scripts.
-
-Capability gap reduced: Separates stable front-door workflows from internal research, diagnostics, and historical helpers.
-
-Why this outranks alternatives: The repo now has 374 script files and many similarly named `check`, `generate`, `plan`, and `summarize` helpers; a small command surface is the prerequisite for meaningful simplification.
-
-Inspect first:
-
-- `README.md`
-- `docs/aoi_user_manual.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/run_ci_local.py`
-- `scripts/generate_pilot_command_plan.py`
-
-Deliverables:
-
-- Add or update one compact tracked document section that names the small supported local command surface and classifies remaining scripts as internal helpers.
-- Identify at least five existing scripts whose purpose should be reached through a front-door command or documented workflow rather than direct user invocation.
-
-Definition of done:
-
-- The README or AOI manual points to the small command surface, focused doc/link checks pass, and no new command wrapper is added.
-
-Boundaries: Interface documentation and classification only; no new script, no workflow claim change, no operational claim, and no Balfrin dependency.
-
 ### TB-525: Collapse README Documentation Map
 
 Goal: Reduce README navigation load by turning the current broad documentation map into a short start-here path.
