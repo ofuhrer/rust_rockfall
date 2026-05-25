@@ -7392,3 +7392,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: terrain support measurement only; no candidate acceptance upgrade, no source-zone validation claim, no physics tuning, no operational claim, and no Balfrin dependency.
 - Next task: `TB-514`
+
+### TB-514: Make Same-Scale Closure Rebuildable Locally
+
+- Date: 2026-05-25
+- Commit: `ee0c5d3`
+- Objective: narrow the legacy `summary_only_not_rebuildable` blocker with executable local evidence from the native rebuildable-reduced path.
+- Files changed: `scripts/check_hazard_rebuild_output_profile.py`, `scripts/summarize_tschamut_closure_gap_deltas.py`, `scripts/summarize_tschamut_conditional_diagnostic_interpretation.py`, `tests/test_hazard_rebuild_output_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an optional same-scale rebuild proof to `check_hazard_rebuild_output_profile.py` that derives hazard-builder inputs from a reduced run manifest and executes `scripts/build_hazard_layers.py` locally.
+  - The proof rebuilds closure-relevant kinetic-energy, jump-height, and velocity exceedance layers while keeping conditional curves summary-only, suppressing plots, and preserving the local/no-claim boundary.
+  - Captured nested builder stdout so the checker remains valid JSON when `--format json` is used.
+  - Threaded `same_scale_rebuild_evidence` and `summary_only_blocker_narrowing` into the diagnostic interpretation and closure-gap delta reports.
+  - Added a fixture-backed executable regression that rebuilds hazard layers from reduced manifest inputs.
+  - Ran the checker against the local Tschamut native rebuildable-reduced manifest; the proof status was `ready`, with `kinetic_energy_exceedance_100j`, `jump_height_exceedance_1m`, and `velocity_exceedance_5mps` generated under `/tmp/tb514_same_scale_rebuild_proof`.
+  - Removed TB-514 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas tests.test_tschamut_conditional_diagnostic_interpretation -v`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --rebuild-proof-manifest validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced/validation_tschamut_public_target_gate_v1_rebuildable_reduced_manifest.json --rebuild-proof-root validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced --rebuild-proof-output-dir /tmp/tb514_same_scale_rebuild_proof --format json > /tmp/tb514_hazard_rebuild_output_profile.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_tschamut_closure_gap_deltas tests.test_tschamut_conditional_diagnostic_interpretation tests.test_bounded_validation_output_profile -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/check_hazard_rebuild_output_profile.py scripts/summarize_tschamut_conditional_diagnostic_interpretation.py scripts/summarize_tschamut_closure_gap_deltas.py tests/test_hazard_rebuild_output_profile.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local rebuildability only; no claim upgrade, no new dashboard, no operational semantics, no physics tuning, and no Balfrin dependency.
+- Next task: `TB-515`
