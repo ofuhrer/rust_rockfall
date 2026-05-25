@@ -70,10 +70,9 @@ class QgisProcessingConnectorManifestTests(unittest.TestCase):
             expected_command_names,
             "rename the manifest actions and the manual command path together when the AOI front door changes",
         )
-        self.assertSetEqual(
-            set(included_command_names),
-            manual_commands,
-            "the QGIS connector manifest actions must match the AOI manual command path",
+        self.assertTrue(
+            set(included_command_names).issubset(manual_commands),
+            "the QGIS connector manifest actions must remain documented in the AOI manual",
         )
         self.assertTrue(
             set(included_command_names).issubset(supported_commands),

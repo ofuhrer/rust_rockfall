@@ -47,7 +47,15 @@ the local AOI inputs and diagnostics are explicit.
 
 ## Command Path
 
-1. Plan the public-geodata acquisition command set.
+1. Run the workflow summary.
+
+   Use the one-screen workflow command at the top of this manual first. It
+   reports the current stage, first blocker, and next command. The dedicated
+   `describe-config` and `prepare` commands are focused debugging tools, not
+   required first-line steps.
+
+2. Plan the public-geodata acquisition command set when the workflow summary
+   points to staging.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py plan \
@@ -61,31 +69,7 @@ the local AOI inputs and diagnostics are explicit.
    read-only and does not download public data unless you later opt into the
    explicit staging driver.
 
-2. Describe the AOI config.
-
-   ```bash
-   PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config \
-     --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
-     --repo-root . \
-     --format text
-   ```
-
-   Use this to inspect the effective site config, generated roots, and current
-   local-state dependency note before staging anything.
-
-3. Prepare the AOI.
-
-   ```bash
-   PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare \
-     --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
-     --repo-root . \
-     --format json
-   ```
-
-   This is the read-only preparation gate. It verifies staged public inputs and
-   stops before simulation work.
-
-4. Review candidate release zones.
+3. Review candidate release zones.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review \
@@ -103,7 +87,7 @@ the local AOI inputs and diagnostics are explicit.
    explicit `local`, `expanded`, and `full_aoi` sweep domains; the emitted
    search-domain GeoJSON layer records the exact bounds used for the sweep.
 
-5. Generate the diagnostic package.
+4. Generate the diagnostic package.
 
    ```bash
    PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map \
@@ -118,19 +102,42 @@ the local AOI inputs and diagnostics are explicit.
    `/tmp/aoi_review_package/styles/`, and annotates raster/vector inventory
    entries with the matching `.qml` references where one exists.
 
-6. Use the front-door packaging gate when you want the compact readiness
-   report for an existing hazard root.
+## Advanced And Focused Checks
 
-   ```bash
-   PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map \
-     --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 \
-     --format json
-   ```
+Use these when debugging one stage instead of following the compact command
+path above.
 
-   This stays diagnostic. It reports packaging readiness for an existing hazard
-   root; it does not create a QGIS project or claim operational readiness.
+Describe the AOI config:
 
-## Internal Helper Routing
+```bash
+PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py describe-config \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --repo-root . \
+  --format text
+```
+
+Run the read-only preparation gate:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare \
+  --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+  --repo-root . \
+  --format json
+```
+
+Use the front-door packaging gate when you want the compact readiness report
+for an existing hazard root:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map \
+  --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 \
+  --format json
+```
+
+This stays diagnostic. It reports packaging readiness for an existing hazard
+root; it does not create a QGIS project or claim operational readiness.
+
+## Advanced Internal Helper Routing
 
 Prefer the supported local commands above instead of direct user invocation of
 these lower-level helpers:

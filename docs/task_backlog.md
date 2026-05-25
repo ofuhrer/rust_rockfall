@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-532: Consolidate AOI Manual Command Blocks
-
-Goal: Reduce duplicated or low-level command blocks in the AOI user manual so a user can follow one minimal local path.
-
-Capability gap reduced: Makes the main AOI workflow easier to execute and less brittle as helper internals change.
-
-Why this outranks alternatives: The AOI manual is the practical front door; simplification there directly improves user experience.
-
-Inspect first:
-
-- `docs/aoi_user_manual.md`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-
-Deliverables:
-
-- Replace one cluster of low-level AOI helper commands with a shorter front-door invocation or a generated command-plan reference.
-- Keep expert commands available in a clearly labeled advanced section.
-
-Definition of done:
-
-- AOI manual remains accurate, referenced commands exist, and the main path has fewer required direct script calls.
-
-Boundaries: User manual simplification only; no new workflow semantics, no new data acquisition, no operational claim, and no Balfrin dependency.
-
 ### TB-533: Add A Deprecated-Internal Script Warning For One Legacy Helper Family
 
 Goal: Prevent new users from invoking legacy/internal helper scripts directly when a better front-door path exists.
