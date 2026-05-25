@@ -7270,3 +7270,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: orchestration helper simplification only; no new admin script, no task-status vocabulary change in headings, no Balfrin access attempt, and no execution claim.
 - Next task: `TB-509`
+
+### TB-509: Clear The Eight-Zone Local Scaling Blocker
+
+- Date: 2026-05-25
+- Commit: `20b5629`
+- Objective: resolve or precisely reclassify the remaining eight-zone local scaling ladder blocker after compact merge manifests.
+- Files changed: `scripts/summarize_multi_zone_scaling_ladder.py`, `tests/test_multi_zone_scaling_ladder.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added output-budget-aware bottleneck classification so blocked rungs prefer concrete output-budget failures over generic reducer pressure labels.
+  - Added an `eight_zone_blocker_resolution` summary to the existing ladder report without adding a new report surface.
+  - Proved the current eight-zone blocker is not cleared: before/after measurements both block at eight zones, but the blocker is now named as `output_budget:replay_critical_deposition_csv_output_family_file_count` rather than generic `manifest_size`.
+  - Added focused tests for budget blocker naming and the rigorously justified no-clear eight-zone summary.
+  - Removed TB-509 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_scaling_ladder -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure.MultiZoneReducerPressureProbeTests.test_manifest_pressure_ladder_recommends_compact_mode tests.test_multi_zone_reducer_pressure.MultiZoneReducerPressureProbeTests.test_materialized_probe_is_deterministic_and_reports_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root /tmp/tb509_ladder_before --format json --json-output /tmp/tb509_ladder_before.json > /tmp/tb509_ladder_before_stdout.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root /tmp/tb509_ladder_after --format json --json-output /tmp/tb509_ladder_after.json > /tmp/tb509_ladder_after_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_multi_zone_scaling_ladder.py scripts/summarize_multi_zone_reducer_pressure.py tests/test_multi_zone_scaling_ladder.py tests/test_multi_zone_reducer_pressure.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: local fixture-backed scaling only; no Balfrin submission, no distributed execution, no Swiss-wide claim, and no operational claim.
+- Next task: `TB-510`
