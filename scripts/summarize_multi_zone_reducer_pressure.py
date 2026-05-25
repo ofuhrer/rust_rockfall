@@ -1489,7 +1489,7 @@ def build_merge_manifest(
         "outputs": [
             {
                 "kind": str(entry.get("kind") or ""),
-                "path": str(entry.get("path") or ""),
+                "path": merge_manifest_output_path(entry.get("path"), probe_root),
                 "file_count": number_or_zero(entry.get("file_count")),
                 "row_count": number_or_zero(entry.get("row_count")),
                 "total_bytes": number_or_zero(entry.get("total_bytes")),
@@ -1504,6 +1504,17 @@ def build_merge_manifest(
             "operational_claims_allowed": False,
         },
     }
+
+
+def merge_manifest_output_path(path: Any, probe_root: Path) -> str:
+    text = str(path or "")
+    if not text:
+        return ""
+    output_path = Path(text)
+    try:
+        return str(output_path.relative_to(probe_root))
+    except ValueError:
+        return text
 
 
 def build_sample_support_summary(*, regional_split_plan: dict[str, Any], outputs: list[dict[str, Any]]) -> dict[str, Any]:

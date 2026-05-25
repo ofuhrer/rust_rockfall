@@ -679,12 +679,22 @@ def materialize_pressure_probe_root(
 
     input_root = pressure_root / "input"
     output_root = pressure_root / "output"
+    merged_output_root = output_root / "merged"
     trajectory_root = output_root / "trajectories"
     deposition_root = output_root / "deposition"
     impact_root = output_root / "impact_events"
     trajectory_chunk_root = output_root / "trajectory_chunks"
     reducer_chunk_root = output_root / "chunks"
-    for path in (input_root, output_root, trajectory_root, deposition_root, impact_root, trajectory_chunk_root, reducer_chunk_root):
+    for path in (
+        input_root,
+        output_root,
+        merged_output_root,
+        trajectory_root,
+        deposition_root,
+        impact_root,
+        trajectory_chunk_root,
+        reducer_chunk_root,
+    ):
         path.mkdir(parents=True, exist_ok=True)
 
     output_family_mix = reducer_pressure.normalize_output_family_mix(output_family_mix)
@@ -694,6 +704,12 @@ def materialize_pressure_probe_root(
     reducer_chunks = reducer_pressure.build_reducer_chunks(release_zones, reducer_chunk_count=reducer_chunk_count)
     trajectory_execution = reducer_pressure.build_trajectory_execution(trajectory_chunks)
     reducer_execution = reducer_pressure.build_reducer_execution(reducer_chunks, reducer_worker_count=reducer_worker_count)
+    regional_split_plan = reducer_pressure.build_regional_split_plan(
+        probe_root=pressure_root,
+        release_zones=release_zones,
+        scenario_rows=scenario_rows,
+        reducer_chunks=reducer_chunks,
+    )
     probe_manifest = reducer_pressure.build_probe_manifest(
         probe_root=pressure_root,
         release_zones=release_zones,
@@ -701,6 +717,7 @@ def materialize_pressure_probe_root(
         trajectory_execution=trajectory_execution,
         reducer_execution=reducer_execution,
         output_family_mix=output_family_mix,
+        regional_split_plan=regional_split_plan,
     )
     command_plan = reducer_pressure.build_command_plan(
         probe_root=pressure_root,
@@ -708,11 +725,14 @@ def materialize_pressure_probe_root(
         reducer_worker_count=reducer_worker_count,
         reducer_chunk_count=reducer_chunk_count,
         output_family_mix=output_family_mix,
+        regional_split_plan=regional_split_plan,
     )
     probe_manifest_path = input_root / "multi_zone_reducer_pressure_probe_manifest.json"
+    regional_split_plan_path = input_root / reducer_pressure.REGIONAL_SPLIT_PLAN_FILENAME
     command_plan_path = pressure_root / "command_plan.json"
     output_manifest_path = output_root / "validation_multi_zone_reducer_pressure_manifest.json"
     reducer_pressure.write_json(probe_manifest_path, probe_manifest)
+    reducer_pressure.write_json(regional_split_plan_path, regional_split_plan)
     reducer_pressure.write_json(command_plan_path, command_plan)
     reducer_pressure.materialize_input_tables(input_root, release_zones, scenario_rows)
     output_entries = reducer_pressure.build_output_entries(
@@ -737,6 +757,17 @@ def materialize_pressure_probe_root(
         manifest_mode="compact",
     )
     reducer_pressure.write_json(output_manifest_path, output_manifest)
+    merge_manifest_path = merged_output_root / reducer_pressure.MERGE_MANIFEST_FILENAME
+    reducer_pressure.write_json(
+        merge_manifest_path,
+        reducer_pressure.build_merge_manifest(
+            probe_root=pressure_root,
+            merge_manifest_path=merge_manifest_path,
+            regional_split_plan=regional_split_plan,
+            output_manifest=reducer_pressure.canonicalize_output_manifest(output_manifest, pressure_root),
+            output_family_mix=output_family_mix,
+        ),
+    )
     return PressureFixture(
         pressure_root=pressure_root,
         probe_manifest_path=probe_manifest_path,
@@ -933,18 +964,20 @@ def first_bottleneck(result: LadderRungResult) -> str:
 
 
 def first_pressure_bottleneck_metric(pressure_report: dict[str, Any]) -> str | None:
-    bottlenecks = reducer_pressure.classify_bottlenecks(
-        manifest_size_bytes=int(pressure_report.get("manifest_size_bytes") or 0),
-        manifest_file_count=1,
-        output_file_count=int(pressure_report.get("output_file_count") or 0),
-        output_byte_count=int(pressure_report.get("output_byte_count") or 0),
-        reducer_manifest_bytes=int(pressure_report.get("reducer_manifest_bytes") or 0),
-        sidecar_file_count=int(pressure_report.get("sidecar_file_count") or 0),
-        sidecar_byte_count=int(pressure_report.get("sidecar_byte_count") or 0),
-        reducer_wall_seconds=float(pressure_report.get("reducer_wall_time_seconds") or 0.0),
-        merge_order=str(pressure_report.get("merge_order") or ""),
-        merge_order_independent=bool(pressure_report.get("merge_order_independent")),
-    ).get("bottleneck_labels") or {}
+    bottlenecks = pressure_report.get("bottleneck_labels")
+    if not isinstance(bottlenecks, dict):
+        bottlenecks = reducer_pressure.classify_bottlenecks(
+            manifest_size_bytes=int(pressure_report.get("manifest_size_bytes") or 0),
+            manifest_file_count=1,
+            output_file_count=int(pressure_report.get("output_file_count") or 0),
+            output_byte_count=int(pressure_report.get("output_byte_count") or 0),
+            reducer_manifest_bytes=int(pressure_report.get("reducer_manifest_bytes") or 0),
+            sidecar_file_count=int(pressure_report.get("sidecar_file_count") or 0),
+            sidecar_byte_count=int(pressure_report.get("sidecar_byte_count") or 0),
+            reducer_wall_seconds=float(pressure_report.get("reducer_wall_time_seconds") or 0.0),
+            merge_order=str(pressure_report.get("merge_order") or ""),
+            merge_order_independent=bool(pressure_report.get("merge_order_independent")),
+        )
     for metric in ("manifest_size", "output_pressure", "reducer_runtime"):
         label = bottlenecks.get(metric, {}).get("label")
         if label not in {None, "manifest_bounded", "output_pressure_bounded", "reducer_runtime_bounded", "probe_ready"}:

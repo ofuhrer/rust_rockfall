@@ -136,7 +136,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
         self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
         self.assertEqual(report["compact_manifest_recommendation"]["release_zone_count"], 12)
-        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -10245)
+        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -10386)
         self.assertEqual(report["compact_manifest_recommendation"]["output_file_count_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_bytes_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_file_count_delta"], 0)

@@ -6808,3 +6808,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local writer optimization only; no output semantics change, no distributed execution, no scale-up claim, and no Balfrin submission.
 - Next task: `TB-488`
+
+### TB-488: Extend The Local Multi-Zone Scaling Ladder
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: run the local multi-zone scaling ladder after recent reducer/writer changes and reduce the first bounded local blocker if feasible.
+- Files changed: `scripts/summarize_multi_zone_scaling_ladder.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fixed the scaling ladder materialization path to write and pass the existing regional split execution plan required by `summarize_multi_zone_reducer_pressure.py`.
+  - Ran the before ladder under ignored root `hazard/results/tb488_before`. It measured rungs `1,2,4,8,12`; the reported first blocked rung was 4 zones, but first-bottleneck reporting was stale and showed `accumulation_seconds`.
+  - Fixed the ladder first-bottleneck classifier to use the pressure report's `bottleneck_labels` instead of re-reading a non-existent nested field.
+  - Reduced manifest pressure by storing merge-manifest output paths relative to the probe root instead of as long absolute paths.
+  - Re-ran the ladder under ignored root `hazard/results/tb488_after`. The first blocked rung moved from 4 zones to 8 zones, with first blocked metric `manifest_size`.
+  - Four-zone manifest pressure dropped from `12569` bytes to `11169` bytes and became `probe_ready`; merge-manifest size dropped from `5214` bytes to `3820` bytes.
+  - Eight-zone manifest pressure dropped from `16817` bytes to `14373` bytes but remains blocked, so the next local blocker is smaller and later rather than gone.
+  - Removed TB-488 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root hazard/results/tb488_before --zone-counts 1,2,4,8,12 --format json --json-output /tmp/tb488_before.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root hazard/results/tb488_after --zone-counts 1,2,4,8,12 --format json --json-output /tmp/tb488_after.json`
+  - `.venv/bin/python -m unittest tests.test_multi_zone_scaling_ladder tests.test_bounded_reducer_runtime_scaling tests.test_multi_zone_reducer_pressure -v`
+- Result/status: implemented_measured
+- Boundaries: local bounded scaling evidence only; no Swiss-wide claim, no distributed execution, no operational claim, no new scale dashboard, and no Balfrin submission.
+- Next task: `TB-489` is Balfrin-access required and was not executed under the current no-Balfrin scope.

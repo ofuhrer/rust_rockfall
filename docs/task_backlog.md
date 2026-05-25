@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-488: Extend The Local Multi-Zone Scaling Ladder
-
-Goal: Run the existing local multi-zone scaling ladder after recent reducer/writer changes and advance the first blocker by reducing one measured bottleneck if feasible.
-
-Capability gap reduced: Keeps scale decisions tied to current measured reducer/output behavior rather than stale ladder results.
-
-Why this outranks alternatives: Larger Balfrin runs should be informed by the latest local reducer and output-pressure evidence.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `scripts/summarize_bounded_reducer_runtime_scaling.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `tests/test_bounded_reducer_runtime_scaling.py`
-
-Deliverables:
-
-- Re-run the existing local scaling ladder and record the current first blocker.
-- If the first blocker is a bounded local output/runtime issue, implement one targeted existing-path reduction and re-measure.
-
-Definition of done:
-
-- Scaling-ladder tests pass, before/after ladder metrics are recorded, and the next blocker is smaller, later, or explicitly unchanged with evidence.
-
-Boundaries: Local bounded scaling evidence only; no Swiss-wide claim, no distributed execution, no operational claim, and no new scale dashboard.
-
 ### TB-489: Execute The Next Bounded Balfrin Postproc Probe
 
 Goal: Run the next repository-gated bounded Balfrin `postproc` probe that is ready after local candidate/scenario and output-pressure checks.
