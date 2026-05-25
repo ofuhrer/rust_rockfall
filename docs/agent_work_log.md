@@ -7597,3 +7597,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local performance only; no output semantics change, no new dependency, no physics change, no claim upgrade, and no Balfrin dependency.
 - Next task: `TB-522`
+
+### TB-522: Consolidate Candidate Diagnostic Point Geometry Helpers
+
+- Date: 2026-05-25
+- Commit: `b1d755f`
+- Objective: reduce duplicated LV95 point parsing and bounds checks across candidate diagnostics and freezer geometry checks.
+- Files changed: `scripts/lib/point_geometry.py`, `scripts/summarize_tschamut_closure_gap_deltas.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added shared `scripts.lib.point_geometry` helpers for `xy_from_row`, `centroid_xy`, `distance_xy`, and `point_in_bounds`.
+  - Updated the Tschamut closure-gap diagnostic to use the shared centroid/distance/row-point parsing helpers.
+  - Updated the candidate source-zone freezer to use the shared bounds check helper.
+  - Removed duplicated local centroid, row point, distance, and bounds helper code from the diagnostic/freezer modules.
+  - Added freezer coverage proving list-form and JSON-string `release_cell_center_lv95_m` values parse consistently and pass the same bounds helper used by freezer geometry validation.
+  - Direct closure-gap CLI proof remained `measured_gaps_remain` with candidate geometry ablation `fixture_replay_ready`.
+  - Removed TB-522 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_freezer_and_diagnostic_helpers_parse_release_cell_centers_consistently tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_freezer_release_sampling_geometry_stays_inside_reviewed_candidates -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json --json-output /tmp/tb522_closure_gap_deltas.json > /tmp/tb522_closure_gap_deltas_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas tests.test_candidate_source_zone_freezer -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/lib/point_geometry.py scripts/summarize_tschamut_closure_gap_deltas.py scripts/generate_candidate_source_zone_scenarios.py tests/test_tschamut_closure_gap_deltas.py tests/test_candidate_source_zone_freezer.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: internal simplification only; no coordinate semantics change, no source-zone claim change, no tuning, no operational claim, and no Balfrin dependency.
+- Next task: `TB-523`
