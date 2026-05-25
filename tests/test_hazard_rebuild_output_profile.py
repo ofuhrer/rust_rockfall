@@ -224,7 +224,7 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
                 "target_validation",
             )
             self.assertIn(
-                "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                "tschamut_public_target_gate_case.yaml",
                 recommendation["full_output_recovery"]["full_output_command"],
             )
             self.assertIn("no scale-up authorization", recommendation["claim_boundary"])

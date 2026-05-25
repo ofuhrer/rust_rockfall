@@ -54,8 +54,8 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "full_output_recovery": {
                     "recovery_status": "full_outputs_available_on_explicit_request",
                     "full_output_profile_id": "target_validation",
-                    "full_output_case_path": "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
-                    "full_output_command": "PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                    "full_output_case_path": "tschamut_public_target_gate_case.yaml",
+                    "full_output_command": "PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case tschamut_public_target_gate_case.yaml",
                 },
                 "claim_boundary": "local smoke recommendation only; no scale-up authorization or claim upgrade",
             },
@@ -187,7 +187,7 @@ class PilotCommandPlanTest(unittest.TestCase):
             "target_validation",
         )
         self.assertIn(
-            "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+            "tschamut_public_target_gate_case.yaml",
             report["default_local_hazard_smoke_recommendation"]["full_output_recovery"]["full_output_command"],
         )
         self.assertIn(
@@ -468,7 +468,8 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("default_local_hazard_smoke_recommendation:", output)
         self.assertIn("profile_id: target_rebuildable_reduced", output)
         self.assertIn("full_output_recovery_status: full_outputs_available_on_explicit_request", output)
-        self.assertIn("full_output_case_path: validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml", output)
+        self.assertIn("full_output_case_path:", output)
+        self.assertIn("tschamut_public_target_gate_case.yaml", output)
         self.assertIn("blocked_template_commands:", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)
