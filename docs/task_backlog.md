@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-535: Prune One Generated-Or-Archived Reference From Active Navigation
-
-Goal: Remove one obsolete generated-output or archive-style reference from active navigation so active docs only point to maintained surfaces.
-
-Capability gap reduced: Reduces reader confusion between current user guidance and historical agent/research artifacts.
-
-Why this outranks alternatives: The docs tree contains many run reports and archive files; active navigation should not invite users into stale state unless explicitly historical.
-
-Inspect first:
-
-- `README.md`
-- `docs/archive/README.md`
-- `docs/current_maturity_snapshot.md`
-- `docs/agent_reference.md`
-- `docs/agent_work_log.md`
-
-Deliverables:
-
-- Find one active navigation link or reference that points to historical/generated detail, replace it with a maintained high-level link, and keep the historical target reachable from `docs/archive/README.md` or agent-specific docs.
-
-Definition of done:
-
-- Link checks pass, active navigation is cleaner, and no unique historical record is deleted.
-
-Boundaries: Navigation pruning only; no content deletion unless it is a duplicate pointer, no claim change, and no Balfrin dependency.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
