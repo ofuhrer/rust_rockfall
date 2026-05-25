@@ -8185,3 +8185,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no artifact deletion, forced heavy-run behavior change, new output contract, or claim that reduced output is always sufficient.
 - Next task: `TB-547`
+
+### TB-546 Follow-up: Full-Output Recovery Metadata
+
+- Date: 2026-05-25
+- Commits: `a1e3773`, `ed63707`
+- Objective: keep rebuildable reduced output as the local smoke default while preserving explicit full-output recovery guidance.
+- Files changed: `docs/hazard_output_profile_contract.md`, `scripts/check_hazard_rebuild_output_profile.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_hazard_rebuild_output_profile.py`, `tests/test_pilot_command_plan.py`
+- Implementation summary:
+  - Added full-output recovery metadata to the default local hazard smoke recommendation.
+  - Rendered the recommendation and recovery path in command-plan text output.
+  - Tightened tests so they verify recovery-command shape without hard-coding ignored `validation/private/` roots in clean-checkout CI tests.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format text`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: full-debug output remains an explicit opt-in; local smoke guidance still defaults to rebuildable reduced output with no claim upgrade.
+- Next task: `TB-547`
