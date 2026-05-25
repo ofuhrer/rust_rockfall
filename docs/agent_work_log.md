@@ -7367,3 +7367,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: local performance only; no output contract break, no physics change, no new benchmark framework, and no Balfrin dependency.
 - Next task: `TB-513`
+
+### TB-513: Compare Candidate Footprint Against Terrain Support
+
+- Date: 2026-05-25
+- Commit: `e64f52f`
+- Objective: expose whether local candidate/review/freezer artifacts have terrain-grid support before their geometry is interpreted.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added feature-level `candidate_terrain_support` metadata for release-zone candidates, including valid/screenable/interior/nodata cell counts, bbox extent checks, release-cell-center extent checks, and a fail-closed support status.
+  - Added `candidate_terrain_support_summary` to candidate product bundles and review packages so reviewers can see whether all generated candidates are terrain-supported.
+  - Added a support-status column to the existing review CSV without creating a new review workflow.
+  - Propagated accepted-candidate support summaries into freezer source-zone metadata.
+  - Rebuilt the local Tschamut candidate products and confirmed all 65 generated candidates report `ready` terrain support.
+  - Removed TB-513 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_freezer_generates_deterministic_ids_and_excludes_rejected_candidates tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_freezer_loads_the_adjacent_prau_mulins_review_candidate_southwest_of_the_frozen_footprint -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_committed_tschamut_inputs_produce_deterministic_candidate_metrics -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --output-root /tmp/tb513_candidate_products --output-mode both --format json --json-output /tmp/tb513_candidate_report.json > /tmp/tb513_candidate_report_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/plan_terrain_release_zone_candidates.py scripts/generate_candidate_source_zone_scenarios.py tests/test_plan_terrain_release_zone_candidates.py tests/test_candidate_source_zone_freezer.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` and pre-existing `*_stub` helper names matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: terrain support measurement only; no candidate acceptance upgrade, no source-zone validation claim, no physics tuning, no operational claim, and no Balfrin dependency.
+- Next task: `TB-514`
