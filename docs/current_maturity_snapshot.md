@@ -81,13 +81,17 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. The active backlog has
-been refilled after TB-455, and the highest-ranked executable follow-up is now
-reducer-pressure optimization, followed by scenario batching and local
-candidate evidence. Older local hazard-layer stress-test notes are preserved
-through `docs/archive/README.md`; current scale interpretation should use this
-snapshot, the scale readiness matrix, and the output-profile contract instead
-of dated archived reviews. The Balfrin/Tschamut conditional demonstration track now has
+matrix gives workers one compact evidence dashboard. After the TB-461 decision
+refresh, the intended next scale action is still reducer-pressure optimization
+ahead of scenario batching and candidate-stability refinement. The May 2026
+review also exposed two practical blockers that must be handled before another
+live run: the main Balfrin decision helpers can still crash when scratch
+reducer-pressure roots under `/private/tmp` are absent, and the Balfrin remote
+checkout must be verified as aligned with the reviewed package source before
+any submission package is trusted. Older local hazard-layer stress-test notes
+are preserved through `docs/archive/README.md`; current scale interpretation
+should use this snapshot, the scale readiness matrix, and the output-profile
+contract instead of dated archived reviews. The Balfrin/Tschamut conditional demonstration track now has
 a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical
@@ -236,12 +240,14 @@ risk, exposure, vulnerability, regulatory usability, or Swiss-wide scale-up.
 TB-338/TB-445 now package the measured evidence, the projection-only Swiss-scale
 feasibility classification, the failed-closed submit branches, and the
 deferred next authorized step into one management-facing surface without
-upgrading any claim. The readiness matrix now ranks comparison of the measured
-regional split against the projection surfaces as the next runnable milestone.
-That remains separate from claim promotion: the regional split branch is now
-measured at the bounded-probe level, and the next decisive evidence gap is
-larger measured multi-zone Balfrin hazard execution, not another projection-only
-report.
+upgrading any claim. TB-461 moved the downstream decision surface toward a
+reducer-pressure-first ranking, but the current review found that some
+scale-readiness and next-live-run helper paths still depend on regenerated
+scratch reducer artifacts and therefore are not clean-checkout robust. That
+remains separate from claim promotion: the regional split branch is measured at
+the bounded-probe level, but the next decisive evidence gap is larger measured
+multi-zone Balfrin hazard execution after clean-checkout helper robustness,
+remote checkout alignment, and measured regional-split comparison are current.
 The largest near-term gaps have moved from "can the Balfrin demo execute?" and
 "can an AOI dry run be composed?" to "can real arbitrary-AOI public geodata be
 acquired and preprocessed reproducibly?", "can release-zone and scenario
@@ -679,8 +685,10 @@ objective are:
     scenario pressure, prepared-pilot, Balfrin handoff, and no-submit execution
     state helpers, and a GIS/COG stress check showing the largest committed real
     output is demonstration-readable. The active backlog should now focus on
-    turning the restaged management-AOI candidate bundle into deterministic
-    scenario generation before resuming downstream Balfrin execution tasks.
+    completing local candidate/scenario/output-default hardening, making the
+    Balfrin decision helpers clean-checkout safe, regenerating reducer-pressure
+    scratch evidence deterministically, aligning the Balfrin remote checkout,
+    and only then resuming bounded `postproc` execution tasks.
 
 ## Backlog Quality Assessment
 
