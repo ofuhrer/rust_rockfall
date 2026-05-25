@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-555: Compare Measured Regional Split Against Scenario And Output Projections
-
-Goal: Thread measured regional split evidence into scenario-cardinality and output-tier projection surfaces.
-
-Capability gap reduced: Replaces stale projection-only scale recommendations with measured regional-split comparison evidence.
-
-Why this outranks alternatives: The regional split branch is now measured, but the projection surfaces still need measured deltas before another live recommendation.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_regional_gis_cog_pressure.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Existing scale/projection outputs distinguish measured regional split evidence from projection-only and failed-closed branches.
-- A refreshed recommendation names the next measured run candidate or blocker.
-
-Definition of done:
-
-- Focused scale/projection tests pass and no new dashboard/report script is added.
-
-Boundaries: Evidence comparison only; no new live run, no Swiss-wide authorization, no physical-probability or annual-frequency semantics.
-
 ### TB-556: Build The Next Reduced-Output Balfrin Probe Handoff
 
 Goal: Generate the next bounded Balfrin probe handoff using reduced-output defaults and current scenario/reducer limits.

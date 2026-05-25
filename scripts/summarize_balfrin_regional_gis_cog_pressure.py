@@ -26,6 +26,15 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_regional_gis_cog_pressure_v1"
 DEFAULT_ARTIFACT_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_CONVERTED_PACKAGE_ROOT = ROOT / "hazard/results/tschamut_public_pilot/gate_v1_cog_export"
+MEASURED_REGIONAL_SPLIT = {
+    "task_id": "TB-448",
+    "job_id": "4350232",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "hazard_output_file_count": 53,
+    "hazard_output_bytes": 55_837_701,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_323,
+}
 
 
 class BalfrinRegionalGisCogPressureError(ValueError):
@@ -124,6 +133,11 @@ def build_report(
         "converted_package_scope_boundaries": gis_report.get("converted_package_scope_boundaries", {}),
         "converted_package_scope_deltas": gis_report.get("converted_package_scope_deltas", {}),
         "standard_package_layer_counts": gis_report.get("standard_package_layer_counts", {}),
+        "measured_regional_split_comparison": build_measured_regional_split_comparison(
+            standard_counts=standard_counts,
+            converted_counts=converted_counts,
+            pressure_state=pressure_state,
+        ),
         "pressure_summary": summarize_pressure_state(pressure_state, standard_status, converted_status),
         "claim_boundaries": {
             "operational_claims_allowed": False,
@@ -137,6 +151,48 @@ def build_report(
             "audit_helper": "scripts/audit_gis_cog_package_readiness.py",
             "conversion_helper": "scripts/convert_same_scale_package_to_cog.py",
         },
+    }
+
+
+def build_measured_regional_split_comparison(
+    *,
+    standard_counts: dict[str, int],
+    converted_counts: dict[str, int],
+    pressure_state: str,
+) -> dict[str, Any]:
+    hazard_files = int(MEASURED_REGIONAL_SPLIT["hazard_output_file_count"])
+    hazard_bytes = int(MEASURED_REGIONAL_SPLIT["hazard_output_bytes"])
+    standard_within_band = hazard_files <= standard_counts["file_count"] and hazard_bytes <= standard_counts["byte_count"]
+    converted_within_band = (
+        converted_counts["file_count"] > 0
+        and hazard_files <= converted_counts["file_count"]
+        and hazard_bytes <= converted_counts["byte_count"]
+    )
+    return {
+        "schema_version": "measured_regional_split_gis_cog_comparison_v1",
+        "measurement_status": "measured_existing_balfrin_artifacts",
+        "task_id": MEASURED_REGIONAL_SPLIT["task_id"],
+        "job_id": MEASURED_REGIONAL_SPLIT["job_id"],
+        "run_root": MEASURED_REGIONAL_SPLIT["run_root"],
+        "hazard_output_file_count": hazard_files,
+        "hazard_output_bytes": hazard_bytes,
+        "validation_output_file_count": MEASURED_REGIONAL_SPLIT["validation_output_file_count"],
+        "validation_output_bytes": MEASURED_REGIONAL_SPLIT["validation_output_bytes"],
+        "within_standard_root_band": standard_within_band,
+        "within_converted_package_band": converted_within_band,
+        "standard_root_file_count_delta": hazard_files - standard_counts["file_count"],
+        "standard_root_byte_delta": hazard_bytes - standard_counts["byte_count"],
+        "converted_package_file_count_delta": hazard_files - converted_counts["file_count"],
+        "converted_package_byte_delta": hazard_bytes - converted_counts["byte_count"],
+        "next_measured_run_candidate": "bounded_reduced_output_regional_split_retry_after_standard_root_cog_conversion"
+        if pressure_state == "measured_blocked"
+        else "bounded_reduced_output_regional_split_retry",
+        "summary": (
+            "Measured regional split hazard output is within the current standard-root GIS byte/file band; "
+            "standard-root COG conversion remains the next GIS packaging blocker before a larger measured retry."
+            if standard_within_band
+            else "Measured regional split hazard output exceeds the current GIS package band; reduce output before a larger retry."
+        ),
     }
 
 
@@ -203,6 +259,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"converted_package_raster_count: {report['converted_package']['raster_count']}",
         f"converted_package_status: {report['converted_package']['cog_package_status']}",
         f"converted_package_scope_status: {report['converted_package']['cog_scope_status']}",
+        "measured_regional_split_comparison:",
+        f"  measurement_status: {report['measured_regional_split_comparison']['measurement_status']}",
+        f"  job_id: {report['measured_regional_split_comparison']['job_id']}",
+        f"  within_standard_root_band: {report['measured_regional_split_comparison']['within_standard_root_band']}",
+        f"  next_measured_run_candidate: {report['measured_regional_split_comparison']['next_measured_run_candidate']}",
         f"pressure_summary: {report['pressure_summary']}",
         f"next_unblock_action: {report['standard_root']['next_unblock_action']}",
     ]

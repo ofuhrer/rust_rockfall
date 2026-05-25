@@ -168,11 +168,34 @@ class ScenarioStorageOutputTierPressureTests(unittest.TestCase):
             report["balfrin_demonstration_replay_recommendation"]["recommended_tier"],
             "rebuildable_reduced",
         )
+        regional = report["measured_regional_split_comparison"]
+        self.assertEqual(regional["measurement_status"], "measured_existing_balfrin_artifacts")
+        self.assertEqual(regional["job_id"], "4350232")
+        self.assertEqual(regional["validation_output_file_count"], 130)
+        self.assertEqual(regional["hazard_output_file_count"], 53)
+        self.assertEqual(
+            regional["vs_rebuildable_reduced_tier"]["classification"],
+            "measured_larger_than_rebuildable_reduced",
+        )
+        self.assertEqual(
+            regional["vs_gis_tier"]["classification"],
+            "measured_within_current_gis_package_band",
+        )
+        self.assertEqual(
+            regional["batching_rule_alignment"]["classification"],
+            "measured_run_should_reuse_compact_batch_cap_before_larger_probe",
+        )
+        self.assertEqual(
+            regional["next_measured_run_candidate"],
+            "bounded_reduced_output_regional_split_retry_after_cog_and_reducer_review",
+        )
         self.assertEqual(report["next_scale_bottleneck"]["bottleneck_id"], "gis_and_research_full_output_growth")
         rendered = MODULE.render_text_report(report)
         self.assertIn("Scenario Storage", rendered)
         self.assertIn("cap_summary: 3-repeat / 30-candidate / 300-row cap", rendered)
         self.assertIn("storage_output_tier_bands:", rendered)
+        self.assertIn("measured_regional_split_comparison:", rendered)
+        self.assertIn("vs_gis_tier: measured_within_current_gis_package_band", rendered)
 
     def test_missing_real_candidate_inputs_block_candidate_without_blocking_fixture_tiers(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:

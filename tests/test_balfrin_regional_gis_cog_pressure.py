@@ -29,12 +29,25 @@ class BalfrinRegionalGisCogPressureTests(unittest.TestCase):
         self.assertEqual(report["converted_package"]["byte_count"], 55873028)
         self.assertEqual(report["converted_package"]["raster_count"], 20)
         self.assertEqual(report["converted_package"]["cog_package_status"], "cog_package_ready_with_scope_delta")
+        regional = report["measured_regional_split_comparison"]
+        self.assertEqual(regional["measurement_status"], "measured_existing_balfrin_artifacts")
+        self.assertEqual(regional["job_id"], "4350232")
+        self.assertEqual(regional["hazard_output_file_count"], 53)
+        self.assertEqual(regional["hazard_output_bytes"], 55837701)
+        self.assertTrue(regional["within_standard_root_band"])
+        self.assertFalse(regional["within_converted_package_band"])
+        self.assertEqual(
+            regional["next_measured_run_candidate"],
+            "bounded_reduced_output_regional_split_retry_after_standard_root_cog_conversion",
+        )
         self.assertEqual(report["pressure_summary"].startswith("Measured regional GIS/COG pressure is blocked"), True)
         json.dumps(report, sort_keys=True)
         text = pressure.render_text_report(report)
         self.assertIn("pressure_state: measured_blocked", text)
         self.assertIn("standard_root_readiness_status: gis_package_ready_cog_blocked", text)
         self.assertIn("converted_package_readiness_status: cog_package_ready_with_scope_delta", text)
+        self.assertIn("measured_regional_split_comparison:", text)
+        self.assertIn("within_standard_root_band: True", text)
 
     def test_missing_inputs_report_blocks_and_names_unblock_action(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

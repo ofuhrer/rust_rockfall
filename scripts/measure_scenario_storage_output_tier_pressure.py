@@ -43,6 +43,18 @@ DEFAULT_FULL_VALIDATION_ROOT = ROOT / "validation/private/tschamut_public_pilot/
 DEFAULT_GIS_ROOT = ROOT / "hazard/results/tschamut_public_pilot/target_gate_v1"
 DEFAULT_FIXTURE_TRAJECTORY_COUNT = 6
 DEFAULT_EXPANDED_CANDIDATE_REPEAT_COUNTS = (1, 3, 8)
+MEASURED_REGIONAL_SPLIT = {
+    "task_id": "TB-448",
+    "job_id": "4350232",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_323,
+    "hazard_output_file_count": 53,
+    "hazard_output_bytes": 55_837_701,
+    "conditional_curve_rows": 729_600,
+    "collector_wall_seconds": 6.738646155004972,
+    "collector_peak_memory_mb": 172.921875,
+}
 COMPACT_BATCH_CAP_REGRESSION_LIMITS = {
     "max_candidate_repeat_count": 3,
     "max_candidate_release_zone_record_count": 30,
@@ -163,9 +175,65 @@ def build_report(
         "output_family_measurements": output_families,
         "tier_comparison": tier_comparison,
         "storage_output_tier_bands": storage_output_tier_bands,
+        "measured_regional_split_comparison": build_measured_regional_split_comparison(
+            storage_output_tier_bands=storage_output_tier_bands,
+            batching_rule=batching_rule,
+        ),
         "balfrin_demonstration_replay_recommendation": recommendation,
         "next_scale_bottleneck": next_bottleneck,
         "claim_boundaries": claim_boundaries(),
+    }
+
+
+def build_measured_regional_split_comparison(
+    *,
+    storage_output_tier_bands: list[dict[str, Any]],
+    batching_rule: dict[str, Any],
+) -> dict[str, Any]:
+    tiers = {str(row.get("tier_id")): row for row in storage_output_tier_bands}
+    rebuildable = tiers.get("rebuildable_reduced", {})
+    gis = tiers.get("gis", {})
+    measured_validation_files = int(MEASURED_REGIONAL_SPLIT["validation_output_file_count"])
+    measured_validation_bytes = int(MEASURED_REGIONAL_SPLIT["validation_output_bytes"])
+    measured_hazard_files = int(MEASURED_REGIONAL_SPLIT["hazard_output_file_count"])
+    measured_hazard_bytes = int(MEASURED_REGIONAL_SPLIT["hazard_output_bytes"])
+    return {
+        "schema_version": "measured_regional_split_scenario_output_comparison_v1",
+        "measurement_status": "measured_existing_balfrin_artifacts",
+        "task_id": MEASURED_REGIONAL_SPLIT["task_id"],
+        "job_id": MEASURED_REGIONAL_SPLIT["job_id"],
+        "run_root": MEASURED_REGIONAL_SPLIT["run_root"],
+        "validation_output_file_count": measured_validation_files,
+        "validation_output_bytes": measured_validation_bytes,
+        "hazard_output_file_count": measured_hazard_files,
+        "hazard_output_bytes": measured_hazard_bytes,
+        "conditional_curve_rows": MEASURED_REGIONAL_SPLIT["conditional_curve_rows"],
+        "collector_wall_seconds": MEASURED_REGIONAL_SPLIT["collector_wall_seconds"],
+        "collector_peak_memory_mb": MEASURED_REGIONAL_SPLIT["collector_peak_memory_mb"],
+        "vs_rebuildable_reduced_tier": {
+            "file_count_delta": measured_validation_files - int(rebuildable.get("file_count") or 0),
+            "byte_delta": measured_validation_bytes - int(rebuildable.get("total_bytes") or 0),
+            "classification": "measured_larger_than_rebuildable_reduced",
+        },
+        "vs_gis_tier": {
+            "file_count_delta": measured_hazard_files - int(gis.get("file_count") or 0),
+            "byte_delta": measured_hazard_bytes - int(gis.get("total_bytes") or 0),
+            "classification": "measured_within_current_gis_package_band"
+            if measured_hazard_files <= int(gis.get("file_count") or 0)
+            and measured_hazard_bytes <= int(gis.get("total_bytes") or 0)
+            else "measured_exceeds_current_gis_package_band",
+        },
+        "batching_rule_alignment": {
+            "recommended_cap_candidate_repeat_count": batching_rule.get("recommended_cap_candidate_repeat_count"),
+            "recommended_cap_scenario_row_count": batching_rule.get("recommended_cap_scenario_row_count"),
+            "classification": "measured_run_should_reuse_compact_batch_cap_before_larger_probe",
+        },
+        "next_measured_run_candidate": "bounded_reduced_output_regional_split_retry_after_cog_and_reducer_review",
+        "summary": (
+            "The measured regional split output is larger than the rebuildable-reduced replay tier but remains within "
+            "the current GIS package byte/file band, so the next measured run should keep the compact scenario batch cap "
+            "and focus on reduced-output plus GIS/COG and reducer review before any larger probe."
+        ),
     }
 
 
@@ -703,12 +771,18 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  - {tier['tier_id']}: status={tier['measurement_status']} files={tier['file_count']} "
             f"bytes={tier['total_bytes']} replay={tier['replay_suitability']}"
         )
+    regional = report["measured_regional_split_comparison"]
     lines.extend(
         [
             "recommendation:",
             f"  tier: {recommendation['recommended_tier']}",
             f"  status: {recommendation['recommendation_status']}",
             f"  reason: {recommendation['reason']}",
+            "measured_regional_split_comparison:",
+            f"  measurement_status: {regional['measurement_status']}",
+            f"  job_id: {regional['job_id']}",
+            f"  vs_gis_tier: {regional['vs_gis_tier']['classification']}",
+            f"  next_measured_run_candidate: {regional['next_measured_run_candidate']}",
             "next_scale_bottleneck:",
             f"  id: {bottleneck['bottleneck_id']}",
             f"  status: {bottleneck['status']}",
