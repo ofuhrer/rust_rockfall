@@ -8185,3 +8185,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no artifact deletion, forced heavy-run behavior change, new output contract, or claim that reduced output is always sufficient.
 - Next task: `TB-547`
+
+### TB-547: Add Local GIS/COG Package Roundtrip Smoke On Tiny Fixture
+
+- Date: 2026-05-25
+- Commit: `635eb80`
+- Objective: prove a tiny same-scale package can be converted and audited as a GIS/COG roundtrip without large artifacts or external services.
+- Files changed: `scripts/convert_same_scale_package_to_cog.py`, `tests/test_same_scale_cog_package_conversion.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `roundtrip_smoke` to the existing package conversion report.
+  - The smoke reuses the GIS/COG readiness audit against the converted package and reports conversion status, audit status, layer-inventory status, missing GIS metadata, and claim boundary.
+  - Extended the tiny fixture-backed conversion test to assert a ready conversion-plus-audit roundtrip and zero missing metadata.
+  - Removed TB-547 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_cog_conversion_prototype tests.test_same_scale_cog_package_conversion -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: tiny local smoke only; no QGIS automation, publishing, new GIS format, or operational map claim.
+- Next task: `TB-548`
