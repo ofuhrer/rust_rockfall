@@ -8205,3 +8205,47 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: tiny local smoke only; no QGIS automation, publishing, new GIS format, or operational map claim.
 - Next task: `TB-548`
+
+### TB-548: Strengthen Multisite Source/Scenario Portability Checks
+
+- Date: 2026-05-25
+- Commit: `b76c3ad`
+- Objective: make multisite audits distinguish portable source/scenario semantics from site-specific assumptions.
+- Files changed: `scripts/audit_multisite_source_scenario_contract.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_multisite_source_scenario_contract.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `portability_semantics_summary` to the multisite source/scenario contract audit.
+  - The summary separates portable semantic fields, site-specific assumption fields, deferred/out-of-scope fields, the first site-specific blocker, and the next local fixture/staging action.
+  - Threaded the same summary into the portable pilot command plan and text output.
+  - Added focused tests for portable fields, site-specific blockers, command-plan propagation, and the no-validation-claim boundary.
+  - Removed TB-548 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --format json >/tmp/tb548_contract.json; rc=$?; test "$rc" -eq 2; PYENV_VERSION=system python3 -m json.tool /tmp/tb548_contract.json >/dev/null`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass --format json >/tmp/tb548_command_plan.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb548_command_plan.json >/dev/null`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: metadata contract audit only; no new site onboarding, live data acquisition, source-zone validation, scale-up authorization, or operational claim.
+- Next task: `TB-549`
+
+### TB-548: Strengthen Multisite Source/Scenario Portability Checks
+
+- Date: 2026-05-25
+- Commit: pending
+- Objective: make the multisite source/scenario audit and portable command plan distinguish portable fields from site-specific assumptions and surface the next local staging action.
+- Files changed: `scripts/audit_multisite_source_scenario_contract.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_multisite_source_scenario_contract.py`, `tests/test_pilot_command_plan.py`
+- Implementation summary:
+  - Added explicit `portable_fields` and `site_specific_fields` surfaces to the multisite contract audit alongside a local fixture/staging next-action summary.
+  - Renamed the pilot command-plan wording so the multisite contract audit is routed as a portable-versus-site-specific check with a named next local fixture/staging action.
+  - Tightened focused tests to assert one portable field and one site-specific field in both the audit report and the command-plan text output.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract tests.test_pilot_command_plan`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
+  - `git status --short`
+- Result/status: implemented_measured
+- Boundaries: no new contract file, no new site onboarding, no live data acquisition, no validation claim upgrade, and no scale-up or operational claim.
+- Next task: none
