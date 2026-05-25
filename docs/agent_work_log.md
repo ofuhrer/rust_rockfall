@@ -7799,3 +7799,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: one-script consolidation only; no new command surface, no scientific claim change, and no Balfrin dependency.
 - Next task: `TB-530`
+
+### TB-530: Simplify Local CI Entry Points
+
+- Date: 2026-05-25
+- Commit: `77a933b`
+- Objective: make `scripts/run_ci_local.py` the first-line local verification path and reduce front-door duplication of direct check commands.
+- Files changed: `README.md`, `docs/onboarding.md`, `tests/test_run_ci_local.py`, `tests/python_test_tiers.toml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the README quick-start and development workflow so `scripts/run_ci_local.py --suite ci` is the primary local verification command.
+  - Reworked onboarding's basic checks section to start with the canonical CI runner and list narrower suites only as focused debugging paths.
+  - Added focused unit coverage for `run_ci_local.py` suite alias expansion, clean-checkout test-tier loading, and Python command construction.
+  - Classified the new CI-runner test in `tests/python_test_tiers.toml` so the clean-checkout suite remains explicit and sorted.
+  - Verified the CI dry-run prints the expected lint, Rust, verify, Python, repository-consistency, and performance-standard suites.
+  - Removed TB-530 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_ci_local -v`
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci --dry-run`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_ci_local.py tests/test_run_ci_local.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: verification interface simplification only; no CI workflow expansion, no new script, and no Balfrin dependency.
+- Next task: `TB-531`
