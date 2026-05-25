@@ -19,6 +19,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.lib.output_family_accounting import classify_storage_path_family
+
 
 SCHEMA_VERSION = "multi_zone_reducer_pressure_probe_v1"
 REGIONAL_SPLIT_PLAN_SCHEMA_VERSION = "regional_split_execution_plan_v1"
@@ -390,6 +395,7 @@ def build_report(probe_root: Path) -> dict[str, Any]:
     scenario_rows = load_csv_rows(probe_root / "input" / "scenario_table.csv")
     outputs = ensure_list_of_mappings(output_manifest.get("outputs"), "output_manifest.outputs")
     output_family_file_counts, output_family_bytes = aggregate_output_families(outputs)
+    storage_pressure_family_file_counts, storage_pressure_family_bytes = aggregate_storage_pressure_families(outputs)
     merge_output_summary = dict(merge_manifest.get("merged_output_summary") or {})
     if not merge_output_summary:
         merge_output_summary = {
@@ -501,6 +507,16 @@ def build_report(probe_root: Path) -> dict[str, Any]:
         "primary_output_family_bytes": budget_totals["primary_output_family_bytes"],
         "output_family_file_counts": output_family_file_counts,
         "output_family_bytes": output_family_bytes,
+        "storage_pressure_family_file_counts": storage_pressure_family_file_counts,
+        "storage_pressure_family_bytes": storage_pressure_family_bytes,
+        "output_family_accounting_alignment": {
+            "status": "ready",
+            "source": "scripts.lib.output_family_accounting.classify_storage_path_family",
+            "manifest_output_file_count": sum(output_family_file_counts.values()),
+            "storage_pressure_file_count": sum(storage_pressure_family_file_counts.values()),
+            "manifest_output_bytes": sum(output_family_bytes.values()),
+            "storage_pressure_bytes": sum(storage_pressure_family_bytes.values()),
+        },
         "validation_output_inventory": build_validation_output_inventory(
             output_family_mix=output_family_mix,
             output_family_file_counts=output_family_file_counts,
@@ -2141,6 +2157,17 @@ def aggregate_output_families(outputs: list[dict[str, Any]]) -> tuple[dict[str, 
         file_counts[kind] = file_counts.get(kind, 0) + number_or_zero(entry.get("file_count"))
         byte_counts[kind] = byte_counts.get(kind, 0) + number_or_zero(entry.get("total_bytes"))
     return file_counts, byte_counts
+
+
+def aggregate_storage_pressure_families(outputs: list[dict[str, Any]]) -> tuple[dict[str, int], dict[str, int]]:
+    file_counts: dict[str, int] = {}
+    byte_counts: dict[str, int] = {}
+    for entry in outputs:
+        path_text = str(entry.get("path") or entry.get("kind") or "unknown")
+        family = classify_storage_path_family(path_text)
+        file_counts[family] = file_counts.get(family, 0) + number_or_zero(entry.get("file_count"))
+        byte_counts[family] = byte_counts.get(family, 0) + number_or_zero(entry.get("total_bytes"))
+    return dict(sorted(file_counts.items())), dict(sorted(byte_counts.items()))
 
 
 def measure_output_budget(

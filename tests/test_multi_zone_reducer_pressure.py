@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "summarize_multi_zone_reducer_pressure.py"
+STORAGE_SCRIPT = ROOT / "scripts" / "measure_scenario_storage_output_tier_pressure.py"
 
 
 def load_module():
@@ -25,6 +26,11 @@ def load_module():
 
 
 MODULE = load_module()
+STORAGE_MODULE_SPEC = importlib.util.spec_from_file_location("measure_scenario_storage_output_tier_pressure", STORAGE_SCRIPT)
+assert STORAGE_MODULE_SPEC is not None
+STORAGE_MODULE = importlib.util.module_from_spec(STORAGE_MODULE_SPEC)
+assert STORAGE_MODULE_SPEC.loader is not None
+STORAGE_MODULE_SPEC.loader.exec_module(STORAGE_MODULE)
 
 
 class MultiZoneReducerPressureProbeTests(unittest.TestCase):
@@ -76,6 +82,21 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_report["output_family_file_counts"]["trajectory_csv"], 12)
             self.assertNotIn("trajectory_chunk_manifest", first_report["output_family_file_counts"])
             self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 2)
+            storage_measure = STORAGE_MODULE.measure_root(
+                probe_root / "output",
+                label="multi_zone_probe_output",
+                evidence_label="fixture_backed",
+            )
+            self.assertEqual(first_report["output_family_accounting_alignment"]["status"], "ready")
+            for family in ("trajectory", "deposition", "impact_events"):
+                self.assertEqual(
+                    first_report["storage_pressure_family_file_counts"][family],
+                    storage_measure["family_counts"][family],
+                )
+                self.assertEqual(
+                    first_report["storage_pressure_family_bytes"][family],
+                    storage_measure["family_bytes"][family],
+                )
             self.assertEqual(first_report["reducer_manifest_file_count"], 2)
             self.assertEqual(first_report["sidecar_file_count"], 9)
             self.assertEqual(first_report["merged_output_summary"]["file_count"], first_report["output_file_count"] - 2)

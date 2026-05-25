@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-517: Tighten Output Family Budget Accounting
-
-Goal: Make output-family byte and file accounting consistent between hazard manifests, reducer pressure, and scenario storage pressure.
-
-Capability gap reduced: Prevents scale recommendations from changing because different helpers count the same output families differently.
-
-Why this outranks alternatives: Recent manifest compaction work changed pressure surfaces; consistent accounting is now required before further scale decisions.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `tests/test_scenario_storage_output_tier_pressure.py`
-
-Deliverables:
-
-- Consolidate or align one duplicated output-family accounting rule using existing helpers or a shared local function.
-- Add focused coverage proving two affected surfaces produce compatible counts for the same fixture.
-
-Definition of done:
-
-- Focused reducer/storage/hazard tests pass and duplicated accounting logic is reduced without changing accepted output semantics.
-
-Boundaries: Internal accounting simplification only; no new report, no threshold loosening without measured justification, no scale-up claim, and no Balfrin dependency.
-
 ### TB-518: Build A Minimal Second-Site Real-Terrain Smoke
 
 Goal: Run a minimal committed second-site terrain case locally to test portability beyond Tschamut without requiring private geodata.

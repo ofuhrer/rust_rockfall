@@ -24,6 +24,7 @@ if __package__ in {None, ""}:
 
 from scripts import generate_candidate_source_zone_scenarios as SCENARIO_FREEZER  # noqa: E402
 from scripts import summarize_management_aoi_scenario_pressure as MANAGEMENT_PRESSURE  # noqa: E402
+from scripts.lib.output_family_accounting import classify_storage_path_family  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -602,29 +603,7 @@ def classify_rebuildable_reduced(measurement: dict[str, Any]) -> str:
 
 
 def classify_file_family(path: Path) -> str:
-    name = path.name.lower()
-    suffix = path.suffix.lower()
-    if "scenario_table" in name:
-        return "scenario_table"
-    if "release" in name or "source_zone_metadata" in name or "source_scenario_policy" in name:
-        return "release_plan"
-    if "trajectory_metadata" in name:
-        return "trajectory_metadata"
-    if "trajectory" in name:
-        return "trajectory"
-    if "deposition" in name:
-        return "deposition"
-    if "impact" in name:
-        return "impact_events"
-    if "metrics" in name or "scaling_summary" in name or "diagnostic" in name:
-        return "diagnostics"
-    if "manifest" in name:
-        return "manifest"
-    if suffix in {".tif", ".tiff", ".asc", ".geojson", ".gpkg", ".qml", ".sld"}:
-        return "gis"
-    if "chunk" in name:
-        return "chunk_metadata"
-    return suffix.lstrip(".") or "other"
+    return classify_storage_path_family(path)
 
 
 def count_csv_data_rows(path: Path) -> int:
