@@ -7340,3 +7340,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: regression only; no physics tuning, no new data fixture, no operational claim, and no Balfrin dependency.
 - Next task: `TB-512`
+
+### TB-512: Optimize Real-Terrain Hazard Build Runtime
+
+- Date: 2026-05-25
+- Commit: `efc7d3a`
+- Objective: reduce repeated local hazard-build runtime without changing output semantics.
+- Files changed: `scripts/build_hazard_layers.py`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Benchmarked the existing hazard accumulation profiles before the change; the dominant local hotspot was output writing, with the output-heavy guardrail spending about `0.244347 s` in output writes and `0.102306 s` in CSV table writing.
+  - Replaced per-row `csv.writer` calls for the conditional intensity exceedance curve table with a deterministic line encoder that streams bytes through the existing output byte/hash tracker.
+  - Avoided a second full-file read for conditional-curve CSV `sha256` and byte accounting while preserving manifest metadata.
+  - Added parity assertions that the manifest `sha256` and `total_bytes` for the curve table match the written file.
+  - Re-ran the benchmark after the change: output-heavy CSV table writing dropped from about `0.102306 s` to `0.057232 s`, output writing from `0.244347 s` to `0.199255 s`, and total wall time from `0.283068 s` to `0.238698 s`.
+  - Verified stable manifest hashes remained unchanged for the baseline and output-heavy profiles.
+  - Removed TB-512 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --benchmark-root /tmp/tb512_before --format json --json-output /tmp/tb512_before.json > /tmp/tb512_before_stdout.json`
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --benchmark-root /tmp/tb512_after_stream --format json --json-output /tmp/tb512_after_stream.json > /tmp/tb512_after_stream_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_exceedance_layers_are_additive_and_manifested -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_accumulation_benchmark -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/build_hazard_layers.py scripts/hazard_accumulation_benchmark.py tests/test_hazard_layers.py tests/test_hazard_accumulation_benchmark.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: local performance only; no output contract break, no physics change, no new benchmark framework, and no Balfrin dependency.
+- Next task: `TB-513`
