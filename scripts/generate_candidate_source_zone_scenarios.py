@@ -1298,6 +1298,7 @@ def compact_freezer_manifest(report: dict[str, Any]) -> dict[str, Any]:
         "conditional_weight_total": report.get("conditional_weight_total"),
         "conditional_weight_semantics": report.get("conditional_weight_semantics"),
         "forest_realization_plan": dict(report.get("forest_realization_plan") or {}),
+        "release_sampling_geometry_check": dict(report.get("release_sampling_geometry_check") or {}),
         "claim_boundaries": dict(report.get("claim_boundaries") or {}),
         "output_paths": dict(report.get("output_paths") or {}),
     }
@@ -1569,6 +1570,56 @@ def build_freezer_release_cells(
             }
         )
     return release_cells
+
+
+def validate_freezer_release_sampling_geometry(
+    *,
+    accepted_rows: list[dict[str, Any]],
+    release_cells: list[dict[str, Any]],
+    geometry: dict[str, Any],
+) -> dict[str, Any]:
+    source_bounds = source_zone_bounds(geometry)
+    checked: list[dict[str, Any]] = []
+    if len(accepted_rows) != len(release_cells):
+        raise CandidateSourceZoneFreezerError("release sampling geometry check requires one release cell per accepted row")
+    for row, release_cell in zip(accepted_rows, release_cells):
+        candidate_id = text_value(row.get("candidate_release_zone_id"))
+        center = release_cell.get("center_lv95_m")
+        if not isinstance(center, (list, tuple)) or len(center) < 2:
+            raise CandidateSourceZoneFreezerError(f"release cell center is missing for candidate {candidate_id}")
+        x = float(center[0])
+        y = float(center[1])
+        if not point_in_bounds(x, y, source_bounds):
+            raise CandidateSourceZoneFreezerError(f"release cell center is outside frozen source-zone bounds for candidate {candidate_id}")
+        candidate_bounds = row.get("component_bbox_lv95_m")
+        inside_candidate_bbox = True
+        if isinstance(candidate_bounds, dict):
+            inside_candidate_bbox = point_in_bounds(x, y, candidate_bounds)
+            if not inside_candidate_bbox:
+                raise CandidateSourceZoneFreezerError(f"release cell center is outside reviewed candidate bbox for candidate {candidate_id}")
+        checked.append(
+            {
+                "candidate_release_zone_id": candidate_id,
+                "release_cell_id": text_value(release_cell.get("release_cell_id")),
+                "center_lv95_m": [round(x, 6), round(y, 6)],
+                "inside_source_zone_bounds": True,
+                "inside_candidate_bbox": inside_candidate_bbox,
+            }
+        )
+    return {
+        "geometry_check_status": "ready",
+        "checked_release_cell_count": len(checked),
+        "all_centers_inside_source_zone_bounds": True,
+        "all_centers_inside_candidate_bbox": all(item["inside_candidate_bbox"] for item in checked),
+        "checked_release_cells": checked,
+    }
+
+
+def point_in_bounds(x: float, y: float, bounds: dict[str, Any]) -> bool:
+    return (
+        float(bounds.get("xmin", 0.0)) <= x <= float(bounds.get("xmax", 0.0))
+        and float(bounds.get("ymin", 0.0)) <= y <= float(bounds.get("ymax", 0.0))
+    )
 
 
 def source_zone_bounds(geometry: dict[str, Any]) -> dict[str, float]:
@@ -1972,6 +2023,11 @@ def build_freezer_report(
         raise CandidateSourceZoneFreezerError("conditional block-scenario weights must sum to a positive value")
 
     release_cells = build_freezer_release_cells(source_zone_id, accepted_rows, source_zone_geometry)
+    release_sampling_geometry_check = validate_freezer_release_sampling_geometry(
+        accepted_rows=accepted_rows,
+        release_cells=release_cells,
+        geometry=source_zone_geometry,
+    )
     source_zone_metadata = build_freezer_source_zone_metadata(
         source_zone_id=source_zone_id,
         candidate_site_id=site_id,
@@ -2055,6 +2111,7 @@ def build_freezer_report(
         "forest_realization_plan": build_forest_realization_plan(
             review_package.get("forest_context_intake") if isinstance(review_package.get("forest_context_intake"), dict) else None
         ),
+        "release_sampling_geometry_check": release_sampling_geometry_check,
         "source_zone_metadata": source_zone_metadata,
         "release_rows": release_rows,
         "scenario_table_rows": scenario_rows,

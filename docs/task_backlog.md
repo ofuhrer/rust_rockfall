@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-495: Add Candidate Release-Sampling Geometry Regression
-
-Goal: Add a deterministic regression that checks reviewed candidate release sampling geometry against the source-zone metadata and terrain grid.
-
-Capability gap reduced: Prevents candidate scenario generation from silently producing samples that are geometrically inconsistent with the reviewed polygon.
-
-Why this outranks alternatives: The degraded candidate run may be driven by release geometry, so sampling correctness should be pinned down before broader model changes.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_candidate_source_zone_freezer.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml`
-
-Deliverables:
-
-- Add a focused test or helper assertion that verifies generated release rows remain inside the reviewed candidate geometry and preserve deterministic ordering/seed behavior.
-- Reuse existing fixtures or scratch roots rather than adding a new workflow script.
-
-Definition of done:
-
-- Focused candidate-source-zone tests pass and at least one geometry invariant is enforced on generated candidate release samples.
-
-Boundaries: Regression coverage only; no new source-zone semantics, no tuning, no new review status vocabulary, and no Balfrin dependency.
-
 ### TB-496: Regenerate Extreme-Layer Support Fixtures
 
 Goal: Exercise the new extreme-layer support-count metadata on freshly generated local hazard layers instead of only historical manifests.

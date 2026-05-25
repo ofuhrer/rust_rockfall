@@ -438,6 +438,7 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertEqual(manifest["accepted_candidate_ids"], ["cand_accept_a", "cand_accept_b"])
         self.assertEqual(manifest["rejected_candidate_ids"], ["cand_rejected"])
         self.assertEqual(manifest["conditional_weight_semantics"], "conditional_sampling_only")
+        self.assertEqual(manifest["release_sampling_geometry_check"]["geometry_check_status"], "ready")
         self.assertNotIn("release_rows", manifest)
         self.assertNotIn("scenario_table_rows", manifest)
         self.assertNotIn("source_zone_metadata", manifest)
@@ -446,6 +447,44 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertTrue(first["manifest_compaction"]["reconstruction_contract"]["deterministic_reconstruction"])
         self.assertEqual(policy["policy_status"], "ready_for_conditional_pilot")
         policy_validator.validate_policy(policy)
+
+    def test_freezer_release_sampling_geometry_stays_inside_reviewed_candidates(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            review_package_path = self._write_review_package(workdir)
+            review_manifest = json.loads(review_package_path.read_text(encoding="utf-8"))
+            report = freezer.build_freezer_report(
+                review_package_path=review_package_path,
+                accepted_candidate_ids=["cand_accept_a", "cand_accept_b"],
+                output_root=workdir / "validation/private/chant_sura_fluelapass_portability_example_v1",
+                trajectory_count=24,
+                seed=34014,
+            )
+
+        review_rows_by_id = {
+            row["candidate_release_zone_id"]: row
+            for row in review_manifest["candidate_review_rows"]
+        }
+        geometry_check = report["release_sampling_geometry_check"]
+        release_rows = report["release_rows"]
+
+        self.assertEqual(geometry_check["geometry_check_status"], "ready")
+        self.assertEqual(geometry_check["checked_release_cell_count"], 2)
+        self.assertTrue(geometry_check["all_centers_inside_source_zone_bounds"])
+        self.assertTrue(geometry_check["all_centers_inside_candidate_bbox"])
+        self.assertEqual([row["candidate_release_zone_id"] for row in release_rows], ["cand_accept_a", "cand_accept_b"])
+        self.assertEqual([row["release_cell_id"] for row in release_rows], [
+            "chant_sura_reviewed_source_zone_release_cell_001",
+            "chant_sura_reviewed_source_zone_release_cell_002",
+        ])
+        self.assertTrue(all(row["seed"] == 34014 for row in release_rows))
+        for row in release_rows:
+            bbox = review_rows_by_id[row["candidate_release_zone_id"]]["component_bbox_lv95_m"]
+            x, y = row["release_cell_center_lv95_m"]
+            self.assertGreaterEqual(x, bbox["xmin"])
+            self.assertLessEqual(x, bbox["xmax"])
+            self.assertGreaterEqual(y, bbox["ymin"])
+            self.assertLessEqual(y, bbox["ymax"])
 
     def test_freezer_rejects_invalid_block_weights(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
