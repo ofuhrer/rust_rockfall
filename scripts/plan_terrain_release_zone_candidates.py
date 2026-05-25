@@ -634,17 +634,36 @@ def build_review_output_paths(
     repo_root: Path,
     output_root: Path,
 ) -> dict[str, str | None]:
-    candidate_site_id = text_value(review_package.get("candidate_site_id")) or text_value(review_package_path.stem)
-    polygon_path = output_root / f"{candidate_site_id}_release_zone_candidate_review.geojson"
-    csv_path = output_root / f"{candidate_site_id}_release_zone_candidate_review.csv"
-    mask_path = output_root / f"{candidate_site_id}_release_zone_candidate_review_mask.asc"
-    manifest_path = output_root / f"{candidate_site_id}_release_zone_candidate_review_manifest.json"
+    candidate_site_id = candidate_site_id_for_review_package(review_package, review_package_path)
+    return candidate_review_output_path_strings(
+        candidate_review_artifact_paths(candidate_site_id, output_root),
+        repo_root=repo_root,
+        absolute=True,
+    )
+
+
+def candidate_site_id_for_review_package(review_package: dict[str, Any], fallback_path: Path) -> str:
+    return text_value(review_package.get("candidate_site_id")) or text_value(fallback_path.stem)
+
+
+def candidate_review_artifact_paths(candidate_site_id: str, output_root: Path) -> dict[str, Path]:
     return {
-        "polygon": str(polygon_path.resolve(strict=False)),
-        "mask": str(mask_path.resolve(strict=False)),
-        "csv": str(csv_path.resolve(strict=False)),
-        "manifest": str(manifest_path.resolve(strict=False)),
+        "polygon": output_root / f"{candidate_site_id}_release_zone_candidate_review.geojson",
+        "mask": output_root / f"{candidate_site_id}_release_zone_candidate_review_mask.asc",
+        "csv": output_root / f"{candidate_site_id}_release_zone_candidate_review.csv",
+        "manifest": output_root / f"{candidate_site_id}_release_zone_candidate_review_manifest.json",
     }
+
+
+def candidate_review_output_path_strings(
+    artifact_paths: dict[str, Path],
+    *,
+    repo_root: Path,
+    absolute: bool,
+) -> dict[str, str | None]:
+    if absolute:
+        return {key: str(path.resolve(strict=False)) for key, path in artifact_paths.items()}
+    return {key: display_path(path, repo_root) for key, path in artifact_paths.items()}
 
 
 def write_review_applied_outputs(review_package: dict[str, Any]) -> None:
@@ -672,19 +691,14 @@ def write_review_applied_outputs(review_package: dict[str, Any]) -> None:
 def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, Any]:
     source_outputs = review_package.get("review_source_outputs", {}) or {}
     polygon_path = source_outputs.get("polygon")
-    geojson: dict[str, Any] = {
-        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
-        "type": "FeatureCollection",
-        "candidate_site_id": review_package.get("candidate_site_id"),
-        "candidate_site_name": review_package.get("candidate_site_name"),
-        "source_zone_id": review_package.get("source_zone_id"),
-        "candidate_generation_label": "heuristic_candidate_generation_only",
-        "review_package_status": review_package.get("review_package_status"),
-        "review_application_status": review_package.get("review_application_status"),
-        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
-        "provenance_label_legend": provenance_label_legend(),
-        "features": [],
-    }
+    geojson = build_candidate_review_geojson(
+        candidate_site_id=review_package.get("candidate_site_id"),
+        candidate_site_name=review_package.get("candidate_site_name"),
+        source_zone_id=review_package.get("source_zone_id"),
+        review_package_status=review_package.get("review_package_status"),
+        review_application_status=review_package.get("review_application_status"),
+        features=[],
+    )
     if isinstance(polygon_path, str) and polygon_path.strip():
         polygon_file = package_path(review_package, polygon_path)
         if polygon_file.exists():
@@ -752,6 +766,33 @@ def build_review_applied_geojson(review_package: dict[str, Any]) -> dict[str, An
                     features.append(new_feature)
                 geojson["features"] = features
     return geojson
+
+
+def build_candidate_review_geojson(
+    *,
+    candidate_site_id: Any,
+    candidate_site_name: Any,
+    source_zone_id: Any,
+    features: list[dict[str, Any]],
+    review_package_status: Any = None,
+    review_application_status: Any = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
+        "type": "FeatureCollection",
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name,
+        "source_zone_id": source_zone_id,
+        "candidate_generation_label": "heuristic_candidate_generation_only",
+        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
+        "provenance_label_legend": provenance_label_legend(),
+        "features": features,
+    }
+    if review_package_status is not None:
+        payload["review_package_status"] = review_package_status
+    if review_application_status is not None:
+        payload["review_application_status"] = review_application_status
+    return payload
 
 
 def write_candidate_mask_copy(mask_path: Path, review_package: dict[str, Any], source_outputs: dict[str, Any]) -> None:
@@ -2365,25 +2406,21 @@ def build_candidate_review_package(
     output_root: Path,
     search_domain_path: Path,
 ) -> dict[str, Any]:
-    geojson_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.geojson"
-    csv_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review.csv"
-    mask_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review_mask.asc"
-    manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidate_review_manifest.json"
+    artifact_paths = candidate_review_artifact_paths(report["candidate_site_id"], output_root)
+    geojson_path = artifact_paths["polygon"]
+    csv_path = artifact_paths["csv"]
+    mask_path = artifact_paths["mask"]
+    manifest_path = artifact_paths["manifest"]
 
     review_rows = [build_candidate_review_row(feature) for feature in component_features]
     review_summary = build_candidate_review_summary(review_rows)
     candidate_stability_summary = build_candidate_stability_summary(report["candidate_sensitivity_report"])
-    review_geojson = {
-        "schema_version": REVIEW_PACKAGE_SCHEMA_VERSION,
-        "type": "FeatureCollection",
-        "candidate_site_id": report["candidate_site_id"],
-        "candidate_site_name": report["candidate_site_name"],
-        "source_zone_id": source_zone_id,
-        "candidate_generation_label": "heuristic_candidate_generation_only",
-        "review_decision_options": list(REVIEW_DECISION_OPTIONS),
-        "provenance_label_legend": provenance_label_legend(),
-        "features": component_features,
-    }
+    review_geojson = build_candidate_review_geojson(
+        candidate_site_id=report["candidate_site_id"],
+        candidate_site_name=report["candidate_site_name"],
+        source_zone_id=source_zone_id,
+        features=component_features,
+    )
     geojson_path.write_text(json.dumps(review_geojson, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     write_candidate_mask_ascii_grid(mask_path, terrain, terrain_masks["candidate_mask"])
     write_candidate_review_csv(csv_path, review_rows)
@@ -2419,10 +2456,11 @@ def build_candidate_review_package(
         "non_operational_warnings": candidate_review_non_operational_warnings(),
         "claim_boundaries": report["claim_boundaries"],
         "outputs": {
-            "polygon": display_path(geojson_path, repo_root),
-            "mask": display_path(mask_path, repo_root),
-            "csv": display_path(csv_path, repo_root),
-            "manifest": display_path(manifest_path, repo_root),
+            **candidate_review_output_path_strings(
+                artifact_paths,
+                repo_root=repo_root,
+                absolute=False,
+            ),
             "search_domain": display_path(search_domain_path, repo_root),
         },
         "output_root": display_path(output_root, repo_root),

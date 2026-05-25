@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-492: Consolidate Release-Candidate Review Logic
-
-Goal: Simplify the release-zone candidate generation/review path by consolidating duplicated candidate metrics, review CSV, and GeoJSON/mask emission logic.
-
-Capability gap reduced: Makes source-zone candidate review easier to maintain before adding more sites or candidate classes.
-
-Why this outranks alternatives: Candidate generation is now on the critical path; duplicated output logic will create drift as reviewed candidates feed scenarios.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_release_candidate_zero_result_diagnostic.py`
-
-Deliverables:
-
-- Consolidate duplicated candidate-review output or metric-building logic inside existing candidate scripts.
-- Preserve existing manifest fields and outputs while reducing local duplication or deleting dead code.
-
-Definition of done:
-
-- Focused candidate tests pass, generated candidate artifacts remain loadable, and the change removes or consolidates code rather than adding a new workflow surface.
-
-Boundaries: Internal simplification only; no new source-zone semantics, no tuning, no operational claim, and no new script.
-
 ### TB-493: Shrink Generated-Result Clutter
 
 Goal: Reduce generated-result clutter by tightening one existing output path, fixture path, or cleanup rule that currently leaves stale artifacts around local runs.
