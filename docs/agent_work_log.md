@@ -7990,3 +7990,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: no live downloads, credentials, new acquisition contract, external compute dependency, or claim that public context is complete.
 - Next task: `TB-538`
+
+### TB-538: Separate Extreme-Layer Support From Magnitude Sensitivity
+
+- Date: 2026-05-25
+- Commit: `7aa39b0`
+- Objective: separate support/nodata diagnostics from same-support magnitude deltas in the local extreme-layer sensitivity smoke.
+- Files changed: `scripts/summarize_extreme_layer_sensitivity_smoke.py`, `tests/test_extreme_layer_sensitivity_smoke.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `support_nodata_delta` output for nonzero support, missing/nodata, and sample-support mismatch diagnostics.
+  - Added `shared_support_magnitude_delta` output that measures magnitude differences only where both manifests have finite values and shared sample support.
+  - Updated sensitivity classification and text output to expose the separated interpretation roles.
+  - Removed TB-538 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_extreme_layer_sensitivity_smoke tests.test_local_hazard_layer_fragility -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_extreme_layer_sensitivity_smoke.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: existing local fixtures only; no hazard model change, tuning, operational threshold, or physical-probability claim.
+- Next task: `TB-539`
