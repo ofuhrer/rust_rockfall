@@ -6967,3 +6967,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: local fixture/regression and smoke-summary support only; no layer value tuning, no hazard-meaning change, no operational claim, and no Balfrin dependency.
 - Next task: `TB-497`
+
+### TB-497: Reduce Eight-Zone Manifest Pressure Locally
+
+- Date: 2026-05-25
+- Commit: `e3a65ed`
+- Objective: reduce the remaining local eight-zone manifest-size blocker in the multi-zone scaling ladder.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Measured the before ladder under ignored root `hazard/results/tb497_before`; the first blocked rung was 8 zones at `manifest_size`, with 8-zone manifest bundle size `14381` bytes.
+  - Inspected the eight-zone bundle and found the merge manifest was the largest reducible piece: `6026` bytes, mostly repeated path/file/zero-row fields in per-output listings.
+  - Added compact merge-manifest output listings for compact output manifests, retaining kind, index identity, and byte totals while dropping repeated path, file-count, and zero-row fields.
+  - Kept full path listings for full manifests and preserved budget calculations from the canonicalized output manifest.
+  - Re-ran the ladder under `hazard/results/tb497_after`; the eight-zone manifest bundle dropped to `11855` bytes and the merge manifest dropped to `3506` bytes.
+  - The eight-zone rung improved but did not fully clear: it remains blocked because the pressure classifier also treats the manifest file bundle and reducer runtime as pressure signals.
+  - Removed TB-497 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root hazard/results/tb497_before --zone-counts 1,2,4,8,12 --format json --json-output /tmp/tb497_before.json >/tmp/tb497_before_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_scaling_ladder -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_scaling_ladder.py --materialize-root hazard/results/tb497_after --zone-counts 1,2,4,8,12 --format json --json-output /tmp/tb497_after.json >/tmp/tb497_after_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_multi_zone_reducer_pressure.py tests/test_multi_zone_reducer_pressure.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local manifest/output simplification only; no distributed execution, no Balfrin submission, no Swiss-wide claim, and no operational claim.
+- Next task: `TB-498`
