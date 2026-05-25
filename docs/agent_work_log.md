@@ -8032,3 +8032,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: consolidated existing audits only; no new standalone dashboard, claim upgrade, annual-frequency semantics, or tuning.
 - Next task: `TB-540`
+
+### TB-540: Wire Holdout And Calibration Separation Into Validation Guardrails
+
+- Date: 2026-05-25
+- Commit: `04a21bc`
+- Objective: make validation evidence assessment fail closed on holdout overlap or calibration/validation leakage.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `validation_leakage_guardrails` to the validation/calibration evidence-gap report.
+  - The guardrail composes the Chant Sura holdout split audit and calibration separation preflight.
+  - Blocked cases now name the failing guardrail, dataset or parameter source, failure detail, and next local recovery command.
+  - Removed TB-540 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_chant_sura_holdout_split_audit tests.test_calibration_separation_preflight tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: fixture-backed guardrails only; no recalibration, validation claim, parameter tuning, or external compute dependency.
+- Next task: `TB-541`
