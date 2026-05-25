@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-511: Add Real-Terrain Energy Budget Regression
-
-Goal: Add a focused real-terrain regression that checks energy and speed remain finite and bounded over a committed terrain case.
-
-Capability gap reduced: Strengthens the scientific core by catching nonphysical trajectory behavior before workflow-level tests mask it.
-
-Why this outranks alternatives: Candidate and scale work depend on stable core physics, and one real-terrain invariant can guard many downstream surfaces.
-
-Inspect first:
-
-- `src/simulation.rs`
-- `tests/terrain_edge_cases.rs`
-- `validation/cases/tschamut_basic.yaml`
-- `validation/cases/chant_sura_contact.yaml`
-
-Deliverables:
-
-- Add or tighten one Rust test that runs a small committed real-terrain case and asserts finite positions, speeds, and a bounded energy/jump envelope.
-- Keep runtime suitable for local and CI execution.
-
-Definition of done:
-
-- Focused Rust tests pass locally and the regression would fail on NaN, runaway energy, or nondeterministic replay.
-
-Boundaries: Regression only; no physics tuning unless a demonstrated bug requires a minimal fix, no new data fixture, no operational claim, and no Balfrin dependency.
-
 ### TB-512: Optimize Real-Terrain Hazard Build Runtime
 
 Goal: Reduce runtime for one repeated real-terrain hazard build path used by local scientific iteration.

@@ -4,7 +4,7 @@
 use rust_rockfall::terrain::{ClampedDemGrid, DemGrid, Terrain, TerrainError};
 use rust_rockfall::{
     simulate_one_trajectory, RoughnessModel, SimulationConfig, SphereBlock, TerrainConfig,
-    TrajectoryRequest,
+    TrajectoryRequest, TrajectoryRun,
 };
 
 // ─── DEM header / construction errors ─────────────────────────────────────
@@ -148,6 +148,91 @@ fn clamped_dem_normal_outside_grid_is_unit_length() {
     );
 }
 
+struct RealTerrainEnergyBudget {
+    max_speed_mps: f64,
+    max_kinetic_j: f64,
+    max_total_energy_abs_j: f64,
+    max_jump_height_m: f64,
+}
+
+fn assert_real_terrain_energy_budget(
+    run: &TrajectoryRun,
+    terrain: &dyn Terrain,
+    radius_m: f64,
+    budget: RealTerrainEnergyBudget,
+) {
+    assert!(
+        run.samples.len() > 10,
+        "trajectory should contain time history"
+    );
+    assert_eq!(run.summary.sample_count, run.samples.len());
+    assert!(run.summary.final_speed_mps.is_finite());
+    assert!(run.summary.max_speed_mps.is_finite());
+    assert!(
+        run.summary.max_speed_mps <= budget.max_speed_mps,
+        "unexpected speed spike: {}",
+        run.summary.max_speed_mps
+    );
+    assert!(run.summary.max_kinetic_energy_j.is_finite());
+    assert!(run.summary.max_kinetic_energy_j >= 0.0);
+    assert!(
+        run.summary.max_kinetic_energy_j <= budget.max_kinetic_j,
+        "unexpected kinetic-energy spike: {}",
+        run.summary.max_kinetic_energy_j
+    );
+
+    let mut max_jump_height_m = f64::NEG_INFINITY;
+    for sample in &run.samples {
+        assert!(sample.time_s.is_finite(), "non-finite sample time");
+        assert!(sample.x_m.is_finite(), "non-finite sample x");
+        assert!(sample.y_m.is_finite(), "non-finite sample y");
+        assert!(sample.z_m.is_finite(), "non-finite sample z");
+        assert!(sample.vx_mps.is_finite(), "non-finite sample vx");
+        assert!(sample.vy_mps.is_finite(), "non-finite sample vy");
+        assert!(sample.vz_mps.is_finite(), "non-finite sample vz");
+        assert!(sample.speed_mps.is_finite(), "non-finite sample speed");
+        assert!(
+            sample.speed_mps <= budget.max_speed_mps,
+            "sample speed exceeded budget: {}",
+            sample.speed_mps
+        );
+        assert!(sample.kinetic_j.is_finite(), "non-finite kinetic energy");
+        assert!(sample.kinetic_j >= 0.0, "negative kinetic energy");
+        assert!(
+            sample.kinetic_j <= budget.max_kinetic_j,
+            "sample kinetic energy exceeded budget: {}",
+            sample.kinetic_j
+        );
+        assert!(
+            sample.rotational_j.is_finite(),
+            "non-finite rotational energy"
+        );
+        assert!(sample.rotational_j >= 0.0, "negative rotational energy");
+        assert!(
+            sample.potential_j.is_finite(),
+            "non-finite potential energy"
+        );
+        assert!(sample.total_energy_j.is_finite(), "non-finite total energy");
+        assert!(
+            sample.total_energy_j.abs() <= budget.max_total_energy_abs_j,
+            "sample total energy exceeded budget: {}",
+            sample.total_energy_j
+        );
+        let ground = terrain.try_height(sample.x_m, sample.y_m).unwrap();
+        let jump_height_m = sample.z_m - ground - radius_m;
+        assert!(
+            jump_height_m >= -1.0e-6,
+            "sample penetrated below terrain envelope: {jump_height_m}"
+        );
+        max_jump_height_m = max_jump_height_m.max(jump_height_m);
+    }
+    assert!(max_jump_height_m.is_finite());
+    assert!(
+        max_jump_height_m <= budget.max_jump_height_m,
+        "unexpected jump-height spike: {max_jump_height_m}"
+    );
+}
+
 #[test]
 fn real_tschamut_dem_trajectory_has_finite_bounded_physics() {
     let terrain_path = format!(
@@ -193,36 +278,21 @@ fn real_tschamut_dem_trajectory_has_finite_bounded_physics() {
     )
     .unwrap();
 
-    assert!(
-        run.samples.len() > 10,
-        "trajectory should contain time history"
+    assert_real_terrain_energy_budget(
+        &run,
+        &terrain,
+        radius_m,
+        RealTerrainEnergyBudget {
+            max_speed_mps: 40.0,
+            max_kinetic_j: 100_000.0,
+            max_total_energy_abs_j: 2_000_000.0,
+            max_jump_height_m: 20.0,
+        },
     );
     assert!(run.summary.runout_m > 5.0, "runout should be non-trivial");
     assert!(
         run.summary.final_position_m[0] > start_x,
         "trajectory should move generally east/down-slope on the fixture"
-    );
-    assert!(run.summary.max_kinetic_energy_j.is_finite());
-    assert!(run.summary.max_kinetic_energy_j >= 0.0);
-    assert!(
-        run.summary.max_kinetic_energy_j < 100_000.0,
-        "unexpected kinetic-energy spike: {}",
-        run.summary.max_kinetic_energy_j
-    );
-
-    let max_jump_height_m = run
-        .samples
-        .iter()
-        .map(|sample| {
-            let ground = terrain.try_height(sample.x_m, sample.y_m).unwrap();
-            sample.z_m - ground - radius_m
-        })
-        .fold(f64::NEG_INFINITY, f64::max);
-    assert!(max_jump_height_m.is_finite());
-    assert!(max_jump_height_m >= -1.0e-6);
-    assert!(
-        max_jump_height_m < 20.0,
-        "unexpected jump-height spike: {max_jump_height_m}"
     );
 }
 
@@ -277,22 +347,18 @@ fn real_tschamut_stochastic_contact_replay_is_deterministic_and_bounded() {
 
     assert_eq!(first.summary, second.summary);
     assert_eq!(first.samples, second.samples);
-    assert!(
-        first.samples.len() > 10,
-        "trajectory should contain a reproducible time history"
+    assert_real_terrain_energy_budget(
+        &first,
+        &terrain,
+        radius_m,
+        RealTerrainEnergyBudget {
+            max_speed_mps: 30.0,
+            max_kinetic_j: 25_000.0,
+            max_total_energy_abs_j: 150_000.0,
+            max_jump_height_m: 20.0,
+        },
     );
     assert!(first.summary.runout_m > 1.0, "runout should be non-trivial");
-    assert!(first.summary.final_speed_mps.is_finite());
-    assert!(
-        first.summary.max_kinetic_energy_j.is_finite()
-            && first.summary.max_kinetic_energy_j < 25_000.0,
-        "unexpected kinetic-energy spike: {}",
-        first.summary.max_kinetic_energy_j
-    );
-    assert!(first
-        .samples
-        .iter()
-        .all(|sample| sample.x_m.is_finite() && sample.y_m.is_finite() && sample.z_m.is_finite()));
 }
 
 #[test]
@@ -340,38 +406,20 @@ fn real_chant_sura_dem_trajectory_has_finite_bounded_physics() {
     )
     .unwrap();
 
-    assert!(
-        run.samples.len() > 10,
-        "trajectory should contain time history"
+    assert_real_terrain_energy_budget(
+        &run,
+        &terrain,
+        radius_m,
+        RealTerrainEnergyBudget {
+            max_speed_mps: 50.0,
+            max_kinetic_j: 100_000.0,
+            max_total_energy_abs_j: 6_000_000.0,
+            max_jump_height_m: 10.0,
+        },
     );
     assert!(run.summary.runout_m > 0.5, "runout should be non-trivial");
     assert!(
         run.summary.final_position_m[1] < start_y,
         "trajectory should move generally downslope on the RF16 fixture"
-    );
-    assert!(run.summary.max_kinetic_energy_j.is_finite());
-    assert!(run.summary.max_kinetic_energy_j >= 0.0);
-    assert!(
-        run.summary.max_kinetic_energy_j < 100_000.0,
-        "unexpected kinetic-energy spike: {}",
-        run.summary.max_kinetic_energy_j
-    );
-
-    let mut terrain_lookup_count = 0_usize;
-    let max_jump_height_m = run
-        .samples
-        .iter()
-        .map(|sample| {
-            let ground = terrain.try_height(sample.x_m, sample.y_m).unwrap();
-            terrain_lookup_count += 1;
-            sample.z_m - ground - radius_m
-        })
-        .fold(f64::NEG_INFINITY, f64::max);
-    assert_eq!(terrain_lookup_count, run.samples.len());
-    assert!(max_jump_height_m.is_finite());
-    assert!(max_jump_height_m >= -1.0e-6);
-    assert!(
-        max_jump_height_m < 10.0,
-        "unexpected jump-height spike: {max_jump_height_m}"
     );
 }
