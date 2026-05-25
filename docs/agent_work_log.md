@@ -8433,6 +8433,28 @@ scan thousands of lines of completed history.
 - Boundaries: one `postproc` job only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no annual-frequency claim, and no physical-probability claim.
 - Next task: `TB-558`
 
+### TB-558: Collect And Promote The Next Probe Evidence
+
+- Date: 2026-05-25
+- Commit: `0aab4b7`
+- Objective: promote the completed TB-557 bounded Balfrin probe from raw remote artifacts into local evidence and interpretation surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/balfrin_bounded_reduced_output_run_tb557.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Ran the preservation gate on the TB-557 run root; it reported `ready_for_demonstration_evidence`, complete required entries, sufficient output families, and no blockers.
+  - Added the TB-557 measured run as the current `multi_zone_balfrin_evidence` in the evidence bundle.
+  - Added a latest bounded-probe interpretation gate that consumes the TB-557 metrics while keeping convergence and physical-credibility claims inconclusive.
+  - Updated the TB-557 run report with preservation and evidence-promotion status.
+  - Added tests proving the bundle promotes job `4366534` as measured evidence and keeps the latest interpretation gate claim boundaries closed.
+  - Removed TB-558 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --artifact-dir /tmp/tb558_evidence_bundle --format json >/tmp/tb558_evidence_bundle.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_post_run_interpretation_gate.py --evidence-json /tmp/tb558_evidence_bundle.json --format json >/tmp/tb558_post_run_gate.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1 --artifact-dir /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1/preservation_gate_tb557 --format json`
+- Result/status: implemented_measured
+- Boundaries: evidence promotion only; no rerun, no operational claim, no physical-validation claim, no scale-up claim, and no distributed-execution claim.
+- Next task: `TB-560`
+
 ### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
 
 - Date: 2026-05-25
