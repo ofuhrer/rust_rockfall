@@ -7697,3 +7697,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation simplification only; no new doc file, no scientific claim upgrade, and no Balfrin dependency.
 - Next task: `TB-526`
+
+### TB-526: Add A Script Audience Inventory To Existing Tooling
+
+- Date: 2026-05-25
+- Commit: `3687c54`
+- Objective: extend existing workflow-shell inventory tooling with deterministic script-audience counts without adding a new standalone audit script.
+- Files changed: `scripts/inventory_workflow_shell_coupling.py`, `tests/test_workflow_shell_coupling_inventory.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `script_audience_inventory` family to `scripts/inventory_workflow_shell_coupling.py`.
+  - Classified tracked Python scripts into `workflow_front_door`, `user_facing`, `balfrin_only`, `historical_archival`, and `internal_helper`.
+  - Added deterministic representative fixture coverage for AOI front-door, local CI, Balfrin-only, archived, and internal-helper scripts.
+  - Tightened the classifier to explicit front-door/user-facing paths so the inventory helper does not classify itself as a front door because of explanatory text.
+  - CLI inventory proof reported 176 scripts: 1 workflow front door, 2 user-facing scripts, 45 Balfrin-only helpers, and 128 internal helpers.
+  - Removed TB-526 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_workflow_shell_coupling_inventory -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/inventory_workflow_shell_coupling.py tests/test_workflow_shell_coupling_inventory.py`
+  - `PYENV_VERSION=system uv run python scripts/inventory_workflow_shell_coupling.py --format json --json-output /tmp/tb526_workflow_shell_inventory.json > /tmp/tb526_workflow_shell_inventory.stdout`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: inventory reuse only; no new standalone script, no file moves, no operational claim, and no Balfrin dependency.
+- Next task: `TB-527`
