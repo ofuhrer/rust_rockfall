@@ -7245,3 +7245,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: regression guard only; no new storage report, no live execution, no output claim upgrade, and no Balfrin dependency.
 - Next task: `TB-508`
+
+### TB-508: Simplify Agent Task Context For Local-Only Work
+
+- Date: 2026-05-25
+- Commit: `cc7e8c4`
+- Objective: make non-Balfrin active task selection explicit when Balfrin access is unavailable.
+- Files changed: `scripts/print_agent_task_context.py`, `docs/orchestration_strategy.md`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `--local-only` to `print_agent_task_context.py`.
+  - The helper now reports `next_local_task`, `local_active_tasks`, and `balfrin_required_tasks` while preserving the full ordered `active_tasks` list.
+  - `--local-only` selects the first active non-Balfrin task when no explicit `--task` is provided.
+  - Added focused coverage for local-only selection and smoke-checked both local-only and explicit task context JSON outputs.
+  - Documented the no-Balfrin helper invocation in the orchestration strategy.
+  - Removed TB-508 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_agent_task_context_can_select_first_local_task_without_balfrin tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_active_backlog_inspect_first_paths_are_resolvable -v`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --local-only --format json --no-live-checks > /tmp/tb508_local_only_context.json`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-508 --format json --no-live-checks > /tmp/tb508_explicit_context.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/print_agent_task_context.py docs/orchestration_strategy.md tests/test_repo_consistency_claim_hygiene.py docs/task_backlog.md` (only intentional backlog and orchestration template placeholders matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: orchestration helper simplification only; no new admin script, no task-status vocabulary change in headings, no Balfrin access attempt, and no execution claim.
+- Next task: `TB-509`
