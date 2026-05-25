@@ -106,6 +106,65 @@ fn dem_infallible_height_panics_outside_grid() {
     assert!(result.is_err(), "expected panic for out-of-bounds query");
 }
 
+#[test]
+fn python_generated_plane_fixture_replays_deterministically_in_rust() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "fixtures/hazard/python_generated_rust_replay_fixture.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        fixture["schema_version"],
+        "python_generated_rust_replay_fixture_v1"
+    );
+    let config: SimulationConfig =
+        serde_json::from_value(fixture["rust_simulation_config"].clone()).unwrap();
+    let expected = &fixture["expected_replay"];
+    let case_id = expected["case_id"].as_str().unwrap();
+    let trajectory_id = expected["trajectory_id"].as_str().unwrap();
+    let seed = expected["seed"].as_u64();
+    let request = TrajectoryRequest::new(case_id, trajectory_id, seed);
+
+    let first = simulate_one_trajectory(&config, request.clone()).unwrap();
+    let second = simulate_one_trajectory(&config, request).unwrap();
+    assert_eq!(first.samples.len(), second.samples.len());
+    assert_eq!(first.summary.sample_count, second.summary.sample_count);
+    assert_eq!(
+        first.summary.final_position_m,
+        second.summary.final_position_m
+    );
+    assert_eq!(first.summary.max_speed_mps, second.summary.max_speed_mps);
+    assert_eq!(
+        first.summary.max_kinetic_energy_j,
+        second.summary.max_kinetic_energy_j
+    );
+
+    assert!(
+        first.samples.len() >= expected["min_sample_count"].as_u64().unwrap() as usize,
+        "fixture replay produced too few samples"
+    );
+    assert!(
+        first.summary.final_position_m[0] >= expected["final_x_m_min"].as_f64().unwrap()
+            && first.summary.final_position_m[0] <= expected["final_x_m_max"].as_f64().unwrap(),
+        "final x drifted out of fixture envelope: {}",
+        first.summary.final_position_m[0]
+    );
+    assert!(
+        first.summary.final_position_m[1].abs() <= expected["final_y_abs_max"].as_f64().unwrap(),
+        "final y drifted out of fixture envelope: {}",
+        first.summary.final_position_m[1]
+    );
+    assert!(
+        first.summary.max_speed_mps <= expected["max_speed_mps_max"].as_f64().unwrap(),
+        "max speed drifted out of fixture envelope: {}",
+        first.summary.max_speed_mps
+    );
+    assert!(
+        first.summary.max_kinetic_energy_j <= expected["max_kinetic_j_max"].as_f64().unwrap(),
+        "max kinetic energy drifted out of fixture envelope: {}",
+        first.summary.max_kinetic_energy_j
+    );
+}
+
 // ─── DemGrid cell-center coordinate helpers ────────────────────────────────
 
 #[test]

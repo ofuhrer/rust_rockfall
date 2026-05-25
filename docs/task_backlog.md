@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-516: Add Cross-Language Fixture Replay Check
-
-Goal: Verify that a small Python-generated hazard input fixture replays consistently through the Rust simulation path.
-
-Capability gap reduced: Catches drift between Python workflow artifacts and Rust execution assumptions.
-
-Why this outranks alternatives: Local and CI drift has already been a concern; a cross-language replay invariant gives higher confidence than isolated Python or Rust tests.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `src/simulation.rs`
-- `tests/terrain_edge_cases.rs`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Add a small fixture-backed test or shared expected-output artifact that validates a Python-generated case remains compatible with Rust trajectory execution.
-- Keep the check deterministic and cheap enough for CI.
-
-Definition of done:
-
-- Focused Python/Rust checks pass and the replay would fail on schema drift, coordinate drift, or nondeterministic trajectory output.
-
-Boundaries: Compatibility regression only; no new physics, no new external data, no operational claim, and no Balfrin dependency.
-
 ### TB-517: Tighten Output Family Budget Accounting
 
 Goal: Make output-family byte and file accounting consistent between hazard manifests, reducer pressure, and scenario storage pressure.

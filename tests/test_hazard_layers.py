@@ -382,6 +382,22 @@ class HazardLayerTests(unittest.TestCase):
         self.assertAlmostEqual(step.height(9.0, 0.0), 5.0)
         self.assertAlmostEqual(step.height(10.0, 0.0), 1.0)
 
+    def test_python_generated_replay_fixture_matches_rust_terrain_schema(self) -> None:
+        fixture = json.loads((FIXTURE / "python_generated_rust_replay_fixture.json").read_text(encoding="utf-8"))
+        python_case = fixture["python_hazard_case"]
+        rust_config = fixture["rust_simulation_config"]
+        rust_terrain = rust_config["terrain"]
+
+        self.assertEqual(fixture["schema_version"], "python_generated_rust_replay_fixture_v1")
+        self.assertEqual(python_case["terrain"]["type"], rust_terrain["kind"])
+        self.assertEqual(python_case["terrain"]["parameters"]["z0_m"], rust_terrain["z0_m"])
+        self.assertEqual(python_case["terrain"]["parameters"]["slope_x"], rust_terrain["slope_x"])
+        self.assertEqual(python_case["terrain"]["parameters"]["slope_y"], rust_terrain["slope_y"])
+
+        sampler = hazard.TerrainSampler.from_case(python_case)
+        self.assertAlmostEqual(sampler.height(0.0, 0.0), rust_terrain["z0_m"])
+        self.assertAlmostEqual(sampler.height(10.0, 2.0), rust_terrain["z0_m"] + 10.0 * rust_terrain["slope_x"])
+
     def test_target_line_conditional_diagnostics_write_csv_geojson_and_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)
