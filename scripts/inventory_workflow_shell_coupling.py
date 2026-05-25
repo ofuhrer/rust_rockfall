@@ -54,6 +54,30 @@ LOADED_SCRIPT_PATTERN = re.compile(
 )
 COMMAND_PLAN_HINTS = ("command plan", "command_plan", "blocked_template_commands")
 REPORT_HINTS = ("build_report(", "render_text_report(", "build_readiness_report(", "build_inventory(")
+SCRIPT_AUDIENCE_CATEGORIES = (
+    "workflow_front_door",
+    "user_facing",
+    "balfrin_only",
+    "historical_archival",
+    "internal_helper",
+)
+WORKFLOW_FRONT_DOOR_SCRIPTS = {
+    "scripts/run_aoi_hazard_workflow.py",
+}
+USER_FACING_SCRIPTS = {
+    "scripts/run_ci_local.py",
+    "scripts/generate_pilot_command_plan.py",
+}
+HISTORICAL_SCRIPT_PATH_MARKERS = (
+    "/archive/",
+    "/archived/",
+    "/legacy/",
+)
+BALFRIN_SCRIPT_NAME_MARKERS = (
+    "balfrin",
+    "slurm",
+    "postproc",
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -85,11 +109,28 @@ def build_inventory(
     generated_report_entries = [record for record in dynamic_import_entries if record["report_surface"]]
     command_plan_entries = [record for record in public_records if record["command_plan_surface"]]
     ignored_root_entries = [record for record in public_records if record["ignored_root_dependencies"]]
+    script_audience_entries = build_script_audience_inventory(records)
 
     status_entries = collect_status_entries(records)
     status_inventory = build_status_inventory(status_entries)
 
     families = [
+        {
+            "family": "script_audience_inventory",
+            "severity": "routing_inventory",
+            "summary": {
+                "script_count": len(script_audience_entries),
+                "audience_counts": dict(
+                    sorted(Counter(entry["audience"] for entry in script_audience_entries).items())
+                ),
+                "front_door_or_user_facing_count": sum(
+                    1
+                    for entry in script_audience_entries
+                    if entry["audience"] in {"workflow_front_door", "user_facing"}
+                ),
+            },
+            "entries": script_audience_entries,
+        },
         {
             "family": "dynamic_import_by_path",
             "severity": "needs_shared_helper",
@@ -190,6 +231,41 @@ def build_file_record(path: Path, *, root: Path) -> dict[str, Any]:
         "ignored_root_dependencies": ignored_root_dependencies,
         "ignored_root_only_dependency": ignored_root_only_dependency,
         "dynamic_imports": dynamic_imports,
+    }
+
+
+def build_script_audience_inventory(records: Sequence[dict[str, Any]]) -> list[dict[str, str]]:
+    entries = [
+        classify_script_audience(record["path"], record.get("text", ""))
+        for record in records
+        if record["path"].startswith("scripts/") and record["path"].endswith(".py")
+    ]
+    entries.sort(key=lambda item: (SCRIPT_AUDIENCE_CATEGORIES.index(item["audience"]), item["path"]))
+    return entries
+
+
+def classify_script_audience(rel_path: str, text: str = "") -> dict[str, str]:
+    path_lower = rel_path.lower()
+    name_lower = Path(rel_path).name.lower()
+    if any(marker in f"/{path_lower}" for marker in HISTORICAL_SCRIPT_PATH_MARKERS):
+        audience = "historical_archival"
+        reason = "script lives under an archive, archived, or legacy path"
+    elif rel_path in WORKFLOW_FRONT_DOOR_SCRIPTS:
+        audience = "workflow_front_door"
+        reason = "documented AOI workflow front door"
+    elif rel_path in USER_FACING_SCRIPTS:
+        audience = "user_facing"
+        reason = "documented public local command surface"
+    elif any(marker in name_lower for marker in BALFRIN_SCRIPT_NAME_MARKERS):
+        audience = "balfrin_only"
+        reason = "Balfrin/SLURM/postproc-specific helper"
+    else:
+        audience = "internal_helper"
+        reason = "default internal helper classification"
+    return {
+        "path": rel_path,
+        "audience": audience,
+        "classification_reason": reason,
     }
 
 
@@ -353,6 +429,9 @@ def render_text_report(inventory: dict[str, Any]) -> str:
         for key, value in family["summary"].items():
             lines.append(f"  {key}: {value}")
         for entry in family["entries"]:
+            if family["family"] == "script_audience_inventory":
+                lines.append(f"  - {entry['path']}: {entry['audience']} ({entry['classification_reason']})")
+                continue
             if family["family"] == "duplicated_status_vocabularies":
                 lines.append(
                     f"  - {entry['value']} (count={entry['occurrence_count']}, keys={', '.join(entry['keys'])})"

@@ -82,6 +82,47 @@ class WorkflowShellCouplingInventoryTests(unittest.TestCase):
             ["scripts/check_same_scale_artifact_readiness.py"],
         )
 
+    def test_script_audience_inventory_classifies_representative_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script_text = {
+                "scripts/run_aoi_hazard_workflow.py": '"""Front door."""\nimport argparse\n',
+                "scripts/run_ci_local.py": "import argparse\n",
+                "scripts/check_balfrin_remote_access_preflight.py": "import argparse\n",
+                "scripts/archive/old_probe.py": "import argparse\n",
+                "scripts/lib/path_helper.py": "def helper():\n    return None\n",
+            }
+            paths = []
+            for rel_path, text in script_text.items():
+                path = root / rel_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+                paths.append(path)
+
+            inventory = MODULE.build_inventory(paths, root=root)
+
+        audience_family = next(
+            family for family in inventory["families"] if family["family"] == "script_audience_inventory"
+        )
+        by_path = {entry["path"]: entry["audience"] for entry in audience_family["entries"]}
+
+        self.assertEqual(audience_family["severity"], "routing_inventory")
+        self.assertEqual(by_path["scripts/run_aoi_hazard_workflow.py"], "workflow_front_door")
+        self.assertEqual(by_path["scripts/run_ci_local.py"], "user_facing")
+        self.assertEqual(by_path["scripts/check_balfrin_remote_access_preflight.py"], "balfrin_only")
+        self.assertEqual(by_path["scripts/archive/old_probe.py"], "historical_archival")
+        self.assertEqual(by_path["scripts/lib/path_helper.py"], "internal_helper")
+        self.assertEqual(
+            audience_family["summary"]["audience_counts"],
+            {
+                "balfrin_only": 1,
+                "historical_archival": 1,
+                "internal_helper": 1,
+                "user_facing": 1,
+                "workflow_front_door": 1,
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

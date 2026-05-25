@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-526: Add A Script Audience Inventory To Existing Tooling
-
-Goal: Use existing repo-consistency tooling to inventory scripts by intended audience without creating another standalone audit script.
-
-Capability gap reduced: Makes it possible to shrink or hide internal helpers deliberately instead of by filename guesswork.
-
-Why this outranks alternatives: The script directory has grown large enough that simplification needs machine-checkable inventory evidence, but adding another one-off audit script would worsen the problem.
-
-Inspect first:
-
-- `scripts/check_repo_consistency.py`
-- `scripts/inventory_workflow_shell_coupling.py`
-- `tests/test_repo_consistency_claim_hygiene.py`
-- `docs/task_backlog.md`
-
-Deliverables:
-
-- Extend an existing consistency or inventory helper to report script audience counts such as user-facing, workflow-front-door, internal-helper, Balfrin-only, and historical/archival.
-- Add a focused fixture or test that proves at least representative scripts are classified deterministically.
-
-Definition of done:
-
-- Focused consistency/inventory tests pass and the output can be used to select consolidation candidates without adding a new script.
-
-Boundaries: Inventory reuse only; no new standalone script, no file moves yet, no operational claim, and no Balfrin dependency.
-
 ### TB-527: Route One AOI Workflow Through A Single Existing Front Door
 
 Goal: Make one documented AOI path runnable through `scripts/run_aoi_hazard_workflow.py` or another existing front-door command instead of a chain of individually invoked helper scripts.
