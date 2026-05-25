@@ -8096,3 +8096,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no physics model rewrite, parameter tuning, new example family, or performance-heavy ensemble.
 - Next task: `TB-543`
+
+### TB-543: Tighten Same-Scale Uncertainty Summary Around Scientific Decision Thresholds
+
+- Date: 2026-05-25
+- Commit: `9225f49`
+- Objective: classify same-scale uncertainty layers as interpretation-relevant or diagnostic-only without changing the claim boundary.
+- Files changed: `scripts/summarize_spatial_same_scale_uncertainty.py`, `tests/test_spatial_same_scale_uncertainty.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added conservative per-layer `interpretation_relevance` output to the existing spatial same-scale uncertainty summary.
+  - Classified closure-limiting layers as `interpretation_relevant` and unresolved/deferrable layers as `diagnostic_only`.
+  - Exposed the threshold basis for each layer, including the nodata/support threshold, localized high-uncertainty threshold, and measured p95 cell threshold.
+  - Added a compact aggregate relevance summary and text output lines that keep the no-claim-upgrade boundary explicit.
+  - Removed TB-543 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_spatial_same_scale_uncertainty -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_spatial_same_scale_uncertainty.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: interpretation aid only; no new uncertainty theory, threshold tuning, operational decision threshold, or claim upgrade.
+- Next task: `TB-544`
