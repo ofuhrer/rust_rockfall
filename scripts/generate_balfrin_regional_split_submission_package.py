@@ -69,14 +69,16 @@ def build_report(
     artifact_dir = resolve_output_root(artifact_dir)
     if not is_allowed_output_root(artifact_dir):
         raise BalfrinRegionalSplitSubmissionPackageError(
-            f"artifact-dir must stay under /tmp or validation/private: {artifact_dir}"
+            "artifact-dir must stay under /tmp, validation/private, or the reviewed Balfrin scratch root "
+            f"{handoff.BALFRIN_REVIEWED_SCRATCH_OUTPUT_ROOT}: {artifact_dir}"
         )
 
     handoff_artifact_dir = resolve_output_root(handoff_artifact_dir or artifact_dir / "handoff")
     pressure_probe_root = resolve_output_root(pressure_probe_root or artifact_dir / "regional_split_probe")
     if not is_allowed_output_root(handoff_artifact_dir) or not is_allowed_output_root(pressure_probe_root):
         raise BalfrinRegionalSplitSubmissionPackageError(
-            "handoff-artifact-dir and pressure-probe-root must stay under /tmp or validation/private"
+            "handoff-artifact-dir and pressure-probe-root must stay under /tmp, validation/private, "
+            f"or the reviewed Balfrin scratch root {handoff.BALFRIN_REVIEWED_SCRATCH_OUTPUT_ROOT}"
         )
 
     handoff_report = handoff_report_override or handoff.build_report(
@@ -539,7 +541,10 @@ def _blocked_stale_scratch_package(base: dict[str, Any], *, reason: str) -> dict
         "blocked_reason": reason,
         "preserve_command": f"tar -C {artifact_dir.parent} -czf {preserve_path} {artifact_dir.name}",
         "clean_command": f"rm -rf {artifact_dir}",
-        "use_unique_artifact_dir_guidance": "Retry with a new --artifact-dir under /tmp if the existing package must be retained.",
+        "use_unique_artifact_dir_guidance": (
+            "Retry with a new --artifact-dir under /tmp for local ephemeral work, "
+            "or under /scratch/mch/olifu/rust_rockfall on Balfrin."
+        ),
         "remediation": (
             "Preserve the existing scratch package or choose a unique --artifact-dir, then remove the stale "
             "local scratch directory before regenerating the regional split package."
@@ -704,7 +709,8 @@ def build_batched_scenario_smoke_package(
     artifact_dir = resolve_output_root(artifact_dir)
     if not is_allowed_output_root(artifact_dir):
         raise BalfrinRegionalSplitSubmissionPackageError(
-            f"artifact-dir must stay under /tmp or validation/private: {artifact_dir}"
+            "artifact-dir must stay under /tmp, validation/private, or the reviewed Balfrin scratch root "
+            f"{handoff.BALFRIN_REVIEWED_SCRATCH_OUTPUT_ROOT}: {artifact_dir}"
         )
 
     contract = dict(scenario_batching_contract or {})

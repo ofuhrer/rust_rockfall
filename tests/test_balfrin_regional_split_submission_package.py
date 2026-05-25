@@ -176,6 +176,10 @@ class BalfrinRegionalSplitSubmissionPackageTests(unittest.TestCase):
         self.assertTrue(report["remote_head_alignment"]["aligned"])
         self.assertEqual(report["generation_inputs"]["local_package_source_head"], "abc123")
 
+    def test_reviewed_balfrin_scratch_package_root_is_allowed(self) -> None:
+        artifact_dir = Path("/scratch/mch/olifu/rust_rockfall/submission_packages/tb565_regional_split_package")
+        self.assertTrue(MODULE.is_allowed_output_root(artifact_dir))
+
     def test_tb432_dirty_preflight_fixture_fails_closed_without_silent_reuse(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "regional_split_package"

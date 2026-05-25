@@ -45,6 +45,7 @@ DEFAULT_RESTARTABILITY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "restartability"
 DEFAULT_UNCERTAINTY_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "uncertainty"
 DEFAULT_PRESSURE_ARTIFACT_DIR = DEFAULT_ARTIFACT_DIR / "multi_zone_pressure"
 DEFAULT_PRESSURE_PROBE_ROOT = Path("/tmp/rust_rockfall/tb187_multi_zone_probe")
+BALFRIN_REVIEWED_SCRATCH_OUTPUT_ROOT = Path("/scratch/mch/olifu/rust_rockfall").resolve()
 DEFAULT_AUTHORIZATION_RECORD_PATH = DEFAULT_ARTIFACT_DIR / "balfrin_multi_zone_live_authorization_record_v1.yaml"
 DEFAULT_PACKAGE_JSON = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.json"
 DEFAULT_PACKAGE_MD = DEFAULT_ARTIFACT_DIR / f"{SCHEMA_VERSION}.txt"
@@ -4252,6 +4253,11 @@ def is_allowed_output_root(path: Path) -> bool:
         pass
     try:
         path.relative_to((ROOT / "validation" / "private").resolve())
+        return True
+    except ValueError:
+        pass
+    try:
+        path.relative_to(BALFRIN_REVIEWED_SCRATCH_OUTPUT_ROOT)
         return True
     except ValueError:
         return False
