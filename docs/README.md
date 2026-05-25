@@ -139,6 +139,8 @@ starting context for implementation unless a task explicitly asks for them.
   record.
 - `balfrin_16_zone_handoff_tb573.md`: TB-573 diagnostic-profile 16-zone
   handoff evidence from the Balfrin checkout.
+- `balfrin_16_zone_postproc_run_tb574.md`: TB-574 no-submit decision for the
+  blocked 16-zone diagnostic `postproc` package.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

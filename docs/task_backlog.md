@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-574: Execute One 16-Zone Diagnostic Postproc Probe If Checks Pass
-
-Goal: Submit and monitor one 16-zone diagnostic reduced-output Balfrin `postproc` job from the reviewed diagnostic package if TB-573 passes.
-
-Capability gap reduced: Provides the first current single-node measured evidence beyond the 12-split/regional boundary under the softened diagnostic profile.
-
-Why this outranks alternatives: Balfrin is currently underutilized, and this is the most direct measurement waiting by the old review budget.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `docs/orchestration_strategy.md`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- Submit exactly one reviewed 16-zone diagnostic `postproc` job from the Balfrin checkout when checks pass.
-- Monitor to terminal state.
-- Record scheduler state, job id, exit code, elapsed time, MaxRSS, run root, queue state, package hashes, and scratch/persistence paths.
-
-Definition of done:
-
-- The job completes successfully, or the exact package, queue, scheduler, and run-root reason for not completing is recorded.
-
-
 ### TB-575: Collect And Promote 16-Zone Diagnostic Metrics
 
 Goal: Preserve and promote the TB-574 run-root evidence into the Balfrin evidence and scale-readiness surfaces.
