@@ -7169,3 +7169,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: diagnostic replay only; no calibration, no parameter tuning, no acceptance upgrade, no operational claim, and no Balfrin dependency.
 - Next task: `TB-505`
+
+### TB-505: Reduce Ignored Result Root Noise Further
+
+- Date: 2026-05-25
+- Commit: `8b84099`
+- Objective: reduce local ignored generated-result clutter and prevent stale task probe roots from accumulating again.
+- Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_claim_hygiene.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a repository-consistency guard for ignored `tbNNN` generated-result roots under `hazard/results/` and `validation/results/`.
+  - Added finder coverage that rejects stale task result roots while leaving named benchmark roots such as `hazard/results/tschamut_public_pilot/` and normal validation outputs alone.
+  - Cleaned the existing ignored local `tbNNN` result roots from `hazard/results/` and `validation/results/`.
+  - Did not remove tracked files, checked-in fixtures, observed evidence, or current benchmark roots.
+  - Removed TB-505 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_rejects_generated_copy_suffix_artifacts tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_rejects_stale_task_result_roots tests.test_repo_consistency_claim_hygiene.HazardClaimHygieneTests.test_ignored_artifact_audit_classifies_current_test_files -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_bounded_validation_output_profile -v`
+  - `git status --ignored --short -- hazard/results validation/results | rg "!! (hazard|validation)/results/tb[0-9]{3}" || true`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/check_repo_consistency.py tests/test_repo_consistency_claim_hygiene.py tests/test_bounded_validation_output_profile.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: repository hygiene only; no scientific data deletion, no workflow claim change, no new admin script, and no Balfrin dependency.
+- Next task: `TB-506`
