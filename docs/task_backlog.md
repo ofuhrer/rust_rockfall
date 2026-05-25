@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-482: Freeze Reviewed Adjacent Tschamut Source Zones
-
-Goal: Turn the existing adjacent real-terrain release-zone candidate review into a concrete accepted/rejected source-zone input for the next local run.
-
-Capability gap reduced: Moves release-zone generation from broad candidate output toward reviewable, reusable real-terrain source-zone evidence.
-
-Why this outranks alternatives: Scenario regeneration and scientific comparison need a reviewed source-zone subset rather than another unconstrained candidate sweep.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review.csv`
-- `validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- Apply the existing candidate-review path to produce an accepted/rejected adjacent Tschamut source-zone artifact or update the existing review output if it is stale.
-- Verify the accepted subset is non-empty, spatially inspectable as GeoJSON/mask output, and explicitly separates accepted, rejected, and unreviewed candidates.
-
-Definition of done:
-
-- Focused candidate-review tests pass, the accepted source-zone subset can be consumed by the existing scenario-generation path, and no new planning/admin script is added.
-
-Boundaries: Human-review source-zone evidence only; no release-frequency, physical-probability, calibration, operational, or final source-zone interpretation claim.
-
 ### TB-483: Regenerate Scenarios From Reviewed Source Zones
 
 Goal: Generate a fresh scenario table from the reviewed adjacent Tschamut source-zone subset and run the smallest local scenario preview or smoke path that consumes it.

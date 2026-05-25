@@ -6682,3 +6682,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measured local hazard-layer/reducer optimization only; no scale-up claim beyond the measured local case, no Balfrin submission, no distributed execution, no output semantics change, and no broad refactor.
 - Next task: backlog refill
+
+### TB-482: Freeze Reviewed Adjacent Tschamut Source Zones
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: turn the existing adjacent Tschamut candidate review into a concrete accepted source-zone subset for downstream scenario generation.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Re-applied the existing adjacent candidate review package with `tschamut_adjacent_prau_mulins_candidate_v1=accepted` into ignored output root `hazard/results/tb482_reviewed_adjacent_source_zones`.
+  - The review application returned `review_package_status=review_applied` and `review_application_status=validated`.
+  - The accepted subset is non-empty: `accepted_candidate_ids=["tschamut_adjacent_prau_mulins_candidate_v1"]`, `accepted_release_zone_count=1`, `component_area_m2=7650.0`, `component_cell_count=1`, and `selection_manifest_status=selected_subset_ready`.
+  - The output separates review states explicitly with `accepted=1`, `rejected=0`, and `needs_field_review=0`, while preserving GeoJSON, mask, CSV, and manifest outputs under the ignored TB-482 root.
+  - Removed TB-482 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --mode review-apply --review-package validation/private/source_zone_review/tschamut_adjacent_prau_mulins_candidate_v1_review_manifest.json --candidate-review-decision tschamut_adjacent_prau_mulins_candidate_v1=accepted --output-root hazard/results/tb482_reviewed_adjacent_source_zones --format json > /tmp/tb482_review_apply.json`
+  - `jq '{review_package_status, review_application_status, accepted_candidate_ids, rejected_candidate_ids, needs_field_review_candidate_ids, separation:.candidate_release_zone_separation_summary, selection:.selection_manifest, outputs}' /tmp/tb482_review_apply.json`
+  - `.venv/bin/python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_review_apply_edits_candidates_and_validates_provenance tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_review_apply_rejects_unknown_ids_unreviewed_accepts_overclaims_and_empty_acceptance -v`
+- Result/status: implemented_measured
+- Boundaries: human-review source-zone evidence only; no release-frequency, physical-probability, calibration, operational, or final source-zone interpretation claim.
+- Next task: `TB-483`
