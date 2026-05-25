@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-536: Repair Chant Sura Terrain Extent QA
-
-Goal: Make the local Chant Sura readiness surface isolate terrain extent and domain mismatches clearly enough to drive the next local staging correction.
-
-Capability gap reduced: Turns second-site scientific readiness from a generic blocker into a specific terrain/domain QA action.
-
-Why this outranks alternatives: Chant Sura is the nearest local second-site validation path, and terrain extent ambiguity blocks every downstream comparison.
-
-Inspect first:
-
-- `scripts/inventory_second_site_local_blockers.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `tests/test_second_site_local_blockers.py`
-
-Deliverables:
-
-- Update the existing local blocker inventory or preflight output to distinguish terrain crop extent, AOI coverage, and source-zone domain mismatches.
-- Add or update focused fixture-backed tests that name the exact smallest local staging or preprocessing action after a mismatch.
-
-Definition of done:
-
-- Focused second-site blocker tests pass, and the local-only task context reports a concrete next Chant Sura terrain QA action instead of a generic blocked state.
-
-Boundaries: Local fixtures and metadata only; no downloads, no new real data, no ensemble run, no operational claim, and no validation claim upgrade.
-
 ### TB-537: Add A Local Public-Context Staging Dry Run For Chant Sura
 
 Goal: Provide a no-download dry run that shows which public-context inputs Chant Sura still needs before local second-site execution.

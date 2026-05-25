@@ -73,6 +73,67 @@ class SecondSiteLocalBlockerTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "blocked_terrain_qa")
         self.assertEqual(result["blocked_reason"], "configured_site_extent_exceeds_terrain_crop")
+        self.assertIn("terrain crop", result["next_local_action"])
+
+    def test_blocked_aoi_tile_catalog_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            catalog_path = root / "aoi_tile_catalog.yaml"
+            catalog_path.write_text(
+                "\n".join(
+                    [
+                        "tiles:",
+                        "  - tile_id: small",
+                        "    extent_lv95_m:",
+                        "      xmin: 0",
+                        "      ymin: 0",
+                        "      xmax: 2",
+                        "      ymax: 2",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            site_config = {"site_extent": {"xmin": 0, "ymin": 0, "xmax": 9, "ymax": 9}}
+            requirements = {
+                "aoi_tile_catalog": {"path_or_pattern": str(catalog_path)},
+            }
+
+            result = blockers.aoi_tile_catalog_qa_status(site_config, requirements)
+
+        self.assertEqual(result["status"], "blocked_aoi_tile_qa")
+        self.assertEqual(result["blocked_reason"], "configured_site_extent_exceeds_aoi_tile_catalog")
+        self.assertIn("AOI tile catalog", result["next_local_action"])
+
+    def test_blocked_source_zone_domain_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_zone_path = root / "source_zone_metadata.yaml"
+            source_zone_path.write_text(
+                "\n".join(
+                    [
+                        "geometry:",
+                        "  vertices:",
+                        "    - [1, 1]",
+                        "    - [12, 1]",
+                        "release_points:",
+                        "  - x: 2",
+                        "    y: 20",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            site_config = {"site_extent": {"xmin": 0, "ymin": 0, "xmax": 9, "ymax": 9}}
+            requirements = {
+                "source_zone_metadata": {"path_or_pattern": str(source_zone_path)},
+            }
+
+            result = blockers.source_zone_domain_qa_status(site_config, requirements)
+
+        self.assertEqual(result["status"], "blocked_source_zone_domain_qa")
+        self.assertEqual(result["blocked_reason"], "source_zone_coordinates_outside_configured_site_extent")
+        self.assertEqual(result["outside_vertex_count"], 1)
+        self.assertEqual(result["outside_release_point_count"], 1)
+        self.assertIn("source-zone metadata", result["next_local_action"])
 
     def test_text_report_names_groups_and_commands(self) -> None:
         text = blockers.render_text_report(blockers.build_report())

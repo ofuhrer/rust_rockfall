@@ -136,6 +136,13 @@ def build_group(
         terrain_qa = terrain_domain_qa_status(site_config_data, requirements)
         if terrain_qa["status"] != "ready":
             blockers.append(terrain_qa)
+        aoi_tile_qa = aoi_tile_catalog_qa_status(site_config_data, requirements)
+        if aoi_tile_qa["status"] != "ready":
+            blockers.append(aoi_tile_qa)
+    if group_id == "source_zone_inputs" and not blockers:
+        source_zone_qa = source_zone_domain_qa_status(site_config_data, requirements)
+        if source_zone_qa["status"] != "ready":
+            blockers.append(source_zone_qa)
     status = "ready" if not blockers else blockers[0]["status"]
     return {
         "group_id": group_id,
@@ -204,9 +211,142 @@ def terrain_domain_qa_status(site_config_data: dict[str, Any], requirements: dic
         "status": "blocked_terrain_qa",
         "expected_path": str(terrain_metadata_path),
         "blocked_reason": "configured_site_extent_exceeds_terrain_crop",
+        "next_local_action": "restage the terrain crop so it fully contains the configured site extent",
         "site_extent_lv95_m": site_extent,
         "terrain_extent_lv95_m": terrain_extent,
     }
+
+
+def aoi_tile_catalog_qa_status(site_config_data: dict[str, Any], requirements: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    tile_catalog_path = Path(str(requirements.get("aoi_tile_catalog", {}).get("path_or_pattern") or ""))
+    if not tile_catalog_path.exists():
+        return {
+            "category": "aoi_tile_catalog_qa",
+            "status": "blocked_missing_inputs",
+            "expected_path": str(tile_catalog_path),
+            "blocked_reason": "aoi tile catalog is missing",
+            "next_local_action": "stage or regenerate the AOI tile catalog before terrain preprocessing",
+        }
+    site_extent = site_config_data.get("site_extent") if isinstance(site_config_data.get("site_extent"), dict) else {}
+    catalog = load_yaml(tile_catalog_path)
+    tile_extents = [
+        tile.get("extent_lv95_m")
+        for tile in catalog.get("tiles", [])
+        if isinstance(tile, dict) and isinstance(tile.get("extent_lv95_m"), dict)
+    ]
+    if not site_extent or not tile_extents:
+        return {
+            "category": "aoi_tile_catalog_qa",
+            "status": "blocked_aoi_tile_qa",
+            "expected_path": str(tile_catalog_path),
+            "blocked_reason": "site extent or AOI tile extents are incomplete",
+            "next_local_action": "regenerate the AOI tile catalog with LV95 tile extents",
+        }
+    if any(contains_extent(tile_extent, site_extent) for tile_extent in tile_extents):
+        return {
+            "category": "aoi_tile_catalog_qa",
+            "status": "ready",
+            "expected_path": str(tile_catalog_path),
+            "blocked_reason": "",
+        }
+    return {
+        "category": "aoi_tile_catalog_qa",
+        "status": "blocked_aoi_tile_qa",
+        "expected_path": str(tile_catalog_path),
+        "blocked_reason": "configured_site_extent_exceeds_aoi_tile_catalog",
+        "next_local_action": "update the AOI tile catalog or site extent before terrain preprocessing",
+        "site_extent_lv95_m": site_extent,
+        "tile_extent_count": len(tile_extents),
+    }
+
+
+def source_zone_domain_qa_status(site_config_data: dict[str, Any], requirements: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    source_zone_path = Path(str(requirements.get("source_zone_metadata", {}).get("path_or_pattern") or ""))
+    if not source_zone_path.exists():
+        return {
+            "category": "source_zone_domain_qa",
+            "status": "blocked_missing_inputs",
+            "expected_path": str(source_zone_path),
+            "blocked_reason": "source-zone metadata is missing",
+            "next_local_action": "stage source-zone metadata before candidate review",
+        }
+    metadata = load_yaml(source_zone_path)
+    site_extent = site_config_data.get("site_extent") if isinstance(site_config_data.get("site_extent"), dict) else {}
+    vertices = source_zone_vertices(metadata)
+    release_points = source_zone_release_points(metadata)
+    if not site_extent or (not vertices and not release_points):
+        return {
+            "category": "source_zone_domain_qa",
+            "status": "blocked_source_zone_domain_qa",
+            "expected_path": str(source_zone_path),
+            "blocked_reason": "site extent or source-zone coordinates are incomplete",
+            "next_local_action": "add LV95 source-zone vertices or release points before candidate review",
+        }
+    outside_vertices = [point for point in vertices if not point_in_extent(point, site_extent)]
+    outside_release_points = [point for point in release_points if not point_in_extent(point, site_extent)]
+    if not outside_vertices and not outside_release_points:
+        return {
+            "category": "source_zone_domain_qa",
+            "status": "ready",
+            "expected_path": str(source_zone_path),
+            "blocked_reason": "",
+        }
+    return {
+        "category": "source_zone_domain_qa",
+        "status": "blocked_source_zone_domain_qa",
+        "expected_path": str(source_zone_path),
+        "blocked_reason": "source_zone_coordinates_outside_configured_site_extent",
+        "next_local_action": "correct the source-zone metadata or expand the configured site extent before candidate review",
+        "outside_vertex_count": len(outside_vertices),
+        "outside_release_point_count": len(outside_release_points),
+    }
+
+
+def source_zone_vertices(metadata: dict[str, Any]) -> list[tuple[float, float]]:
+    geometry = metadata.get("geometry") if isinstance(metadata.get("geometry"), dict) else {}
+    raw_vertices = geometry.get("vertices") or geometry.get("coordinates") or []
+    vertices: list[tuple[float, float]] = []
+    for raw in raw_vertices:
+        if isinstance(raw, list) and raw and isinstance(raw[0], list):
+            for nested in raw:
+                point = xy_pair(nested)
+                if point is not None:
+                    vertices.append(point)
+        else:
+            point = xy_pair(raw)
+            if point is not None:
+                vertices.append(point)
+    return vertices
+
+
+def source_zone_release_points(metadata: dict[str, Any]) -> list[tuple[float, float]]:
+    points = []
+    for raw in metadata.get("release_points", []) or []:
+        if isinstance(raw, dict):
+            point = xy_pair([raw.get("x"), raw.get("y")])
+            if point is not None:
+                points.append(point)
+    return points
+
+
+def xy_pair(raw: Any) -> tuple[float, float] | None:
+    if not isinstance(raw, (list, tuple)) or len(raw) < 2:
+        return None
+    try:
+        return (float(raw[0]), float(raw[1]))
+    except (TypeError, ValueError):
+        return None
+
+
+def point_in_extent(point: tuple[float, float], extent: dict[str, Any]) -> bool:
+    try:
+        x, y = point
+        return (
+            float(extent["xmin"]) <= x <= float(extent["xmax"])
+            and float(extent["ymin"]) <= y <= float(extent["ymax"])
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 def contains_extent(container: dict[str, Any], inner: dict[str, Any]) -> bool:
@@ -297,6 +437,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         for blocker in group["blockers"]:
             reason = blocker.get("blocked_reason") or blocker.get("status", "")
             lines.append(f"    blocker: {blocker.get('category', '')} ({reason})")
+            if blocker.get("next_local_action"):
+                lines.append(f"      next_local_action: {blocker['next_local_action']}")
         lines.append(f"    next_local_command: {group['next_local_command']}")
     lines.append(f"next_local_unblock_command: {report['next_local_unblock_command']}")
     return "\n".join(lines)
