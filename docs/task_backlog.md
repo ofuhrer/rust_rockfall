@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-481: Profile And Optimize One Local Ensemble Hotspot
-
-Goal: Reduce runtime or memory for one actual local ensemble or hazard-layer run by profiling and optimizing the dominant hotspot.
-
-Capability gap reduced: Improves the practical path from local development to larger AOI ensembles.
-
-Why this outranks alternatives: Scaling progress should come from measured runtime or memory bottlenecks, not from more orchestration.
-
-Inspect first:
-
-- `src/simulation.rs`
-- `src/terrain.rs`
-- `scripts/hazard_accumulation_benchmark.py`
-- `validation/cases/performance_smoke.yaml`
-
-Deliverables:
-
-- Profile an existing local ensemble or performance smoke run.
-- Implement one targeted Rust or existing workflow-code optimization.
-- Record before/after runtime or memory on the same input.
-
-Definition of done:
-
-- The optimized path preserves test results, shows a measured runtime or memory improvement on the selected local case, and avoids adding new benchmark/admin scripts unless an existing benchmark entry is extended.
-
-Boundaries: No scale-up claim beyond the measured local case, no Balfrin submission, no distributed execution, no output semantics change, and no broad refactor without measured need.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

@@ -853,7 +853,7 @@ def run_trajectory_chunk(
             trajectory_ids=tuple(trajectory_ids),
             execution_signature=execution_signature,
         )
-        write_text(partial_state_path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        write_compact_json(partial_state_path, payload)
         manifest["partial_state_path"] = str(partial_state_path)
         manifest["partial_state_schema_version"] = TRAJECTORY_PARTIAL_STATE_SCHEMA_VERSION
         manifest["output_bytes"] = partial_state_path.stat().st_size
@@ -3400,6 +3400,10 @@ def read_json(path: Path | None) -> dict[str, Any]:
         return json.load(file)
 
 
+def write_compact_json(path: Path, payload: dict[str, Any]) -> None:
+    write_text(path, json.dumps(payload, separators=(",", ":")) + "\n")
+
+
 def case_output_paths(case: dict[str, Any], key: str) -> list[Path]:
     value = (case.get("outputs") or {}).get(key)
     if value is None:
@@ -4509,7 +4513,7 @@ def run_reducer_chunk(
             chunk,
             execution_signature=execution_signature,
         )
-        write_text(partial_state_path, json.dumps(partial_state_payload, indent=2, sort_keys=True) + "\n")
+        write_compact_json(partial_state_path, partial_state_payload)
         manifest["partial_state_path"] = str(partial_state_path)
         manifest["partial_state_schema_version"] = CHUNK_PARTIAL_STATE_SCHEMA_VERSION
         manifest["output_bytes"] = partial_state_path.stat().st_size

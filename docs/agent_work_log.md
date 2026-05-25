@@ -6655,3 +6655,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: packaging and review usability only; no operational-map claim, no QGIS plugin, no risk/exposure/vulnerability content, no Balfrin submission, and no annualized semantics.
 - Next task: `TB-481`
+
+### TB-481: Profile And Optimize One Local Ensemble Hotspot
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: profile a local hazard-layer benchmark and optimize one measured runtime/output hotspot.
+- Files changed: `scripts/build_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Profiled the existing local hazard accumulation benchmark with `cProfile`.
+  - The dominant local hotspot was JSON serialization of reducer/trajectory partial-state files, with `json.encoder` paths taking the largest cumulative time.
+  - Changed internal chunk partial-state writes from pretty/sorted JSON to compact JSON while keeping the same JSON schema and loader path.
+  - Before/after on the same benchmark input: smallest multi-zone baseline accumulation improved from `0.07151937502203509 s` to `0.029820249998010695 s`; baseline total wall time improved from `0.17009729199344292 s` to `0.12151195798651315 s`.
+  - Output-heavy guardrail total wall time improved from `0.3876584159734193 s` to `0.3546729579975363 s`.
+  - Chunk-state directory size dropped from about `2448 KiB` before to `816-820 KiB` after for the measured reducer chunk outputs.
+  - Determinism checks still passed: `baseline_replay_match=true`, `layer_signature_match=true`, and stable manifest hashes matched.
+  - Removed TB-481 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/local_hotspot_tb481_before --json-output /tmp/tb481_before.json > /tmp/tb481_before_stdout.json`
+  - `PYENV_VERSION=system uv run python -m cProfile -o /tmp/tb481_before.prof scripts/hazard_accumulation_benchmark.py --format text --benchmark-root hazard/results/local_hotspot_tb481_profile_before > /tmp/tb481_profile_before.txt`
+  - `.venv/bin/python -m unittest tests.test_hazard_accumulation_benchmark -v`
+  - `.venv/bin/python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests tests.test_hazard_layers.HazardLayerTests.test_trajectory_chunked_generation_records_artifacts_and_linkage -v`
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/local_hotspot_tb481_after --json-output /tmp/tb481_after.json > /tmp/tb481_after_stdout.json`
+  - `jq -n --slurpfile before /tmp/tb481_before.json --slurpfile after /tmp/tb481_after.json '{before:{baseline_accumulation:$before[0].baseline_result.performance.accumulation_seconds, baseline_total:$before[0].baseline_result.performance.total_wall_seconds, output_heavy_total:$before[0].output_heavy_result.performance.total_wall_seconds, output_heavy_bytes:$before[0].output_heavy_result.performance.output_bytes}, after:{baseline_accumulation:$after[0].baseline_result.performance.accumulation_seconds, baseline_total:$after[0].baseline_result.performance.total_wall_seconds, output_heavy_total:$after[0].output_heavy_result.performance.total_wall_seconds, output_heavy_bytes:$after[0].output_heavy_result.performance.output_bytes}, deltas:{baseline_accumulation_seconds:($before[0].baseline_result.performance.accumulation_seconds-$after[0].baseline_result.performance.accumulation_seconds), baseline_total_seconds:($before[0].baseline_result.performance.total_wall_seconds-$after[0].baseline_result.performance.total_wall_seconds), output_heavy_total_seconds:($before[0].output_heavy_result.performance.total_wall_seconds-$after[0].output_heavy_result.performance.total_wall_seconds), output_heavy_bytes:($before[0].output_heavy_result.performance.output_bytes-$after[0].output_heavy_result.performance.output_bytes)}, deterministic:$after[0].determinism}'`
+  - `du -sk hazard/results/local_hotspot_tb481_before/*/*/*/hazard/chunks hazard/results/local_hotspot_tb481_after/*/*/*/hazard/chunks`
+- Result/status: implemented_measured
+- Boundaries: measured local hazard-layer/reducer optimization only; no scale-up claim beyond the measured local case, no Balfrin submission, no distributed execution, no output semantics change, and no broad refactor.
+- Next task: backlog refill
