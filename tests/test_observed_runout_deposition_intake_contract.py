@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+from contextlib import redirect_stdout
 from copy import deepcopy
 import json
 import tempfile
@@ -74,6 +76,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "acquisition_review_report",
             "real_input_intake_report",
             "fixture_acceptance_smoke",
+            "intake_acceptance_smoke_summary",
             "dataset_role_classification",
             "claim_boundaries",
             "blocked_reason",
@@ -119,6 +122,16 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         )
         self.assertFalse(report["fixture_acceptance_smoke"]["fixture_classification"]["holdout_eligibility"])
         self.assertEqual(report["fixture_acceptance_smoke"]["physical_evidence_status"], "not_established")
+        self.assertIn("validation evidence", report["fixture_acceptance_smoke"]["validation_evidence_gap"].lower())
+        smoke_summary = report["intake_acceptance_smoke_summary"]
+        self.assertEqual(smoke_summary["smoke_status"], "measured")
+        self.assertEqual(smoke_summary["accepted_evidence_package"]["acceptance_status"], "ready")
+        self.assertEqual(smoke_summary["accepted_evidence_package"]["validation_role"], "benchmark_intake_only")
+        self.assertEqual(smoke_summary["rejected_evidence_package"]["acceptance_status"], "blocked_schema_gap")
+        self.assertIn("missing_provenance", smoke_summary["rejected_evidence_package"]["blocking_reasons"])
+        self.assertEqual(smoke_summary["rejected_evidence_package"]["first_missing_provenance_field"], "provenance_uri")
+        self.assertFalse(smoke_summary["accepted_intake_is_validation_evidence"])
+        self.assertIn("validation still needs", smoke_summary["remaining_validation_or_calibration_gap"])
         self.assertEqual(report["candidate_acquisition_report"]["recommendation"], "blocked_license_or_provenance")
         self.assertEqual(
             report["candidate_acquisition_report"]["selected_candidate_path"],
@@ -213,6 +226,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
         self.assertEqual(report["fixture_acceptance_smoke"]["physical_evidence_status"], "not_established")
+        self.assertIn("validation evidence", report["fixture_acceptance_smoke"]["validation_evidence_gap"].lower())
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
         self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][0]["blocking_reasons"])
         self.assertIn("missing_inputs", report["acquisition_blocker_matrix"][2]["blocking_reasons"])
@@ -292,6 +306,10 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             current_state["calibration_missing_inputs"],
             [str(calibration_root)],
         )
+        self.assertIn("not validation evidence", report["current_state_summary"][0]["summary"])
+        self.assertEqual(report["intake_acceptance_smoke_summary"]["real_input_intake_status"], "ready")
+        self.assertFalse(report["intake_acceptance_smoke_summary"]["accepted_intake_is_validation_evidence"])
+        self.assertIn("separated scoring case", report["intake_acceptance_smoke_summary"]["remaining_validation_or_calibration_gap"])
         self.assertEqual(report["dataset_role_classification"][0]["status"], "present")
         self.assertEqual(report["dataset_role_classification"][1]["status"], "present")
         self.assertEqual(report["dataset_role_classification"][4]["status"], "present")
@@ -383,6 +401,11 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("acquisition_review_report:", text)
         self.assertIn("review_status: rejected", text)
         self.assertIn("fixture_acceptance_smoke:", text)
+        self.assertIn("intake_acceptance_smoke_summary:", text)
+        self.assertIn("accepted_evidence_package.status: ready", text)
+        self.assertIn("rejected_evidence_package.status: blocked_schema_gap", text)
+        self.assertIn("accepted_intake_is_validation_evidence: false", text)
+        self.assertIn("remaining_validation_or_calibration_gap:", text)
         self.assertIn("physical_credibility_gap_update:", text)
         self.assertIn("candidate_acquisition_report:", text)
         self.assertIn("dataset_role_classification:", text)
@@ -392,6 +415,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
         self.assertIn("benchmark_intake_dataset_status: absent", text)
         self.assertIn("physical_evidence_status: not_established", text)
+        self.assertIn("validation_evidence_gap: Fixture-backed acceptance smoke is not validation evidence", text)
         self.assertIn("recommendation: blocked_license_or_provenance", text)
         self.assertIn("No calibration dataset is available for objective fitting.", text)
         self.assertIn("first_acquisition_action: Stage an independent observed runout/deposition benchmark manifest", text)
@@ -444,6 +468,15 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(classified["calibration_validation_role"]["calibration"], "not_allowed")
         self.assertEqual(classified["calibration_validation_role"]["validation"], "benchmark_intake_only")
         self.assertFalse(classified["holdout_eligibility"])
+
+    def test_acquisition_fixture_classifier_rejects_validation_overclaim(self) -> None:
+        fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
+        fixture["calibration_validation_role"]["validation"] = "benchmark_intake_and_validation"
+        classified = helper.classify_acquisition_fixture_row("observed_runout_deposition", fixture)
+
+        self.assertEqual(classified["acceptance_status"], "blocked_role_unclear")
+        self.assertEqual(classified["calibration_validation_role_status"], "unclear")
+        self.assertIn("unclear_calibration_role", classified["blocking_reasons"])
 
     def test_acquisition_fixture_classifier_flags_missing_geometry(self) -> None:
         fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
@@ -582,7 +615,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
     def test_main_writes_pack_and_exits_successfully_when_output_root_is_supplied(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_root = Path(tmpdir) / "observed_runout_deposition_intake_readiness_pack_v1"
-            exit_code = helper.main(["--output-root", str(output_root), "--format", "json"])
+            with redirect_stdout(io.StringIO()):
+                exit_code = helper.main(["--output-root", str(output_root), "--format", "json"])
             self.assertEqual(exit_code, 0)
             self.assertTrue((output_root / "template_manifest.yaml").exists())
             self.assertTrue((output_root / "benchmark_intake_manifest.yaml").exists())

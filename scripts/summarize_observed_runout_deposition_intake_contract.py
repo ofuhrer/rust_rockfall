@@ -426,6 +426,10 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     next_action_recommendation = build_next_action_recommendation(acquisition_blocker_matrix)
     dataset_role_classification = build_dataset_role_classification(current_state=current_state)
     fixture_acceptance_smoke = build_fixture_acceptance_smoke()
+    intake_acceptance_smoke_summary = build_intake_acceptance_smoke_summary(
+        real_input_intake_report=real_input_intake_report,
+        fixture_acceptance_smoke=fixture_acceptance_smoke,
+    )
     candidate_acquisition_report = build_candidate_acquisition_report(current_state=current_state)
     benchmark_intake_manifest = build_benchmark_intake_manifest(
         contract=contract,
@@ -457,6 +461,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "dataset_role_classification": dataset_role_classification,
                 "acquisition_review_report": acquisition_review_report,
                 "fixture_acceptance_smoke": fixture_acceptance_smoke,
+                "intake_acceptance_smoke_summary": intake_acceptance_smoke_summary,
                 "real_input_intake_report": real_input_intake_report,
                 "claim_boundaries": claim_boundaries(),
                 "current_state_summary": current_state_summary(
@@ -479,6 +484,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "dataset_role_classification": dataset_role_classification,
             "acquisition_review_report": acquisition_review_report,
             "fixture_acceptance_smoke": fixture_acceptance_smoke,
+            "intake_acceptance_smoke_summary": intake_acceptance_smoke_summary,
             "real_input_intake_report": real_input_intake_report,
             "claim_boundaries": claim_boundaries(),
             "blocked_reason": None,
@@ -757,6 +763,48 @@ def build_fixture_acceptance_smoke() -> dict[str, Any]:
         "fixture_classification": classification,
         "physical_evidence_status": "not_established",
         "physical_evidence_note": "Fixture-backed schema smoke only; real physical evidence is not established by this report.",
+        "validation_evidence_gap": "Fixture-backed acceptance smoke is not validation evidence; calibration data remain absent.",
+    }
+
+
+def build_intake_acceptance_smoke_summary(
+    *,
+    real_input_intake_report: dict[str, Any],
+    fixture_acceptance_smoke: dict[str, Any],
+) -> dict[str, Any]:
+    accepted_fixture = fixture_acceptance_smoke["fixture_classification"]
+    rejected_fixture = load_yaml_fixture(EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)
+    rejected_fixture["provenance"].pop("provenance_uri", None)
+    rejected_fixture_classification = classify_acquisition_fixture_row(
+        "observed_runout_deposition",
+        rejected_fixture,
+    )
+    return {
+        "smoke_status": "measured",
+        "accepted_evidence_package": {
+            "package_role": "schema_fixture_only",
+            "acceptance_status": accepted_fixture["acceptance_status"],
+            "calibration_role": accepted_fixture["calibration_validation_role"]["calibration"],
+            "validation_role": accepted_fixture["calibration_validation_role"]["validation"],
+            "holdout_eligibility": accepted_fixture["holdout_eligibility"],
+        },
+        "rejected_evidence_package": {
+            "package_role": "schema_gap_fixture",
+            "acceptance_status": rejected_fixture_classification["acceptance_status"],
+            "blocking_reasons": list(rejected_fixture_classification["blocking_reasons"]),
+            "first_missing_provenance_field": (
+                rejected_fixture_classification["missing_provenance_fields"][0]
+                if rejected_fixture_classification["missing_provenance_fields"]
+                else None
+            ),
+        },
+        "real_input_intake_status": real_input_intake_report["real_input_intake_status"],
+        "accepted_intake_is_validation_evidence": False,
+        "remaining_validation_or_calibration_gap": (
+            "Accepted intake only proves a reviewable observed package shape; validation still needs a separated "
+            "scoring case/holdout comparison and calibration still needs an explicitly authorized, separate fit dataset."
+        ),
+        "claim_boundary": "intake smoke only; no calibration, validation, annual-frequency, physical-probability, or operational claim",
     }
 
 
@@ -1516,6 +1564,7 @@ def build_blocked_no_evidence_report(*, report: dict[str, Any], pack_root: Path)
     candidate_report = report["candidate_acquisition_report"]
     acquisition_blocker_matrix = report["acquisition_blocker_matrix"]
     next_action_recommendation = report["next_action_recommendation"]
+    intake_smoke = report["intake_acceptance_smoke_summary"]
     lines = [
         "# Blocked no-evidence report",
         "",
@@ -1932,7 +1981,10 @@ def build_current_state(*, real_input_intake_report: dict[str, Any]) -> dict[str
 
 def current_state_summary(current_state: dict[str, Any], *, real_input_intake_report: dict[str, Any]) -> list[dict[str, Any]]:
     if real_input_intake_report["real_input_intake_status"] == "ready":
-        benchmark_summary = "An independent observed runout/deposition benchmark package is staged and satisfies the intake contract."
+        benchmark_summary = (
+            "An independent observed runout/deposition benchmark package is staged and satisfies the intake contract, "
+            "but it is still not validation evidence."
+        )
     elif real_input_intake_report["real_input_intake_status"] == "blocked_fixture_only_inputs":
         benchmark_summary = "A fixture-only benchmark package is staged, but it is rejected for real intake."
     elif real_input_intake_report["real_input_intake_status"] == "blocked_schema_gap":
@@ -2248,6 +2300,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- calibration_validation_role_status: {report['fixture_acceptance_smoke']['fixture_classification']['calibration_validation_role_status']}",
         f"- holdout_eligibility: {str(report['fixture_acceptance_smoke']['fixture_classification']['holdout_eligibility']).lower()}",
         f"- physical_evidence_status: {report['fixture_acceptance_smoke']['physical_evidence_status']}",
+        f"- validation_evidence_gap: {report['fixture_acceptance_smoke']['validation_evidence_gap']}",
+        "",
+        "intake_acceptance_smoke_summary:",
+        f"- smoke_status: {intake_smoke['smoke_status']}",
+        f"- accepted_evidence_package.status: {intake_smoke['accepted_evidence_package']['acceptance_status']}",
+        f"- rejected_evidence_package.status: {intake_smoke['rejected_evidence_package']['acceptance_status']}",
+        f"- rejected_evidence_package.first_missing_provenance_field: {intake_smoke['rejected_evidence_package']['first_missing_provenance_field']}",
+        f"- accepted_intake_is_validation_evidence: {str(intake_smoke['accepted_intake_is_validation_evidence']).lower()}",
+        f"- remaining_validation_or_calibration_gap: {intake_smoke['remaining_validation_or_calibration_gap']}",
+        f"- claim_boundary: {intake_smoke['claim_boundary']}",
         "",
         "physical_credibility_gap_update:",
         f"- physical_credibility_requirements_status: {report['physical_credibility_gap_update']['physical_credibility_requirements_status']}",
