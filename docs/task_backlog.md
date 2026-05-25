@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-557: Execute The Next Bounded Balfrin Postproc Probe
-
-Goal: Run the next repository-gated bounded Balfrin `postproc` probe if all access, package, output-budget, and preservation gates pass.
-
-Capability gap reduced: Converts readiness into measured execution evidence.
-
-Why this outranks alternatives: Management needs measured feasibility evidence for the next bounded step, but only after the reviewed package and gates are current.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/validate_output_budget_reducer_gate.py`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Submit and actively monitor one bounded `postproc` job only if gates are ready.
-- Preserve the run root and collect runtime, memory, file-count, byte-count, reducer, and manifest metrics.
-
-Definition of done:
-
-- Either one bounded `postproc` run completes with preserved measured evidence, or the attempt fails closed before submission with a concrete blocker and smallest next unblock action.
-
-Boundaries: `postproc` only under existing clearance; stop if expected partition saturation exceeds 6 hours; no non-postproc partition, distributed execution, operational claim, annual-frequency claim, or physical-probability claim.
-
 ### TB-558: Collect And Promote The Next Probe Evidence
 
 Goal: Integrate the latest completed bounded Balfrin probe into the existing evidence bundle and preservation surfaces.
