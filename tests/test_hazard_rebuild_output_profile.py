@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +26,15 @@ def write_manifest(root: Path, manifest_name: str, outputs: list[dict[str, objec
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return manifest_path
+
+
+def hazard_layer_signatures(manifest_path: Path) -> dict[str, str]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    return {
+        f"{output['layer_name']}:{output['format']}": str(output["sha256"])
+        for output in manifest["outputs"]
+        if output.get("kind") == "hazard_layer"
+    }
 
 
 class HazardRebuildOutputProfileTests(unittest.TestCase):
@@ -255,6 +265,62 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
                 report["summary_only_blocker_narrowing"]["summary_only_blocker_narrowing_status"],
                 "legacy_summary_only_still_blocked_but_rebuildable_reduced_path_executable",
             )
+
+    def test_rebuildable_reduced_profile_rebuilds_deterministically_and_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            reduced_root = work / "reduced"
+            reduced_root.mkdir()
+            fixture_root = ROOT / "tests/fixtures/hazard"
+            shutil.copy(fixture_root / "trajectory_a.csv", reduced_root / "trajectory.csv")
+            shutil.copy(fixture_root / "deposition.csv", reduced_root / "deposition.csv")
+            shutil.copy(fixture_root / "impacts.csv", reduced_root / "impacts.csv")
+            shutil.copy(fixture_root / "diagnostics.json", reduced_root / "diagnostics.json")
+            manifest_path = write_manifest(
+                reduced_root,
+                "rebuildable_reduced_manifest.json",
+                [
+                    {"kind": "trajectory", "path": "trajectory.csv"},
+                    {"kind": "ensemble_deposition", "path": "deposition.csv"},
+                    {"kind": "impact_events_csv", "path": "impacts.csv"},
+                    {"kind": "diagnostics", "path": "diagnostics.json"},
+                ],
+            )
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            payload["validation_output_mode"] = "rebuildable_reduced_output"
+            manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            first = build_local_rebuild_proof(
+                manifest_path=manifest_path,
+                profile_root=reduced_root,
+                output_dir=work / "first_rebuild",
+                prefix="reduced_rebuild",
+            )
+            second = build_local_rebuild_proof(
+                manifest_path=manifest_path,
+                profile_root=reduced_root,
+                output_dir=work / "second_rebuild",
+                prefix="reduced_rebuild",
+            )
+
+            self.assertEqual(first["proof_status"], "ready")
+            self.assertEqual(second["proof_status"], "ready")
+            self.assertEqual(first["generated_layer_names"], second["generated_layer_names"])
+            self.assertEqual(
+                hazard_layer_signatures(Path(first["proof_manifest_path"])),
+                hazard_layer_signatures(Path(second["proof_manifest_path"])),
+            )
+
+            (reduced_root / "trajectory.csv").rename(reduced_root / "trajectory.removed")
+            blocked = build_local_rebuild_proof(
+                manifest_path=manifest_path,
+                profile_root=reduced_root,
+                output_dir=work / "blocked_rebuild",
+                prefix="reduced_rebuild",
+            )
+
+            self.assertEqual(blocked["proof_status"], "blocked_missing_inputs")
+            self.assertIn("trajectory_or_ensemble_trajectories", blocked["missing_inputs"])
 
 
 if __name__ == "__main__":

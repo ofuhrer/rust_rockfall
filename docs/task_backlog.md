@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-520: Add Deterministic Reduced-Output Rebuild Test
-
-Goal: Prove that a reduced-output hazard run can be rebuilt from its retained artifacts without hidden local state.
-
-Capability gap reduced: Reduces workflow reproducibility risk for retained reduced-output artifacts.
-
-Why this outranks alternatives: Output reduction is useful only if retained artifacts are enough to replay or inspect the run deterministically.
-
-Inspect first:
-
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_bounded_validation_output_profile.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Add a fixture-backed rebuild test for one reduced-output profile and verify required retained artifacts are sufficient.
-- Keep generated data in temporary or ignored roots.
-
-Definition of done:
-
-- Focused rebuild/output-profile tests pass and the test fails if a required retained artifact is removed or renamed.
-
-Boundaries: Rebuildability regression only; no new output mode, no operational claim, and no remote execution.
-
 ### TB-521: Vectorize A Hot Grid Reduction Loop
 
 Goal: Replace one measurable Python per-cell grid reduction hotspot with a faster local implementation while preserving exact outputs.
