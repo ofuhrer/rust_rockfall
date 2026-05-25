@@ -7547,3 +7547,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: diagnostic metrics only; no tuning, no candidate acceptance upgrade, no operational claim, no physical-probability claim, and no Balfrin dependency.
 - Next task: `TB-520`
+
+### TB-520: Add Deterministic Reduced-Output Rebuild Test
+
+- Date: 2026-05-25
+- Commit: `86867ce`
+- Objective: prove retained reduced-output artifacts can rebuild hazard layers deterministically and fail closed when a required retained artifact disappears.
+- Files changed: `tests/test_hazard_rebuild_output_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a fixture-backed reduced-output rebuild regression that copies the retained builder-facing artifacts into a temporary reduced profile root.
+  - Runs `build_local_rebuild_proof()` twice against the same reduced manifest and compares generated closure-layer names plus hazard-layer hash signatures.
+  - Renames the retained trajectory artifact after the successful rebuilds and verifies the rebuild proof fails closed with `blocked_missing_inputs` and the `trajectory_or_ensemble_trajectories` missing-input class.
+  - Added a compact hazard-layer signature helper for deterministic manifest comparisons.
+  - CLI proof from a temporary reduced profile reported readiness `ready`, proof `ready`, and 3 generated closure-relevant layers.
+  - Removed TB-520 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile.HazardRebuildOutputProfileTests.test_rebuildable_reduced_profile_rebuilds_deterministically_and_fails_closed tests.test_hazard_rebuild_output_profile.HazardRebuildOutputProfileTests.test_local_rebuild_proof_executes_closure_relevant_layers -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_hazard_rebuild_reduced_profile -v`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --summary-only-manifest /tmp/tb520_rebuild_cli/reduced/manifest.json --summary-only-root /tmp/tb520_rebuild_cli/reduced --full-manifest /tmp/tb520_rebuild_cli/reduced/manifest.json --full-root /tmp/tb520_rebuild_cli/reduced --rebuild-proof-manifest /tmp/tb520_rebuild_cli/reduced/manifest.json --rebuild-proof-root /tmp/tb520_rebuild_cli/reduced --rebuild-proof-output-dir /tmp/tb520_rebuild_cli/proof --format json > /tmp/tb520_rebuild_profile.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/test_hazard_rebuild_output_profile.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: rebuildability regression only; no new output mode, no operational claim, no remote execution, and no Balfrin dependency.
+- Next task: `TB-521`
