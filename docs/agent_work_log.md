@@ -8618,3 +8618,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: evidence collection only; no rerun, no operational claim, no annual-frequency claim, no physical-probability claim, and no distributed-execution claim.
 - Next task: `TB-567`
+
+### TB-567: Promote Current Regional Split Evidence Into Decision Surfaces
+
+- Date: 2026-05-25
+- Commit: `0c1402c`
+- Objective: promote the TB-565/TB-566 regional split Balfrin evidence into the current evidence bundle, scale matrix, and next-live-run decision gate without changing claim boundaries.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_post_run_interpretation_gate.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Promoted job `4367244` and the preserved regional split run root as the current multi-zone Balfrin evidence in the bundle.
+  - Updated the scale matrix regional split row, projection delta summary, and live-run dashboard fields to use TB-566 metrics while retaining reducer/output-budget blockers.
+  - Threaded task id, job id, preservation status, output-family status, and output-budget audit status into the next-live-run decision criteria.
+  - Kept the recommended action on reducer-pressure/output-budget work; no scale-up, operational, or physical-probability claim was added.
+  - Bounded local report generation by caching scale-matrix helper summaries and avoiding full grid-convergence work in the matrix dashboard path.
+  - Removed TB-567 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_next_live_run_decision_gate -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json >/tmp/tb567_bundle.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json >/tmp/tb567_scale.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json >/tmp/tb567_decision.json`
+- Result/status: implemented_measured
+- Boundaries: evidence promotion only; no new run, no operational claim, no scale-up authorization, no annual-frequency claim, and no physical-probability claim.
+- Next task: `TB-568`
