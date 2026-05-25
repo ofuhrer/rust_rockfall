@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-525: Collapse README Documentation Map
-
-Goal: Reduce README navigation load by turning the current broad documentation map into a short start-here path.
-
-Capability gap reduced: Gives first-time readers one clear path from overview to first local run instead of a long list of specialist documents.
-
-Why this outranks alternatives: The repo has 162 docs files; the front door should not expose that complexity before the user has run anything.
-
-Inspect first:
-
-- `README.md`
-- `docs/project_overview.md`
-- `docs/onboarding.md`
-- `docs/aoi_user_manual.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Rewrite the README documentation map into at most five primary links and move or demote secondary references to an existing deeper doc.
-- Preserve links needed for setup, AOI use, maturity/claim boundaries, and agent/backlog context.
-
-Definition of done:
-
-- README remains accurate, all referenced local links exist, and the top-level README is shorter or more scannable than before.
-
-Boundaries: Documentation simplification only; no new doc file, no scientific claim upgrade, and no Balfrin dependency.
-
 ### TB-526: Add A Script Audience Inventory To Existing Tooling
 
 Goal: Use existing repo-consistency tooling to inventory scripts by intended audience without creating another standalone audit script.

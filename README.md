@@ -117,24 +117,17 @@ The Python test tiers are tracked in
 [`tests/python_test_tiers.toml`](tests/python_test_tiers.toml), so new test
 modules must be classified deliberately.
 
-## Documentation Map
+## Start Here
 
-- [`docs/project_overview.md`](docs/project_overview.md) - detailed model and
-  workflow background.
-- [`docs/onboarding.md`](docs/onboarding.md) - local setup.
-- [`docs/aoi_user_manual.md`](docs/aoi_user_manual.md) - AOI workflow front
-  door.
-- [`docs/hazard_layers.md`](docs/hazard_layers.md) - hazard-layer outputs and
-  semantics.
-- [`docs/model_design.md`](docs/model_design.md) - model architecture.
-- [`docs/validation_maturity_framework.md`](docs/validation_maturity_framework.md)
-  - validation levels and claim boundaries.
-- [`docs/swisstopo_data_strategy.md`](docs/swisstopo_data_strategy.md) - public
-  geodata strategy.
+- [`docs/onboarding.md`](docs/onboarding.md) - set up a fresh checkout.
+- [`docs/aoi_user_manual.md`](docs/aoi_user_manual.md) - run the AOI workflow
+  front door.
+- [`docs/project_overview.md`](docs/project_overview.md) - understand the model,
+  workflow, and deeper documentation map.
 - [`docs/current_maturity_snapshot.md`](docs/current_maturity_snapshot.md) -
-  current project maturity snapshot.
-- [`docs/task_backlog.md`](docs/task_backlog.md) - active implementation queue.
-- [`AGENTS.md`](AGENTS.md) - compact guide for automated coding agents.
+  read current capability and claim boundaries.
+- [`AGENTS.md`](AGENTS.md) - find the active backlog, orchestration strategy,
+  and agent operating rules.
 
 ## Local Git Hooks
 
