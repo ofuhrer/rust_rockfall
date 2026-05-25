@@ -8494,3 +8494,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: consolidation only; no new top-level report, no live Balfrin submission, no scale-up claim, and no claim upgrade.
 - Next task: `TB-561`
+
+### TB-561: Add A Clean-Checkout AOI Workflow Smoke Regression
+
+- Date: 2026-05-25
+- Commit: `77fc5ab`
+- Objective: prove the user-facing AOI local smoke path runs from tracked tiny fixtures and writes reduced artifacts under `/tmp`.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a `clean_checkout_contract` to the `run-local-smoke` report.
+  - The contract records the smoke case input paths, confirms they are tracked fixture inputs, and fails visibly if any referenced input is untracked or missing.
+  - Extended the existing local AOI smoke regression to assert no ignored roots are required and that the output-root policy stays `/tmp`-only.
+  - Ran the documented `run-local-smoke` command into `/tmp/tb561_clean_checkout_aoi_smoke`; it completed with 51 trajectory rows and 28 hazard layers.
+  - Removed TB-561 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --smoke-output-root /tmp/tb561_clean_checkout_aoi_smoke --format json >/tmp/tb561_run_local_smoke.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow -v`
+- Result/status: implemented_measured
+- Boundaries: tiny tracked fixture only; no real geodata download, no Balfrin run, no operational map claim, and no claim upgrade.
+- Next task: `TB-562`
