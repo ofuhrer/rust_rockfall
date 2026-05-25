@@ -8229,23 +8229,25 @@ scan thousands of lines of completed history.
 - Boundaries: metadata contract audit only; no new site onboarding, live data acquisition, source-zone validation, scale-up authorization, or operational claim.
 - Next task: `TB-549`
 
-### TB-548: Strengthen Multisite Source/Scenario Portability Checks
+### TB-549: Add Observed-Evidence Intake Acceptance Smoke
 
 - Date: 2026-05-25
-- Commit: pending
-- Objective: make the multisite source/scenario audit and portable command plan distinguish portable fields from site-specific assumptions and surface the next local staging action.
-- Files changed: `scripts/audit_multisite_source_scenario_contract.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_multisite_source_scenario_contract.py`, `tests/test_pilot_command_plan.py`
+- Commit: `7f84243`
+- Objective: exercise accepted and rejected observed runout/deposition evidence packages locally and make the remaining validation/calibration gap explicit.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/task_backlog.md`
 - Implementation summary:
-  - Added explicit `portable_fields` and `site_specific_fields` surfaces to the multisite contract audit alongside a local fixture/staging next-action summary.
-  - Renamed the pilot command-plan wording so the multisite contract audit is routed as a portable-versus-site-specific check with a named next local fixture/staging action.
-  - Tightened focused tests to assert one portable field and one site-specific field in both the audit report and the command-plan text output.
+  - Added a fixture-backed validation-gap note to the accepted observed intake smoke so the report does not read as validation evidence.
+  - Tightened the accepted-package smoke checks to assert the remaining validation/calibration boundary explicitly in both the report data and rendered text.
+  - Added a rejected fixture-backed case that overclaims the validation role and fails as a role-unclear package.
+  - Removed TB-549 from the active backlog.
 - Checks run:
-  - `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract tests.test_pilot_command_plan`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract`
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format text`
   - `git diff --check`
   - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
   - `scripts/git-hooks/pre-commit`
   - `find data/processed/swisstopo validation/private hazard/results validation/policies \\( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \\) -print`
   - `git status --short`
-- Result/status: implemented_measured
-- Boundaries: no new contract file, no new site onboarding, no live data acquisition, no validation claim upgrade, and no scale-up or operational claim.
-- Next task: none
+- Result/status: implemented_fixture_backed
+- Boundaries: fixture-backed intake smoke only; no new observed dataset, no calibration claim, no validation claim, no annual-frequency claim, and no operational or scale-up claim.
+- Next task: `TB-550`

@@ -39,31 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-549: Add Observed-Evidence Intake Acceptance Smoke
-
-Goal: Exercise accepted and rejected observed runout/deposition evidence packages locally and explain why accepted intake is not yet validation evidence.
-
-Capability gap reduced: Clarifies the boundary between evidence ingestion and scientific validation.
-
-Why this outranks alternatives: Observed evidence intake is essential for validation, but premature interpretation would create false scientific confidence.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `tests/test_observed_runout_deposition_intake_contract.py`
-- `tests/fixtures/observed_runout_deposition_intake_contract/accepted_fixture.yaml`
-
-Deliverables:
-
-- Add or tighten fixture-backed acceptance and rejection cases in the existing intake summary/tests.
-- Ensure accepted intake output explicitly states the remaining validation or calibration evidence gap.
-
-Definition of done:
-
-- Focused intake tests pass and the local intake command reports accepted/rejected evidence packages plus the missing validation step.
-
-Boundaries: No new observed dataset, no calibration, no validation claim, no annual-frequency claim, and no new intake framework.
-
 ### TB-550: Consolidate Local Scientific Recommendation Output Into Next Executable Commands
 
 Goal: Make the local scientific backlog recommendation report map each top local follow-up to an exact executable command and expected measurement.
