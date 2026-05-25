@@ -6896,3 +6896,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: repository simplification only; no tracked evidence, real-terrain inputs, provenance records, benchmark fixtures, physics, tuning, operational claim, or Balfrin execution were changed.
 - Next task: `TB-489` and `TB-490` remain Balfrin-access required and were not executed under the current no-Balfrin scope.
+
+### TB-494: Diagnose Candidate-Runout Failure Locally
+
+- Date: 2026-05-25
+- Commit: `8ae8e52`
+- Objective: explain why the reviewed adjacent Tschamut candidate produced much shorter local runout than the observed-release baselines.
+- Files changed: `scripts/summarize_tschamut_closure_gap_deltas.py`, `tests/test_tschamut_closure_gap_deltas.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the existing closure-gap delta summary with a candidate runout failure diagnostic that reads the committed candidate comparison record plus local TB-484 scratch CSV evidence when available.
+  - Added geometry/runout comparisons for generated candidate release samples, reviewed release-cell centers, observed release/deposition centroids, and simulated trajectory endpoints.
+  - Classified the local evidence as `source_placement_displaced_with_local_early_stopping`: candidate release to observed-release centroid offset is `253.04273 m`, while simulated/observed mean runout ratio is `0.055825`.
+  - Preserved fail-closed behavior when local scratch artifacts are missing and kept the result diagnostic-only with no acceptance, tuning, operational, or probability claim upgrade.
+  - Added focused tests for JSON/text shape, failure-mode classification, and reviewed release-cell centroid parsing.
+  - Removed TB-494 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json --json-output /tmp/tb494_closure_gap.json >/tmp/tb494_closure_gap_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_tschamut_closure_gap_deltas.py tests/test_tschamut_closure_gap_deltas.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local diagnosis only; no tuning, no candidate acceptance upgrade, no annual-frequency or physical-probability semantics, no operational claim, and no Balfrin dependency.
+- Next task: `TB-495`
