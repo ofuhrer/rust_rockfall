@@ -7319,3 +7319,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: local fixture-replay ablation only; no physics tuning, no candidate acceptance upgrade, no annual-frequency semantics, no operational claim, and no Balfrin dependency.
 - Next task: `TB-511`
+
+### TB-511: Add Real-Terrain Energy Budget Regression
+
+- Date: 2026-05-25
+- Commit: `6846cd4`
+- Objective: catch non-finite or runaway motion on committed real-terrain cases before workflow-level tests hide physics regressions.
+- Files changed: `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a reusable `assert_real_terrain_energy_budget` helper for real DEM trajectory tests.
+  - Tightened the committed Tschamut and Chant Sura real-terrain tests to assert finite sample time, position, velocity, speed, kinetic/rotational/potential/total energy, and bounded speed, kinetic energy, total energy, and jump height.
+  - Preserved deterministic stochastic-contact replay checks while extending them with the same real-terrain budget envelope.
+  - Removed TB-511 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/terrain_edge_cases.rs docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: regression only; no physics tuning, no new data fixture, no operational claim, and no Balfrin dependency.
+- Next task: `TB-512`
