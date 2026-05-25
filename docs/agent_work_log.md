@@ -7873,3 +7873,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: user-manual simplification only; no new workflow semantics, no new data acquisition, no operational claim, and no Balfrin dependency.
 - Next task: `TB-533`
+
+### TB-533: Add A Deprecated-Internal Script Warning For One Legacy Helper Family
+
+- Date: 2026-05-25
+- Commit: `50515a6`
+- Objective: discourage direct user invocation of the legacy/internal release planning helper family while preserving existing automation behavior.
+- Files changed: `scripts/plan_release_zone_heuristic_dry_run.py`, `scripts/plan_release_plan_dry_run.py`, `scripts/generate_pilot_command_plan.py`, `tests/test_release_zone_heuristic_dry_run.py`, `tests/test_release_plan_dry_run.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added consistent `Deprecated/internal helper` epilog text to the release-zone heuristic and release-plan dry-run helpers.
+  - Pointed candidate release-zone review users to `scripts/run_aoi_hazard_workflow.py candidate-review`.
+  - Pointed portable release-plan routing users to `scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass`.
+  - Updated the pilot command plan description for `second_site_release_plan_dry_run` so the generated plan labels the direct helper as internal/deprecated and routes users through the portable plan.
+  - Added help-text and command-plan regressions while preserving the existing report builders and command outputs.
+  - Removed TB-533 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_release_zone_heuristic_dry_run tests.test_release_plan_dry_run tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_release_zone_heuristic_dry_run.py --help`
+  - `PYENV_VERSION=system uv run python scripts/plan_release_plan_dry_run.py --help`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/plan_release_zone_heuristic_dry_run.py scripts/plan_release_plan_dry_run.py scripts/generate_pilot_command_plan.py tests/test_release_zone_heuristic_dry_run.py tests/test_release_plan_dry_run.py tests/test_pilot_command_plan.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: warning/classification only; no script deletion, no new wrapper, no workflow claim change, and no Balfrin dependency.
+- Next task: `TB-534`
