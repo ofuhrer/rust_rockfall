@@ -7648,3 +7648,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: fixture-backed local timing smoke only; no candidate acceptance upgrade, no validation/calibration claim, no operational claim, no physical-probability claim, and no Balfrin dependency.
 - Next task: `TB-524`
+
+### TB-524: Define The Public Command Surface
+
+- Date: 2026-05-25
+- Commit: `0c6c6ed`
+- Objective: make the intended user-facing command set explicit and classify lower-level helper scripts as internal or routed through front doors.
+- Files changed: `README.md`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a README `Public Command Surface` section that names the small local surface: Cargo model commands, `scripts/run_ci_local.py`, `scripts/run_aoi_hazard_workflow.py`, and `scripts/generate_pilot_command_plan.py`.
+  - Added an AOI `Supported Local Commands` section centered on the existing AOI front door rather than standalone helper discovery.
+  - Changed the AOI acquisition-planning example to use `scripts/run_aoi_hazard_workflow.py plan`.
+  - Added an `Internal Helper Routing` table mapping seven lower-level helpers to the command or workflow users should invoke first.
+  - Verified the front-door `plan` and `workflow` examples resolve and fail closed with expected blocked statuses when real public inputs are absent.
+  - Removed TB-524 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py plan --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format text` (accepted exit `2`, expected blocked local-input status)
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --workflow-output-root /tmp/tb524_aoi_workflow --format text` (accepted exit `2`, expected blocked local-input status)
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --format json`
+  - `PYENV_VERSION=system uv run python -m json.tool /tmp/tb524_pilot_command_plan.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: documentation/interface classification only; no new command wrapper, no workflow claim change, no operational claim, and no Balfrin dependency.
+- Next task: `TB-525`
