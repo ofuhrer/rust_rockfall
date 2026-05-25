@@ -8408,6 +8408,31 @@ scan thousands of lines of completed history.
 - Boundaries: no `sbatch`, no live submission, no scale-up claim, no distributed execution, and no operational semantics.
 - Next task: `TB-557`
 
+### TB-557: Execute The Next Bounded Balfrin Postproc Probe
+
+- Date: 2026-05-25
+- Commit: `77b53a5`
+- Objective: submit and monitor one repository-gated bounded Balfrin `postproc` probe after the reviewed reduced-output package and gates passed.
+- Files changed: `docs/balfrin_bounded_reduced_output_run_tb557.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Generated the reviewed reduced-output handoff package on Balfrin from checkout `6a49586`.
+  - Verified Balfrin access, authorization preflight, submit contract, and output-budget gates before submission.
+  - Submitted exactly one `postproc` job, `4366534`, using a fresh TB-557 run root to avoid overwriting historical preserved evidence.
+  - Monitored the job to `COMPLETED` with exit code `0:0` and elapsed time `00:01:29`.
+  - Collected metrics into `balfrin_probe_metrics_collected_tb557.json`; the metrics contract is `complete`.
+  - Recorded validation output footprint, hazard output footprint, memory, wall-time, reducer/restartability families, and SLURM accounting in the TB-557 run report.
+  - Removed TB-557 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb557_remote_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb557_reduced_output_handoff --pressure-probe-root /tmp/rust_rockfall/tb557_reduced_output_pressure_probe --format json >/tmp/tb557_remote_handoff.json`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb557_reduced_output_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb557_reduced_output_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb557_remote_preflight.json --format json >/tmp/tb557_remote_authorization_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1 --run-id tb557_bounded_reduced_output_probe_v1 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /tmp/rust_rockfall/tb557_reduced_output_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb557_reduced_output_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb557_remote_preflight.json --slurm-timeout 60`
+  - `sacct -j 4366534 --format=JobID,State,ExitCode,Elapsed,MaxRSS -P`
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1 --probe-manifest validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --output-json /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1/balfrin_probe_metrics_collected_tb557.json`
+- Result/status: implemented_measured
+- Boundaries: one `postproc` job only; no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, no annual-frequency claim, and no physical-probability claim.
+- Next task: `TB-558`
+
 ### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
 
 - Date: 2026-05-25
