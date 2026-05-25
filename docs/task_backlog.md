@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-480: Make QGIS Hazard Outputs Immediately Reviewable
-
-Goal: Improve the generated hazard package contents so a reviewer can open the layers in QGIS with clear names, CRS, styles, and legends.
-
-Capability gap reduced: Turns hazard outputs into practical review products instead of raw files that require internal knowledge.
-
-Why this outranks alternatives: Scientific outputs need fast visual inspection; poor GIS packaging slows every real AOI iteration.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/hazard_output_writers.py`
-- `qgis/styles/aoi_qgis_style_bundle.json`
-- `tests/test_aoi_hazard_map_packager.py`
-
-Deliverables:
-
-- Improve existing package-writing code or style references so generated AOI packages include clear layer names, CRS metadata, style links, and review-ready ordering.
-- Verify the improvement against an existing package fixture or a freshly generated local AOI package.
-
-Definition of done:
-
-- Focused package tests pass, one generated package contains review-ready metadata/style references, and the work does not add a new connector, contract, or administrative layer.
-
-Boundaries: Packaging and usability only; no operational-map claim, no new QGIS plugin, no risk/exposure/vulnerability content, no Balfrin submission, and no annualized semantics.
-
 ### TB-481: Profile And Optimize One Local Ensemble Hotspot
 
 Goal: Reduce runtime or memory for one actual local ensemble or hazard-layer run by profiling and optimizing the dominant hotspot.

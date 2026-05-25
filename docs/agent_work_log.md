@@ -6634,3 +6634,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: human-review release-zone candidates only; no final source-zone interpretation, no tuning against outcomes, no operational claim, no Balfrin submission, and no scale-up claim.
 - Next task: `TB-480`
+
+### TB-480: Make QGIS Hazard Outputs Immediately Reviewable
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: make generated AOI hazard packages carry explicit QGIS review ordering, display names, CRS metadata, and style references.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `tests/test_aoi_hazard_map_packager.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the existing AOI hazard-map packager to attach `review_layer` metadata to every raster and vector layer.
+  - Added a top-level `review_ready_layer_order` manifest section with stable review order, display name, layer group, EPSG authid, vertical datum, QGIS style status, and QGIS style id.
+  - Propagated the review metadata into both the AOI package manifest and the pilot GIS package manifest, and added compact summary fields.
+  - Regenerated the local Tschamut target-gate package under ignored output root `hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package`.
+  - The generated package reported `package_status=map_package_ready`, `review_metadata_status=ready`, `review_layer_count=24`, `22` raster layers, `2` vector overlays, EPSG:2056 CRS metadata, and `review_surface_status=review_ready_with_warnings`.
+  - Removed TB-480 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_aoi_hazard_map_packager -v`
+  - `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --input-root hazard/results/tschamut_public_pilot/target_gate_v1 --output-root hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package --overwrite --format json`
+  - `jq '{package_status, review_metadata_status, review_layer_count:(.review_ready_layer_order|length), first_layers:[.review_ready_layer_order[0:4][]|{layer_name,display_name,review_order,crs_authid,qgis_style_id}], raster_count:(.raster_outputs|length), vector_count:(.vector_overlays|length), review_surface_status}' hazard/results/tschamut_public_pilot/target_gate_v1_aoi_review_package/aoi_hazard_map_package_manifest.json`
+- Result/status: implemented_measured
+- Boundaries: packaging and review usability only; no operational-map claim, no QGIS plugin, no risk/exposure/vulnerability content, no Balfrin submission, and no annualized semantics.
+- Next task: `TB-481`

@@ -52,6 +52,37 @@ QGIS_STYLE_BUNDLE_SCHEMA_VERSION = "aoi_qgis_style_bundle_v1"
 QGIS_STYLE_ROOT = ROOT / "qgis" / "styles"
 QGIS_STYLE_BUNDLE_INDEX = QGIS_STYLE_ROOT / "aoi_qgis_style_bundle.json"
 
+RASTER_REVIEW_ORDER = {
+    "reach_probability": 100,
+    "weighted_reach_probability": 110,
+    "deposition_density": 200,
+    "weighted_deposition_density": 210,
+    "significant_impact_density": 220,
+    "weighted_significant_impact_density": 230,
+    "max_kinetic_energy": 300,
+    "max_jump_height": 310,
+}
+VECTOR_REVIEW_ORDER = {
+    "release_zone": 10,
+    "scenario_table": 20,
+    "observed_runout_deposition": 30,
+    "release_zone_provenance": 40,
+}
+LAYER_DISPLAY_NAMES = {
+    "release_zone": "Release zone",
+    "scenario_table": "Scenario table",
+    "observed_runout_deposition": "Observed runout and deposition",
+    "release_zone_provenance": "Release-zone provenance",
+    "reach_probability": "Conditional reach probability",
+    "weighted_reach_probability": "Weighted conditional reach probability",
+    "deposition_density": "Deposition density",
+    "weighted_deposition_density": "Weighted deposition density",
+    "significant_impact_density": "Significant impact density",
+    "weighted_significant_impact_density": "Weighted significant impact density",
+    "max_kinetic_energy": "Maximum kinetic energy",
+    "max_jump_height": "Maximum jump height",
+}
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -177,6 +208,12 @@ def package_aoi_hazard_map(
         [source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
         qgis_style_assets,
     )
+    source_zone_metadata = load_yaml(source_zone_metadata_path)
+    review_metadata = apply_review_layer_metadata(
+        raster_package["inventory"],
+        [source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
+        source_zone_metadata,
+    )
     package_manifest_path = output_root / "aoi_hazard_map_package_manifest.json"
     pilot_gis_package_manifest_path = output_root / pilot_manifest_path.name
     summary_path = output_root / "aoi_hazard_map_package_summary.txt"
@@ -223,6 +260,8 @@ def package_aoi_hazard_map(
         ),
         "vector_overlays": [source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
         "qgis_style_assets": qgis_style_assets,
+        "review_metadata_status": review_metadata["status"],
+        "review_ready_layer_order": review_metadata["review_ready_layer_order"],
         "inventory": [
             *raster_package["inventory"],
             source_zone_overlay,
@@ -368,6 +407,82 @@ def no_qgis_style_match(*, layer_name: str, overlay_role: str | None = None) -> 
         "layer_name": layer_name,
         "overlay_role": overlay_role,
     }
+
+
+def apply_review_layer_metadata(
+    raster_entries: list[dict[str, Any]],
+    vector_entries: list[dict[str, Any]],
+    source_zone_metadata: dict[str, Any],
+) -> dict[str, Any]:
+    crs_epsg = source_zone_metadata.get("crs_epsg")
+    vertical_datum = source_zone_metadata.get("vertical_datum")
+    review_layers: list[dict[str, Any]] = []
+    for entry in raster_entries:
+        layer_name = str(entry.get("layer_name") or Path(str(entry.get("path") or "")).stem)
+        review_layer = review_layer_metadata(
+            entry,
+            layer_name=layer_name,
+            review_group="Hazard rasters",
+            review_order=RASTER_REVIEW_ORDER.get(layer_name, 500 + len(review_layers)),
+            crs_epsg=crs_epsg,
+            vertical_datum=vertical_datum,
+        )
+        entry["review_layer"] = review_layer
+        review_layers.append(review_layer)
+    for entry in vector_entries:
+        layer_name = Path(str(entry.get("path") or "")).stem
+        overlay_role = str(entry.get("overlay_role") or "")
+        review_layer = review_layer_metadata(
+            entry,
+            layer_name=layer_name,
+            review_group="Release and evidence overlays" if overlay_role != "scenario_table" else "Scenario overlays",
+            review_order=VECTOR_REVIEW_ORDER.get(layer_name, 600 + len(review_layers)),
+            crs_epsg=crs_epsg,
+            vertical_datum=vertical_datum,
+        )
+        entry["layer_name"] = layer_name
+        entry["review_layer"] = review_layer
+        review_layers.append(review_layer)
+    ordered_layers = sorted(review_layers, key=lambda layer: int(layer["review_order"]))
+    missing_review_metadata = [
+        layer["layer_name"]
+        for layer in ordered_layers
+        if not layer.get("display_name") or not layer.get("crs_authid") or layer.get("qgis_style_status") != "ready"
+    ]
+    return {
+        "status": "ready" if not missing_review_metadata else "incomplete",
+        "missing_review_metadata": missing_review_metadata,
+        "review_ready_layer_order": ordered_layers,
+    }
+
+
+def review_layer_metadata(
+    entry: dict[str, Any],
+    *,
+    layer_name: str,
+    review_group: str,
+    review_order: int,
+    crs_epsg: Any,
+    vertical_datum: Any,
+) -> dict[str, Any]:
+    qgis_style = entry.get("qgis_style") if isinstance(entry.get("qgis_style"), dict) else {}
+    crs_authid = f"EPSG:{crs_epsg}" if crs_epsg not in (None, "") else None
+    return {
+        "layer_name": layer_name,
+        "display_name": LAYER_DISPLAY_NAMES.get(layer_name, humanize_layer_name(layer_name)),
+        "review_group": review_group,
+        "review_order": review_order,
+        "crs_epsg": crs_epsg,
+        "crs_authid": crs_authid,
+        "vertical_datum": vertical_datum,
+        "qgis_style_status": qgis_style.get("status"),
+        "qgis_style_id": qgis_style.get("style_id"),
+        "path": entry.get("path"),
+    }
+
+
+def humanize_layer_name(layer_name: str) -> str:
+    return layer_name.replace("_", " ").strip().capitalize()
 
 
 def package_rasters(output_root: Path, raster_outputs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -866,6 +981,8 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "raster_outputs": report["raster_outputs"],
         "vector_overlays": report["vector_overlays"],
         "qgis_style_assets": report["qgis_style_assets"],
+        "review_metadata_status": report["review_metadata_status"],
+        "review_ready_layer_order": report["review_ready_layer_order"],
         "diagnostic_hazard_outputs": report["diagnostic_hazard_outputs"],
         "observed_evidence_overlay_hook": report["observed_evidence_overlay_hook"],
         "observed_evidence_overlays": report["observed_evidence_overlays"],
@@ -957,6 +1074,8 @@ def write_pilot_gis_package_manifest(
     manifest["review_surface_next_recommended_command"] = report.get("review_surface_next_recommended_command")
     manifest["review_surface_paths"] = report.get("review_surface_paths", {})
     manifest["qgis_style_assets"] = report.get("qgis_style_assets", {})
+    manifest["review_metadata_status"] = report.get("review_metadata_status")
+    manifest["review_ready_layer_order"] = list(report.get("review_ready_layer_order") or [])
     manifest["package_status"] = report["status"]
     manifest["map_product_id"] = map_manifest.get("map_product_id")
     manifest["map_product_version"] = map_manifest.get("map_product_version")
@@ -993,6 +1112,8 @@ def write_summary(path: Path, report: dict[str, Any]) -> None:
         f"raster_count\t{len(report['raster_outputs'])}",
         f"vector_overlay_count\t{len(report['vector_overlays'])}",
         f"qgis_style_count\t{(report.get('qgis_style_assets') or {}).get('style_count', 0)}",
+        f"review_metadata_status\t{report.get('review_metadata_status')}",
+        f"review_ready_layer_count\t{len(report.get('review_ready_layer_order') or [])}",
         f"cog_blockers\t{report['cog_blockers']}",
         f"missing_hazard_outputs\t{report['missing_hazard_outputs']}",
         f"claim_boundary\t{report['claim_boundary']}",
