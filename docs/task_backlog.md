@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-537: Add A Local Public-Context Staging Dry Run For Chant Sura
-
-Goal: Provide a no-download dry run that shows which public-context inputs Chant Sura still needs before local second-site execution.
-
-Capability gap reduced: Converts public geodata readiness from documentation into an executable staging plan that can be run without Balfrin or network access.
-
-Why this outranks alternatives: The second-site path cannot advance scientifically until missing context inputs and cache roots are explicit.
-
-Inspect first:
-
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-- `tests/test_swisstopo_aoi_acquisition_planner.py`
-
-Deliverables:
-
-- Extend an existing planner or workflow dry-run mode to enumerate the exact missing public-context inputs, expected cache roots, and local command sequence for Chant Sura.
-- Add a focused test using existing fixtures; do not introduce live acquisition behavior.
-
-Definition of done:
-
-- The dry run can be executed locally from tracked fixtures and produces a deterministic staging checklist tied to one next command or manual file placement action.
-
-Boundaries: No live downloads, no credentials, no new acquisition contracts, no Balfrin dependency, and no claim that public context is complete.
-
 ### TB-538: Separate Extreme-Layer Support From Magnitude Sensitivity
 
 Goal: Make the local extreme-layer smoke explain whether changes come from support/nodata differences or from magnitude changes on shared support.

@@ -69,6 +69,34 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["acquisition_manifest_status"], "ready")
         self.assertEqual(report["public_context_acquisition_summary"]["product_count"], 5)
         self.assertEqual(report["public_context_acquisition_summary"]["deferred_product_count"], 5)
+        local_staging = report["local_public_context_staging_dry_run"]
+        self.assertEqual(local_staging["schema_version"], "chant_sura_public_context_local_staging_dry_run_v1")
+        self.assertEqual(local_staging["dry_run_status"], "ready")
+        self.assertEqual(local_staging["missing_public_context_input_count"], 6)
+        self.assertEqual(
+            [entry["category"] for entry in local_staging["missing_public_context_inputs"]],
+            [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+                "swisstlm3d_metadata",
+            ],
+        )
+        self.assertTrue(
+            local_staging["expected_cache_roots"][0].endswith(
+                "data/raw/swisstopo/chant_sura_fluelapass_portability_example_v1"
+            )
+        )
+        self.assertTrue(
+            any(
+                root.endswith("data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context")
+                for root in local_staging["expected_cache_roots"]
+            )
+        )
+        self.assertEqual([entry["step"] for entry in local_staging["command_sequence"]][0], "inspect_plan")
+        self.assertFalse(local_staging["no_download_boundary"]["downloads_authorized"])
         self.assertEqual(report["aoi_tile_discovery"]["discovery_status"], "ready")
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidate_count"], 1)
         self.assertEqual(report["aoi_tile_discovery"]["tile_candidates"][0]["tile_id"], "2793-1180")
@@ -302,6 +330,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("acquisition_command_set:", text_report)
+        self.assertIn("local_public_context_staging_dry_run:", text_report)
+        self.assertIn("missing_public_context_input_count: 6", text_report)
         self.assertIn("dry_run_stage_command:", text_report)
         self.assertIn("cache_verification_command:", text_report)
         self.assertIn("aoi_tile_discovery:", text_report)

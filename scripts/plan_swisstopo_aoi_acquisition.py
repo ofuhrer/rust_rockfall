@@ -226,6 +226,15 @@ def build_report(
         "tile_manifest": tile_manifest,
         "product_manifest": product_manifest,
         "acquisition_command_set": acquisition_command_set,
+        "local_public_context_staging_dry_run": build_local_public_context_staging_dry_run(
+            candidate_site_id=candidate_site_id,
+            paths=paths,
+            acquisition_manifest=acquisition_manifest,
+            product_rows=product_rows,
+            metadata_rows=metadata_rows,
+            unresolved_acquisition_decisions=unresolved_acquisition_decisions,
+            acquisition_command_set=acquisition_command_set,
+        ),
         "public_geodata_workflow_contract": workflow_contract,
         "required_public_geodata_products": product_rows,
         "required_metadata_records": metadata_rows,
@@ -239,6 +248,89 @@ def build_report(
         "operational_claims_allowed": False,
     }
     return report
+
+
+def build_local_public_context_staging_dry_run(
+    *,
+    candidate_site_id: str,
+    paths: dict[str, Path],
+    acquisition_manifest: dict[str, Any],
+    product_rows: list[dict[str, Any]],
+    metadata_rows: list[dict[str, Any]],
+    unresolved_acquisition_decisions: list[dict[str, Any]],
+    acquisition_command_set: dict[str, Any],
+) -> dict[str, Any]:
+    context_rows = [
+        row
+        for row in [*product_rows, *metadata_rows]
+        if row.get("category") in DEFERRED_PUBLIC_CONTEXT_CATEGORIES or row.get("category") == "swisstlm3d_metadata"
+    ]
+    missing_inputs = [
+        {
+            "category": row.get("category", ""),
+            "product": row.get("product", ""),
+            "current_status": row.get("current_status", ""),
+            "expected_staged_path": row.get("expected_staged_path", ""),
+            "source_reference": row.get("source_reference", ""),
+            "staging_action": "place local product or metadata at expected_staged_path, then verify the cache manifest",
+        }
+        for row in context_rows
+        if row.get("current_status") != "ready"
+    ]
+    expected_ignored_roots = list(acquisition_manifest.get("expected_ignored_output_roots") or [])
+    cache_roots = [
+        str(paths["processed_context_root"]),
+        str(paths["processed_input_root"]),
+        str(paths["validation_case_root"]),
+        str(paths["hazard_results_root"]),
+    ]
+    raw_root = f"data/raw/swisstopo/{candidate_site_id}"
+    if raw_root not in cache_roots:
+        cache_roots.insert(0, raw_root)
+    for root in expected_ignored_roots:
+        if root not in cache_roots:
+            cache_roots.append(root)
+    command_sequence = [
+        {
+            "step": "inspect_plan",
+            "command": (
+                "PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py "
+                "--site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml "
+                "--mode dry-run --format json"
+            ),
+            "writes_data": False,
+        },
+        {
+            "step": "dry_run_cache_stage",
+            "command": acquisition_command_set.get("dry_run_stage_command", ""),
+            "writes_data": False,
+        },
+        {
+            "step": "local_copy_stage_when_files_exist",
+            "command": acquisition_command_set.get("local_copy_stage_command", ""),
+            "writes_data": True,
+        },
+        {
+            "step": "verify_cache_manifest",
+            "command": acquisition_command_set.get("cache_verification_command", ""),
+            "writes_data": False,
+        },
+    ]
+    return {
+        "schema_version": "chant_sura_public_context_local_staging_dry_run_v1",
+        "candidate_site_id": candidate_site_id,
+        "dry_run_status": "ready" if missing_inputs else "ready_no_missing_public_context",
+        "missing_public_context_input_count": len(missing_inputs),
+        "missing_public_context_inputs": missing_inputs,
+        "unresolved_decision_ids": [entry.get("decision_id", "") for entry in unresolved_acquisition_decisions],
+        "expected_cache_roots": cache_roots,
+        "command_sequence": [entry for entry in command_sequence if entry["command"]],
+        "no_download_boundary": {
+            "downloads_authorized": False,
+            "network_access_required": False,
+            "second_site_execution_authorized": False,
+        },
+    }
 
 
 def build_acquisition_command_set(report: dict[str, Any]) -> dict[str, Any]:
@@ -583,6 +675,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("acquisition_command_set:")
     lines.extend(render_acquisition_command_set_rows(report.get("acquisition_command_set") or {}))
     lines.append("")
+    lines.append("local_public_context_staging_dry_run:")
+    lines.extend(render_local_public_context_staging_dry_run_rows(report.get("local_public_context_staging_dry_run") or {}))
+    lines.append("")
     lines.append("aoi_tile_discovery:")
     lines.extend(render_aoi_tile_discovery_rows(report.get("aoi_tile_discovery") or {}))
     lines.append("")
@@ -640,6 +735,33 @@ def render_acquisition_plan_rows(rows: list[dict[str, Any]]) -> list[str]:
         )
     if not rendered:
         rendered.append("- []")
+    return rendered
+
+
+def render_local_public_context_staging_dry_run_rows(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    rendered = [
+        f"- schema_version: {report.get('schema_version', '')}",
+        f"- dry_run_status: {report.get('dry_run_status', '')}",
+        f"- missing_public_context_input_count: {report.get('missing_public_context_input_count', 0)}",
+    ]
+    rendered.append("- missing_public_context_inputs:")
+    for entry in report.get("missing_public_context_inputs") or []:
+        rendered.append(
+            f"  - {entry.get('category', '')}: status={entry.get('current_status', '')}, "
+            f"expected_staged_path={entry.get('expected_staged_path', '')}"
+        )
+    if not report.get("missing_public_context_inputs"):
+        rendered.append("  - none")
+    rendered.append("- expected_cache_roots:")
+    rendered.extend(f"  - {root}" for root in report.get("expected_cache_roots", []))
+    rendered.append("- command_sequence:")
+    for entry in report.get("command_sequence") or []:
+        rendered.append(f"  - {entry.get('step', '')}: {entry.get('command', '')}")
+    rendered.append("- no_download_boundary:")
+    for key, value in (report.get("no_download_boundary") or {}).items():
+        rendered.append(f"  - {key}: {value}")
     return rendered
 
 
