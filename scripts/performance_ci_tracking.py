@@ -79,6 +79,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     record.add_argument("--latest-out", type=Path, required=True)
     record.add_argument("--chart-out", type=Path, required=True)
     record.add_argument("--index-out", type=Path, required=True)
+    record.add_argument("--site-index-out", type=Path, default=None)
     record.add_argument("--max-points", type=int, default=180)
 
     return parser.parse_args(argv)
@@ -152,6 +153,10 @@ def record_main(args: argparse.Namespace) -> int:
     args.chart_out.write_text(build_history_svg(history_rows), encoding="utf-8")
     args.index_out.parent.mkdir(parents=True, exist_ok=True)
     args.index_out.write_text(render_index_html(entry), encoding="utf-8")
+    site_index_out = getattr(args, "site_index_out", None)
+    if site_index_out is not None:
+        site_index_out.parent.mkdir(parents=True, exist_ok=True)
+        site_index_out.write_text(render_site_index_html(entry), encoding="utf-8")
     return 0
 
 
@@ -253,6 +258,29 @@ def render_index_html(latest: dict[str, Any]) -> str:
   <img src="main_performance.svg" alt="Main branch benchmark trend chart">
   <h2>Latest component timings (seconds)</h2>
   <table>{rows}</table>
+</body>
+</html>
+"""
+
+
+def render_site_index_html(latest: dict[str, Any]) -> str:
+    total = float((latest.get("metrics") or {}).get("total_wall_seconds") or 0.0)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>rust_rockfall CI performance</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="refresh" content="0; url=performance/">
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }}
+    a {{ color: #0969da; }}
+  </style>
+</head>
+<body>
+  <h1>rust_rockfall CI performance</h1>
+  <p>Latest main benchmark: <code>{total:.3f}s</code> at commit <code>{latest.get("sha", "")}</code>.</p>
+  <p><a href="performance/">Open the performance dashboard</a>.</p>
 </body>
 </html>
 """

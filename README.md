@@ -69,6 +69,16 @@ Run the main local checks:
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 ```
 
+## CI Performance
+
+[![Main performance trend](https://ofuhrer.github.io/rust_rockfall/performance/main_performance.svg)](https://ofuhrer.github.io/rust_rockfall/performance/)
+
+The main-branch performance workflow publishes the latest synthetic benchmark
+baseline and trend dashboard to
+[`ofuhrer.github.io/rust_rockfall/performance/`](https://ofuhrer.github.io/rust_rockfall/performance/).
+These timings are CI diagnostics for engineering regressions, not scientific
+validation metrics.
+
 For focused debugging, run individual checks directly:
 
 ```bash

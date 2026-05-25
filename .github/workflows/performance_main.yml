@@ -63,7 +63,8 @@ jobs:
             --history-out performance_site/performance/history.json \
             --latest-out performance_site/performance/latest.json \
             --chart-out performance_site/performance/main_performance.svg \
-            --index-out performance_site/performance/index.html
+            --index-out performance_site/performance/index.html \
+            --site-index-out performance_site/index.html
           cp validation/results/performance_ci_main/summary.csv performance_site/performance/latest_summary.csv
 
       - name: Upload pages artifact

@@ -158,6 +158,34 @@ class PerformanceCiTrackingTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "max-points must be positive"):
                 perf_ci.record_main(args)
 
+    def test_record_main_writes_performance_page_and_site_root_index(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.csv"
+            self._write_summary(summary_path)
+            site_root = Path(tmp) / "site"
+            args = SimpleNamespace(
+                summary_csv=summary_path,
+                history_url="https://example.invalid/perf/history.json",
+                commit_sha="abc1234",
+                commit_date="2026-05-25T00:00:00Z",
+                history_out=site_root / "performance" / "history.json",
+                latest_out=site_root / "performance" / "latest.json",
+                chart_out=site_root / "performance" / "main_performance.svg",
+                index_out=site_root / "performance" / "index.html",
+                site_index_out=site_root / "index.html",
+                max_points=180,
+            )
+
+            ret = perf_ci.record_main(args)
+
+            self.assertEqual(ret, 0)
+            self.assertTrue((site_root / "performance" / "latest.json").exists())
+            self.assertTrue((site_root / "performance" / "index.html").exists())
+            root_index = (site_root / "index.html").read_text(encoding="utf-8")
+            self.assertIn("rust_rockfall CI performance", root_index)
+            self.assertIn("url=performance/", root_index)
+            self.assertIn("Open the performance dashboard", root_index)
+
     def _write_summary(self, path: Path) -> None:
         fieldnames = [
             "stage",

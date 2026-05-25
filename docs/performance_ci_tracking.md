@@ -55,7 +55,8 @@ Workflow: `.github/workflows/performance_main.yml`
    - `history.json`,
    - `latest.json`,
    - `main_performance.svg`,
-   - `index.html`.
+   - `performance/index.html`,
+   - root `index.html` redirecting to the performance dashboard.
 5. Deploys these files to GitHub Pages.
 
 ## Rendering
