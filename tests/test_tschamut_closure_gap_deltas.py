@@ -23,6 +23,7 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
             "deferred_gap",
             "no_go_gap",
             "candidate_runout_failure_diagnostic",
+            "candidate_geometry_ablation",
             "claim_boundaries",
             "current_evidence",
             "scale_up_authorized",
@@ -79,6 +80,8 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertIn("claim_boundaries:", text)
         self.assertIn("candidate_runout_failure_diagnostic:", text)
         self.assertIn("source_placement_displaced_with_local_early_stopping", text)
+        self.assertIn("candidate_geometry_ablation:", text)
+        self.assertIn("source_offset_dominates_with_candidate_local_stopping_signal", text)
         self.assertIn("operational_claims_allowed: false", text)
         self.assertIn("scale_up_authorized: false", text)
 
@@ -121,6 +124,41 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
 
         self.assertEqual(centroid, {"x_m": 2696484.5, "y_m": 1167532.0})
 
+    def test_candidate_geometry_ablation_separates_source_offset_from_stopping(self) -> None:
+        ablation = summary.summarize_candidate_geometry_ablation()
+
+        self.assertEqual(ablation["ablation_status"], "fixture_replay_ready")
+        self.assertEqual(
+            ablation["dominant_effect"],
+            "source_offset_dominates_with_candidate_local_stopping_signal",
+        )
+        self.assertGreater(
+            ablation["deltas"]["deposition_centroid_error_delta_candidate_minus_source_aligned_m"],
+            200.0,
+        )
+        self.assertGreater(
+            ablation["source_aligned_variant"]["simulated_to_observed_runout_ratio"],
+            0.25,
+        )
+        self.assertLess(
+            ablation["candidate_aligned_variant"]["simulated_to_observed_runout_ratio"],
+            0.25,
+        )
+        self.assertFalse(ablation["claim_boundaries"]["parameter_tuning_authorized"])
+        self.assertFalse(ablation["claim_boundaries"]["candidate_acceptance_upgrade"])
+
+    def test_candidate_geometry_ablation_fails_closed_on_missing_metrics(self) -> None:
+        ablation = summary.summarize_candidate_geometry_ablation(
+            {
+                "candidate_local_comparison_record": "validation/pilot_runs/does_not_exist.yaml",
+            }
+        )
+
+        self.assertEqual(ablation["ablation_status"], "blocked_missing_inputs")
+        self.assertEqual(ablation["dominant_effect"], "unknown")
+        self.assertIn("validation/pilot_runs/does_not_exist.yaml", ablation["missing_inputs"])
+        self.assertFalse(ablation["claim_boundaries"]["parameter_tuning_authorized"])
+
     def test_missing_inputs_override_reports_blocked_status(self) -> None:
         report = summary.build_report({"missing_inputs": ["docs/missing.json"]})
         self.assertEqual(report["closure_gap_status"], "blocked_missing_inputs")
@@ -128,6 +166,7 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertEqual(report["current_interpretation_status"], "blocked_missing_inputs")
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])
         self.assertEqual(report["candidate_runout_failure_diagnostic"]["diagnostic_status"], "blocked_missing_inputs")
+        self.assertEqual(report["candidate_geometry_ablation"]["ablation_status"], "blocked_missing_inputs")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
 
@@ -145,6 +184,28 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
                 },
                 "claim_boundaries": {
                     "diagnostic_only": True,
+                    "candidate_acceptance_upgrade": False,
+                    "parameter_tuning_authorized": False,
+                    "operational_claims_allowed": False,
+                    "physical_probability_claims_allowed": False,
+                },
+            },
+            "candidate_geometry_ablation": {
+                "ablation_status": "fixture_replay_ready",
+                "dominant_effect": "source_offset_dominates_with_candidate_local_stopping_signal",
+                "source_aligned_variant": {
+                    "simulated_to_observed_runout_ratio": 0.692689,
+                },
+                "candidate_aligned_variant": {
+                    "simulated_to_observed_runout_ratio": 0.055825,
+                },
+                "deltas": {
+                    "runout_distance_error_delta_candidate_minus_source_aligned_m": 65.493787,
+                    "deposition_centroid_error_delta_candidate_minus_source_aligned_m": 204.866829,
+                    "deposition_overlap_delta_candidate_minus_source_aligned": -0.433333,
+                },
+                "smallest_next_scientific_action": "test a source-aligned reviewed candidate before any physics tuning",
+                "claim_boundaries": {
                     "candidate_acceptance_upgrade": False,
                     "parameter_tuning_authorized": False,
                     "operational_claims_allowed": False,

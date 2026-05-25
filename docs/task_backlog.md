@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-510: Run Candidate Geometry Ablation Locally
-
-Goal: Ablate candidate release placement locally to separate source offset from local stopping behavior in the Tschamut candidate failure.
-
-Capability gap reduced: Turns the TB-494 failure classification into a direct geometry experiment instead of an inferred explanation.
-
-Why this outranks alternatives: The current candidate diagnosis says source placement and early stopping are entangled; a small ablation can decide which effect dominates next.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`
-- `tests/test_tschamut_closure_gap_deltas.py`
-
-Deliverables:
-
-- Reuse existing local comparison inputs to run or fixture-replay one source-aligned and one candidate-aligned comparison variant.
-- Record a measured or fail-closed local result that names whether source offset, terrain/contact stopping, or both dominate.
-
-Definition of done:
-
-- Focused closure/candidate tests pass, the local ablation runs or fails closed with the smallest unblock action, and no candidate acceptance or tuning claim is added.
-
-Boundaries: Local ablation only; no physics tuning, no candidate acceptance upgrade, no annual-frequency semantics, no operational claim, and no Balfrin dependency.
-
 ### TB-511: Add Real-Terrain Energy Budget Regression
 
 Goal: Add a focused real-terrain regression that checks energy and speed remain finite and bounded over a committed terrain case.

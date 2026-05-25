@@ -129,6 +129,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     deferred_gap = summarize_deferred_gap(diagnostic_report, closure_limiting_layers, deferrable_layers)
     no_go_gap = summarize_no_go_gap(diagnostic_report, closure_limiting_layers, workflow_product_blocker_deltas)
     candidate_runout_failure_diagnostic = summarize_candidate_runout_failure(evidence_override)
+    candidate_geometry_ablation = summarize_candidate_geometry_ablation(evidence_override)
 
     current_closure_status = diagnostic_report.get("closure_status", "unknown")
     current_interpretation_status = diagnostic_report.get("interpretation_status", "unknown")
@@ -150,6 +151,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "deferred_gap": deferred_gap,
         "no_go_gap": no_go_gap,
         "candidate_runout_failure_diagnostic": candidate_runout_failure_diagnostic,
+        "candidate_geometry_ablation": candidate_geometry_ablation,
         "claim_boundaries": claim_boundaries,
         "current_evidence": {
             "closure": closure_report,
@@ -160,6 +162,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
             "portability_status": diagnostic_report.get("portability_status", {}),
             "physical_credibility_status": diagnostic_report.get("physical_credibility_status", "unknown"),
             "candidate_runout_failure": candidate_runout_failure_diagnostic,
+            "candidate_geometry_ablation": candidate_geometry_ablation,
         },
         "scale_up_authorized": False,
         "operational_claims_allowed": False,
@@ -521,6 +524,158 @@ def summarize_candidate_runout_failure(evidence_override: dict[str, Any] | None 
     }
 
 
+def summarize_candidate_geometry_ablation(evidence_override: dict[str, Any] | None = None) -> dict[str, Any]:
+    if evidence_override and isinstance(evidence_override.get("candidate_geometry_ablation"), dict):
+        return dict(evidence_override["candidate_geometry_ablation"])
+
+    record_path = DEFAULT_CANDIDATE_LOCAL_COMPARISON_RECORD
+    if evidence_override and evidence_override.get("candidate_local_comparison_record"):
+        record_path = resolve_repo_path(Path(str(evidence_override["candidate_local_comparison_record"])))
+
+    if not record_path.exists():
+        return blocked_candidate_geometry_ablation(
+            f"candidate local comparison record is missing: {display_path(record_path)}",
+            [display_path(record_path)],
+        )
+
+    record = load_yaml(record_path)
+    candidate_smoke = dict(record.get("candidate_local_smoke") or {})
+    prior_baselines = dict(record.get("prior_baselines") or {})
+    source_aligned = dict(prior_baselines.get("observed_release_local_baseline") or {})
+    missing_fields = required_ablation_fields(candidate_smoke, source_aligned)
+    if missing_fields:
+        return blocked_candidate_geometry_ablation(
+            "candidate/source-aligned comparison metrics are incomplete",
+            missing_fields,
+        )
+
+    candidate_variant = build_ablation_variant("candidate_aligned_reviewed_source", candidate_smoke)
+    source_variant = build_ablation_variant("source_aligned_observed_release_baseline", source_aligned)
+    deltas = {
+        "runout_distance_error_delta_candidate_minus_source_aligned_m": round(
+            candidate_variant["runout_distance_error_m"] - source_variant["runout_distance_error_m"],
+            6,
+        ),
+        "deposition_centroid_error_delta_candidate_minus_source_aligned_m": round(
+            candidate_variant["deposition_centroid_error_m"] - source_variant["deposition_centroid_error_m"],
+            6,
+        ),
+        "deposition_overlap_delta_candidate_minus_source_aligned": round(
+            candidate_variant["deposition_cloud_overlap_fraction"] - source_variant["deposition_cloud_overlap_fraction"],
+            6,
+        ),
+        "simulated_to_observed_runout_ratio_delta_candidate_minus_source_aligned": round(
+            candidate_variant["simulated_to_observed_runout_ratio"] - source_variant["simulated_to_observed_runout_ratio"],
+            6,
+        ),
+    }
+    dominant_effect = classify_candidate_geometry_ablation(candidate_variant, source_variant, deltas)
+    return {
+        "ablation_status": "fixture_replay_ready",
+        "record_path": display_path(record_path),
+        "dominant_effect": dominant_effect,
+        "source_aligned_variant": source_variant,
+        "candidate_aligned_variant": candidate_variant,
+        "deltas": deltas,
+        "smallest_next_scientific_action": next_candidate_geometry_ablation_action(dominant_effect),
+        "interpretation": (
+            "the fixture replay compares the candidate-aligned local smoke with the observed-release local "
+            "baseline as the source-aligned variant; this separates geometry placement from a full physics "
+            "or parameter-tuning experiment"
+        ),
+        "claim_boundaries": {
+            "fixture_replay_only": True,
+            "candidate_acceptance_upgrade": False,
+            "parameter_tuning_authorized": False,
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+        },
+    }
+
+
+def blocked_candidate_geometry_ablation(reason: str, missing_inputs: list[str]) -> dict[str, Any]:
+    return {
+        "ablation_status": "blocked_missing_inputs",
+        "blocked_reason": reason,
+        "missing_inputs": missing_inputs,
+        "dominant_effect": "unknown",
+        "smallest_next_scientific_action": "restore the local comparison record or rerun the candidate/local baseline pair",
+        "claim_boundaries": {
+            "fixture_replay_only": True,
+            "candidate_acceptance_upgrade": False,
+            "parameter_tuning_authorized": False,
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+        },
+    }
+
+
+def required_ablation_fields(candidate: dict[str, Any], source_aligned: dict[str, Any]) -> list[str]:
+    required = (
+        "observed_mean_runout_m",
+        "simulated_mean_runout_m",
+        "runout_distance_error_m",
+        "deposition_centroid_error_m",
+        "deposition_cloud_overlap_fraction",
+    )
+    missing: list[str] = []
+    for label, metrics in (
+        ("candidate_local_smoke", candidate),
+        ("prior_baselines.observed_release_local_baseline", source_aligned),
+    ):
+        for field in required:
+            if metrics.get(field) is None:
+                missing.append(f"{label}.{field}")
+    return missing
+
+
+def build_ablation_variant(label: str, metrics: dict[str, Any]) -> dict[str, Any]:
+    observed_runout = float(metrics.get("observed_mean_runout_m") or 0.0)
+    simulated_runout = float(metrics.get("simulated_mean_runout_m") or 0.0)
+    return {
+        "variant_id": label,
+        "observed_mean_runout_m": observed_runout,
+        "simulated_mean_runout_m": simulated_runout,
+        "simulated_to_observed_runout_ratio": round(simulated_runout / observed_runout, 6) if observed_runout else 0.0,
+        "runout_distance_error_m": float(metrics.get("runout_distance_error_m") or 0.0),
+        "deposition_centroid_error_m": float(metrics.get("deposition_centroid_error_m") or 0.0),
+        "deposition_cloud_overlap_fraction": float(metrics.get("deposition_cloud_overlap_fraction") or 0.0),
+    }
+
+
+def classify_candidate_geometry_ablation(
+    candidate_variant: dict[str, Any],
+    source_variant: dict[str, Any],
+    deltas: dict[str, float],
+) -> str:
+    source_geometry_improves = (
+        deltas["deposition_centroid_error_delta_candidate_minus_source_aligned_m"] >= 100.0
+        and deltas["runout_distance_error_delta_candidate_minus_source_aligned_m"] >= 30.0
+        and deltas["deposition_overlap_delta_candidate_minus_source_aligned"] <= -0.25
+    )
+    candidate_early_stops = candidate_variant["simulated_to_observed_runout_ratio"] < 0.25
+    source_early_stops = source_variant["simulated_to_observed_runout_ratio"] < 0.25
+    if source_geometry_improves and candidate_early_stops and not source_early_stops:
+        return "source_offset_dominates_with_candidate_local_stopping_signal"
+    if source_geometry_improves:
+        return "source_offset_dominates"
+    if candidate_early_stops and source_early_stops:
+        return "terrain_contact_stopping_dominates"
+    if candidate_early_stops:
+        return "candidate_local_stopping_signal_without_source_offset_dominance"
+    return "inconclusive_geometry_ablation"
+
+
+def next_candidate_geometry_ablation_action(dominant_effect: str) -> str:
+    if dominant_effect == "source_offset_dominates_with_candidate_local_stopping_signal":
+        return "test a source-aligned reviewed candidate before any physics tuning; preserve candidate local-stopping diagnostics as secondary evidence"
+    if dominant_effect == "source_offset_dominates":
+        return "prioritize source interpretation and reviewed candidate placement before contact or parameter changes"
+    if dominant_effect == "terrain_contact_stopping_dominates":
+        return "inspect terrain/contact stopping behavior on matched source geometry before evaluating new candidate polygons"
+    return "rerun a paired candidate/source-aligned local comparison with the same output metrics"
+
+
 def classify_candidate_failure_mode(
     *,
     runout_ratio: float,
@@ -654,6 +809,10 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "dominant_failure_mode": "unknown",
             "smallest_next_scientific_action": "restore required evidence inputs before diagnosing candidate runout failure",
         },
+        "candidate_geometry_ablation": blocked_candidate_geometry_ablation(
+            "required evidence inputs are missing",
+            missing_inputs,
+        ),
         "claim_boundaries": {
             "scale_up_authorized": False,
             "operational_claims_allowed": False,
@@ -734,6 +893,19 @@ def render_text_report(report: dict[str, Any]) -> str:
         + " | release_offset_m="
         + str(geometry.get("candidate_release_to_observed_release_centroid_m", "unknown"))
         + f" | next_action={candidate.get('smallest_next_scientific_action', 'unknown')}"
+    )
+    ablation = report.get("candidate_geometry_ablation", {})
+    ablation_deltas = ablation.get("deltas") or {}
+    lines.append("candidate_geometry_ablation:")
+    lines.append(
+        "  - "
+        + f"status={ablation.get('ablation_status', 'unknown')}"
+        + f" | dominant_effect={ablation.get('dominant_effect', 'unknown')}"
+        + " | centroid_delta_m="
+        + str(ablation_deltas.get("deposition_centroid_error_delta_candidate_minus_source_aligned_m", "unknown"))
+        + " | runout_error_delta_m="
+        + str(ablation_deltas.get("runout_distance_error_delta_candidate_minus_source_aligned_m", "unknown"))
+        + f" | next_action={ablation.get('smallest_next_scientific_action', 'unknown')}"
     )
     lines.append(f"claim_boundaries: {json.dumps(report['claim_boundaries'], sort_keys=True)}")
     lines.append(f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}")
