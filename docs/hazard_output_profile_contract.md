@@ -216,13 +216,22 @@ Interpretation rule:
 
 ## Recommended default mapping (current)
 
-- Keep existing default behavior (compatible with historical expectations):
+- For local hazard smoke, replay, and same-scale rebuild checks, prefer the
+  native `rebuildable_reduced_output` profile:
+  - keep trajectory, deposition, impact-event, diagnostics, and manifest
+    artifacts needed by `scripts/build_hazard_layers.py`,
+  - suppress full debug fanout by default,
+  - rebuild from the reduced manifest rather than rerunning full-debug output
+    unless full forensics are explicitly required.
+- The historical command-line defaults remain available for compatibility:
   - `--conditional-curve-export full`
   - `--grid-csv-export full`
   - `--reducer-workers 1`
   - `--trajectory-workers 1`
   - no `--pilot-gis-package`.
-- Use explicit profile intent in runbooks rather than changing this default behavior.
+- Use explicit profile intent in runbooks; local smoke recommendations should
+  point at rebuildable reduced outputs, while full-debug output remains an
+  intentional opt-in.
 
 ## Recommended practical balfrin command templates
 

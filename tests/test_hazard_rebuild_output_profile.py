@@ -213,6 +213,12 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             self.assertEqual(report["profile_classifications"]["native_rebuildable_reduced_output"], "rebuildable_reduced_output")
             self.assertEqual(report["reduced_profile"]["classification"], "rebuildable_reduced_output")
             self.assertEqual(report["rebuildable_reduced_profile"]["classification"], "rebuildable_reduced_output")
+            recommendation = report["default_local_hazard_smoke_recommendation"]
+            self.assertEqual(recommendation["recommendation_status"], "recommended")
+            self.assertEqual(recommendation["recommended_validation_output_mode"], "rebuildable_reduced_output")
+            self.assertEqual(recommendation["default_output_policy"]["grid_csv_export"], "none")
+            self.assertIn("rebuildable_reduced_local_smoke", recommendation["next_command"])
+            self.assertIn("no scale-up authorization", recommendation["claim_boundary"])
 
     def test_local_rebuild_proof_executes_closure_relevant_layers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

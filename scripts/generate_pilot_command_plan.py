@@ -175,6 +175,14 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "tschamut_native_rebuildable_reduced_profile_classification": output_profile_report["profile_classifications"].get(
             "native_rebuildable_reduced_output"
         ),
+        "default_local_hazard_smoke_recommendation": output_profile_report.get(
+            "default_local_hazard_smoke_recommendation",
+            {
+                "recommendation_status": "blocked_missing_rebuildable_reduced_profile",
+                "recommended_validation_output_mode": "rebuildable_reduced_output",
+                "next_command": "PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json",
+            },
+        ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
         "public_context_boundary_status": second_site_report["public_context_boundary_status"],
         "deferred_public_context_categories": second_site_report["deferred_public_context_categories"],

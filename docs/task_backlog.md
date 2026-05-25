@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-546: Make Rebuildable Reduced Output The Default Local Hazard Smoke Recommendation
-
-Goal: Steer local hazard smoke and replay recommendations toward rebuildable reduced outputs by default.
-
-Capability gap reduced: Reduces local output-volume drift while preserving reproducibility through rebuild instructions.
-
-Why this outranks alternatives: Output pressure is already a scaling bottleneck, and default local recommendations should avoid producing heavy artifacts unnecessarily.
-
-Inspect first:
-
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/hazard_output_profile_contract.md`
-- `tests/test_hazard_rebuild_output_profile.py`
-
-Deliverables:
-
-- Update existing command-plan or output-profile surfaces so local smoke/replay guidance prefers the rebuildable reduced profile when scientifically sufficient.
-- Add focused tests that preserve access to fuller outputs when explicitly requested.
-
-Definition of done:
-
-- Local command guidance names the reduced rebuildable profile, the rebuild command or metadata needed to recover full outputs, and the focused tests pass.
-
-Boundaries: No deletion of existing artifacts, no forced behavior change for heavy runs, no new output contract, and no claim that reduced output is always sufficient.
-
 ### TB-547: Add Local GIS/COG Package Roundtrip Smoke On Tiny Fixture
 
 Goal: Prove that a tiny local same-scale package can be converted and audited as GIS/COG-ready without large artifacts.

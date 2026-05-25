@@ -44,6 +44,12 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "target_rebuildable_reduced": "rebuildable_reduced_output",
                 "native_rebuildable_reduced_output": "rebuildable_reduced_output",
             },
+            "default_local_hazard_smoke_recommendation": {
+                "recommendation_status": "recommended",
+                "recommended_validation_output_mode": "rebuildable_reduced_output",
+                "next_command": "PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --rebuild-proof-output-dir /tmp/rust_rockfall/rebuildable_reduced_local_smoke --format json",
+                "claim_boundary": "local smoke recommendation only; no scale-up authorization or claim upgrade",
+            },
         }
 
     def _output_profile_blocked(self) -> dict[str, object]:
@@ -162,6 +168,14 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(report["tschamut_hazard_rebuild_output_profile_status"], "measured")
         self.assertEqual(report["tschamut_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
         self.assertEqual(report["tschamut_native_rebuildable_reduced_profile_classification"], "rebuildable_reduced_output")
+        self.assertEqual(
+            report["default_local_hazard_smoke_recommendation"]["recommended_validation_output_mode"],
+            "rebuildable_reduced_output",
+        )
+        self.assertIn(
+            "rebuildable_reduced_local_smoke",
+            report["default_local_hazard_smoke_recommendation"]["next_command"],
+        )
         self.assertEqual(report["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
         self.assertEqual(report["output_profile_validation"]["status"], "ready")
         self.assertEqual(report["output_profile_validation"]["blocked_command_ids"], [])
