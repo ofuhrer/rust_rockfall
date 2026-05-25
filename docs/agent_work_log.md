@@ -7021,3 +7021,32 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local performance only; no physics change, no output contract break, no new benchmark framework, no operational claim, and no Balfrin dependency.
 - Next task: `TB-499`
+
+### TB-499: Add A Second Candidate Local Comparison
+
+- Date: 2026-05-25
+- Commit: `a3833e7`
+- Objective: run one more local comparison using a different stable candidate shape to test whether the earlier degraded runout was candidate-specific.
+- Files changed: `validation/pilot_runs/tschamut_candidate_058_stable_local_comparison_v1.yaml`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Used the existing candidate review path to mark stable candidate `tschamut_public_lps_release_bbox_candidate_058` accepted under ignored root `hazard/results/tb499_stable_candidate_review`.
+  - Froze that accepted candidate with the existing source-zone freezer under `hazard/results/tb499_stable_candidate_scenarios`; the freezer geometry check confirmed the deterministic release cell center stayed inside candidate and source-zone bounds.
+  - Created ignored local validation scratch inputs under `validation/results/tb499_stable_candidate_local_comparison` mirroring the existing TB-484 local-comparison case and ran the Rust validator locally.
+  - Recorded the durable pilot-run evidence in `validation/pilot_runs/tschamut_candidate_058_stable_local_comparison_v1.yaml` with the same metrics schema as the prior adjacent-candidate comparison.
+  - The second candidate improved substantially versus the adjacent Prau Mulins candidate: runout error delta `-50.6361657118899 m`, centroid error delta `-104.83414293300305 m`, and nearest-deposition error delta `-115.82246008859019 m`.
+  - The candidate still degraded versus observed-release baselines: local-baseline runout error delta `14.857620887248245 m`, centroid error delta `100.03268632004601 m`, and overlap delta `-0.43333333333333335`.
+  - Classified the result as degraded relative to observed-release baselines but improved versus the adjacent candidate, making the previous degradation partly candidate-specific rather than a uniform candidate-workflow failure.
+  - Removed TB-499 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --mode review-apply --review-package hazard/results/release_zone_candidates_tb479/tschamut_public_pilot_release_zone_candidate_review_manifest.json --candidate-review-decision tschamut_public_lps_release_bbox_candidate_058=accepted --output-root hazard/results/tb499_stable_candidate_review --format json --json-output /tmp/tb499_review_apply.json >/tmp/tb499_review_apply_stdout.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py --mode freeze --review-package hazard/results/tb499_stable_candidate_review/tschamut_public_pilot_release_zone_candidate_review_manifest.json --accepted-candidate-ids tschamut_public_lps_release_bbox_candidate_058 --output-root hazard/results/tb499_stable_candidate_scenarios --format json --json-output /tmp/tb499_freeze.json >/tmp/tb499_freeze_stdout.json`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/results/tb499_stable_candidate_local_comparison/candidate_release_zone_case.yaml >/tmp/tb499_validate_stdout.txt 2>/tmp/tb499_validate_stderr.txt`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_candidate_source_zone_freezer -v`
+  - `PYENV_VERSION=system uv run python - <<'PY' ...` YAML smoke parse for the old and new candidate local-comparison records
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" validation/pilot_runs/tschamut_candidate_058_stable_local_comparison_v1.yaml docs/task_backlog.md scripts/plan_terrain_release_zone_candidates.py scripts/generate_candidate_source_zone_scenarios.py tests/test_plan_terrain_release_zone_candidates.py tests/test_candidate_source_zone_freezer.py` (only pre-existing helper names containing `stub` plus intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local comparison only; no tuning, no field validation claim, no candidate acceptance upgrade, no operational claim, and no Balfrin dependency.
+- Next task: `TB-500`
