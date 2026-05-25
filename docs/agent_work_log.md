@@ -7722,3 +7722,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: inventory reuse only; no new standalone script, no file moves, no operational claim, and no Balfrin dependency.
 - Next task: `TB-527`
+
+### TB-527: Route One AOI Workflow Through A Single Existing Front Door
+
+- Date: 2026-05-25
+- Commit: `f97f82c`
+- Objective: route one documented AOI workflow path through the existing AOI front door instead of direct invocation of a lower-level helper.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended `scripts/run_aoi_hazard_workflow.py package-map` so `--package-output-root` delegates to `scripts/package_aoi_hazard_map.py` and writes the review package through the front door.
+  - Preserved the existing readiness-only `package-map` behavior when no package output root is supplied.
+  - Added focused coverage proving the front door calls the package helper with `artifact_root`, `package_output_root`, and `overwrite`.
+  - Updated the AOI manual's diagnostic package step to use `run_aoi_hazard_workflow.py package-map --package-output-root ...`.
+  - Verified the new CLI path fails closed with `blocked_missing_hazard_outputs` for a missing hazard root while reporting the package-helper delegate and requested package output root.
+  - Removed TB-527 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_package_map_front_door_delegates_to_package_helper_when_output_root_is_requested -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map --artifact-root hazard/results/does-not-exist --package-output-root /tmp/tb527_aoi_review_package --overwrite --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_aoi_hazard_workflow.py tests/test_run_aoi_hazard_workflow.py`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: existing front-door routing only; no new script, no new data source, no operational claim, and no Balfrin dependency.
+- Next task: `TB-528`
