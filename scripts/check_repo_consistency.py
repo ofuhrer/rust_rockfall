@@ -2825,7 +2825,7 @@ def check_hazard_layer_metadata() -> list[str]:
         ROOT / "hazard/results/.gitkeep",
         ROOT / "docs/hazard_layers.md",
         ROOT / "docs/performance_benchmarking.md",
-        ROOT / "docs/hazard_workflow_scale_review.md",
+        ROOT / "docs/archive/hazard_workflow_scale_review.md",
         ROOT / "tests/test_hazard_layers.py",
         ROOT / "tests/fixtures/hazard/plane_case.yaml",
         ROOT / "tests/fixtures/hazard/ensemble_case.yaml",
@@ -3084,7 +3084,7 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         path.read_text()
         for path in (
             ROOT / "docs/hazard_layers.md",
-            ROOT / "docs/hazard_workflow_scale_review.md",
+            ROOT / "docs/archive/hazard_workflow_scale_review.md",
         )
         if path.exists()
     )

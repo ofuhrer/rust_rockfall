@@ -59,6 +59,8 @@ Current replacements: `../task_backlog.md`, `../hazard_map_semantics.md`,
   result snapshot.
 - `performance_benchmark_synthetic_scale_results.md`: historical synthetic
   scale result snapshot.
+- `hazard_workflow_scale_review.md`: first hazard-layer workflow stress-test
+  review superseded by current maturity and output-profile summaries.
 - `scarring_contact_v1_review.md`: old scarring review.
 - `scarring_impact_inspection.md`: old scarring impact inspection.
 - `public_tschamut_shape_metadata_milestone.md`: passive shape-metadata

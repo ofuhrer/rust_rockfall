@@ -1,5 +1,9 @@
 # Hazard Workflow Scale Review
 
+Status: archived historical stress-test review. Current scale interpretation
+lives in `../current_maturity_snapshot.md`, `../hazard_output_profile_contract.md`,
+and the active scale readiness helpers.
+
 ## Purpose
 
 This review stress-tests the first hazard-layer workflow in

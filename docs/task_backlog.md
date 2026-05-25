@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-528: Merge One Redundant Status Summary Into Maturity Snapshot
-
-Goal: Remove or demote one redundant status/report document by preserving its still-useful content in `docs/current_maturity_snapshot.md` or an existing archive.
-
-Capability gap reduced: Reduces the number of active docs a reader must scan to understand current project state.
-
-Why this outranks alternatives: Many docs are historical reports or narrowly scoped summaries; active status should converge on one maintained snapshot.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/next_development_targets.md`
-- `docs/roadmap_recommendation_matrix.md`
-- `docs/hazard_workflow_scale_review.md`
-- `docs/archive/README.md`
-
-Deliverables:
-
-- Pick one stale or overlapping active doc, preserve any current actionable point in an existing active doc, then move the stale file to `docs/archive/` or replace it with a short pointer if links require it.
-- Update references that pointed users at the stale active doc.
-
-Definition of done:
-
-- Link/reference checks pass, the active docs list is smaller or clearer, and no current scientific evidence is lost.
-
-Boundaries: Documentation consolidation only; no new doc file, no claim upgrade, no deletion of unique evidence, and no Balfrin dependency.
-
 ### TB-529: Convert One Summarizer Script Into A Library Helper Or Existing Command Option
 
 Goal: Eliminate one narrow `summarize_*` script from the direct command surface by moving reusable logic behind an existing command or library helper.

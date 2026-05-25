@@ -253,8 +253,6 @@ or operational products.
 - `parquet_impact_benchmark_results.md`: Parquet impact-event benchmark.
 - `hazard_throughput_bottleneck_report.md`: hazard input-throughput
   observations.
-- `hazard_workflow_scale_review.md`: hazard-layer stress test and Swiss-scale
-  requirements.
 - `large_scale_execution_probe.md`: projection-only execution estimator.
 - `swiss_scale_feasibility_projection.md`: measured-evidence Swiss-scale
   feasibility projection report.
