@@ -8162,3 +8162,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local pre-execution estimate only; no external compute, cluster submission, distributed execution, or scientific claim upgrade.
 - Next task: `TB-546`
+
+### TB-546: Make Rebuildable Reduced Output The Default Local Hazard Smoke Recommendation
+
+- Date: 2026-05-25
+- Commit: `6dedb03`
+- Objective: steer local hazard smoke and replay guidance toward the rebuildable reduced profile by default.
+- Files changed: `scripts/check_hazard_rebuild_output_profile.py`, `scripts/generate_pilot_command_plan.py`, `docs/hazard_output_profile_contract.md`, `tests/test_hazard_rebuild_output_profile.py`, `tests/test_pilot_command_plan.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `default_local_hazard_smoke_recommendation` to the hazard rebuild output-profile audit.
+  - Carried the same recommendation through the portable command-plan report.
+  - The recommendation names `rebuildable_reduced_output`, the local rebuild-proof command, reduced-output controls, and the no-claim-upgrade boundary.
+  - Updated the output profile contract so local smoke/replay defaults prefer rebuildable reduced outputs while full-debug output remains an explicit opt-in.
+  - Removed TB-546 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: no artifact deletion, forced heavy-run behavior change, new output contract, or claim that reduced output is always sufficient.
+- Next task: `TB-547`
