@@ -201,6 +201,15 @@ def build_report(
             },
             "scenario_generation_pressure": {
                 "scenario_row_count": 0,
+                "cardinality_pressure_summary": AOI_PREVIEW.build_cardinality_pressure_summary(
+                    scenario_count=0,
+                    expected_trajectory_count=0,
+                    trajectory_count=0,
+                    source_zone_count=0,
+                    block_family_count=0,
+                    scenario_family_count=0,
+                    reviewed_candidate_count=0,
+                ),
                 "scenario_family_cardinality": [],
                 "policy_block_family_cardinality": [
                     {**family, "row_count": 0}
@@ -290,6 +299,7 @@ def build_report(
     scenario_table_manifest = dict(scenario_table_generation.get("scenario_table_manifest") or {})
     scenario_table_file_count = int(scenario_table_bundle_measurements.get("file_count") or 0)
     scenario_row_count = int(scenario_table_generation.get("scenario_row_count") or 0)
+    trajectory_count = int(scenario_table_generation.get("trajectory_count") or 0)
     scenario_rows = [row for row in scenario_table_generation.get("scenario_table_rows", []) if isinstance(row, dict)]
     if scenario_rows:
         generated_cardinality = AOI_PREVIEW.summarize_scenario_table_rows(scenario_rows)
@@ -343,6 +353,15 @@ def build_report(
         },
         "scenario_generation_pressure": {
             "scenario_row_count": scenario_row_count,
+            "cardinality_pressure_summary": AOI_PREVIEW.build_cardinality_pressure_summary(
+                scenario_count=scenario_row_count,
+                expected_trajectory_count=scenario_row_count * trajectory_count,
+                trajectory_count=trajectory_count,
+                source_zone_count=len(generated_cardinality["release_zone_cardinality"]),
+                block_family_count=len(generated_cardinality["scenario_family_cardinality"]),
+                scenario_family_count=len(generated_cardinality["scenario_family_cardinality"]),
+                reviewed_candidate_count=int(scenario_table_generation.get("accepted_candidate_count") or 0),
+            ),
             "scenario_family_cardinality": generated_cardinality["scenario_family_cardinality"],
             "release_zone_cardinality": generated_cardinality["release_zone_cardinality"],
             "policy_block_family_cardinality": [
@@ -449,6 +468,15 @@ def blocked_report(
         },
         "scenario_generation_pressure": {
             "scenario_row_count": 0,
+            "cardinality_pressure_summary": AOI_PREVIEW.build_cardinality_pressure_summary(
+                scenario_count=0,
+                expected_trajectory_count=0,
+                trajectory_count=0,
+                source_zone_count=0,
+                block_family_count=0,
+                scenario_family_count=0,
+                reviewed_candidate_count=0,
+            ),
             "scenario_family_cardinality": [],
             "release_zone_cardinality": [],
             "policy_block_family_cardinality": [],
@@ -1074,6 +1102,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- scenario_table_total_bytes: `{report['scenario_generation_pressure']['scenario_table_total_bytes']}`",
         f"- scenario_table_runtime_seconds: `{report['scenario_generation_pressure'].get('scenario_table_runtime_seconds', 0.0)}`",
         f"- manifest_pressure: `{report['scenario_generation_pressure']['manifest_pressure']['scenario_table_manifest_pressure']}`",
+        f"- cardinality_pressure_summary: `{report['scenario_generation_pressure'].get('cardinality_pressure_summary', {})}`",
         "",
         "Candidate Expansion Ladder",
         f"- candidate_expansion_counts: `{report['scenario_generation_pressure'].get('candidate_expansion_counts', [])}`",

@@ -103,6 +103,11 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertIn("source-zone footprint", report["blocked_reason"])
         self.assertIn("larger real-staged AOI crop", report["required_upstream_replacement"])
         self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 0)
+        self.assertEqual(report["scenario_generation_pressure"]["cardinality_pressure_summary"]["scenario_count"], 0)
+        self.assertEqual(
+            report["scenario_generation_pressure"]["cardinality_pressure_summary"]["first_cardinality_growth_driver"],
+            "single_scenario_baseline",
+        )
         self.assertEqual(
             report["scenario_generation_pressure"]["prepared_pilot_smoke_handoff"]["smoke_status"],
             "blocked_missing_inputs",
@@ -212,6 +217,12 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["scenario_pressure_status"], "ready")
         self.assertEqual(report["candidate_evidence"]["candidate_cell_count"], 2)
         self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 6)
+        self.assertEqual(report["scenario_generation_pressure"]["cardinality_pressure_summary"]["scenario_count"], 6)
+        self.assertEqual(report["scenario_generation_pressure"]["cardinality_pressure_summary"]["expected_trajectory_count"], 360)
+        self.assertEqual(
+            report["scenario_generation_pressure"]["cardinality_pressure_summary"]["first_cardinality_growth_driver"],
+            "source_zone_count",
+        )
         self.assertEqual(report["scenario_generation_pressure"]["scenario_table_file_count"], 5)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)
@@ -252,6 +263,12 @@ class ManagementAoiScenarioPressureTests(unittest.TestCase):
         self.assertEqual(report["scenario_pressure_status"], "ready")
         self.assertEqual(report["candidate_evidence"]["review_summary"]["candidate_count"], 1)
         self.assertEqual(report["scenario_generation_pressure"]["scenario_row_count"], 3)
+        self.assertEqual(report["scenario_generation_pressure"]["cardinality_pressure_summary"]["scenario_count"], 3)
+        self.assertEqual(report["scenario_generation_pressure"]["cardinality_pressure_summary"]["expected_trajectory_count"], 180)
+        self.assertEqual(
+            report["scenario_generation_pressure"]["cardinality_pressure_summary"]["first_cardinality_growth_driver"],
+            "block_family_count",
+        )
         self.assertEqual(report["scenario_generation_pressure"]["scenario_table_file_count"], 5)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_csv_bytes"], 0)
         self.assertGreater(report["scenario_generation_pressure"]["scenario_table_manifest_bytes"], 0)

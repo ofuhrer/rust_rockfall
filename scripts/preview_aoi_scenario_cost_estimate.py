@@ -313,6 +313,7 @@ def build_report(
         "source_zone_count": summary["source_zone_count"],
         "scenario_family_count": summary["scenario_family_count"],
         "scenario_cardinality": summary["scenario_cardinality"],
+        "cardinality_pressure_summary": summary["cardinality_pressure_summary"],
         "rows": rows,
         "projected_files": projected_totals,
         "projected_bytes": projected_bytes,
@@ -852,6 +853,7 @@ def build_preview_rows(
                     "scenario_family_id": scenario_family_id,
                     "scenario_family_template_id": DEFAULT_SCENARIO_FAMILY_TEMPLATE_ID,
                     "trajectory_count": trajectory_count,
+                    "expected_trajectory_count": row_units,
                     "output_profile_choice": output_profile_choice,
                     "projected_files": estimated["projected_files"],
                     "projected_bytes": estimated["projected_bytes"],
@@ -866,8 +868,10 @@ def build_preview_rows(
 
 def summarize_preview_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     source_zone_ids = sorted({row.get("source_zone_id", "") for row in rows if row.get("source_zone_id")})
+    block_family_ids = sorted({row.get("block_family_id", "") for row in rows if row.get("block_family_id")})
     scenario_family_ids = sorted({row.get("scenario_family_id", "") for row in rows if row.get("scenario_family_id")})
     source_zone_count = len(source_zone_ids)
+    block_family_count = len(block_family_ids)
     scenario_family_count = len(scenario_family_ids)
     scenario_cardinality = build_scenario_cardinality(
         source_zone_count=source_zone_count,
@@ -875,12 +879,75 @@ def summarize_preview_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
         row_count=len(rows),
     )
     blocking_labels: list[str] = []
+    cardinality_pressure_summary = build_cardinality_pressure_summary(
+        scenario_count=len(rows),
+        expected_trajectory_count=sum(int(row.get("expected_trajectory_count") or 0) for row in rows),
+        trajectory_count=max((int(row.get("trajectory_count") or 0) for row in rows), default=0),
+        source_zone_count=source_zone_count,
+        block_family_count=block_family_count,
+        scenario_family_count=scenario_family_count,
+        reviewed_candidate_count=sum(int(row.get("reviewed_candidate_count") or 0) for row in rows),
+    )
     return {
         "source_zone_count": source_zone_count,
         "scenario_family_count": scenario_family_count,
         "scenario_cardinality": scenario_cardinality,
+        "cardinality_pressure_summary": cardinality_pressure_summary,
         "blocking_labels": blocking_labels,
     }
+
+
+def build_cardinality_pressure_summary(
+    *,
+    scenario_count: int,
+    expected_trajectory_count: int,
+    trajectory_count: int,
+    source_zone_count: int,
+    block_family_count: int,
+    scenario_family_count: int,
+    reviewed_candidate_count: int,
+) -> dict[str, Any]:
+    factors = {
+        "source_zone_count": int(source_zone_count),
+        "block_family_count": int(block_family_count),
+        "scenario_family_count": int(scenario_family_count),
+        "reviewed_candidate_count": int(reviewed_candidate_count),
+        "trajectory_count": int(trajectory_count),
+    }
+    if source_zone_count > 1:
+        first_driver = "source_zone_count"
+    elif block_family_count > 1:
+        first_driver = "block_family_count"
+    elif scenario_family_count > 1:
+        first_driver = "scenario_family_count"
+    elif reviewed_candidate_count > 1:
+        first_driver = "reviewed_candidate_count"
+    elif trajectory_count > 1:
+        first_driver = "trajectory_count"
+    else:
+        first_driver = "single_scenario_baseline"
+    return {
+        "summary_status": "ready",
+        "scenario_count": int(scenario_count),
+        "expected_trajectory_count": int(expected_trajectory_count),
+        "trajectory_count_per_candidate": int(trajectory_count),
+        "cardinality_factors": factors,
+        "first_cardinality_growth_driver": first_driver,
+        "recommended_pressure_response": recommended_cardinality_pressure_response(first_driver),
+        "claim_boundary": "local pre-execution estimate only; no simulation, scale-up authorization, or scientific claim upgrade",
+    }
+
+
+def recommended_cardinality_pressure_response(first_driver: str) -> str:
+    responses = {
+        "source_zone_count": "review whether multiple source zones are all needed before expanding execution",
+        "scenario_family_count": "inspect block/scenario family policy before adding more candidates",
+        "block_family_count": "inspect block/scenario family policy before adding more candidates",
+        "reviewed_candidate_count": "reduce or stratify reviewed candidates before larger execution planning",
+        "trajectory_count": "keep trajectory budget explicit before execution planning",
+        "single_scenario_baseline": "use as the local baseline before adding more source zones or scenario families",
+    }
+    return responses.get(first_driver, responses["single_scenario_baseline"])
 
 
 def build_scenario_cardinality(
@@ -1320,6 +1387,7 @@ def build_selected_zone_pressure_report(
                 "selected_candidate_ids": selected_ids,
                 "reviewed_candidate_pool_count": len(reviewed_candidates),
                 "trajectory_count": preview_count,
+                "expected_trajectory_count": freezer_report["scenario_row_count"] * preview_count,
                 "seed": freezer_report["seed"],
                 "seed_policy": freezer_report["seed_policy"],
                 "block_family_count": block_family_count,
@@ -1352,6 +1420,15 @@ def build_selected_zone_pressure_report(
         )
 
     largest_report = selected_reports[-1]
+    cardinality_pressure_summary = build_cardinality_pressure_summary(
+        scenario_count=largest_report["scenario_row_count"],
+        expected_trajectory_count=largest_report["expected_trajectory_count"],
+        trajectory_count=preview_count,
+        source_zone_count=largest_report["scenario_cardinality"]["source_zone_count"],
+        block_family_count=largest_report["block_family_count"],
+        scenario_family_count=largest_report["scenario_cardinality"]["scenario_family_count"],
+        reviewed_candidate_count=largest_report["selected_zone_count"],
+    )
     return {
         "schema_version": SELECTED_ZONE_SCHEMA_VERSION,
         "preview_mode": "selected_zone_counts",
@@ -1375,6 +1452,7 @@ def build_selected_zone_pressure_report(
         "source_zone_count": largest_report["scenario_cardinality"]["source_zone_count"],
         "scenario_family_count": largest_report["scenario_cardinality"]["scenario_family_count"],
         "scenario_cardinality": largest_report["scenario_cardinality"],
+        "cardinality_pressure_summary": cardinality_pressure_summary,
         "rows": [],
         "projected_files": largest_report["projected_files"],
         "projected_bytes": largest_report["projected_bytes"],
@@ -1452,6 +1530,7 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"- reviewed_candidate_pool_count: `{report['reviewed_candidate_pool_count']}`",
             f"- trajectory_count: `{report['trajectory_count']}`",
             f"- selected_zone_counts: `{report['selected_zone_counts']}`",
+            f"- cardinality_pressure_summary: `{report.get('cardinality_pressure_summary', {})}`",
             "",
             "Selected Zone Counts",
         ]
@@ -1554,6 +1633,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- trajectory_count: `{report['trajectory_count']}`",
         f"- source_zone_count: `{report['source_zone_count']}`",
         f"- scenario_family_count: `{report['scenario_family_count']}`",
+        f"- cardinality_pressure_summary: `{report.get('cardinality_pressure_summary', {})}`",
         "",
         "Scenario Preview Rows",
     ]
@@ -1562,6 +1642,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         lines.append(f"  block_family_id: `{row.get('block_family_id', '')}`")
         lines.append(f"  scenario_family_id: `{row.get('scenario_family_id', '')}`")
         lines.append(f"  trajectory_count: `{row.get('trajectory_count', '')}`")
+        lines.append(f"  expected_trajectory_count: `{row.get('expected_trajectory_count', '')}`")
         lines.append(f"  output_profile_choice: `{row.get('output_profile_choice', '')}`")
         lines.append(f"  projected_files: `{row.get('projected_files', {})}`")
         lines.append(f"  projected_bytes: `{row.get('projected_bytes', {})}`")
