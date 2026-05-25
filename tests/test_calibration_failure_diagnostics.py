@@ -11,6 +11,7 @@ from unittest import mock
 import yaml
 
 from scripts import calibrate_scarring_impact as scarring
+from scripts import check_calibration_separation_preflight as preflight
 from scripts import preprocess_scarring_real_data as preprocess
 from scripts import run_tschamut_calibration as tschamut
 
@@ -26,6 +27,50 @@ class CalibrationFailureDiagnosticsTest(unittest.TestCase):
     def _write_yaml(self, path: Path, data: dict[str, object]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    def test_validation_case_selected_parameter_coupling_replays_as_blocked_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calibration_root = root / "calibration"
+            experiment = calibration_root / "experiments" / "diagnostic_fit"
+            experiment.mkdir(parents=True)
+            self._write_yaml(
+                experiment / "selected_parameters.yaml",
+                {
+                    "experiment_id": "diagnostic_fit",
+                    "dataset_id": "synthetic_fixture",
+                    "limitations": ["diagnostic only; not validation evidence"],
+                },
+            )
+            validation_root = root / "validation" / "cases"
+            self._write_yaml(
+                validation_root / "bad_validation_case.yaml",
+                {
+                    "case_id": "bad_validation_case",
+                    "expected": {
+                        "selected_parameters_path": "calibration/experiments/diagnostic_fit/selected_parameters.yaml",
+                    },
+                    "report": {
+                        "verifies": ["should remain blocked, not accepted"],
+                    },
+                },
+            )
+
+            report = preflight.build_report(
+                calibration_root=calibration_root,
+                validation_case_root=validation_root,
+            )
+
+        replay = report["failure_replay"]
+        self.assertEqual(report["preflight_status"], "blocked_forbidden_validation_reference")
+        self.assertEqual(replay["classification"], "invalid_calibration_validation_coupling")
+        self.assertEqual(replay["first_blocker"]["case_id"], "bad_validation_case")
+        self.assertEqual(replay["first_blocker"]["key"], "selected_parameters_path")
+        self.assertIn("calibration/experiments/diagnostic_fit/selected_parameters.yaml", replay["missing_evidence_or_invalid_coupling"])
+        self.assertFalse(replay["tuning_performed"])
+        self.assertFalse(replay["validation_acceptance_upgrade_allowed"])
+        self.assertFalse(report["claim_boundaries"]["validation_acceptance_claimed"])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
     def test_tschamut_prepare_split_reports_empty_release_and_deposition_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

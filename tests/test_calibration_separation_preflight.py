@@ -16,6 +16,8 @@ class CalibrationSeparationPreflightTests(unittest.TestCase):
         self.assertGreaterEqual(report["calibration_artifact_count"], 1)
         self.assertGreaterEqual(report["validation_case_count"], 1)
         self.assertEqual(report["prohibited_crossings"], [])
+        self.assertEqual(report["failure_replay"]["status"], "not_triggered")
+        self.assertFalse(report["failure_replay"]["tuning_performed"])
         self.assertTrue(report["separation_summary"]["calibration_records_are_diagnostic"])
         self.assertFalse(report["separation_summary"]["selected_parameters_promoted_to_validation"])
         self.assertFalse(report["claim_boundaries"]["selected_parameters_promoted"])
@@ -56,6 +58,12 @@ class CalibrationSeparationPreflightTests(unittest.TestCase):
 
         self.assertEqual(report["preflight_status"], "blocked_forbidden_validation_reference")
         self.assertEqual(len(report["prohibited_crossings"]), 2)
+        self.assertEqual(report["failure_replay"]["status"], "blocked")
+        self.assertEqual(report["failure_replay"]["classification"], "invalid_calibration_validation_coupling")
+        self.assertEqual(report["failure_replay"]["invalid_coupling_count"], 2)
+        self.assertFalse(report["failure_replay"]["tuning_performed"])
+        self.assertFalse(report["failure_replay"]["validation_acceptance_upgrade_allowed"])
+        self.assertIn("selected_parameters_path", report["failure_replay"]["missing_evidence_or_invalid_coupling"])
         self.assertTrue(report["separation_summary"]["selected_parameters_promoted_to_validation"])
 
     def test_text_report_names_artifacts_and_boundaries(self) -> None:

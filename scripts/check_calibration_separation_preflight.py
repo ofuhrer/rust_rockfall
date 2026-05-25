@@ -83,6 +83,7 @@ def build_report(
             for case in validation_cases
         ],
         "prohibited_crossings": prohibited_crossings,
+        "failure_replay": build_failure_replay(prohibited_crossings),
         "separation_summary": {
             "calibration_records_are_diagnostic": True,
             "selected_parameters_promoted_to_validation": bool(prohibited_crossings),
@@ -101,6 +102,39 @@ def build_report(
             "balfrin_required": False,
         },
     }
+
+
+def build_failure_replay(prohibited_crossings: list[dict[str, Any]]) -> dict[str, Any]:
+    if not prohibited_crossings:
+        return {
+            "status": "not_triggered",
+            "classification": "no_invalid_calibration_validation_coupling",
+            "first_blocker": None,
+            "invalid_coupling_count": 0,
+            "missing_evidence_or_invalid_coupling": None,
+            "tuning_performed": False,
+            "validation_acceptance_upgrade_allowed": False,
+        }
+    first_blocker = select_replay_blocker(prohibited_crossings)
+    return {
+        "status": "blocked",
+        "classification": "invalid_calibration_validation_coupling",
+        "first_blocker": first_blocker,
+        "invalid_coupling_count": len(prohibited_crossings),
+        "missing_evidence_or_invalid_coupling": (
+            f"{first_blocker['case_path']} {first_blocker['location']} uses "
+            f"{first_blocker['key']}={first_blocker['value']}"
+        ),
+        "tuning_performed": False,
+        "validation_acceptance_upgrade_allowed": False,
+    }
+
+
+def select_replay_blocker(prohibited_crossings: list[dict[str, Any]]) -> dict[str, Any]:
+    for crossing in prohibited_crossings:
+        if crossing["key"] in PROHIBITED_REFERENCE_KEYS:
+            return crossing
+    return prohibited_crossings[0]
 
 
 def collect_calibration_records(calibration_root: Path) -> list[dict[str, Any]]:

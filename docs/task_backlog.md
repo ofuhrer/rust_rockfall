@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-504: Add Local Calibration-Failure Replay
-
-Goal: Turn one known calibration or validation failure mode into a small deterministic local replay test.
-
-Capability gap reduced: Keeps scientific failure modes reproducible and prevents accidental masking by future workflow changes.
-
-Why this outranks alternatives: The repo has explicit calibration separation and failure diagnostics; one replayable failure is more valuable than another status note.
-
-Inspect first:
-
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `tests/test_calibration_separation_preflight.py`
-- `tests/test_calibration_failure_diagnostics.py`
-
-Deliverables:
-
-- Add or extend a focused test that reproduces one calibration/validation failure classification from existing fixtures or local synthetic data.
-- Ensure the failure remains separated from model tuning or acceptance.
-
-Definition of done:
-
-- Focused calibration/failure-diagnostic tests pass and the replayed failure names the concrete missing evidence or invalid coupling.
-
-Boundaries: Diagnostic replay only; no calibration, no parameter tuning, no acceptance upgrade, no operational claim, and no Balfrin dependency.
-
 ### TB-505: Reduce Ignored Result Root Noise Further
 
 Goal: Remove or guard one additional stale ignored result family that is not unique scientific evidence.
