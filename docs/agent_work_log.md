@@ -7050,3 +7050,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local comparison only; no tuning, no field validation claim, no candidate acceptance upgrade, no operational claim, and no Balfrin dependency.
 - Next task: `TB-500`
+
+### TB-500: Tighten Real-Terrain Rust Regression Coverage
+
+- Date: 2026-05-25
+- Commit: `a64473f`
+- Objective: add one more Rust-level real-terrain invariant that catches nonphysical or nondeterministic behavior on committed DEM fixtures.
+- Files changed: `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `real_tschamut_stochastic_contact_replay_is_deterministic_and_bounded` to the existing real-terrain edge-case test target.
+  - The regression uses the committed Tschamut validation terrain fixture and `validation/cases/tschamut_basic.yaml` parameters with `stochastic_contact_v1` roughness enabled.
+  - The test runs the same seeded trajectory twice and asserts exact summary/sample replay, finite sample coordinates, nontrivial runout, finite final speed, and bounded maximum kinetic energy.
+  - Kept the runtime small by capping the local replay at `3.0 s`; the full terrain edge-case target still completed in `0.02 s` after compilation.
+  - Removed TB-500 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases real_tschamut_stochastic_contact_replay_is_deterministic_and_bounded -- --nocapture`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/terrain_edge_cases.rs docs/task_backlog.md validation/cases/chant_sura_contact.yaml validation/cases/tschamut_basic.yaml src/simulation.rs` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: Rust regression only; no physics tuning, no new data fixture, no operational claim, and no Balfrin dependency.
+- Next task: `TB-501`
