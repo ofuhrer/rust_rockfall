@@ -10,9 +10,13 @@ profile, then reports the smallest validation artifact set that
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 from dataclasses import asdict, dataclass
+import importlib.util
 from pathlib import Path
+import sys
 from typing import Any
 
 
@@ -97,6 +101,13 @@ OPTIONAL_BUILDER_ARTIFACTS = (
     },
 )
 
+REBUILD_PROOF_SCHEMA_VERSION = "same_scale_rebuild_proof_v1"
+DEFAULT_REBUILD_PROOF_THRESHOLDS = {
+    "kinetic_energy_exceedance_j": 100.0,
+    "jump_height_exceedance_m": 1.0,
+    "velocity_exceedance_mps": 5.0,
+}
+
 
 @dataclass(frozen=True)
 class ArtifactAudit:
@@ -119,6 +130,24 @@ class ProfileClassification:
     output_count: int
     file_count: int
     total_bytes: int
+
+
+class HazardRebuildOutputProfileError(ValueError):
+    """User-facing hazard rebuild output-profile error."""
+
+
+def _load_hazard_builder():
+    module_name = "hazard_rebuild_output_profile_builder"
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+    path = ROOT / "scripts" / "build_hazard_layers.py"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise HazardRebuildOutputProfileError(f"unable to load hazard builder from {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def audit_path(path: Path, root: Path = ROOT) -> ArtifactAudit:
@@ -159,6 +188,177 @@ def normalize_output_paths(output: dict[str, Any]) -> list[str]:
         elif isinstance(value, str) and value:
             values.append(value)
     return values
+
+
+def resolve_manifest_output_path(raw_path: str, *, manifest_path: Path, profile_root: Path) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path
+    repo_relative = ROOT / path
+    if repo_relative.exists():
+        return repo_relative
+    root_relative = profile_root / path
+    if root_relative.exists():
+        return root_relative
+    return manifest_path.parent / path
+
+
+def output_records_by_kind(manifest: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    records: dict[str, list[dict[str, Any]]] = {}
+    for output in extract_outputs(manifest):
+        kind = output.get("kind")
+        if isinstance(kind, str):
+            records.setdefault(kind, []).append(output)
+    return records
+
+
+def first_output_path(
+    records: dict[str, list[dict[str, Any]]],
+    kind: str,
+    *,
+    manifest_path: Path,
+    profile_root: Path,
+) -> Path | None:
+    for record in records.get(kind, []):
+        for value in normalize_output_paths(record):
+            return resolve_manifest_output_path(value, manifest_path=manifest_path, profile_root=profile_root)
+    return None
+
+
+def build_rebuild_proof_args(
+    *,
+    manifest_path: Path,
+    profile_root: Path,
+    output_dir: Path,
+    prefix: str,
+) -> tuple[list[str], list[str]]:
+    manifest = read_json(manifest_path)
+    records = output_records_by_kind(manifest)
+    trajectory_path = first_output_path(records, "trajectory", manifest_path=manifest_path, profile_root=profile_root)
+    if trajectory_path is None:
+        trajectory_path = first_output_path(records, "ensemble_trajectories", manifest_path=manifest_path, profile_root=profile_root)
+    deposition_path = first_output_path(records, "ensemble_deposition", manifest_path=manifest_path, profile_root=profile_root)
+    impact_path = first_output_path(records, "impact_events_csv", manifest_path=manifest_path, profile_root=profile_root)
+    if impact_path is None:
+        impact_path = first_output_path(records, "ensemble_impact_events", manifest_path=manifest_path, profile_root=profile_root)
+    diagnostics_path = first_output_path(records, "diagnostics", manifest_path=manifest_path, profile_root=profile_root)
+
+    required = {
+        "trajectory_or_ensemble_trajectories": trajectory_path,
+        "ensemble_deposition": deposition_path,
+        "impact_events": impact_path,
+        "diagnostics": diagnostics_path,
+    }
+    missing = [name for name, path in required.items() if path is None or not path.exists()]
+    if missing:
+        return [], missing
+
+    trajectory_flag = "--ensemble-trajectories-dir" if trajectory_path is not None and trajectory_path.is_dir() else "--trajectory"
+    impact_flag = "--ensemble-impact-events-dir" if impact_path is not None and impact_path.is_dir() else "--impact-events"
+    args = [
+        trajectory_flag,
+        str(trajectory_path),
+        "--deposition",
+        str(deposition_path),
+        impact_flag,
+        str(impact_path),
+        "--diagnostics",
+        str(diagnostics_path),
+        "--output-dir",
+        str(output_dir),
+        "--prefix",
+        prefix,
+        "--kinetic-energy-exceedance-j",
+        str(DEFAULT_REBUILD_PROOF_THRESHOLDS["kinetic_energy_exceedance_j"]),
+        "--jump-height-exceedance-m",
+        str(DEFAULT_REBUILD_PROOF_THRESHOLDS["jump_height_exceedance_m"]),
+        "--velocity-exceedance-mps",
+        str(DEFAULT_REBUILD_PROOF_THRESHOLDS["velocity_exceedance_mps"]),
+        "--conditional-curve-export",
+        "summary-only",
+        "--grid-csv-export",
+        "none",
+        "--no-plots",
+    ]
+    return args, []
+
+
+def build_local_rebuild_proof(
+    *,
+    manifest_path: Path,
+    profile_root: Path,
+    output_dir: Path,
+    prefix: str = "same_scale_rebuild_proof",
+    execute: bool = True,
+) -> dict[str, Any]:
+    args, missing_inputs = build_rebuild_proof_args(
+        manifest_path=manifest_path,
+        profile_root=profile_root,
+        output_dir=output_dir,
+        prefix=prefix,
+    )
+    if missing_inputs:
+        return {
+            "schema_version": REBUILD_PROOF_SCHEMA_VERSION,
+            "proof_status": "blocked_missing_inputs",
+            "missing_inputs": missing_inputs,
+            "source_manifest_path": str(manifest_path),
+            "output_dir": str(output_dir),
+            "thresholds": dict(DEFAULT_REBUILD_PROOF_THRESHOLDS),
+            "claim_boundary": "local rebuild proof only; no claim upgrade",
+        }
+    if not execute:
+        return {
+            "schema_version": REBUILD_PROOF_SCHEMA_VERSION,
+            "proof_status": "planned",
+            "builder_args": args,
+            "source_manifest_path": str(manifest_path),
+            "output_dir": str(output_dir),
+            "thresholds": dict(DEFAULT_REBUILD_PROOF_THRESHOLDS),
+            "claim_boundary": "local rebuild proof only; no claim upgrade",
+        }
+
+    builder = _load_hazard_builder()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    builder_stdout = io.StringIO()
+    with contextlib.redirect_stdout(builder_stdout):
+        exit_code = builder.main_with_args(args)
+    proof_manifest_path = output_dir / f"{prefix}_manifest.json"
+    proof_manifest = read_json(proof_manifest_path) if proof_manifest_path.exists() else {}
+    generated_layers = list((proof_manifest.get("hazard_statistics") or {}).get("generated_layer_names") or [])
+    expected_layers = [
+        builder.exceedance_layer_key(
+            "kinetic_energy_exceedance",
+            DEFAULT_REBUILD_PROOF_THRESHOLDS["kinetic_energy_exceedance_j"],
+            "j",
+        ),
+        builder.exceedance_layer_key(
+            "jump_height_exceedance",
+            DEFAULT_REBUILD_PROOF_THRESHOLDS["jump_height_exceedance_m"],
+            "m",
+        ),
+        builder.exceedance_layer_key(
+            "velocity_exceedance",
+            DEFAULT_REBUILD_PROOF_THRESHOLDS["velocity_exceedance_mps"],
+            "mps",
+        ),
+    ]
+    missing_layers = [layer for layer in expected_layers if layer not in generated_layers]
+    ready = exit_code == 0 and proof_manifest_path.exists() and not missing_layers
+    return {
+        "schema_version": REBUILD_PROOF_SCHEMA_VERSION,
+        "proof_status": "ready" if ready else "blocked_rebuild_failed",
+        "builder_exit_code": exit_code,
+        "builder_stdout": builder_stdout.getvalue().strip(),
+        "source_manifest_path": str(manifest_path),
+        "output_dir": str(output_dir),
+        "proof_manifest_path": str(proof_manifest_path),
+        "generated_layer_names": generated_layers,
+        "expected_closure_layer_names": expected_layers,
+        "missing_closure_layer_names": missing_layers,
+        "thresholds": dict(DEFAULT_REBUILD_PROOF_THRESHOLDS),
+        "claim_boundary": "local rebuild proof only; no claim upgrade",
+    }
 
 
 def output_kinds(outputs: list[dict[str, Any]]) -> list[str]:
@@ -274,7 +474,21 @@ def build_contract() -> dict[str, Any]:
     }
 
 
-def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize_rebuild_narrowing(local_rebuild_proof: dict[str, Any] | None) -> dict[str, Any]:
+    status = (local_rebuild_proof or {}).get("proof_status", "not_run")
+    return {
+        "summary_only_blocker_narrowing_status": (
+            "legacy_summary_only_still_blocked_but_rebuildable_reduced_path_executable"
+            if status == "ready"
+            else "not_reduced_without_local_rebuild_proof"
+        ),
+        "reduced_blocker_key": "summary_only_not_rebuildable" if status == "ready" else None,
+        "evidence_status": status,
+        "claim_boundary": "narrowing applies only to rebuildability mechanics, not scientific closure or claim level",
+    }
+
+
+def build_report(profile_specs: list[dict[str, Any]], local_rebuild_proof: dict[str, Any] | None = None) -> dict[str, Any]:
     profiles = [
         classify_profile(spec["manifest"], spec["root"], spec["profile_id"], spec["label"])
         for spec in profile_specs
@@ -353,6 +567,13 @@ def build_report(profile_specs: list[dict[str, Any]]) -> dict[str, Any]:
             "validation_output_mode": "rebuildable_reduced_output" if reduced else None,
             "status": "canonical_native_rebuildable_reduced_output",
         },
+        "same_scale_rebuild_evidence": local_rebuild_proof
+        or {
+            "schema_version": REBUILD_PROOF_SCHEMA_VERSION,
+            "proof_status": "not_run",
+            "claim_boundary": "local rebuild proof only; no claim upgrade",
+        },
+        "summary_only_blocker_narrowing": summarize_rebuild_narrowing(local_rebuild_proof),
         "rebuildable_reduced_profile": {
             "status": "specified",
             "classification": "rebuildable_reduced_output",
@@ -449,6 +670,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--summary-only-root", type=Path, default=DEFAULT_PROFILE_SPECS[0]["root"])
     parser.add_argument("--full-manifest", type=Path, action="append", default=[])
     parser.add_argument("--full-root", type=Path, action="append", default=[])
+    parser.add_argument("--rebuild-proof-manifest", type=Path, default=None)
+    parser.add_argument("--rebuild-proof-root", type=Path, default=None)
+    parser.add_argument("--rebuild-proof-output-dir", type=Path, default=None)
     return parser.parse_args(argv)
 
 
@@ -500,7 +724,17 @@ def main(argv: list[str] | None = None) -> int:
             ]
         )
 
-    report = build_report(profile_specs)
+    local_rebuild_proof = None
+    if args.rebuild_proof_manifest is not None or args.rebuild_proof_output_dir is not None:
+        if args.rebuild_proof_manifest is None or args.rebuild_proof_output_dir is None:
+            raise SystemExit("--rebuild-proof-manifest and --rebuild-proof-output-dir must be supplied together")
+        local_rebuild_proof = build_local_rebuild_proof(
+            manifest_path=args.rebuild_proof_manifest,
+            profile_root=args.rebuild_proof_root or args.rebuild_proof_manifest.parent,
+            output_dir=args.rebuild_proof_output_dir,
+        )
+
+    report = build_report(profile_specs, local_rebuild_proof=local_rebuild_proof)
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
     else:

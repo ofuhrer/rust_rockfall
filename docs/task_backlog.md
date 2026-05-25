@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-514: Make Same-Scale Closure Rebuildable Locally
-
-Goal: Convert one summary-only same-scale closure input into a locally rebuildable reduced artifact.
-
-Capability gap reduced: Reduces the `summary_only_not_rebuildable` blocker that keeps the Tschamut closure gap from becoming a stronger diagnostic.
-
-Why this outranks alternatives: Closure interpretation remains limited by missing rebuildable evidence; one reduced rebuildable path is more valuable than another summary.
-
-Inspect first:
-
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_bounded_validation_output_profile.py`
-
-Deliverables:
-
-- Use existing reduced-output controls to regenerate or fixture-generate one closure-relevant artifact with enough row/grid data to be locally rebuildable.
-- Thread that artifact through the existing closure/output-profile check if applicable.
-
-Definition of done:
-
-- Focused output-profile/closure tests pass and at least one previous summary-only blocker is reduced or explicitly narrowed by executable evidence.
-
-Boundaries: Local rebuildability only; no claim upgrade, no new dashboard, no operational semantics, and no Balfrin dependency.
-
 ### TB-515: Reduce Scenario Table Memory Footprint
 
 Goal: Reduce memory or materialization pressure when generating large candidate scenario tables.

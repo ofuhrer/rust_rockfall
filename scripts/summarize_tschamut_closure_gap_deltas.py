@@ -307,7 +307,18 @@ def build_workflow_product_blocker_deltas(diagnostic_report: dict[str, Any]) -> 
             "current_status": output_profile.get("target_summary_only"),
             "blocker_state": output_profile.get("validation_output_blocker_status") or output_profile.get("target_summary_only"),
             "delta_to_rebuildable_reduced": output_profile.get("target_rebuildable_reduced"),
-            "evidence": "trajectory CSV artifacts are absent from the summary-only path",
+            "local_rebuild_proof_status": (output_profile.get("same_scale_rebuild_evidence") or {}).get(
+                "proof_status",
+                "not_run",
+            ),
+            "blocker_narrowing_status": (output_profile.get("summary_only_blocker_narrowing") or {}).get(
+                "summary_only_blocker_narrowing_status",
+                "not_reduced_without_local_rebuild_proof",
+            ),
+            "evidence": (
+                "trajectory CSV artifacts are absent from the legacy summary-only path; "
+                "local rebuild proof narrows the blocker when the native rebuildable-reduced path executes"
+            ),
         },
         {
             "blocker_key": "standard_gis_roots_cog_blocked",

@@ -5,7 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.check_hazard_rebuild_output_profile import build_report, classify_profile
+from scripts.check_hazard_rebuild_output_profile import build_local_rebuild_proof, build_report, classify_profile
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def write_text(path: Path, content: str = "x\n") -> None:
@@ -200,6 +203,58 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             self.assertEqual(report["profile_classifications"]["native_rebuildable_reduced_output"], "rebuildable_reduced_output")
             self.assertEqual(report["reduced_profile"]["classification"], "rebuildable_reduced_output")
             self.assertEqual(report["rebuildable_reduced_profile"]["classification"], "rebuildable_reduced_output")
+
+    def test_local_rebuild_proof_executes_closure_relevant_layers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            reduced_root = work / "reduced"
+            reduced_root.mkdir()
+            manifest_path = write_manifest(
+                reduced_root,
+                "reduced_manifest.json",
+                [
+                    {"kind": "trajectory", "path": "tests/fixtures/hazard/trajectory_a.csv"},
+                    {"kind": "ensemble_deposition", "path": "tests/fixtures/hazard/deposition.csv"},
+                    {"kind": "impact_events_csv", "path": "tests/fixtures/hazard/impacts.csv"},
+                    {"kind": "diagnostics", "path": "tests/fixtures/hazard/diagnostics.json"},
+                ],
+            )
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+            payload["validation_output_mode"] = "rebuildable_reduced_output"
+            manifest_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+            proof = build_local_rebuild_proof(
+                manifest_path=manifest_path,
+                profile_root=ROOT,
+                output_dir=work / "hazard_rebuild_proof",
+            )
+            report = build_report(
+                [
+                    {
+                        "profile_id": "target_summary_only",
+                        "label": "current_target_summary_only",
+                        "root": reduced_root,
+                        "manifest": manifest_path,
+                    },
+                    {
+                        "profile_id": "target_rebuildable_reduced",
+                        "label": "native_rebuildable_reduced_output",
+                        "root": reduced_root,
+                        "manifest": manifest_path,
+                    },
+                ],
+                local_rebuild_proof=proof,
+            )
+
+            self.assertEqual(proof["proof_status"], "ready")
+            self.assertIn("kinetic_energy_exceedance_100j", proof["generated_layer_names"])
+            self.assertIn("jump_height_exceedance_1m", proof["generated_layer_names"])
+            self.assertIn("velocity_exceedance_5mps", proof["generated_layer_names"])
+            self.assertEqual(report["same_scale_rebuild_evidence"]["proof_status"], "ready")
+            self.assertEqual(
+                report["summary_only_blocker_narrowing"]["summary_only_blocker_narrowing_status"],
+                "legacy_summary_only_still_blocked_but_rebuildable_reduced_path_executable",
+            )
 
 
 if __name__ == "__main__":
