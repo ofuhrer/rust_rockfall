@@ -7193,3 +7193,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: repository hygiene only; no scientific data deletion, no workflow claim change, no new admin script, and no Balfrin dependency.
 - Next task: `TB-506`
+
+### TB-506: Strengthen Output-Profile Policy Reuse
+
+- Date: 2026-05-25
+- Commit: `9bf578b`
+- Objective: reduce local-vs-CI drift risk by reusing the shared output-profile policy in the hazard output-profile classifier.
+- Files changed: `scripts/lib/output_profile_policy.py`, `scripts/check_hazard_output_profile.py`, `tests/test_hazard_output_profile.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `scalable_control_match_summary` to the shared output-profile policy helper.
+  - Updated `check_hazard_output_profile.py` to classify command controls through the shared policy before deriving existing profile labels.
+  - Preserved existing command-line JSON fields and added the shared `output_profile_policy` object to the result.
+  - Added assertions that full-debug commands classify as `blocked_unscalable_default` and scalable commands classify as `scalable_default`.
+  - Verified command-plan, AOI preview, and hazard rebuild paths still agree on the shared policy behavior.
+  - Removed TB-506 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_output_profile -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan.PilotCommandPlanTest.test_output_profile_policy_explicit_debug_override_allows_heavy_controls tests.test_aoi_scenario_preview.AoiScenarioPreviewTests.test_tiny_reviewed_fixture_is_ready_for_local_smoke tests.test_aoi_scenario_preview.AoiScenarioPreviewTests.test_unsupported_profile_blocks_closed -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_rebuild_output_profile -v`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_output_profile.py --format json -- scripts/build_hazard_layers.py --case validation/private/fixtures/commands.yaml --output-dir hazard/results/fixture --conditional-curve-export summary-only --grid-csv-export none --no-plots > /tmp/tb506_hazard_output_profile.json`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json > /tmp/tb506_hazard_rebuild_output_profile.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/lib/output_profile_policy.py scripts/check_hazard_output_profile.py scripts/check_hazard_rebuild_output_profile.py tests/test_hazard_output_profile.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: policy reuse only; no default-output change, no scale-up authorization, no operational claim, and no Balfrin dependency.
+- Next task: `TB-507`
