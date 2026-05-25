@@ -8683,3 +8683,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no `sbatch`, no live submission, no distributed execution, no Swiss-wide claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-570`
+
+### TB-570: Optimize Reducer Manifest Pressure For The Next Larger Package
+
+- Date: 2026-05-25
+- Commit: `6515869`
+- Objective: reduce local reducer/replay metadata pressure for the next larger reduced-output package while preserving rebuildability and deterministic merge ordering.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/validate_multi_zone_reducer_pressure_gate.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Removed `reducer_chunk_manifest` from the default bounded pressure output family mix because it is classified as diagnostic/debug metadata rather than required replay-critical output.
+  - Kept explicit opt-in support for `reducer_chunk_manifest` when a caller requests that family, so existing reducer manifest inspection remains available.
+  - Exposed `--manifest-mode` on the reducer-pressure gate and applied it consistently to target, warning, and blocked threshold fixtures.
+  - Regenerated the 16-zone compact scratch pressure report at `/tmp/rust_rockfall/tb570_16_zone_optimized_pressure.json`: reducer manifest files dropped to `0`, reducer manifest bytes dropped to `0`, output files dropped to `59`, and deterministic merge order stayed `true`.
+  - Regenerated the compact gate report at `/tmp/rust_rockfall/tb570_16_zone_gate_optimized_compact.json`; the package remains blocked on primary output cardinality/bytes and runtime, not reducer manifest files or bytes.
+  - Removed TB-570 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_multi_zone_reducer_pressure_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/tb570_16_zone_optimized_pressure --release-zone-count 16 --reducer-workers 2 --reducer-chunk-count 2 --manifest-mode compact --format json --json-output /tmp/rust_rockfall/tb570_16_zone_optimized_pressure.json --markdown-output /tmp/rust_rockfall/tb570_16_zone_optimized_pressure.md`
+  - `PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py --materialize-root /tmp/rust_rockfall/tb570_16_zone_gate_optimized_compact --release-zone-count 16 --reducer-chunk-count 2 --reducer-workers 2 --manifest-mode compact --format json --json-output /tmp/rust_rockfall/tb570_16_zone_gate_optimized_compact.json --text-output /tmp/rust_rockfall/tb570_16_zone_gate_optimized_compact.txt`
+- Result/status: implemented_measured
+- Boundaries: local scratch pressure only; no Balfrin submission, no physics changes, no output-family deletion that breaks replay/rebuildability, no scale-up claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-571`
