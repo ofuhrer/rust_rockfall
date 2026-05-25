@@ -7772,3 +7772,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation consolidation only; no claim upgrade, no deletion of unique evidence, and no Balfrin dependency.
 - Next task: `TB-529`
+
+### TB-529: Convert One Summarizer Script Into A Library Helper Or Existing Command Option
+
+- Date: 2026-05-25
+- Commit: `af19b17`
+- Objective: reduce direct `summarize_*` script sprawl while preserving the local scientific progress report.
+- Files changed: `scripts/lib/local_scientific_progress.py`, `scripts/recommend_local_scientific_backlog.py`, `scripts/inventory_workflow_shell_coupling.py`, `tests/test_local_scientific_progress.py`, `tests/test_local_scientific_backlog_recommendation.py`, `docs/onboarding.md`, `docs/current_maturity_snapshot.md`, `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Moved the reusable local scientific progress report builder from the standalone `scripts/summarize_local_scientific_progress.py` command into `scripts/lib/local_scientific_progress.py`.
+  - Exposed the same progress JSON/text payload through the existing `scripts/recommend_local_scientific_backlog.py --report progress` command path.
+  - Updated local progress tests to import the library helper and added recommendation-module coverage proving the progress report remains available.
+  - Updated onboarding, maturity, and script-inventory docs to route readers through the consolidated command surface.
+  - Made the workflow-shell inventory tolerate tracked files deleted in the current worktree and verified the retired summarizer is absent from the script-audience inventory.
+  - Removed TB-529 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_local_scientific_progress tests.test_local_scientific_backlog_recommendation tests.test_workflow_shell_coupling_inventory -v`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/recommend_local_scientific_backlog.py scripts/lib/local_scientific_progress.py scripts/inventory_workflow_shell_coupling.py tests/test_local_scientific_progress.py tests/test_local_scientific_backlog_recommendation.py`
+  - `PYENV_VERSION=system uv run python scripts/recommend_local_scientific_backlog.py --report progress --format json`
+  - `PYENV_VERSION=system uv run python scripts/recommend_local_scientific_backlog.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/inventory_workflow_shell_coupling.py --format json --json-output /tmp/tb529_inventory.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: one-script consolidation only; no new command surface, no scientific claim change, and no Balfrin dependency.
+- Next task: `TB-530`
