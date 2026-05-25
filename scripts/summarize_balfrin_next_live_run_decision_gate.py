@@ -42,6 +42,10 @@ DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_
 DEFAULT_EVIDENCE_BUNDLE = ROOT / "tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json"
 DEFAULT_PRESERVATION_RUN_ROOT = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
 DEFAULT_REDUCER_PRESSURE_ROOT = Path("/tmp/rust_rockfall/balfrin_next_live_run_decision_gate_v1/reducer_pressure")
+REDUCER_PRESSURE_REGENERATION_COMMAND = (
+    "PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py "
+    "--materialize-root /tmp/rust_rockfall/balfrin_next_live_run_decision_gate_v1/reducer_pressure --format json"
+)
 
 REQUIRED_BUNDLE_KEYS = (
     "probe_metrics_report",
@@ -138,7 +142,10 @@ def load_evidence_override(path: Path | None) -> dict[str, Any] | None:
 
 def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, Any]:
     if evidence_override is None:
-        evidence_override = build_current_evidence_bundle()
+        try:
+            evidence_override = build_current_evidence_bundle()
+        except FileNotFoundError as exc:
+            return blocked_reducer_pressure_scratch_report(exc)
 
     if isinstance(evidence_override.get("decision_gate_report"), dict):
         return dict(evidence_override["decision_gate_report"])
@@ -1085,6 +1092,48 @@ def blocked_missing_inputs_report(missing_inputs: list[str]) -> dict[str, Any]:
         },
         "blocked_reason": "required measured inputs are missing: " + ", ".join(missing) if missing else "required measured inputs are missing",
     }
+
+
+def blocked_reducer_pressure_scratch_report(exc: FileNotFoundError) -> dict[str, Any]:
+    report = blocked_missing_inputs_report(["multi_zone_reducer_pressure_report"])
+    missing_path = str(getattr(exc, "filename", "") or exc)
+    blocker = "reducer_pressure_scratch_root_missing"
+    report["decision_summary"] = (
+        "The next live Balfrin decision gate is blocked because reducer-pressure scratch artifacts "
+        "are missing or were removed during local measurement."
+    )
+    report["recommended_next_action"].update(
+        {
+            "action_id": OPTION_REDUCER,
+            "follow_up_task": "TB-551",
+            "summary": "Regenerate the reducer-pressure scratch root before ranking the next Balfrin action.",
+            "exact_evidence_blockers": [blocker],
+            "blocked_reason": blocker,
+            "recovery_command": REDUCER_PRESSURE_REGENERATION_COMMAND,
+        }
+    )
+    report["next_follow_up_package_task"] = "TB-551"
+    report["criteria"]["reducer_pressure"] = {
+        "status": "blocked_missing_scratch_root",
+        "probe_status": "blocked_missing_scratch_root",
+        "missing_path": missing_path,
+        "recovery_command": REDUCER_PRESSURE_REGENERATION_COMMAND,
+        "summary": "Reducer-pressure scratch artifacts are absent; regenerate them before using this decision gate.",
+    }
+    report["option_assessments"][OPTION_REDUCER].update(
+        {
+            "follow_up_task": "TB-551",
+            "summary": "Reducer-pressure optimization cannot be ranked until the scratch-root artifacts are regenerated.",
+            "exact_evidence_blockers": [blocker],
+            "recovery_command": REDUCER_PRESSURE_REGENERATION_COMMAND,
+        }
+    )
+    report["evidence_sources"]["multi_zone_reducer_pressure_report"] = None
+    report["recovery_commands"] = {
+        "multi_zone_reducer_pressure_report": REDUCER_PRESSURE_REGENERATION_COMMAND,
+    }
+    report["blocked_reason"] = blocker
+    return report
 
 
 def materialize_artifacts(

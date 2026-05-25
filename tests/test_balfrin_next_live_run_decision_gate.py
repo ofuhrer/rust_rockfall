@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -143,6 +144,26 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["option_assessments"]["metrics_completion_rerun"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["smallest_bounded_multi_zone_probe"]["status"], "blocked")
         self.assertEqual(report["option_assessments"]["defer_portability_or_physical_evidence"]["status"], "blocked")
+
+    def test_absent_reducer_scratch_artifacts_emit_blocked_json(self) -> None:
+        missing = FileNotFoundError(
+            2,
+            "No such file or directory",
+            "/tmp/rust_rockfall/balfrin_next_live_run_decision_gate_v1/reducer_pressure/output",
+        )
+        with mock.patch.object(MODULE.reducer_pressure, "build_report", side_effect=missing):
+            report = MODULE.build_report()
+
+        self.assertEqual(report["decision_status"], "blocked")
+        self.assertEqual(report["blocked_reason"], "reducer_pressure_scratch_root_missing")
+        self.assertEqual(report["recommended_next_action"]["action_id"], "reducer_pressure_optimization")
+        self.assertEqual(report["criteria"]["reducer_pressure"]["status"], "blocked_missing_scratch_root")
+        self.assertIn("--materialize-root", report["criteria"]["reducer_pressure"]["recovery_command"])
+        self.assertIn(
+            "reducer_pressure_scratch_root_missing",
+            report["option_assessments"]["reducer_pressure_optimization"]["exact_evidence_blockers"],
+        )
+        self.assertIn("multi_zone_reducer_pressure_report", report["recovery_commands"])
 
     def test_balfrin_ssh_expired_fixture_fails_closed_for_live_paths(self) -> None:
         bundle = self.load_fixture("default_bundle.json")

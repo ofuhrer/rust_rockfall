@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-551: Make Balfrin Decision Helpers Clean-Checkout Safe
-
-Goal: Make the Balfrin scale-readiness and next-live-run decision helpers fail closed instead of crashing when scratch reducer-pressure artifacts are absent.
-
-Capability gap reduced: Removes hidden local-state coupling from the main Balfrin decision surface.
-
-Why this outranks alternatives: A review run currently fails on missing `/private/tmp` reducer-pressure roots, so the next live probe cannot be planned reproducibly from a clean checkout.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Convert missing scratch-root reducer artifacts into explicit blocked inputs with the exact regeneration command.
-- Add focused tests that simulate absent `/tmp` roots.
-
-Definition of done:
-
-- Both decision helpers emit deterministic blocked JSON from a clean checkout and focused tests pass.
-
-Boundaries: No new live run, no silent fixture substitution, no scale-up claim, no distributed execution.
-
 ### TB-553: Sync The Balfrin Remote Checkout To A Reviewed Commit
 
 Goal: Align the Balfrin remote checkout with the reviewed repository commit before any further package or submission work.

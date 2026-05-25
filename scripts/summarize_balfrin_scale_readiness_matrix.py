@@ -32,6 +32,10 @@ from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  #
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_scale_readiness_matrix_v1"
+REDUCER_PRESSURE_REGENERATION_COMMAND = (
+    "PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py "
+    "--materialize-root /tmp/rust_rockfall/balfrin_scale_readiness_matrix_v1/reducer_pressure --format json"
+)
 EVIDENCE_LABELS = (
     "measured_on_balfrin",
     "measured_on_balfrin_postproc_microbenchmark",
@@ -262,7 +266,10 @@ def _multi_zone_reducer_pressure_report() -> dict[str, Any]:
 def _regional_split_projection_delta_summary() -> dict[str, Any]:
     measured = _regional_split_measured_row()
     scenario_report = _scenario_storage_pressure_report()
-    reducer_report = _multi_zone_reducer_pressure_report()
+    try:
+        reducer_report = _multi_zone_reducer_pressure_report()
+    except FileNotFoundError as exc:
+        return _blocked_reducer_projection_delta_summary(exc)
     projected_row = _projection_row()
     measured_runtime_seconds = float(measured.get("runtime_seconds") or 0.0)
     measured_file_count = int(measured.get("validation_output_file_count") or 0)
@@ -346,6 +353,32 @@ def _regional_split_projection_delta_summary() -> dict[str, Any]:
             "The measured regional split run root stays within the projected larger-AOI runtime, file-count, byte, and manifest bands. "
             "Scenario-cardinality pressure remains bounded by the current batching recommendation, and the reducer ladder still recommends compact manifest mode, so reducer/replay metadata is the next ranked bottleneck."
         ),
+    }
+
+
+def _blocked_reducer_projection_delta_summary(exc: FileNotFoundError) -> dict[str, Any]:
+    return {
+        "schema_version": "regional_split_projection_delta_summary_v1",
+        "measurement_status": "blocked_missing_reducer_pressure_scratch_root",
+        "evidence_label": "blocked_pre_submit",
+        "blocked_reason": "reducer_pressure_scratch_root_missing",
+        "missing_path": str(getattr(exc, "filename", "") or exc),
+        "reducer_pressure_projection_surface": {
+            "measurement_status": "blocked_missing_scratch_root",
+            "recommended_default_manifest_mode": "unknown",
+            "summary": "Reducer-pressure scratch artifacts are absent; regenerate them before using this projection surface.",
+            "largest_manifest_delta_bytes": 0,
+            "largest_output_file_count_delta": 0,
+            "largest_reducer_manifest_bytes_delta": 0,
+            "recovery_command": REDUCER_PRESSURE_REGENERATION_COMMAND,
+        },
+        "within_expected_pressure_bands": False,
+        "next_probe_class": "validate_multi_zone_reducer_pressure_gate",
+        "next_bottleneck_ranked": "reducer_pressure_scratch_root_missing",
+        "recovery_commands": {
+            "multi_zone_reducer_pressure_report": REDUCER_PRESSURE_REGENERATION_COMMAND,
+        },
+        "summary": "The regional split projection comparison is blocked until reducer-pressure scratch artifacts are regenerated.",
     }
 
 
@@ -1156,6 +1189,7 @@ def _next_probe_ranking() -> list[dict[str, Any]]:
 def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
     decision_report = decision_gate.build_report()
+    regional_split_projection_delta_summary = _regional_split_projection_delta_summary()
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
@@ -1181,7 +1215,11 @@ def build_report() -> dict[str, Any]:
     scratch_local = [row["tier_id"] for row in rows if row["evidence_label"] == "scratch_local"]
     projected = [row["tier_id"] for row in rows if row["measurement_status"] == "projection_only"]
     no_go = [row["tier_id"] for row in rows if row["classification"] == "no_go"]
-    overall_status = "blocked_reducer_budget" if blocked else "measured"
+    reducer_projection_blocked = (
+        regional_split_projection_delta_summary.get("measurement_status")
+        == "blocked_missing_reducer_pressure_scratch_root"
+    )
+    overall_status = "blocked_missing_inputs" if reducer_projection_blocked else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
     regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
     next_probe_ranking = _next_probe_ranking()
@@ -1310,12 +1348,17 @@ def build_report() -> dict[str, Any]:
             "supersedes_failed_closed_task": regional_split_row.get("supersedes_failed_closed_task"),
             "superseded_failed_closed_source_report": regional_split_row.get("superseded_failed_closed_source_report"),
             "source_report": regional_split_row.get("source_report"),
-            "projection_delta_summary": _regional_split_projection_delta_summary(),
+            "projection_delta_summary": regional_split_projection_delta_summary,
         },
-        "regional_split_projection_delta_summary": _regional_split_projection_delta_summary(),
+        "regional_split_projection_delta_summary": regional_split_projection_delta_summary,
         "next_evidence_field": "regional_split_projection_delta_summary",
         "next_backlog_recommendations": next_backlog_recommendations,
-        "blocked_reason": "four_zone_hazard_probe.authorization_record_checksum",
+        "blocked_reason": (
+            "reducer_pressure_scratch_root_missing"
+            if reducer_projection_blocked
+            else "four_zone_hazard_probe.authorization_record_checksum"
+        ),
+        "recovery_commands": regional_split_projection_delta_summary.get("recovery_commands", {}),
         "claim_boundaries": {
             "operational_claims_allowed": False,
             "physical_probability_claims_allowed": False,

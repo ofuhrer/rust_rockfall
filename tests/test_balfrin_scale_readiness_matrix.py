@@ -5,6 +5,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -394,6 +395,28 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             exit_code = MODULE.main(["--format", "json"])
         self.assertEqual(exit_code, 0)
         self.assertIn('"schema_version": "balfrin_scale_readiness_matrix_v1"', buffer.getvalue())
+
+    def test_absent_reducer_ladder_artifacts_emit_blocked_matrix_json(self) -> None:
+        MODULE._multi_zone_reducer_pressure_report.cache_clear()
+        missing = FileNotFoundError(
+            2,
+            "No such file or directory",
+            "/tmp/rust_rockfall/balfrin_scale_readiness_matrix_v1/reducer_pressure/output",
+        )
+        with mock.patch.object(MODULE.reducer_pressure, "build_manifest_pressure_ladder_report", side_effect=missing):
+            report = MODULE.build_report()
+
+        MODULE._multi_zone_reducer_pressure_report.cache_clear()
+        self.assertEqual(report["matrix_status"], "blocked_missing_inputs")
+        self.assertEqual(report["blocked_reason"], "reducer_pressure_scratch_root_missing")
+        projection = report["regional_split_projection_delta_summary"]
+        self.assertEqual(projection["measurement_status"], "blocked_missing_reducer_pressure_scratch_root")
+        self.assertEqual(
+            projection["reducer_pressure_projection_surface"]["measurement_status"],
+            "blocked_missing_scratch_root",
+        )
+        self.assertIn("--materialize-root", projection["reducer_pressure_projection_surface"]["recovery_command"])
+        self.assertIn("multi_zone_reducer_pressure_report", report["recovery_commands"])
 
 
 if __name__ == "__main__":
