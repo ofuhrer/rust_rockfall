@@ -7824,3 +7824,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: verification interface simplification only; no CI workflow expansion, no new script, and no Balfrin dependency.
 - Next task: `TB-531`
+
+### TB-531: Move Balfrin-Specific User Noise Out Of The Main Front Door
+
+- Date: 2026-05-25
+- Commit: `2fd49e5`
+- Objective: keep README and AOI front doors local-first while preserving an explicit advanced route to Balfrin material.
+- Files changed: `README.md`, `docs/aoi_user_manual.md`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reworded the README capability list so scaling is described as a local-first handoff to an advanced HPC runbook.
+  - Added a compact `Advanced Scaling` section to the README that links to the Balfrin Tschamut pilot runbook.
+  - Added a local-path boundary note to the AOI manual, with the same single advanced-scaling route to the Balfrin runbook.
+  - Added a runbook pointer back to `docs/balfrin_skills.md` for cluster rules, filesystems, partitions, and operational queue exclusions.
+  - Preserved all Balfrin runbook and orchestration guidance without changing Balfrin workflow behavior.
+  - Removed TB-531 from the active backlog.
+- Checks run:
+  - `test -f docs/balfrin_tschamut_pilot_runbook.md && test -f docs/balfrin_skills.md`
+  - `rg -n "Balfrin/HPC|Advanced Scaling|balfrin_tschamut_pilot_runbook|balfrin_skills" README.md docs/aoi_user_manual.md docs/balfrin_tschamut_pilot_runbook.md`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: documentation navigation only; no Balfrin workflow change, no access/preflight change, no operational claim, and no remote execution.
+- Next task: `TB-532`
