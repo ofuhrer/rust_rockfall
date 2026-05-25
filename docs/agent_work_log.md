@@ -6613,3 +6613,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local observed-vs-simulated comparison only; no calibration, no parameter tuning, no external validation claim upgrade, no operational claim, no annual-frequency or physical-probability semantics, and no Balfrin submission.
 - Next task: `TB-479`
+
+### TB-479: Improve Release-Zone Generation On Real Terrain
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: run existing terrain-based release-zone candidate generation on a real local AOI and produce reviewable GIS outputs.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the existing Tschamut public-pilot candidate generator against committed real-terrain package inputs with `--output-mode both`.
+  - Produced ignored local candidate outputs under `hazard/results/release_zone_candidates_tb479`: an ESRI ASCII mask, GeoJSON candidate polygons, a full-AOI search-domain GeoJSON, and candidate-review CSV/GeoJSON/mask/manifest products.
+  - The generated candidate manifest reported `output_status=emitted`, `output_mode=both`, `candidate_cell_count=3419`, `component_count=65`, `polygon_feature_count=65`, and `candidate_area_m2=13676.0`.
+  - Candidate slope metrics were spatially plausible for steep-terrain review: mean `51.03193304370605 deg`, minimum `35.30264714210658 deg`, maximum `71.10598324835046 deg`, and p95 `61.0161818729275 deg`.
+  - The focused release-zone candidate suite passed, including the committed-real-data cases.
+  - Removed TB-479 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/plan_terrain_release_zone_candidates.py --format json --output-root hazard/results/release_zone_candidates_tb479 --output-mode both`
+  - `jq '{candidate_site_id,candidate_cell_count,component_count,polygon_feature_count,candidate_area_m2:.candidate_summary.candidate_area_m2,output_status,output_mode,mask_path,polygon_path}' hazard/results/release_zone_candidates_tb479/tschamut_public_pilot_release_zone_candidates_manifest.json`
+  - `.venv/bin/python -m unittest tests.test_plan_terrain_release_zone_candidates -v`
+- Result/status: implemented_measured
+- Boundaries: human-review release-zone candidates only; no final source-zone interpretation, no tuning against outcomes, no operational claim, no Balfrin submission, and no scale-up claim.
+- Next task: `TB-480`

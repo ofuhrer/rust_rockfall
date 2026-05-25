@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-479: Improve Release-Zone Generation On Real Terrain
-
-Goal: Make existing terrain-based release-zone generation produce reviewable candidate zones on a real local AOI.
-
-Capability gap reduced: Reduces dependence on hand-authored or synthetic source-zone fixtures.
-
-Why this outranks alternatives: Real AOI hazard mapping cannot scale until candidate release zones are useful enough for human review.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `src/geodata.rs`
-- `qgis/styles/candidate_source_zone.qml`
-
-Deliverables:
-
-- Use existing release-zone candidate code on a real local terrain input and improve the underlying selection or output shape if the candidates are empty, implausible, or hard to review.
-- Produce a candidate release-zone layer that loads with the existing QGIS style.
-
-Definition of done:
-
-- The candidate generation command produces non-empty, spatially plausible candidates for the selected AOI, focused release-zone tests pass, and no new planning/admin script is added.
-
-Boundaries: Human-review candidates only; no final source-zone interpretation, no tuning against outcomes, no operational claim, no Balfrin submission, and no scale-up claim.
-
 ### TB-480: Make QGIS Hazard Outputs Immediately Reviewable
 
 Goal: Improve the generated hazard package contents so a reviewer can open the layers in QGIS with clear names, CRS, styles, and legends.
