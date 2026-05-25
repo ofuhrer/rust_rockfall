@@ -7445,3 +7445,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local scenario generation only; no probability semantics change, no annual-frequency claim, no new storage report, no operational claim, and no Balfrin dependency.
 - Next task: `TB-516`
+
+### TB-516: Add Cross-Language Fixture Replay Check
+
+- Date: 2026-05-25
+- Commit: `ddd2dbf`
+- Objective: catch drift between Python hazard-facing fixture assumptions and Rust trajectory execution.
+- Files changed: `tests/fixtures/hazard/python_generated_rust_replay_fixture.json`, `tests/test_hazard_layers.py`, `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a shared `python_generated_rust_replay_fixture_v1` JSON fixture containing a Python hazard-facing plane case, the matching Rust `SimulationConfig`, deterministic replay expectations, and a no-claim boundary.
+  - Added a Python test that verifies the Python hazard terrain sampler interprets the fixture consistently with the Rust terrain config fields.
+  - Added a Rust terrain edge-case test that deserializes the same fixture into `SimulationConfig`, runs the trajectory twice with the recorded request seed, and asserts deterministic sample/summary equality plus bounded coordinate, speed, and kinetic-energy envelopes.
+  - Ran `cargo fmt` after pre-commit caught formatting in the new Rust assertion.
+  - Removed TB-516 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases python_generated_plane_fixture_replays_deterministically_in_rust`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_python_generated_replay_fixture_matches_rust_terrain_schema -v`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_python_generated_replay_fixture_matches_rust_terrain_schema tests.test_hazard_layers.HazardLayerTests.test_python_terrain_sampler_matches_rust_case_parameter_names -v`
+  - `cargo fmt`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/fixtures/hazard/python_generated_rust_replay_fixture.json tests/test_hazard_layers.py tests/terrain_edge_cases.rs docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: compatibility regression only; no new physics, no new external data, no operational claim, no validation claim upgrade, and no Balfrin dependency.
+- Next task: `TB-517`
