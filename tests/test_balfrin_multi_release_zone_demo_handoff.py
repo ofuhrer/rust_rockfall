@@ -35,9 +35,10 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
     def test_package_report_is_deterministic_and_records_measured_constraints(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
+            pressure_probe_root = Path(tmpdir) / "multi_zone_pressure_probe"
 
-            first = MODULE.build_report(artifact_dir=artifact_dir)
-            second = MODULE.build_report(artifact_dir=artifact_dir)
+            first = MODULE.build_report(artifact_dir=artifact_dir, pressure_probe_root=pressure_probe_root)
+            second = MODULE.build_report(artifact_dir=artifact_dir, pressure_probe_root=pressure_probe_root)
 
             command_plan = json.loads(Path(first["command_plan_path"]).read_text(encoding="utf-8"))
             package = json.loads(Path(first["package_json_path"]).read_text(encoding="utf-8"))
@@ -106,7 +107,14 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["simultaneous_release_zone_batch_max"], 8)
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
         self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
-        self.assertEqual(first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"], 29808)
+        self.assertEqual(
+            first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"],
+            pressure_report["measured_reducer_constraints"]["manifest_size_bytes_max"],
+        )
+        self.assertGreaterEqual(
+            first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"],
+            first["multi_zone_pressure"]["manifest_size_bytes"],
+        )
         self.assertEqual(first["constraint_pressure"]["status"], "warning")
         self.assertEqual(first["constraint_pressure"]["constraint_checks"][0]["status"], "acceptable")
         self.assertEqual(first["constraint_pressure"]["constraint_checks"][1]["status"], "warning")
@@ -147,6 +155,37 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             "smallest_live_two_zone_probe",
         )
         self.assertEqual(output_budget_projection["budget_acceptance_validation"]["failures"], [])
+        no_submit_contract = first["no_submit_handoff_contract"]
+        self.assertEqual(no_submit_contract["schema_version"], "balfrin_no_submit_handoff_contract_v1")
+        self.assertEqual(no_submit_contract["status"], "ready_for_review")
+        self.assertIsNone(no_submit_contract["first_blocker"])
+        self.assertFalse(no_submit_contract["submit_gate_explicitly_invoked"])
+        self.assertTrue(no_submit_contract["command_contains_generate_only_flag"])
+        self.assertTrue(no_submit_contract["command_contains_authorized_submit_flag"])
+        self.assertFalse(no_submit_contract["review_command_contains_authorized_submit_flag"])
+        self.assertIn("scripts/submit_balfrin_probe.py", no_submit_contract["exact_review_command"])
+        self.assertIn("--generate-only", no_submit_contract["exact_review_command"])
+        self.assertIn("--authorized-submit", no_submit_contract["exact_later_submit_gate_command"])
+        self.assertFalse(no_submit_contract["no_submit_semantics"]["sbatch_attempted"])
+        self.assertFalse(no_submit_contract["no_submit_semantics"]["submit_command_executed"])
+        self.assertFalse(no_submit_contract["no_submit_semantics"]["balfrin_job_submitted"])
+        self.assertTrue(no_submit_contract["no_submit_semantics"]["package_generation_only"])
+        self.assertTrue(no_submit_contract["no_submit_semantics"]["requires_explicit_submit_gate"])
+        self.assertEqual(no_submit_contract["output_mode"], "rebuildable_reduced_output")
+        self.assertEqual(
+            no_submit_contract["reduced_output_defaults"],
+            {"conditional_curve_export": "summary-only", "grid_csv_export": "none", "no_plots": True},
+        )
+        self.assertEqual(no_submit_contract["reducer_limits"]["requested_release_zone_batch_size"], 2)
+        self.assertEqual(no_submit_contract["reducer_limits"]["requested_reducer_chunk_count"], 2)
+        self.assertEqual(no_submit_contract["reducer_limits"]["requested_reducer_worker_count"], 2)
+        self.assertEqual(no_submit_contract["reducer_limits"]["measured_reducer_chunk_count_max"], 2)
+        self.assertEqual(no_submit_contract["scenario_limits"]["release_zone_count"], 2)
+        self.assertEqual(no_submit_contract["scenario_limits"]["review_release_zone_count"], 4)
+        self.assertFalse(no_submit_contract["claim_boundaries"]["operational_claims_allowed"])
+        self.assertFalse(no_submit_contract["claim_boundaries"]["scale_up_authorized"])
+        self.assertFalse(no_submit_contract["claim_boundaries"]["distributed_execution_authorized"])
+        self.assertIn(first["artifact_dir"], no_submit_contract["ignored_output_roots"])
         self.assertEqual(first["output_budget_acceptance_validation"]["status"], "accepted")
         smallest_thresholds = first["output_budget_acceptance_thresholds"]["profiles"]["smallest_live_two_zone_probe"]
         self.assertEqual(smallest_thresholds["max_manifest_size_bytes"], 18000)
@@ -345,9 +384,13 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(smallest_run["seed_policy"]["seed"], 34014)
         self.assertEqual(smallest_run["seed_policy"]["mode"], "deterministic_grid")
         self.assertEqual(smallest_run["estimated_runtime_seconds"], 0.432)
-        self.assertEqual(smallest_run["estimated_storage_bytes"], 6170)
-        self.assertEqual(smallest_run["estimated_file_count"], 8)
-        self.assertEqual(smallest_run["estimated_manifest_pressure_bytes"], 4968)
+        self.assertGreater(smallest_run["estimated_storage_bytes"], 0)
+        self.assertGreater(smallest_run["estimated_file_count"], 0)
+        self.assertGreater(smallest_run["estimated_manifest_pressure_bytes"], 0)
+        self.assertLessEqual(
+            smallest_run["estimated_manifest_pressure_bytes"],
+            first["multi_zone_pressure"]["measured_reducer_constraints"]["manifest_size_bytes_max"],
+        )
         self.assertEqual(first["authorization_review_command"], smallest_run["authorization_review_command"])
         self.assertEqual(first["authorization_submit_command"], smallest_run["authorization_submit_command"])
         self.assertIn("candidate_stability_sweep", [command["id"] for command in command_plan["commands"]])

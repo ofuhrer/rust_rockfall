@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-556: Build The Next Reduced-Output Balfrin Probe Handoff
-
-Goal: Generate the next bounded Balfrin probe handoff using reduced-output defaults and current scenario/reducer limits.
-
-Capability gap reduced: Converts decision-surface evidence into a concrete reviewed handoff without immediately submitting.
-
-Why this outranks alternatives: A live run should be launched only from a current reviewed package that already encodes output and reducer pressure constraints.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- A no-submit handoff package with exact command, ignored roots, output mode, reducer limits, and claim boundaries.
-- A focused test proving the handoff remains no-submit until the submit gate is explicitly invoked.
-
-Definition of done:
-
-- The package is ready for review or fails closed with one blocker and recovery command.
-
-Boundaries: No `sbatch`, no scale-up claim, no distributed execution, no operational semantics.
-
 ### TB-557: Execute The Next Bounded Balfrin Postproc Probe
 
 Goal: Run the next repository-gated bounded Balfrin `postproc` probe if all access, package, output-budget, and preservation gates pass.

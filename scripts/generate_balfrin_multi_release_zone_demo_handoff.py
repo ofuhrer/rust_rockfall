@@ -870,6 +870,7 @@ def build_report(
     }
     report["measured_two_zone_evidence"] = build_measured_two_zone_evidence_gate(report)
     report["four_zone_hazard_execution_package"] = build_four_zone_hazard_execution_package(report)
+    report["no_submit_handoff_contract"] = build_no_submit_handoff_contract(report)
 
     write_package_files(report)
     return report
@@ -3095,6 +3096,146 @@ def build_follow_up_recommendation(
     }
 
 
+def build_no_submit_handoff_contract(report: dict[str, Any]) -> dict[str, Any]:
+    follow_up = dict(report.get("follow_up_recommendation") or {})
+    minimum_run = dict(follow_up.get("minimum_measured_multi_zone_run") or {})
+    constraint_pressure = dict(report.get("constraint_pressure") or {})
+    measured_constraints = dict(constraint_pressure.get("measured_constraints") or {})
+    review_package = dict(report.get("review_only_four_zone_package") or {})
+    claim_boundary = dict(report.get("claim_boundaries") or {})
+    package_status = str(report.get("package_status") or "")
+    constraint_status = str(report.get("package_constraint_status") or "")
+    review_readiness = str(report.get("review_readiness_classification") or "")
+    exact_review_command = str(report.get("authorization_review_command") or "")
+    exact_submit_command = str(report.get("authorization_submit_command") or "")
+
+    blocker: dict[str, Any] | None = None
+    if package_status == "blocked_missing_inputs":
+        blocker = {
+            "status": "blocked_missing_inputs",
+            "reason": report.get("blocked_reason") or "required package inputs are missing",
+            "recovery_command": command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"),
+                    "--artifact-dir",
+                    str(report.get("artifact_dir")),
+                    "--format",
+                    "json",
+                ]
+            ),
+        }
+    elif constraint_status == "blocked":
+        blocker = {
+            "status": "blocked_reducer_or_scenario_limits",
+            "reason": constraint_pressure.get("summary") or "requested settings exceed measured reducer limits",
+            "recovery_command": command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"),
+                    "--artifact-dir",
+                    str(report.get("artifact_dir")),
+                    "--requested-release-zone-batch-size",
+                    str(SMALLEST_MULTI_ZONE_RELEASE_ZONE_COUNT),
+                    "--requested-reducer-chunk-count",
+                    "2",
+                    "--requested-reducer-worker-count",
+                    "2",
+                    "--format",
+                    "json",
+                ]
+            ),
+        }
+    elif review_readiness.startswith("blocked"):
+        blocker = {
+            "status": review_readiness,
+            "reason": report.get("review_readiness_reason") or "review package is not ready",
+            "recovery_command": command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"),
+                    "--artifact-dir",
+                    str(report.get("artifact_dir")),
+                    "--format",
+                    "json",
+                ]
+            ),
+        }
+
+    readiness = "ready_for_review" if blocker is None else "blocked"
+    return {
+        "schema_version": "balfrin_no_submit_handoff_contract_v1",
+        "status": readiness,
+        "readiness": readiness,
+        "first_blocker": blocker,
+        "exact_review_command": exact_review_command,
+        "exact_later_submit_gate_command": exact_submit_command,
+        "submit_gate_explicitly_invoked": False,
+        "command_contains_generate_only_flag": "--generate-only" in exact_review_command,
+        "command_contains_authorized_submit_flag": "--authorized-submit" in exact_submit_command,
+        "review_command_contains_authorized_submit_flag": "--authorized-submit" in exact_review_command,
+        "no_submit_semantics": {
+            "sbatch_attempted": False,
+            "submit_command_executed": False,
+            "balfrin_job_submitted": False,
+            "package_generation_only": True,
+            "requires_explicit_submit_gate": True,
+            "boundary_note": "This handoff records the exact later submit gate but does not execute it.",
+        },
+        "ignored_output_roots": list(report.get("ignored_output_roots") or []),
+        "output_mode": minimum_run.get("output_mode"),
+        "reduced_output_defaults": {
+            "conditional_curve_export": minimum_run.get("conditional_curve_export"),
+            "grid_csv_export": minimum_run.get("grid_csv_export"),
+            "no_plots": dict(minimum_run.get("bounded_gis_cog_settings") or {}).get("no_plots"),
+        },
+        "reducer_limits": {
+            "requested_release_zone_batch_size": constraint_pressure.get("requested_release_zone_batch_size"),
+            "requested_reducer_chunk_count": constraint_pressure.get("requested_reducer_chunk_count"),
+            "requested_reducer_worker_count": constraint_pressure.get("requested_reducer_worker_count"),
+            "measured_simultaneous_release_zone_batch_max": measured_constraints.get(
+                "simultaneous_release_zone_batch_max"
+            ),
+            "measured_reducer_chunk_count_max": measured_constraints.get("reducer_chunk_count_max"),
+            "measured_reducer_worker_count_max": measured_constraints.get("reducer_worker_count_max"),
+            "measured_manifest_size_bytes_max": measured_constraints.get("manifest_size_bytes_max"),
+            "measured_output_file_count_max": measured_constraints.get("output_file_count_max"),
+        },
+        "scenario_limits": {
+            "release_zone_count": minimum_run.get("release_zone_count"),
+            "scenario_count": minimum_run.get("scenario_count"),
+            "trajectory_count_target": minimum_run.get("trajectory_count_target"),
+            "block_scenario_count": minimum_run.get("block_scenario_count"),
+            "review_release_zone_count": review_package.get("release_zone_count"),
+            "review_scenario_count": review_package.get("scenario_count"),
+            "review_trajectory_count_target": review_package.get("trajectory_count_target"),
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": bool(claim_boundary.get("operational_claims_allowed", False)),
+            "annual_frequency_claims_allowed": bool(claim_boundary.get("annual_frequency_claims_allowed", False)),
+            "physical_probability_claims_allowed": bool(
+                claim_boundary.get("physical_probability_claims_allowed", False)
+            ),
+            "risk_exposure_vulnerability_claims_allowed": bool(
+                claim_boundary.get("risk_exposure_vulnerability_claims_allowed", False)
+            ),
+            "scale_up_authorized": False,
+            "distributed_execution_authorized": False,
+            "live_submission_performed": False,
+            "partition_scope": "postproc_only",
+        },
+    }
+
+
 def build_four_zone_review_package(
     *,
     candidate_report: dict[str, Any],
@@ -3774,6 +3915,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     first_bottleneck_labels = dict(output_budget_projection.get("first_bottleneck_labels") or {})
     review_package = dict(report.get("review_only_four_zone_package") or {})
     review_projection = dict(review_package.get("projection") or {})
+    no_submit_contract = dict(report.get("no_submit_handoff_contract") or {})
     lines = [
         "Balfrin Multi-Release-Zone Demo Package",
         "",
@@ -3782,9 +3924,23 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- Live execution requires new human authorization: `{report['live_execution_requires_new_human_authorization']}`",
         f"- Package constraint status: `{report['package_constraint_status']}`",
         f"- Constraint summary: {constraint_pressure.get('summary', 'unavailable')}",
+        f"- No-submit handoff status: `{no_submit_contract.get('status')}`",
         f"- Artifact dir: `{report['artifact_dir']}`",
         f"- Candidate output root: `{report['candidate_output_root']}`",
         f"- Target-area output root: `{report['target_area_output_root']}`",
+        "",
+        "## No-Submit Handoff Contract",
+        "",
+        f"- Status: `{no_submit_contract.get('status')}`",
+        f"- Exact review command: `{no_submit_contract.get('exact_review_command')}`",
+        f"- Exact later submit gate command: `{no_submit_contract.get('exact_later_submit_gate_command')}`",
+        f"- Submit gate explicitly invoked: `{no_submit_contract.get('submit_gate_explicitly_invoked')}`",
+        f"- No-submit semantics: `{no_submit_contract.get('no_submit_semantics', {})}`",
+        f"- Output mode: `{no_submit_contract.get('output_mode')}`",
+        f"- Reduced-output defaults: `{no_submit_contract.get('reduced_output_defaults', {})}`",
+        f"- Reducer limits: `{no_submit_contract.get('reducer_limits', {})}`",
+        f"- Scenario limits: `{no_submit_contract.get('scenario_limits', {})}`",
+        f"- Claim boundaries: `{no_submit_contract.get('claim_boundaries', {})}`",
         "",
         "## Candidate Release Candidates",
         "",
