@@ -6920,3 +6920,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local diagnosis only; no tuning, no candidate acceptance upgrade, no annual-frequency or physical-probability semantics, no operational claim, and no Balfrin dependency.
 - Next task: `TB-495`
+
+### TB-495: Add Candidate Release-Sampling Geometry Regression
+
+- Date: 2026-05-25
+- Commit: `5c68678`
+- Objective: enforce deterministic reviewed-candidate release sampling geometry before broader candidate/model changes.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a freezer-side release sampling geometry check that validates one generated release cell per accepted review row.
+  - The check verifies each release-cell center remains inside the frozen source-zone bounds and, when available, inside the reviewed candidate component bbox.
+  - Added the geometry check to the freezer report and compact manifest so the invariant is visible without retaining full generated row payloads.
+  - Added a focused regression that confirms accepted-candidate order, deterministic release-cell ids, seed propagation, and candidate-bbox containment.
+  - Removed TB-495 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_candidate_source_zone_scenario_stress -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/generate_candidate_source_zone_scenarios.py tests/test_candidate_source_zone_freezer.py tests/test_candidate_source_zone_scenario_stress.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: regression/invariant coverage only; no new source-zone semantics, no tuning, no review vocabulary change, no operational claim, and no Balfrin dependency.
+- Next task: `TB-496`
