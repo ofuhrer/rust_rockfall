@@ -224,32 +224,6 @@ Definition of done:
 
 Boundaries: Evidence collection only; no rerun, no operational claim, no physical validation claim.
 
-### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
-
-Goal: Update the Swiss-scale feasibility projection using the latest measured bounded-run evidence and current output/reducer pressure.
-
-Capability gap reduced: Turns measured Balfrin evidence into a management-useful feasibility answer.
-
-Why this outranks alternatives: Management needs to know whether Swiss-scale remains plausible, conditional, or out of reach under current single-node/postproc constraints.
-
-Inspect first:
-
-- `docs/swiss_scale_feasibility_projection.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Updated projection text and any existing helper output needed to support it.
-- Explicit separation of measured, projection-only, failed-closed, and deferred evidence.
-
-Definition of done:
-
-- The projection names the current practical ceiling, first bottleneck, and next measurable step without authorizing Swiss-wide execution.
-
-Boundaries: Projection only; no Swiss-wide run, no operational claim, no distributed execution phase change.
-
 ### TB-560: Consolidate Duplicate Balfrin Decision Logic
 
 Goal: Reduce duplication between scale-readiness, next-live-run decision, and management-demo package logic.

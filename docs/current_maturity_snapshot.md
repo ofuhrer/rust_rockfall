@@ -82,13 +82,16 @@ contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
 matrix gives workers one compact evidence dashboard. After the TB-461 decision
-refresh, the intended next scale action is still reducer-pressure optimization
-ahead of scenario batching and candidate-stability refinement. The May 2026
-review also exposed two practical blockers that must be handled before another
-live run: the main Balfrin decision helpers can still crash when scratch
-reducer-pressure roots under `/private/tmp` are absent, and the Balfrin remote
-checkout must be verified as aligned with the reviewed package source before
-any submission package is trusted. Older local hazard-layer stress-test notes
+refresh and the latest local scratch-root regeneration work, the intended next
+scale action is still reducer-pressure optimization ahead of scenario batching
+and candidate-stability refinement. The current projection ceiling remains a
+10-zone single-AOI planning class under the single-node/postproc boundary; the
+bounded regional split is measured diagnostic evidence, while regional and
+Swiss-wide execution remain deferred. The main local reducer-pressure helpers
+can now regenerate deterministic scratch roots under a caller-supplied `/tmp`
+path and report manifest paths plus byte/file counts, but Balfrin access and
+remote checkout alignment still must be verified before any trusted submission
+package is used. Older local hazard-layer stress-test notes
 are preserved through `docs/archive/README.md`; current scale interpretation
 should use this snapshot, the scale readiness matrix, and the output-profile
 contract instead of dated archived reviews. The Balfrin/Tschamut conditional demonstration track now has

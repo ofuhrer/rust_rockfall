@@ -20,6 +20,7 @@ import importlib.util
 import json
 import math
 import sys
+import tempfile
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -218,7 +219,10 @@ def load_measured_coefficients() -> MeasuredCoefficients:
     runtime_report = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
     single_job_summary = SINGLE_JOB.build_summary()
     feasibility_report = FEASIBILITY.build_report()
-    manifest_pressure_ladder = MANIFEST_PRESSURE.build_manifest_pressure_ladder_report()
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="swiss_envelope_reducer_ladder_") as tmpdir:
+        manifest_pressure_ladder = MANIFEST_PRESSURE.build_manifest_pressure_ladder_report(
+            ladder_root=Path(tmpdir) / "ladder"
+        )
     wall_time_evidence = dict(single_job_summary.get("wall_time_evidence") or {})
     memory_evidence = dict(single_job_summary.get("memory_evidence") or {})
     output_size_evidence = dict(single_job_summary.get("output_size_evidence") or {})

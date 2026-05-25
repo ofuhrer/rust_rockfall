@@ -583,10 +583,11 @@ def build_manifest_pressure_ladder_report(
     reducer_worker_count: int = DEFAULT_REDUCER_WORKERS,
     reducer_chunk_count: int = DEFAULT_REDUCER_CHUNK_COUNT,
     output_family_mix: tuple[str, ...] | str | None = None,
+    ladder_root: Path | None = None,
 ) -> dict[str, Any]:
     output_family_mix = normalize_output_family_mix(output_family_mix)
     reduced_output_family_mix = REDUCED_OUTPUT_FAMILY_MIX
-    ladder_root = DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT.resolve()
+    ladder_root = (ladder_root or DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT).resolve()
     if ladder_root.exists():
         shutil.rmtree(ladder_root)
     ladder_root.mkdir(parents=True, exist_ok=True)

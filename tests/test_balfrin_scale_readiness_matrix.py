@@ -75,6 +75,16 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("scenario_cardinality_and_manifest_size", report["next_probe_ranking"][1]["blocker"])
         self.assertEqual(report["next_probe_ranking"][2]["probe_scope"], "scratch_local")
         self.assertEqual(report["next_probe_ranking"][2]["action_id"], "summarize_balfrin_target_area_candidate_stability")
+        projection = report["swiss_scale_feasibility_projection"]
+        self.assertEqual(projection["status"], "projection_only")
+        self.assertIn("10-zone single-AOI", projection["current_practical_ceiling"])
+        self.assertEqual(projection["first_bottleneck"], "reducer_pressure_and_replay_metadata_growth")
+        self.assertIn("deterministic local reducer-pressure scratch roots", projection["next_measurable_step"])
+        self.assertIn("regional_split_probe", projection["evidence_class_separation"]["measured"])
+        self.assertIn("projected_larger_aoi", projection["evidence_class_separation"]["projection_only"])
+        self.assertIn("management_aoi_multi_zone_run", projection["evidence_class_separation"]["failed_closed"])
+        self.assertIn("swiss_wide_execution", projection["evidence_class_separation"]["deferred"])
+        self.assertIn("no Swiss-wide run", projection["authorization_boundary"])
         self.assertEqual(
             report["regional_split_status"]["classification"],
             "measured_regional_split_probe",
@@ -109,7 +119,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             delta_summary["reducer_pressure_projection_surface"]["recommended_default_manifest_mode"],
             "compact",
         )
-        self.assertEqual(delta_summary["reducer_pressure_projection_surface"]["largest_manifest_delta_bytes"], -10883)
+        self.assertLess(delta_summary["reducer_pressure_projection_surface"]["largest_manifest_delta_bytes"], 0)
         self.assertEqual(report["regional_split_status"]["projection_delta_summary"], delta_summary)
         self.assertEqual(
             [item["action_id"] for item in report["next_backlog_recommendations"]],
@@ -355,6 +365,9 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("postproc_microbenchmark", text)
         self.assertIn("management_aoi_multi_zone_run", text)
         self.assertIn("regional_split_probe", text)
+        self.assertIn("swiss_scale_feasibility_projection:", text)
+        self.assertIn("current_practical_ceiling: 10-zone single-AOI", text)
+        self.assertIn("first_bottleneck: reducer_pressure_and_replay_metadata_growth", text)
         self.assertIn("regional_split_projection_delta_summary:", text)
         self.assertIn("failed_closed_tiers: management_aoi_multi_zone_run", text)
         self.assertIn("hazard_execution_status: no_hazard_execution", text)

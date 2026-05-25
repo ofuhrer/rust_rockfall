@@ -6,6 +6,20 @@ risk, exposure, or vulnerability semantics.
 
 ## Recommendation
 
+- Current practical ceiling: a 10-zone single-AOI planning class remains the
+  highest plausible local/managed target under the current single-node and
+  `postproc` evidence boundary. The bounded regional split is measured as a
+  diagnostic post-processing probe, not as broader regional capability.
+- First bottleneck: reducer pressure and replay/metadata growth are now the
+  first measured follow-up bottleneck after the regional split comparison and
+  scenario/output-tier projection surfaces were threaded. Scenario cardinality
+  and manifest size remain the compact-batch precondition for any later live
+  recommendation.
+- Next measurable step: regenerate the deterministic reducer-pressure scratch
+  roots with `scripts/validate_multi_zone_reducer_pressure_gate.py
+  --materialize-root /tmp/<scratch-root> --format json`, confirm the emitted
+  manifest paths and byte/file counts, then use that result before any larger
+  live recommendation.
 - 10-zone: feasible as a projection-supported planning class on the current
   single-node/postproc boundary. The adjacent-candidate path means source-zone
   automation is no longer the first blocker; the next evidence should support a
@@ -203,6 +217,13 @@ Measured:
   omits builder-facing trajectory outputs, and it recommends batching the next
   Balfrin package at `candidate_repeat_count <= 3` / `30` candidates / `300`
   rows because the 8-repeat step grows sharply past that point.
+- `scripts/summarize_multi_zone_reducer_pressure.py` and
+  `scripts/validate_multi_zone_reducer_pressure_gate.py` can regenerate
+  deterministic local reducer-pressure scratch roots under a caller-supplied
+  `/tmp` path and report the generated command-plan, probe-manifest,
+  regional-split-plan, output-manifest, and merge-manifest paths plus root and
+  output byte/file counts. This is scratch-local reproducibility evidence, not
+  Balfrin execution evidence.
 
 Extrapolated:
 

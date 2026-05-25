@@ -255,7 +255,8 @@ def _scenario_storage_pressure_report() -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _multi_zone_reducer_pressure_report() -> dict[str, Any]:
-    return reducer_pressure.build_manifest_pressure_ladder_report()
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="scale_matrix_reducer_ladder_") as tmpdir:
+        return reducer_pressure.build_manifest_pressure_ladder_report(ladder_root=Path(tmpdir) / "ladder")
 
 
 def _regional_split_projection_delta_summary() -> dict[str, Any]:
@@ -1196,6 +1197,24 @@ def build_report() -> dict[str, Any]:
         }
         for item in next_probe_ranking
     ]
+    projection_summary = {
+        "status": "projection_only",
+        "current_practical_ceiling": "10-zone single-AOI planning class under the current single-node/postproc evidence boundary",
+        "first_bottleneck": "reducer_pressure_and_replay_metadata_growth",
+        "planning_precondition": "scenario_cardinality_and_manifest_size_must_stay_within_compact_batch_caps",
+        "next_measurable_step": "regenerate deterministic local reducer-pressure scratch roots and rerun the reducer-pressure gate before any larger live recommendation",
+        "evidence_class_separation": {
+            "measured": measured,
+            "projection_only": projected,
+            "failed_closed": failed_closed,
+            "blocked_pre_submit": blocked_pre_submit,
+            "deferred": [
+                "regional_workflows",
+                "swiss_wide_execution",
+            ],
+        },
+        "authorization_boundary": "no Swiss-wide run, distributed execution phase change, operational claim, or scale-up authorization",
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "matrix_status": overall_status,
@@ -1268,6 +1287,7 @@ def build_report() -> dict[str, Any]:
             "blocked_reason": decision_report.get("blocked_reason"),
         },
         "next_probe_ranking": next_probe_ranking,
+        "swiss_scale_feasibility_projection": projection_summary,
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
         "next_recommended_scaling_task_reason": "TB-450 now threads the measured regional split into the scenario-cardinality, output-tier, and reducer-pressure projections, so the ranked next scale action is reducer-pressure optimization rather than another comparison pass.",
         "regional_split_status": {
@@ -1333,6 +1353,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"next_evidence_field: {report['next_evidence_field']}",
         f"blocked_reason: {report['blocked_reason']}",
         f"next_recommended_scaling_task: {report['next_recommended_scaling_task']}",
+        "swiss_scale_feasibility_projection:",
+        f"  current_practical_ceiling: {report['swiss_scale_feasibility_projection']['current_practical_ceiling']}",
+        f"  first_bottleneck: {report['swiss_scale_feasibility_projection']['first_bottleneck']}",
+        f"  next_measurable_step: {report['swiss_scale_feasibility_projection']['next_measurable_step']}",
         "next_probe_ranking:",
     ]
     for row in report.get("next_probe_ranking", []):
