@@ -7144,3 +7144,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: local package ergonomics only; no new GIS product claim, no operational claim, no new external dependency, and no Balfrin dependency.
 - Next task: `TB-504`
+
+### TB-504: Add Local Calibration-Failure Replay
+
+- Date: 2026-05-25
+- Commit: `9129bc4`
+- Objective: make one calibration/validation separation failure replayable as a deterministic local diagnostic.
+- Files changed: `scripts/check_calibration_separation_preflight.py`, `tests/test_calibration_separation_preflight.py`, `tests/test_calibration_failure_diagnostics.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `failure_replay` section to the calibration separation preflight report.
+  - The replay classifies forbidden validation references to calibration selected-parameter artifacts as `invalid_calibration_validation_coupling`.
+  - The replay chooses the most concrete prohibited field when both a parent mapping and nested selected-parameter key reference the same artifact.
+  - Added focused synthetic replay coverage in the calibration failure diagnostics tests.
+  - Extended the preflight tests to assert the replay remains diagnostic and does not perform tuning or allow a validation acceptance upgrade.
+  - Removed TB-504 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_calibration_separation_preflight tests.test_calibration_failure_diagnostics -v`
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json --json-output /tmp/tb504_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb504_evidence_gaps.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/check_calibration_separation_preflight.py tests/test_calibration_separation_preflight.py tests/test_calibration_failure_diagnostics.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: diagnostic replay only; no calibration, no parameter tuning, no acceptance upgrade, no operational claim, and no Balfrin dependency.
+- Next task: `TB-505`
