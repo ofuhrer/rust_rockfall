@@ -8053,3 +8053,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: fixture-backed guardrails only; no recalibration, validation claim, parameter tuning, or external compute dependency.
 - Next task: `TB-541`
+
+### TB-541: Create A Local Tschamut Micro-Validation Smoke From Existing Fixtures
+
+- Date: 2026-05-25
+- Commit: `eaaae27`
+- Objective: expose and verify a tiny local validation-to-hazard smoke path from tracked fixtures.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `micro_validation_smoke` verification output to the existing `run-local-smoke` path.
+  - The smoke now reports trajectory sample count, hazard-layer count, first hazard layer, artifact paths, and verification status.
+  - Documented the `/tmp` smoke command in the README quick start.
+  - Removed TB-541 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_local_tiny_aoi_smoke_run_writes_reduced_outputs_and_hazard_layers -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --smoke-output-root /tmp/tb541_micro_validation_smoke --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: tiny local smoke only; no large AOI run, live data acquisition, new workflow framework, operational claim, or statistical validation claim.
+- Next task: `TB-542`
