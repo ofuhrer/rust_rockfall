@@ -8554,3 +8554,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no `sbatch`, no generated artifact deletion, no non-`postproc` work, no scale-up claim, and no operational claim.
 - Next task: `TB-564`
+
+### TB-564: Regenerate Current Regional Split Submission Package
+
+- Date: 2026-05-25
+- Commit: `d95147a`
+- Objective: rebuild the 12-split reduced-output regional Balfrin package against the synchronized Balfrin checkout without submitting a job.
+- Files changed: `docs/balfrin_regional_split_submission_package_tb564.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Regenerated the no-submit package under `/tmp/rust_rockfall/tb564_regional_split_package`.
+  - Captured the current Balfrin preflight at `/tmp/tb564_balfrin_preflight.json`.
+  - Verified the package reports `ready_for_bounded_postproc_submission`, `ready_for_bounded_postproc_submission: true`, and `first_blocker: None`.
+  - Verified remote/local head alignment at `90312dfeb9fc007726eec8ed22e10e8b38f9d752`, output budget `ready`/`accepted`, compact manifest freshness `ready_compact_manifest_current`, writable remote root `ready`, and no-submit semantics.
+  - Preserved the exact later `postproc` submit command in the TB-564 evidence note without executing it.
+  - Removed TB-564 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json >/tmp/tb564_balfrin_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/rust_rockfall/tb564_regional_split_package --balfrin-access-preflight-json /tmp/tb564_balfrin_preflight.json --format json --json-output /tmp/rust_rockfall/tb564_regional_split_package/balfrin_regional_split_submission_package_v1.json --text-output /tmp/rust_rockfall/tb564_regional_split_package/balfrin_regional_split_submission_package_v1.txt >/tmp/tb564_package_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package -v`
+- Result/status: implemented_measured
+- Boundaries: no `sbatch`, no live run, no distributed execution, no Swiss-wide claim, and no operational semantics.
+- Next task: `TB-565`
