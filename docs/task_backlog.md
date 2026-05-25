@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-503: Improve Local QGIS Package Inspectability
-
-Goal: Make one existing local hazard/QGIS package easier to inspect by reducing redundant files or adding a small deterministic index within the existing package.
-
-Capability gap reduced: Speeds human review of local hazard outputs without growing the repo surface.
-
-Why this outranks alternatives: Local science work benefits from fast map/package inspection, but clutter and missing indices slow review.
-
-Inspect first:
-
-- `scripts/generate_aoi_map_qa_review.py`
-- `tests/test_aoi_map_qa_review.py`
-- `docs/tschamut_public_pilot_gis_package_review.md`
-- `scripts/build_hazard_layers.py`
-
-Deliverables:
-
-- Tighten one existing QGIS/map QA output so the primary raster/vector artifacts are discoverable without opening multiple manifests.
-- Preserve existing package contents and tests unless a redundant generated file can be removed.
-
-Definition of done:
-
-- Focused map QA/hazard package tests pass and local package inspectability improves through an existing artifact, not a new dashboard.
-
-Boundaries: Local package ergonomics only; no new GIS product claim, no operational claim, no new external dependency, and no Balfrin dependency.
-
 ### TB-504: Add Local Calibration-Failure Replay
 
 Goal: Turn one known calibration or validation failure mode into a small deterministic local replay test.

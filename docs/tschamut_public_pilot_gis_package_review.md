@@ -55,6 +55,10 @@ The selected target-gate record reports that a local target-scale package was
 generated in a prior local run, with summary-only conditional curves, output
 budget evidence, and reducer parity. Those artifacts are intentionally not
 committed, so this review cannot re-run automated package/file QA here.
+When a local AOI map QA review surface is generated, its manifest and HTML now
+include a deterministic primary artifact index that lists the main manifests,
+rasters, vector overlays, source-zone metadata, scenario table, terrain, and
+terrain metadata in one place for faster QGIS inspection.
 
 ## Visual QA Result
 

@@ -150,6 +150,12 @@ def blocked_report(
             "claim_boundary": "diagnostic hazard outputs are unavailable until the map package manifest is present",
             "items": [],
         },
+        "primary_artifact_index": {
+            "schema_version": SCHEMA_VERSION,
+            "role": "primary_artifact_index",
+            "status": "blocked_missing_map_package",
+            "items": [],
+        },
         "vector_overlays": [],
         "observed_evidence_overlays": {
             "schema_version": SCHEMA_VERSION,
@@ -365,7 +371,90 @@ def assemble_report(
         "claim_boundary": claim_boundary(map_manifest, pilot_manifest),
         "review_surface_paths": {},
     }
+    report["primary_artifact_index"] = build_primary_artifact_index(report)
     return report
+
+
+def build_primary_artifact_index(report: dict[str, Any]) -> dict[str, Any]:
+    package_details = report.get("package_manifest_details") or {}
+    items: list[dict[str, Any]] = []
+
+    def add_item(
+        role: str,
+        label: str,
+        path: Any,
+        *,
+        format_name: str = "",
+        source: str = "",
+        claim_boundary: str = "diagnostic review only; not operational hazard evidence",
+    ) -> None:
+        path_text = str(path or "").strip()
+        if not path_text:
+            return
+        items.append(
+            {
+                "role": role,
+                "label": label,
+                "path": path_text,
+                "format": format_name,
+                "source": source,
+                "open_hint": "open directly in QGIS or inspect as a manifest/table artifact",
+                "claim_boundary": claim_boundary,
+            }
+        )
+
+    for label, path in (
+        ("Map package manifest", report.get("map_package_manifest_path")),
+        ("Pilot GIS package manifest", report.get("pilot_gis_package_manifest_path")),
+        ("Hazard manifest", report.get("hazard_manifest_path")),
+        ("Source-zone metadata", package_details.get("source_zone_metadata_path")),
+        ("Scenario table", package_details.get("scenario_table_path")),
+        ("Terrain", package_details.get("terrain_path")),
+        ("Terrain metadata", package_details.get("terrain_metadata_path")),
+    ):
+        add_item("manifest_or_context", label, path, source="package_manifest")
+
+    for layer in report.get("layers") or []:
+        if not isinstance(layer, dict):
+            continue
+        add_item(
+            "hazard_layer",
+            str(layer.get("layer_name") or "hazard_layer"),
+            layer.get("path"),
+            format_name=str(layer.get("format") or ""),
+            source=str(layer.get("source") or ""),
+            claim_boundary="diagnostic hazard layer only; not annualized or operational",
+        )
+    for overlay in report.get("vector_overlays") or []:
+        if not isinstance(overlay, dict):
+            continue
+        add_item(
+            "vector_overlay",
+            str(overlay.get("overlay_role") or overlay.get("layer_name") or "vector_overlay"),
+            overlay.get("path"),
+            format_name=str(overlay.get("format") or "geojson"),
+            source="map_package",
+            claim_boundary=str(overlay.get("claim_boundary") or "review overlay only"),
+        )
+    for overlay in (report.get("observed_evidence_overlays") or {}).get("items") or []:
+        if not isinstance(overlay, dict):
+            continue
+        add_item(
+            "observed_evidence_overlay",
+            str(overlay.get("overlay_role") or overlay.get("layer_name") or "observed_evidence"),
+            overlay.get("path"),
+            format_name=str(overlay.get("format") or "geojson"),
+            source="observed_evidence_overlays",
+            claim_boundary=str(overlay.get("claim_boundary") or "optional evidence overlay only"),
+        )
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "role": "primary_artifact_index",
+        "status": "present" if items else "empty",
+        "item_count": len(items),
+        "items": items,
+    }
 
 
 def collect_layers(
@@ -708,6 +797,7 @@ def render_html_report(report: dict[str, Any]) -> str:
     layer_inventory = report.get("layer_inventory") or {}
     package_details = report.get("package_manifest_details") or {}
     diagnostic_hazard_outputs = report.get("diagnostic_hazard_outputs") or {"items": []}
+    primary_artifact_index = report.get("primary_artifact_index") or {"items": []}
     vector_overlays = report.get("vector_overlays") or []
     observed_overlays_section = report.get("observed_evidence_overlays") or {"items": [], "blockers": {}}
     observed_overlays = observed_overlays_section.get("items") or []
@@ -719,6 +809,7 @@ def render_html_report(report: dict[str, Any]) -> str:
         warning_items = [{"severity": "warning", "message": warning} for warning in report.get("warnings") or []]
 
     hazard_rows = "".join(render_hazard_row(layer) for layer in diagnostic_hazard_outputs.get("items") or [])
+    primary_artifact_rows = "".join(render_primary_artifact_row(item) for item in primary_artifact_index.get("items") or [])
     vector_rows = "".join(render_overlay_row(layer, "overlay") for layer in vector_overlays)
     observed_rows = "".join(render_overlay_row(layer, "evidence") for layer in observed_overlays)
     warning_rows = "".join(
@@ -853,6 +944,7 @@ def render_html_report(report: dict[str, Any]) -> str:
 
   <div class="togglebar">
     <label><input type="checkbox" checked data-toggle-target="inventory-panel">Layer inventory</label>
+    <label><input type="checkbox" checked data-toggle-target="primary-artifacts-panel">Primary artifacts</label>
     <label><input type="checkbox" checked data-toggle-target="semantics-panel">Conditional semantics</label>
     <label><input type="checkbox" checked data-toggle-target="diagnostic-panel">Diagnostic hazard layers</label>
     <label><input type="checkbox" checked data-toggle-target="overlay-panel">Release and scenario overlays</label>
@@ -863,6 +955,17 @@ def render_html_report(report: dict[str, Any]) -> str:
     <label><input type="checkbox" checked data-toggle-target="command-panel">Next recommended command</label>
     <label><input type="checkbox" checked data-toggle-target="boundary-panel">Claim boundaries</label>
   </div>
+
+  <details id="primary-artifacts-panel" open>
+    <summary>Primary artifact index</summary>
+    <div class="inner">
+      <p class="section-note">Open or inspect these first. This deterministic index gathers primary rasters, vector overlays, manifests, and source/scenario context without requiring a reviewer to cross-reference multiple JSON manifests.</p>
+      <table>
+        <thead><tr><th>Role</th><th>Label</th><th>Format</th><th>Path</th><th>Source</th><th>Boundary</th></tr></thead>
+        <tbody>{primary_artifact_rows or '<tr><td colspan="6">No primary artifacts recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
 
   <details id="inventory-panel" open>
     <summary>Layer inventory</summary>
@@ -1035,6 +1138,19 @@ def render_hazard_row(layer: dict[str, Any]) -> str:
         f"</tr>"
         f"<tr class=\"layer-row\" data-role=\"hazard\">"
         f"<td colspan=\"6\"><span class=\"section-note\">{html.escape(claim)}</span></td>"
+        "</tr>"
+    )
+
+
+def render_primary_artifact_row(item: dict[str, Any]) -> str:
+    return (
+        f'<tr class="layer-row" data-role="context">'
+        f"<td>{render_value(item.get('role'))}</td>"
+        f"<td>{render_value(item.get('label'))}</td>"
+        f"<td>{render_value(item.get('format'))}</td>"
+        f"<td>{render_path_link(str(item.get('path') or ''))}</td>"
+        f"<td>{render_value(item.get('source'))}</td>"
+        f"<td>{render_value(item.get('claim_boundary'))}</td>"
         "</tr>"
     )
 

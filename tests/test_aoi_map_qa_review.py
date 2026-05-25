@@ -64,11 +64,18 @@ class AoiMapQaReviewTests(unittest.TestCase):
                 "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json",
             )
             self.assertEqual(report["diagnostic_hazard_outputs"]["status"], "present")
+            self.assertEqual(report["primary_artifact_index"]["status"], "present")
+            self.assertGreater(report["primary_artifact_index"]["item_count"], len(package_report["raster_outputs"]))
+            primary_labels = {item["label"] for item in report["primary_artifact_index"]["items"]}
+            self.assertIn("Map package manifest", primary_labels)
+            self.assertIn("Pilot GIS package manifest", primary_labels)
+            self.assertIn("Source-zone metadata", primary_labels)
             self.assertEqual(report["observed_evidence_overlays"]["status"], "blocked_missing_evidence")
             self.assertTrue((review_root / "index.html").exists())
             self.assertTrue((review_root / "aoi_map_qa_review_manifest.json").exists())
             html = (review_root / "index.html").read_text(encoding="utf-8")
             self.assertIn("AOI Map QA Review", html)
+            self.assertIn("Primary artifact index", html)
             self.assertIn("Layer inventory", html)
             self.assertIn("Conditional semantics", html)
             self.assertIn("Diagnostic hazard layers", html)
