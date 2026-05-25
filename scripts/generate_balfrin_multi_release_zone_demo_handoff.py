@@ -1808,11 +1808,6 @@ def build_handoff_output_budget_projection(
     replay_critical_retained_output_families = [
         family for family in list(target_profile.get("output_family_mix") or []) if family in REPLAY_CRITICAL_OUTPUT_FAMILIES
     ]
-    budget_recheck = build_handoff_budget_recheck(
-        handoff_output_budget_projection=gate_report,
-        first_bottleneck_labels=first_bottleneck_labels,
-        retained_replay_critical_output_families=replay_critical_retained_output_families,
-    )
     projection_file_hashes = build_projection_file_hashes(projection_root)
     budget_acceptance_thresholds = build_output_budget_acceptance_thresholds()
     budget_acceptance_validation = validate_output_budget_acceptance(
@@ -1832,6 +1827,14 @@ def build_handoff_output_budget_projection(
             "projection_file_hashes": projection_file_hashes,
         },
         thresholds=budget_acceptance_thresholds,
+    )
+    budget_recheck = build_handoff_budget_recheck(
+        handoff_output_budget_projection={
+            **gate_report,
+            "budget_acceptance_validation": budget_acceptance_validation,
+        },
+        first_bottleneck_labels=first_bottleneck_labels,
+        retained_replay_critical_output_families=replay_critical_retained_output_families,
     )
     summary = (
         "Handoff command-plan output-budget projection is "
@@ -2499,6 +2502,15 @@ def build_handoff_budget_recheck(
 ) -> dict[str, Any]:
     status = str(handoff_output_budget_projection.get("status") or "")
     gate_status = str(handoff_output_budget_projection.get("gate_status") or "")
+    budget_acceptance = dict(handoff_output_budget_projection.get("budget_acceptance_validation") or {})
+    if budget_acceptance.get("status") == "accepted":
+        return {
+            "status": "budget_passes_no_reduction_needed",
+            "reason": (
+                "current handoff projection is accepted by "
+                f"{budget_acceptance.get('threshold_profile_id')} thresholds"
+            ),
+        }
     first_bottleneck = str(first_bottleneck_labels.get("first_relevant") or "")
     if status == "blocked_missing_inputs" or gate_status == "blocked_missing_inputs":
         return {
@@ -2802,6 +2814,9 @@ def normalize_scenario_pressure_status(scenario_pressure_projection: dict[str, A
 
 def normalize_handoff_projection_status(handoff_output_budget_projection: dict[str, Any]) -> str:
     if not handoff_output_budget_projection:
+        return "acceptable"
+    budget_acceptance = dict(handoff_output_budget_projection.get("budget_acceptance_validation") or {})
+    if budget_acceptance.get("status") == "accepted":
         return "acceptable"
     status = handoff_output_budget_projection.get("status")
     if status == "blocked_missing_inputs":

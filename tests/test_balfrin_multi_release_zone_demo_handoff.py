@@ -832,6 +832,11 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
             MODULE.DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID,
         )
         self.assertEqual(report["handoff_output_budget_projection"]["budget_acceptance_validation"]["failures"], [])
+        self.assertEqual(
+            report["handoff_output_budget_projection"]["budget_recheck"]["status"],
+            "budget_passes_no_reduction_needed",
+        )
+        self.assertEqual(report["manifest_pruning"]["status"], "budget_passes_no_reduction_needed")
         self.assertGreater(report["handoff_output_budget_projection"]["estimated_storage_bytes"], 0)
         self.assertEqual(
             report["handoff_output_budget_projection"]["estimated_storage_bytes"],
@@ -853,6 +858,8 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
         self.assertEqual(first_blocker["status"], "blocked_reducer_or_scenario_limits")
         self.assertIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", first_blocker["reason"])
+        self.assertIn("scenario pressure blocked: first bottleneck release_zone_count", first_blocker["reason"])
+        self.assertNotIn("handoff output-budget projection blocked", first_blocker["reason"])
         self.assertIn("--requested-release-zone-batch-size 2", first_blocker["recovery_command"])
 
     def test_missing_required_inputs_fail_closed_with_a_blocked_report(self) -> None:
