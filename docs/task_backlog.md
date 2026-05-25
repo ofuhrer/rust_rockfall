@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-565: Execute One Bounded Regional Split Postproc Run If Capacity Is Favorable
-
-Goal: Use the current Balfrin availability window to run exactly one reviewed 12-split reduced-output regional probe.
-
-Capability gap reduced: Moves regional feasibility from one historical measured run root toward a current, reproducible, package-gated large-run measurement.
-
-Why this outranks alternatives: A current reviewed package plus a favorable queue window is the highest-leverage way to demonstrate Balfrin efficiency and feasibility.
-
-Inspect first:
-
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Submit exactly one `postproc` job using the reviewed TB-564 package only if TB-563 classifies the window as `run_now` or `run_soon`.
-- Actively monitor the job to terminal state.
-- Record SLURM job id, state, exit code, elapsed time, MaxRSS, run root, package hashes, and queue context.
-
-Definition of done:
-
-- The job reaches `COMPLETED` with exit `0:0`, or a failed/blocked state is captured with exact scheduler/package diagnostics and no ambiguous partial promotion.
-
-Boundaries: One job only; `postproc` only; do not keep the partition fully busy for more than 6 hours; no distributed execution, no non-postproc partition, no operational claim, and no Swiss-wide claim.
-
 ### TB-566: Collect And Preserve Regional Split Run Metrics
 
 Goal: Collect complete run-root metrics and preservation evidence from the TB-565 regional split run.

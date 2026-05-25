@@ -130,6 +130,8 @@ starting context for implementation unless a task explicitly asks for them.
   `postproc` capacity-window classification.
 - `balfrin_regional_split_submission_package_tb564.md`: TB-564 no-submit
   regional split submission package readiness evidence.
+- `balfrin_regional_split_postproc_run_tb565.md`: TB-565 measured bounded
+  regional split `postproc` run from the reviewed package gates.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
