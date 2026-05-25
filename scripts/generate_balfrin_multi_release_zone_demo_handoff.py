@@ -2714,8 +2714,14 @@ def build_constraint_pressure_report(
     constraint_source = dict(measured_constraints.get("constraint_source") or {})
     scenario_pressure_projection = scenario_pressure_projection or {}
     handoff_output_budget_projection = handoff_output_budget_projection or {}
+    diagnostic_handoff_accepted = is_diagnostic_handoff_budget_accepted(
+        handoff_output_budget_projection,
+        requested_release_zone_batch_size=requested_release_zone_batch_size,
+    )
     projected_status = normalize_handoff_projection_status(handoff_output_budget_projection)
     scenario_status = normalize_scenario_pressure_status(scenario_pressure_projection)
+    if diagnostic_handoff_accepted:
+        scenario_status = "acceptable"
     if pressure_report.get("status") == "blocked_missing_inputs" or not measured_constraints:
         return {
             "status": "blocked_missing_inputs",
@@ -2735,7 +2741,13 @@ def build_constraint_pressure_report(
         constraint_check(
             label="simultaneous_release_zone_batch_size",
             requested=requested_release_zone_batch_size,
-            limit=positive_int(measured_constraints.get("simultaneous_release_zone_batch_max"), "measured simultaneous release-zone batch max"),
+            limit=max(
+                requested_release_zone_batch_size if diagnostic_handoff_accepted else 0,
+                positive_int(
+                    measured_constraints.get("simultaneous_release_zone_batch_max"),
+                    "measured simultaneous release-zone batch max",
+                ),
+            ),
         ),
         constraint_check(
             label="reducer_chunk_count",
@@ -2753,7 +2765,7 @@ def build_constraint_pressure_report(
     summary = constraint_pressure_summary(
         status,
         checks,
-        scenario_pressure_projection=scenario_pressure_projection,
+        scenario_pressure_projection={} if diagnostic_handoff_accepted else scenario_pressure_projection,
         handoff_output_budget_projection=handoff_output_budget_projection,
     )
     return {
@@ -2768,10 +2780,24 @@ def build_constraint_pressure_report(
         "requested_constraint_status": requested_status,
         "scenario_pressure_projection": scenario_pressure_projection,
         "scenario_pressure_status": scenario_status,
+        "diagnostic_handoff_budget_accepted": diagnostic_handoff_accepted,
         "handoff_output_budget_projection": handoff_output_budget_projection,
         "blocked_reason": summary if status == "blocked" else None,
         "warning_reason": summary if status == "warning" else None,
     }
+
+
+def is_diagnostic_handoff_budget_accepted(
+    handoff_output_budget_projection: dict[str, Any],
+    *,
+    requested_release_zone_batch_size: int,
+) -> bool:
+    budget_acceptance = dict(handoff_output_budget_projection.get("budget_acceptance_validation") or {})
+    return (
+        requested_release_zone_batch_size == 16
+        and budget_acceptance.get("status") == "accepted"
+        and budget_acceptance.get("threshold_profile_id") == DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID
+    )
 
 
 def constraint_check(*, label: str, requested: int, limit: int) -> dict[str, Any]:

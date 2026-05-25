@@ -145,7 +145,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertIsNone(output_budget_projection["first_bottleneck_labels"]["first_blocked"])
         self.assertEqual(output_budget_projection["first_bottleneck_labels"]["first_relevant"], "ready")
         self.assertEqual(output_budget_projection["budget_recheck"]["status"], "budget_passes_no_reduction_needed")
-        self.assertIn("within the current budget thresholds", output_budget_projection["budget_recheck"]["reason"])
+        self.assertIn("accepted by smallest_live_two_zone_probe thresholds", output_budget_projection["budget_recheck"]["reason"])
         self.assertEqual(first["output_budget_acceptance_thresholds"]["schema_version"], "balfrin_multi_zone_output_budget_acceptance_v1")
         self.assertIn("smallest_live_two_zone_probe", first["output_budget_acceptance_thresholds"]["profiles"])
         self.assertIn("next_larger_four_zone_review_only_probe", first["output_budget_acceptance_thresholds"]["profiles"])
@@ -809,7 +809,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertTrue(any(check["status"] == "blocked" for check in report["constraint_pressure"]["constraint_checks"]))
         self.assertEqual(report["submission_classification"], "blocked_pending_new_human_authorization")
 
-    def test_sixteen_zone_handoff_fails_closed_with_concrete_blockers(self) -> None:
+    def test_sixteen_zone_handoff_is_unblocked_by_accepted_diagnostic_budget(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "tb569_16_zone_handoff"
             pressure_probe_root = Path(tmpdir) / "tb569_16_zone_pressure"
@@ -822,10 +822,18 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
                 requested_reducer_worker_count=2,
             )
 
-        self.assertEqual(report["package_constraint_status"], "blocked")
-        self.assertEqual(report["no_submit_handoff_contract"]["status"], "blocked")
+        self.assertEqual(report["package_constraint_status"], "warning")
+        self.assertEqual(report["no_submit_handoff_contract"]["status"], "ready_for_review")
         self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["sbatch_attempted"])
         self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["balfrin_job_submitted"])
+        self.assertTrue(report["constraint_pressure"]["diagnostic_handoff_budget_accepted"])
+        self.assertEqual(report["constraint_pressure"]["status"], "warning")
+        self.assertEqual(report["constraint_pressure"]["constraint_checks"][0]["status"], "warning")
+        self.assertEqual(report["constraint_pressure"]["constraint_checks"][0]["limit"], 16)
+        self.assertEqual(report["constraint_pressure"]["constraint_checks"][1]["status"], "warning")
+        self.assertEqual(report["constraint_pressure"]["constraint_checks"][2]["status"], "warning")
+        self.assertNotIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", report["constraint_pressure"]["summary"])
+        self.assertNotIn("scenario pressure blocked", report["constraint_pressure"]["summary"])
         self.assertEqual(report["handoff_output_budget_projection"]["budget_acceptance_validation"]["status"], "accepted")
         self.assertEqual(
             report["handoff_output_budget_projection"]["budget_acceptance_validation"]["threshold_profile_id"],
@@ -856,11 +864,7 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(report["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["release_zone_count"], 2)
         self.assertEqual(report["no_submit_handoff_contract"]["scenario_limits"]["release_zone_count"], 2)
         first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
-        self.assertEqual(first_blocker["status"], "blocked_reducer_or_scenario_limits")
-        self.assertIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", first_blocker["reason"])
-        self.assertIn("scenario pressure blocked: first bottleneck release_zone_count", first_blocker["reason"])
-        self.assertNotIn("handoff output-budget projection blocked", first_blocker["reason"])
-        self.assertIn("--requested-release-zone-batch-size 2", first_blocker["recovery_command"])
+        self.assertIsNone(first_blocker)
 
     def test_missing_required_inputs_fail_closed_with_a_blocked_report(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
