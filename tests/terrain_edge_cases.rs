@@ -224,3 +224,84 @@ fn real_tschamut_dem_trajectory_has_finite_bounded_physics() {
         "unexpected jump-height spike: {max_jump_height_m}"
     );
 }
+
+#[test]
+fn real_chant_sura_dem_trajectory_has_finite_bounded_physics() {
+    let terrain_path = format!(
+        "{}/validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let terrain = DemGrid::from_ascii_grid(&terrain_path).unwrap();
+    let radius_m = 0.265790716577;
+    let start_x = 2793260.85;
+    let start_y = 1180275.93;
+    let start_ground_z = terrain.try_height(start_x, start_y).unwrap();
+    let config = SimulationConfig {
+        block: SphereBlock::new(radius_m, 210.0),
+        initial_position_m: [start_x, start_y, start_ground_z + radius_m],
+        initial_velocity_mps: [1.17599999905, -4.33600000013, -4.23375],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::EsriAsciiGridClamped { path: terrain_path },
+        dt_s: 0.005,
+        max_time_s: 1.15,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.25,
+        tangential_restitution: 0.85,
+        friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: Default::default(),
+        soil_interaction_model: Default::default(),
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: Default::default(),
+        roughness_std_normal: 0.0,
+        roughness_std_tangent: 0.0,
+        roughness_std_angle: 0.0,
+        stop_speed_mps: 0.05,
+        random_seed: None,
+        release_perturbation: Default::default(),
+    };
+
+    let run = simulate_one_trajectory(
+        &config,
+        TrajectoryRequest::new("real_chant_sura_dem_golden", "trajectory_000000", None),
+    )
+    .unwrap();
+
+    assert!(
+        run.samples.len() > 10,
+        "trajectory should contain time history"
+    );
+    assert!(run.summary.runout_m > 0.5, "runout should be non-trivial");
+    assert!(
+        run.summary.final_position_m[1] < start_y,
+        "trajectory should move generally downslope on the RF16 fixture"
+    );
+    assert!(run.summary.max_kinetic_energy_j.is_finite());
+    assert!(run.summary.max_kinetic_energy_j >= 0.0);
+    assert!(
+        run.summary.max_kinetic_energy_j < 100_000.0,
+        "unexpected kinetic-energy spike: {}",
+        run.summary.max_kinetic_energy_j
+    );
+
+    let mut terrain_lookup_count = 0_usize;
+    let max_jump_height_m = run
+        .samples
+        .iter()
+        .map(|sample| {
+            let ground = terrain.try_height(sample.x_m, sample.y_m).unwrap();
+            terrain_lookup_count += 1;
+            sample.z_m - ground - radius_m
+        })
+        .fold(f64::NEG_INFINITY, f64::max);
+    assert_eq!(terrain_lookup_count, run.samples.len());
+    assert!(max_jump_height_m.is_finite());
+    assert!(max_jump_height_m >= -1.0e-6);
+    assert!(
+        max_jump_height_m < 10.0,
+        "unexpected jump-height spike: {max_jump_height_m}"
+    );
+}

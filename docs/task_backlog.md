@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-485: Add A Chant Sura Real-Terrain Rust Regression
-
-Goal: Add a Rust-level regression that exercises the simulation core on the committed Chant Sura / Fluelapass terrain fixture.
-
-Capability gap reduced: Reduces second-site dependence on Python workflow checks by proving the Rust model can run on the second real terrain fixture.
-
-Why this outranks alternatives: Second-site portability is currently only partially proven; a Rust-level real-terrain test is a durable scientific and engineering guardrail.
-
-Inspect first:
-
-- `tests/terrain_edge_cases.rs`
-- `validation/cases/chant_sura_contact.yaml`
-- `data/processed/chant_sura_2020/terrain_rf16_contact.asc`
-- `src/simulation.rs`
-
-Deliverables:
-
-- Add a deterministic Chant Sura real-terrain trajectory regression to an existing Rust test target.
-- Assert finite bounded kinematics, non-trivial movement, and successful terrain lookup along the simulated path.
-
-Definition of done:
-
-- The focused Rust test and surrounding terrain edge-case tests pass, and the new test does not add generated fixtures or broaden runtime beyond committed local data.
-
-Boundaries: Regression coverage only; no calibration, tuning, validation claim upgrade, operational claim, or Balfrin execution.
-
 ### TB-486: Reduce Extreme-Layer Support And Nodata Fragility
 
 Goal: Use the existing extreme-layer sensitivity smoke to implement one concrete mitigation for avoidable support/nodata instability in hazard layers.

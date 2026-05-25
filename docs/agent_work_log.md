@@ -6743,3 +6743,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local comparison only; no parameter tuning, calibration, annual frequency, physical probability, source-acceptance upgrade, operational claim, or Balfrin execution.
 - Next task: `TB-485`
+
+### TB-485: Add A Chant Sura Real-Terrain Rust Regression
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: add a Rust-level regression that exercises the simulation core on the committed Chant Sura / Fluelapass real-terrain fixture.
+- Files changed: `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `real_chant_sura_dem_trajectory_has_finite_bounded_physics` to the existing terrain edge-case Rust test target beside the Tschamut real-DEM regression.
+  - The test uses `validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc` and the release/block parameters from `validation/cases/chant_sura_contact.yaml`.
+  - It asserts a non-trivial bounded trajectory, finite kinetic energy, downslope movement, successful terrain lookup for every simulated sample, and bounded jump height.
+  - Removed TB-485 from the active backlog.
+- Checks run:
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases real_chant_sura_dem_trajectory_has_finite_bounded_physics -- --nocapture`
+  - `CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo test --test terrain_edge_cases -- --nocapture`
+- Result/status: implemented
+- Boundaries: Rust regression coverage only; no calibration, tuning, validation-claim upgrade, operational claim, new fixture generation, or Balfrin execution.
+- Next task: `TB-486`
