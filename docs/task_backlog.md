@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-502: Make Candidate Review CSV Round-Trip Tested
-
-Goal: Add a focused round-trip test for candidate review CSV fields used by review-apply and scenario freezing.
-
-Capability gap reduced: Prevents review CSV drift from breaking downstream candidate freezing or human review loops.
-
-Why this outranks alternatives: TB-492 consolidated artifact paths, but review-row content still needs protection as candidate workflows grow.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_candidate_source_zone_freezer.py`
-
-Deliverables:
-
-- Add a test that writes a candidate review CSV, reloads or compares it through existing review/freezer inputs, and verifies key fields survive safely.
-- Reuse existing fixtures and helpers.
-
-Definition of done:
-
-- Focused candidate review/freezer tests pass and at least one downstream-critical CSV field set is covered.
-
-Boundaries: Test/serialization hardening only; no new review workflow, no status vocabulary change, no source-zone semantics change, and no Balfrin dependency.
-
 ### TB-503: Improve Local QGIS Package Inspectability
 
 Goal: Make one existing local hazard/QGIS package easier to inspect by reducing redundant files or adding a small deterministic index within the existing package.

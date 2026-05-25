@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import importlib.util
 import json
 import tempfile
@@ -385,6 +386,53 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
             output_root=reviewed_output_root,
         )
         return Path(reviewed["outputs"]["manifest"])
+
+    def test_review_csv_round_trip_preserves_freezer_critical_fields(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            review_package_path = self._write_review_package(workdir)
+            review_manifest = json.loads(review_package_path.read_text(encoding="utf-8"))
+            review_csv_path = Path(review_manifest["outputs"]["csv"])
+            with review_csv_path.open(encoding="utf-8", newline="") as handle:
+                csv_rows = {
+                    row["candidate_release_zone_id"]: row
+                    for row in csv.DictReader(handle)
+                }
+            freezer_report = freezer.build_freezer_report(
+                review_package_path=review_package_path,
+                accepted_candidate_ids=["cand_accept_a", "cand_accept_b"],
+                output_root=workdir / "validation/private/chant_sura_fluelapass_portability_example_v1",
+                trajectory_count=24,
+                seed=34014,
+            )
+
+        manifest_rows = {
+            row["candidate_release_zone_id"]: row
+            for row in review_manifest["candidate_review_rows"]
+        }
+        self.assertEqual(set(csv_rows), set(manifest_rows))
+        self.assertEqual(csv_rows["cand_accept_a"]["review_decision"], "accepted")
+        self.assertEqual(csv_rows["cand_accept_a"]["accepted"], "true")
+        self.assertEqual(csv_rows["cand_accept_a"]["rejected"], "false")
+        self.assertEqual(csv_rows["cand_accept_a"]["needs_field_review"], "false")
+        self.assertEqual(csv_rows["cand_rejected"]["review_decision"], "rejected")
+        self.assertEqual(csv_rows["cand_rejected"]["accepted"], "false")
+        self.assertEqual(csv_rows["cand_rejected"]["rejected"], "true")
+        self.assertEqual(csv_rows["cand_rejected"]["needs_field_review"], "false")
+        for candidate_id, manifest_row in manifest_rows.items():
+            csv_row = csv_rows[candidate_id]
+            self.assertEqual(csv_row["provenance_label"], manifest_row["provenance_label"])
+            self.assertEqual(csv_row["candidate_sensitivity_label"], manifest_row["candidate_sensitivity_label"])
+            self.assertEqual(csv_row["release_cell_count"], str(manifest_row["release_cell_count"]))
+            self.assertEqual(csv_row["release_cell_ids"], ";".join(manifest_row["release_cell_ids"]))
+
+        self.assertEqual(freezer_report["accepted_candidate_ids"], ["cand_accept_a", "cand_accept_b"])
+        freezer_release_rows = {
+            row["candidate_release_zone_id"]: row
+            for row in freezer_report["release_rows"]
+        }
+        self.assertEqual(freezer_release_rows["cand_accept_a"]["release_cell_count"], int(csv_rows["cand_accept_a"]["release_cell_count"]))
+        self.assertEqual(freezer_release_rows["cand_accept_b"]["release_cell_count"], int(csv_rows["cand_accept_b"]["release_cell_count"]))
 
     def test_freezer_generates_deterministic_ids_and_excludes_rejected_candidates(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
