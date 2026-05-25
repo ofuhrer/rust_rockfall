@@ -7623,3 +7623,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: internal simplification only; no coordinate semantics change, no source-zone claim change, no tuning, no operational claim, and no Balfrin dependency.
 - Next task: `TB-523`
+
+### TB-523: Measure Local End-To-End Candidate Loop Runtime
+
+- Date: 2026-05-25
+- Commit: `ad3a1dc`
+- Objective: measure the local candidate loop from review/freezing through reduced hazard comparison on a tiny fixture.
+- Files changed: `tests/test_candidate_source_zone_freezer.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a fixture-backed timing smoke to the existing freezer test module rather than adding another dashboard or standalone report script.
+  - The smoke times review application, candidate source-zone freezing, reduced hazard-layer generation, and hazard-output comparison.
+  - The generated timing report records `phase_seconds`, `largest_bottleneck_phase`, hazard-builder phase timing, accepted candidate count, scenario row count, and compared output kinds.
+  - Standalone proof completed with 2 accepted candidates, 6 scenario rows, 10 hazard outputs, and `largest_bottleneck_phase=freeze_seconds`.
+  - Measured proof phase timings were `review_apply_seconds=0.008294`, `freeze_seconds=0.017059`, `reduced_hazard_seconds=0.007295`, and `hazard_comparison_seconds=0.000177`.
+  - Removed TB-523 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer.ReviewedCandidateSourceZoneFreezerTests.test_local_candidate_loop_timing_smoke_records_phase_bottleneck -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_freezer tests.test_hazard_layers -v`
+  - standalone `/tmp/tb523_local_candidate_loop_timing_smoke.json` proof run
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: fixture-backed local timing smoke only; no candidate acceptance upgrade, no validation/calibration claim, no operational claim, no physical-probability claim, and no Balfrin dependency.
+- Next task: `TB-524`
