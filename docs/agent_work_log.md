@@ -7848,3 +7848,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation navigation only; no Balfrin workflow change, no access/preflight change, no operational claim, and no remote execution.
 - Next task: `TB-532`
+
+### TB-532: Consolidate AOI Manual Command Blocks
+
+- Date: 2026-05-25
+- Commit: `1fdec53`
+- Objective: reduce the main AOI manual path to a smaller front-door sequence while keeping focused checks available for expert/debug use.
+- Files changed: `docs/aoi_user_manual.md`, `tests/test_qgis_processing_connector_manifest.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Collapsed the main AOI command path so users start with the `workflow` summary and only run `plan`, `candidate-review`, and package generation as the compact path.
+  - Moved `describe-config`, `prepare`, and package-readiness-only usage into a clearly labeled `Advanced And Focused Checks` section.
+  - Renamed the helper table to `Advanced Internal Helper Routing` so low-level script mappings remain available without looking like the main user path.
+  - Relaxed the QGIS connector manual consistency test to require manifest actions to remain documented in the AOI manual while allowing additional non-QGIS front-door commands.
+  - Verified the workflow CLI still fails closed with `blocked_missing_inputs` and reports the next `prepare` action for the fixture site.
+  - Removed TB-532 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_qgis_processing_connector_manifest -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_documented_aoi_bounds_to_review_map_command_chain_smoke tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_workflow_main_renders_compact_text_summary_for_copy_paste -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py workflow --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --workflow-output-root /tmp/tb532_aoi_workflow --format text`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: user-manual simplification only; no new workflow semantics, no new data acquisition, no operational claim, and no Balfrin dependency.
+- Next task: `TB-533`
