@@ -95,7 +95,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertGreater(first_report["root_file_count"], first_report["release_zone_count"])
             self.assertEqual(first_report["output_family_file_counts"]["trajectory_csv"], 12)
             self.assertNotIn("trajectory_chunk_manifest", first_report["output_family_file_counts"])
-            self.assertEqual(first_report["output_family_file_counts"]["reducer_chunk_manifest"], 2)
+            self.assertNotIn("reducer_chunk_manifest", first_report["output_family_file_counts"])
             storage_measure = STORAGE_MODULE.measure_root(
                 probe_root / "output",
                 label="multi_zone_probe_output",
@@ -111,7 +111,8 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                     first_report["storage_pressure_family_bytes"][family],
                     storage_measure["family_bytes"][family],
                 )
-            self.assertEqual(first_report["reducer_manifest_file_count"], 2)
+            self.assertEqual(first_report["reducer_manifest_file_count"], 0)
+            self.assertEqual(first_report["reducer_manifest_bytes"], 0)
             self.assertEqual(first_report["sidecar_file_count"], 9)
             self.assertEqual(first_report["merged_output_summary"]["file_count"], first_report["output_file_count"] - 2)
             self.assertGreater(first_report["merged_output_summary"]["byte_count"], 0)
@@ -171,7 +172,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
         self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
         self.assertEqual(report["compact_manifest_recommendation"]["release_zone_count"], 12)
-        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -14618)
+        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -14018)
         self.assertEqual(report["compact_manifest_recommendation"]["output_file_count_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_bytes_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_file_count_delta"], 0)
@@ -318,7 +319,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         trajectory_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "trajectory_csv"]
         reducer_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "reducer_chunk_manifest"]
         self.assertEqual([entry["zone_index"] for entry in trajectory_entries], list(range(8)))
-        self.assertEqual([entry["chunk_index"] for entry in reducer_entries], [0, 1])
+        self.assertEqual(reducer_entries, [])
         self.assertTrue(all(entry["total_bytes"] > 0 for entry in merge_manifest["outputs"]))
 
     def test_merge_manifest_ordering_is_stable_when_batch_plan_order_changes(self) -> None:
@@ -376,7 +377,8 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         self.assertEqual(len(report["rungs"]), 4)
         first_rung = report["rungs"][0]
         self.assertLess(first_rung["manifest_mode_delta"]["manifest_size_bytes_delta"], 0)
-        self.assertLess(first_rung["output_family_delta"]["output_family_file_count_delta"]["reducer_chunk_manifest"], 0)
+        self.assertNotIn("reducer_chunk_manifest", first_rung["profiles"]["full_full"]["output_family_file_counts"])
+        self.assertEqual(first_rung["combined_delta"]["reducer_manifest_file_count_delta"], 0)
         self.assertEqual(first_rung["profiles"]["full_full"]["manifest_mode"], "full")
         self.assertEqual(first_rung["profiles"]["compact_full"]["manifest_mode"], "compact")
         self.assertEqual(first_rung["profiles"]["compact_reduced"]["manifest_mode"], "compact")

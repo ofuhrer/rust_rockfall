@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-570: Optimize Reducer Manifest Pressure For The Next Larger Package
-
-Goal: Reduce the reducer/replay metadata pressure that blocks larger reduced-output packages without changing hazard semantics.
-
-Capability gap reduced: Attacks the current first scaling bottleneck: manifest/replay metadata and reducer pressure.
-
-Why this outranks alternatives: The scale matrix and 16-zone scratch probe show reducer pressure remains the dominant blocker before larger single-node/postproc measurements.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/validate_multi_zone_reducer_pressure_gate.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_reducer_pressure_gate.py`
-
-Deliverables:
-
-- Implement the smallest compact-manifest or replay-critical-family reduction that lowers 16-zone package pressure while preserving rebuildability.
-- Add tests proving replay-critical families remain present and merge order remains deterministic.
-- Regenerate the 16-zone scratch pressure report after the change.
-
-Definition of done:
-
-- Focused reducer tests pass and the 16-zone pressure report shows a lower manifest/output-family pressure classification or a smaller explicit first blocker.
-
-Boundaries: No physics changes, no output-family deletion that breaks replay/rebuildability, no Balfrin submission, and no claim upgrade.
-
 ### TB-571: Rebuild The 16-Zone Handoff After Reducer Optimization
 
 Goal: Re-run the 16-zone no-submit handoff after TB-570 to determine whether the package is live-run eligible.

@@ -69,6 +69,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reducer-chunk-count", type=int, default=DEFAULT_TARGET_REDUCER_CHUNK_COUNT)
     parser.add_argument("--reducer-workers", type=int, default=DEFAULT_TARGET_REDUCER_WORKERS)
     parser.add_argument(
+        "--manifest-mode",
+        choices=("full", "compact"),
+        default="full",
+        help="Materialize the target and threshold fixtures with full or compact replay-preserving manifests.",
+    )
+    parser.add_argument(
         "--output-family-mix",
         default=None,
         help="Comma-separated output families to materialize for the target and threshold fixtures.",
@@ -121,6 +127,7 @@ def _worse_status(left: str, right: str) -> str:
 def _profile_measurements(report: dict[str, Any]) -> dict[str, Any]:
     return {
         "release_zone_count": report.get("release_zone_count"),
+        "manifest_mode": report.get("manifest_mode"),
         "reducer_chunk_count": report.get("reducer_chunk_count"),
         "reducer_worker_count": report.get("reducer_worker_count"),
         "output_family_mix": report.get("output_family_mix", []),
@@ -153,6 +160,7 @@ def _materialize_profile(
     reducer_chunk_count: int,
     reducer_worker_count: int,
     output_family_mix: tuple[str, ...],
+    manifest_mode: str,
 ) -> FixtureProfile:
     root = tmpdir / profile_name
     reducer_pressure.materialize_probe_root(
@@ -161,6 +169,7 @@ def _materialize_profile(
         reducer_worker_count=reducer_worker_count,
         reducer_chunk_count=reducer_chunk_count,
         output_family_mix=output_family_mix,
+        manifest_mode=manifest_mode,
     )
     report = reducer_pressure.build_report(root)
     return FixtureProfile(
@@ -182,6 +191,7 @@ def _build_threshold_profile(
     reducer_chunk_count: int,
     reducer_worker_count: int,
     output_family_mix: tuple[str, ...],
+    manifest_mode: str,
 ) -> FixtureProfile:
     return _materialize_profile(
         tmpdir=tmpdir,
@@ -190,6 +200,7 @@ def _build_threshold_profile(
         reducer_chunk_count=reducer_chunk_count,
         reducer_worker_count=reducer_worker_count,
         output_family_mix=output_family_mix,
+        manifest_mode=manifest_mode,
     )
 
 
@@ -292,6 +303,7 @@ def build_report(
             reducer_chunk_count=warning_reducer_chunk_count,
             reducer_worker_count=warning_reducer_workers,
             output_family_mix=output_family_mix,
+            manifest_mode=manifest_mode,
         )
         blocked_profile = _build_threshold_profile(
             tmpdir=temp_root,
@@ -300,6 +312,7 @@ def build_report(
             reducer_chunk_count=blocked_reducer_chunk_count,
             reducer_worker_count=blocked_reducer_workers,
             output_family_mix=output_family_mix,
+            manifest_mode=manifest_mode,
         )
 
     target_report = reducer_pressure.build_report(target_root)
@@ -568,6 +581,7 @@ def main(argv: list[str] | None = None) -> int:
             release_zone_count=args.release_zone_count,
             reducer_chunk_count=args.reducer_chunk_count,
             reducer_workers=args.reducer_workers,
+            manifest_mode=args.manifest_mode,
             output_family_mix=args.output_family_mix,
             warning_release_zone_count=args.warning_release_zone_count,
             warning_reducer_chunk_count=args.warning_reducer_chunk_count,

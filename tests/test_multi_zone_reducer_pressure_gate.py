@@ -41,6 +41,7 @@ class MultiZoneReducerPressureGateTests(unittest.TestCase):
             self.assertEqual(report["schema_version"], "multi_zone_reducer_pressure_gate_v1")
             self.assertEqual(report["gate_status"], "fixture_backed_ready")
             self.assertEqual(report["threshold_provenance"], "fixture_backed")
+            self.assertEqual(report["target_profile"]["manifest_mode"], "full")
             self.assertEqual(report["target_profile"]["output_family_mix"], list(MODULE.DEFAULT_OUTPUT_FAMILY_MIX))
             generated = report["target_profile"]["generated_scratch_root"]
             self.assertEqual(Path(generated["root"]), probe_root.resolve())
@@ -59,7 +60,7 @@ class MultiZoneReducerPressureGateTests(unittest.TestCase):
             self.assertIn("trajectory_execution_index", report["validation_output_inventory"]["replay_critical_output_families"])
             self.assertIn("reducer_execution_plan", report["validation_output_inventory"]["replay_critical_output_families"])
             self.assertIn("reducer_execution_index", report["validation_output_inventory"]["replay_critical_output_families"])
-            self.assertEqual(report["validation_output_inventory"]["diagnostic_debug_output_families"], ["reducer_chunk_manifest"])
+            self.assertEqual(report["validation_output_inventory"]["diagnostic_debug_output_families"], [])
             self.assertEqual(report["thresholds"]["warning"]["output_family_mix"], list(MODULE.DEFAULT_OUTPUT_FAMILY_MIX))
             self.assertEqual(report["thresholds"]["blocked"]["output_family_mix"], list(MODULE.DEFAULT_OUTPUT_FAMILY_MIX))
             self.assertEqual(report["thresholds"]["warning"]["release_zone_count"], 9)
@@ -71,11 +72,28 @@ class MultiZoneReducerPressureGateTests(unittest.TestCase):
             self.assertGreater(len(report["family_byte_checks"]), 0)
             self.assertGreater(report["validation_output_inventory"]["family_budgets"]["trajectory_csv"]["file_count"], 0)
             self.assertGreater(report["validation_output_inventory"]["family_budgets"]["trajectory_csv"]["bytes"], 0)
-            self.assertGreaterEqual(report["validation_output_inventory"]["family_budgets"]["reducer_chunk_manifest"]["file_count"], 0)
+            self.assertNotIn("reducer_chunk_manifest", report["validation_output_inventory"]["family_budgets"])
             self.assertNotIn("trajectory_chunk_manifest", report["validation_output_inventory"]["family_budgets"])
             self.assertIn("deterministic merge order preserved", report["summary"])
             self.assertFalse(report["warning_reasons"])
             self.assertFalse(report["blocked_reasons"])
+
+    def test_compact_manifest_mode_uses_compact_threshold_fixtures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report = MODULE.build_report(
+                materialize_root=Path(tmpdir) / "compact-probe",
+                release_zone_count=8,
+                reducer_chunk_count=2,
+                reducer_workers=2,
+                manifest_mode="compact",
+            )
+
+            self.assertEqual(report["target_profile"]["manifest_mode"], "compact")
+            self.assertEqual(report["thresholds"]["warning"]["measurements"]["manifest_mode"], "compact")
+            self.assertEqual(report["thresholds"]["blocked"]["measurements"]["manifest_mode"], "compact")
+            self.assertEqual(report["target_profile"]["reducer_manifest_file_count"], 0)
+            self.assertEqual(report["target_profile"]["reducer_manifest_bytes"], 0)
+            self.assertTrue(report["merge_order_check"]["merge_order_deterministic"])
 
     def test_warning_profile_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -66,7 +66,6 @@ BOUNDED_OUTPUT_FAMILY_MIX = (
     "trajectory_csv",
     "deposition_csv",
     "impact_events_csv",
-    "reducer_chunk_manifest",
     "trajectory_execution_plan",
     "trajectory_execution_index",
     "trajectory_merge_state",
