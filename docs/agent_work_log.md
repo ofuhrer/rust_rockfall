@@ -8339,6 +8339,30 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: remote git hygiene only; no `sbatch`, no live run, no generated artifact deletion, no non-postproc partition, and no scale-up or operational claim.
 - Next task: `TB-554`
+
+### TB-554: Recompute Balfrin Decision Gate After Access And Scratch Repair
+
+- Date: 2026-05-25
+- Commit: `e99f9ca`
+- Objective: recompute the next-live-run decision gate and management demo package after clean-checkout handling and Balfrin remote-head alignment.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added optional `--balfrin-access-preflight-json` input to the next-live-run decision gate and management demo package.
+  - Threaded current Balfrin access status, remote HEAD, and checkout hygiene into the decision criteria and management readiness matrix.
+  - Verified the refreshed decision still ranks `reducer_pressure_optimization` first with ready access, measured scratch-root reducer evidence, ready scenario batching, and ready candidate stability.
+  - Reordered the recent work-log entries so consistency checks keep the TB history sorted.
+  - Removed TB-554 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --balfrin-access-preflight-json /tmp/tb554_preflight.json --format json >/tmp/tb554_decision_with_access.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/tb554_management_demo_with_access --balfrin-access-preflight-json /tmp/tb554_preflight.json --format json >/tmp/tb554_management_demo_with_access.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: decision refresh only; no live submission, no operational claim, and no scale-up authorization beyond existing postproc rules.
+- Next task: `TB-555`
+
 ### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
 
 - Date: 2026-05-25
