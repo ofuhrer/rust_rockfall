@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-566: Collect And Preserve Regional Split Run Metrics
-
-Goal: Collect complete run-root metrics and preservation evidence from the TB-565 regional split run.
-
-Capability gap reduced: Turns a completed scheduler job into durable measured evidence usable by feasibility, performance, and demonstration surfaces.
-
-Why this outranks alternatives: Raw SLURM success is not enough; the project needs preserved validation, hazard, reducer, output-family, and memory/runtime evidence.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/balfrin_failure_recovery_playbook.md`
-
-Deliverables:
-
-- Run the metrics collector on the TB-565 run root.
-- Run preservation and output-budget audits on the same run root.
-- Write a share-safe run report in `docs/` with job, metrics, output counts, memory, wall time, preservation, and output-budget status.
-
-Definition of done:
-
-- Metrics contract is `complete`, preservation is `ready_for_demonstration_evidence`, required run-root entries are complete, and the run report names any remaining blockers without claim upgrades.
-
-Boundaries: Evidence collection only; no rerun, no operational claim, no annual-frequency claim, no physical-probability claim, and no distributed-execution claim.
-
 ### TB-567: Promote Current Regional Split Evidence Into Decision Surfaces
 
 Goal: Thread the TB-566 measured regional split evidence into the evidence bundle, scale readiness matrix, and next live-run decision gate.
