@@ -56,6 +56,11 @@ class SameScaleCogPackageConversionTest(unittest.TestCase):
                 report = convert_same_scale_package_to_cog(input_root, output_root, overwrite=True)
 
             self.assertEqual(report["status"], "cog_package_ready")
+            self.assertEqual(report["roundtrip_smoke"]["roundtrip_status"], "ready")
+            self.assertEqual(report["roundtrip_smoke"]["conversion_status"], "cog_package_ready")
+            self.assertEqual(report["roundtrip_smoke"]["converted_package_status"], "cog_package_ready")
+            self.assertEqual(report["roundtrip_smoke"]["missing_gis_metadata_count"], 0)
+            self.assertIn("tiny local GIS/COG roundtrip smoke only", report["roundtrip_smoke"]["claim_boundary"])
             self.assertEqual(report["package_file_count"], len([path for path in output_root.rglob("*") if path.is_file()]))
             self.assertTrue(report["all_declared_geotiffs_cog_ready"])
             self.assertEqual(len(report["converted_rasters"]), 2)

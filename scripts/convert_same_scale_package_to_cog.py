@@ -202,6 +202,11 @@ def convert_same_scale_package_to_cog(input_root: Path, output_root: Path, *, ov
     file_count, byte_count = count_files_and_bytes(output_root)
     all_rasters_ready = all_rasters_cog_ready(output_root, map_manifest, pilot_manifest)
     status = "cog_package_ready" if all_rasters_ready else "cog_package_poc_ready"
+    roundtrip_smoke = build_roundtrip_smoke_summary(
+        input_root=input_root,
+        output_root=output_root,
+        conversion_status=status,
+    )
     return {
         "status": status,
         "input_root": str(input_root),
@@ -215,7 +220,43 @@ def convert_same_scale_package_to_cog(input_root: Path, output_root: Path, *, ov
         "ignored_output_root": str(output_root),
         "gdal_translate_options": ["-of", "COG", "-co", "BLOCKSIZE=256", "-co", "COMPRESS=ZSTD"],
         "all_declared_geotiffs_cog_ready": all_rasters_ready,
+        "roundtrip_smoke": roundtrip_smoke,
 }
+
+
+def build_roundtrip_smoke_summary(*, input_root: Path, output_root: Path, conversion_status: str) -> dict[str, Any]:
+    from scripts.audit_gis_cog_package_readiness import build_gis_cog_readiness_report
+
+    audit = build_gis_cog_readiness_report(
+        artifact_roots=[input_root],
+        converted_package_roots=[output_root],
+        raster_metadata_provider=inspect_gdal,
+    )
+    converted_packages = audit.get("converted_packages") or []
+    converted_package = converted_packages[0] if converted_packages else {}
+    missing_metadata = {
+        "map_package_manifest_missing_fields": list(
+            (converted_package.get("manifest_completeness") or {}).get("map_package_manifest_missing_fields") or []
+        ),
+        "pilot_gis_package_manifest_missing_fields": list(
+            (converted_package.get("manifest_completeness") or {}).get("pilot_gis_package_manifest_missing_fields") or []
+        ),
+        "missing_raster_outputs": list(
+            (converted_package.get("manifest_completeness") or {}).get("missing_raster_outputs") or []
+        ),
+    }
+    missing_count = sum(len(values) for values in missing_metadata.values())
+    audit_status = audit.get("converted_package_readiness_status")
+    return {
+        "roundtrip_status": "ready" if conversion_status == "cog_package_ready" and missing_count == 0 else "blocked_metadata_or_conversion",
+        "conversion_status": conversion_status,
+        "audit_status": audit_status,
+        "converted_package_layer_inventory_status": audit.get("converted_package_layer_inventory_status"),
+        "converted_package_status": converted_package.get("cog_package_status"),
+        "missing_gis_metadata": missing_metadata,
+        "missing_gis_metadata_count": missing_count,
+        "claim_boundary": "tiny local GIS/COG roundtrip smoke only; no publishing or operational map claim",
+    }
 
 
 def all_rasters_cog_ready(output_root: Path, map_manifest: dict[str, Any], pilot_manifest: dict[str, Any]) -> bool:
@@ -299,6 +340,7 @@ def render_text(report: dict[str, Any]) -> str:
         f"package_file_count\t{report.get('package_file_count', 0)}",
         f"package_byte_count\t{report.get('package_byte_count', 0)}",
         f"all_declared_geotiffs_cog_ready\t{report.get('all_declared_geotiffs_cog_ready', False)}",
+        f"roundtrip_smoke\t{report.get('roundtrip_smoke', {}).get('roundtrip_status', 'not_run')}",
         f"gdal_translate_options\t{' '.join(report.get('gdal_translate_options', []))}",
     ]
     if report.get("converted_rasters"):

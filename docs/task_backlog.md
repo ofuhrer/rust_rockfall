@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-547: Add Local GIS/COG Package Roundtrip Smoke On Tiny Fixture
-
-Goal: Prove that a tiny local same-scale package can be converted and audited as GIS/COG-ready without large artifacts.
-
-Capability gap reduced: Moves GIS handoff readiness from static checks toward an executable local roundtrip.
-
-Why this outranks alternatives: GIS package usability is a user-facing validation frontier and can be tested cheaply on tiny fixtures.
-
-Inspect first:
-
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/prototype_cog_conversion.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `tests/test_cog_conversion_prototype.py`
-- `tests/test_same_scale_cog_package_conversion.py`
-
-Deliverables:
-
-- Add or tighten a tiny fixture-backed conversion-plus-audit path using existing COG helpers.
-- Ensure the output reports both conversion success and any missing GIS metadata needed for user-facing use.
-
-Definition of done:
-
-- Focused COG conversion/audit tests pass and the roundtrip can run locally without large rasters or external services.
-
-Boundaries: Tiny fixtures only; no QGIS automation, no publishing, no new GIS package format, and no operational map claim.
-
 ### TB-548: Strengthen Multisite Source/Scenario Portability Checks
 
 Goal: Make multisite audits distinguish portable source/scenario semantics from site-specific assumptions.
