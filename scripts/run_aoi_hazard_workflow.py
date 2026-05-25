@@ -716,6 +716,11 @@ def build_candidate_review_report(
         "candidate_review_overlay_output_root": str(overlay_root),
         "candidate_report": candidate_report,
         "candidate_review_overlay_report": overlay_report,
+        "candidate_rejection_reasons_summary": (
+            (candidate_report.get("candidate_review_package") or {})
+            .get("review_summary", {})
+            .get("rejection_reasons_summary", {})
+        ),
         "candidate_review_manifest_path": overlay_report.get("overlay_manifest_path"),
         "candidate_review_overlay_paths": {
             image.get("background_id"): image.get("path")
@@ -2773,6 +2778,11 @@ def render_candidate_review_text_report(report: dict[str, Any]) -> str:
         lines.append("overlay_paths:")
         for key, value in sorted(overlay_paths.items()):
             lines.append(f"- {key}: {value}")
+    rejection_summary = report.get("candidate_rejection_reasons_summary") or {}
+    if rejection_summary:
+        lines.append("candidate_rejection_reasons:")
+        lines.append(f"- rejected: {rejection_summary.get('rejected_candidate_count', 0)}")
+        lines.append(f"- pending_review: {rejection_summary.get('pending_review_candidate_count', 0)}")
     return "\n".join(lines)
 
 

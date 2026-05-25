@@ -1090,6 +1090,14 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
                 "topographic_map": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays/guided_fixture_topographic_map_review_overlay.png",
                 "orthophoto": "/tmp/tb409_aoi_candidate_review/candidate_review_overlays/guided_fixture_orthophoto_review_overlay.png",
             },
+            "candidate_rejection_reasons_summary": {
+                "summary_status": "ready",
+                "rejected_candidate_count": 2,
+                "pending_review_candidate_count": 4,
+                "accepted_candidate_count": 1,
+                "reason_counts": {"review_decision_rejected": 2},
+                "claim_boundary": "review triage aid only",
+            },
             "first_blocker": {
                 "step_id": "candidate-review",
                 "blocked_reason": "",
@@ -1129,6 +1137,11 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(parsed["candidate_review_manifest_path"], fake_report["candidate_review_manifest_path"])
         self.assertIn("topographic_map", parsed["candidate_review_overlay_paths"])
         self.assertIn("orthophoto", parsed["candidate_review_overlay_paths"])
+        self.assertEqual(parsed["candidate_rejection_reasons_summary"]["rejected_candidate_count"], 2)
+
+        text = workflow.render_candidate_review_text_report(fake_report)
+        self.assertIn("candidate_rejection_reasons:", text)
+        self.assertIn("- rejected: 2", text)
 
     def test_workflow_command_rejects_invalid_aoi_input(self) -> None:
         report = workflow.build_workflow_report(

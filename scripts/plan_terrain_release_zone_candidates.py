@@ -2972,6 +2972,7 @@ def build_candidate_review_summary(review_rows: list[dict[str, Any]]) -> dict[st
     decision_counts = {decision: 0 for decision in REVIEW_DECISION_OPTIONS}
     provenance_counts = {label: 0 for label in PROVENANCE_LABELS}
     stability_counts = {"stable": 0, "sensitive": 0, "unstable": 0}
+    rejection_reasons = build_candidate_rejection_reasons_summary(review_rows)
     for row in review_rows:
         review_decision = str(row.get("review_decision") or "")
         if review_decision in decision_counts:
@@ -2988,8 +2989,90 @@ def build_candidate_review_summary(review_rows: list[dict[str, Any]]) -> dict[st
         "review_decision_counts": decision_counts,
         "provenance_label_counts": provenance_counts,
         "candidate_stability_class_counts": stability_counts,
+        "rejection_reasons_summary": rejection_reasons,
         "default_review_decision": "needs_field_review",
     }
+
+
+def build_candidate_rejection_reasons_summary(review_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    reason_counts: dict[str, int] = {}
+    rejected_candidates: list[dict[str, Any]] = []
+    pending_review_candidates: list[dict[str, Any]] = []
+    accepted_candidates: list[dict[str, Any]] = []
+
+    for row in review_rows:
+        candidate_id = text_value(row.get("candidate_release_zone_id"))
+        review_decision = text_value(row.get("review_decision")) or "needs_field_review"
+        reasons = candidate_rejection_reason_codes(row, review_decision)
+        for reason in reasons:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        entry = {
+            "candidate_release_zone_id": candidate_id,
+            "review_decision": review_decision,
+            "reason_codes": reasons,
+            "reason_summary": candidate_rejection_reason_summary(row, review_decision, reasons),
+        }
+        if review_decision == "rejected":
+            rejected_candidates.append(entry)
+        elif review_decision == "needs_field_review":
+            pending_review_candidates.append(entry)
+        elif review_decision == "accepted":
+            accepted_candidates.append(entry)
+
+    return {
+        "summary_status": "ready",
+        "rejected_candidate_count": len(rejected_candidates),
+        "pending_review_candidate_count": len(pending_review_candidates),
+        "accepted_candidate_count": len(accepted_candidates),
+        "reason_counts": dict(sorted(reason_counts.items())),
+        "rejected_candidates": rejected_candidates,
+        "pending_review_candidates": pending_review_candidates[:25],
+        "accepted_candidates": accepted_candidates[:25],
+        "claim_boundary": "review triage aid only; not a validated release-zone rejection model",
+    }
+
+
+def candidate_rejection_reason_codes(row: dict[str, Any], review_decision: str) -> list[str]:
+    reasons: list[str] = []
+    if review_decision == "rejected":
+        reasons.append("review_decision_rejected")
+    elif review_decision == "needs_field_review":
+        reasons.append("needs_field_review_pending")
+    elif review_decision == "accepted":
+        reasons.append("review_decision_accepted")
+
+    stability = text_value(row.get("candidate_stability_class") or row.get("candidate_stability_label"))
+    if stability == "unstable":
+        reasons.append("heuristic_unstable")
+    elif stability == "sensitive":
+        reasons.append("heuristic_sensitive")
+    elif stability == "stable":
+        reasons.append("heuristic_stable")
+
+    provenance_label = text_value(row.get("provenance_label"))
+    if provenance_label == "blocked_missing_provenance":
+        reasons.append("blocked_missing_provenance")
+    elif provenance_label == "workflow_generated":
+        reasons.append("workflow_generated_only")
+    elif provenance_label in {"field_supported", "mixed_provenance"}:
+        reasons.append(f"{provenance_label}_evidence")
+
+    for reason in row.get("candidate_context_exclusion_reasons") or []:
+        reason_value = text_value(reason)
+        if reason_value:
+            reasons.append(f"context_{reason_value}")
+
+    if not reasons:
+        reasons.append("no_specific_rejection_reason_recorded")
+    return sorted(set(reasons))
+
+
+def candidate_rejection_reason_summary(row: dict[str, Any], review_decision: str, reasons: list[str]) -> str:
+    candidate_id = text_value(row.get("candidate_release_zone_id"))
+    return (
+        f"{candidate_id}: review_decision={review_decision}; "
+        f"reasons={', '.join(reasons)}"
+    )
 
 
 def build_candidate_stability_summary(candidate_sensitivity_report: dict[str, Any]) -> dict[str, Any]:
@@ -3373,6 +3456,7 @@ def candidate_review_package_stub(*, repo_root: Path) -> dict[str, Any]:
             "review_decision_counts": {decision: 0 for decision in REVIEW_DECISION_OPTIONS},
             "provenance_label_counts": {label: 0 for label in PROVENANCE_LABELS},
             "candidate_stability_class_counts": {"stable": 0, "sensitive": 0, "unstable": 0},
+            "rejection_reasons_summary": build_candidate_rejection_reasons_summary([]),
             "default_review_decision": "needs_field_review",
         },
         "candidate_review_rows": [],

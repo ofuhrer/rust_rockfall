@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-544: Make Source-Zone Candidate Review Produce A Rejection-Reasons Summary
-
-Goal: Show why source-zone candidates are accepted or rejected so local scientific review can fix the highest-impact candidate defects first.
-
-Capability gap reduced: Improves source-zone reproducibility and reviewability before any larger scenario run.
-
-Why this outranks alternatives: Candidate quality controls the scientific meaning of every simulated scenario and is inspectable locally.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- Extend an existing candidate review or workflow output to summarize accepted candidates and rejected candidates by reason.
-- Add focused tests using current candidate fixtures.
-
-Definition of done:
-
-- Local candidate review reports counts by rejection reason and points to the smallest candidate fixture or metadata correction needed next.
-
-Boundaries: No new source-zone algorithm, no manual digitizing, no new GIS dependency, no claim that candidate selection is validated.
-
 ### TB-545: Measure Local Candidate Scenario Cardinality Pressure
 
 Goal: Quantify how local source-zone and scenario choices expand trajectory count before any larger execution.

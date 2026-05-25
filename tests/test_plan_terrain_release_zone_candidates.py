@@ -273,6 +273,15 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_review_package"]["review_summary"]["default_review_decision"], "needs_field_review")
             self.assertEqual(first["candidate_review_package"]["review_summary"]["review_decision_counts"]["needs_field_review"], first["candidate_review_package"]["review_summary"]["candidate_count"])
             self.assertEqual(first["candidate_review_package"]["review_summary"]["provenance_label_counts"]["workflow_generated"], first["candidate_review_package"]["review_summary"]["candidate_count"])
+            rejection_reasons = first["candidate_review_package"]["review_summary"]["rejection_reasons_summary"]
+            self.assertEqual(rejection_reasons["summary_status"], "ready")
+            self.assertEqual(rejection_reasons["rejected_candidate_count"], 0)
+            self.assertEqual(rejection_reasons["pending_review_candidate_count"], first["candidate_review_package"]["review_summary"]["candidate_count"])
+            self.assertEqual(
+                rejection_reasons["reason_counts"]["needs_field_review_pending"],
+                first["candidate_review_package"]["review_summary"]["candidate_count"],
+            )
+            self.assertIn("not a validated release-zone rejection model", rejection_reasons["claim_boundary"])
             self.assertEqual(
                 first["candidate_review_package"]["candidate_stability_summary"]["selected_candidate_assessment"]["selected_candidate_classification"],
                 "stable",
@@ -821,6 +830,19 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
         self.assertEqual(report["review_application"]["validation_status"], "validated")
         self.assertEqual(report["review_application"]["accepted_candidate_ids"], ["cand_accept"])
         self.assertEqual(report["review_application"]["validation_checks"]["allowed_provenance_labels"], list(planner.PROVENANCE_LABELS))
+        self.assertEqual(report["review_summary"]["rejection_reasons_summary"]["rejected_candidate_count"], 1)
+        self.assertEqual(
+            report["review_summary"]["rejection_reasons_summary"]["rejected_candidates"][0]["candidate_release_zone_id"],
+            "cand_reject",
+        )
+        self.assertIn(
+            "review_decision_rejected",
+            report["review_summary"]["rejection_reasons_summary"]["rejected_candidates"][0]["reason_codes"],
+        )
+        self.assertIn(
+            "heuristic_sensitive",
+            report["review_summary"]["rejection_reasons_summary"]["rejected_candidates"][0]["reason_codes"],
+        )
         self.assertEqual(report["candidate_release_zone_separation_summary"]["separation_status"], "review_applied")
         self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_count"], 1)
         self.assertEqual(report["candidate_release_zone_separation_summary"]["accepted_release_zone_ids"], ["cand_accept"])
