@@ -110,6 +110,23 @@ def summarize_output_profile_policies(policies: list[dict[str, Any]], *, label: 
     }
 
 
+def scalable_control_match_summary(policy: dict[str, Any]) -> dict[str, Any]:
+    matched_controls: list[str] = []
+    if policy.get("conditional_curve_export") == "summary-only":
+        matched_controls.append("--conditional-curve-export summary-only")
+    if policy.get("grid_csv_export") == "none":
+        matched_controls.append("--grid-csv-export none")
+    if policy.get("no_plots") is True:
+        matched_controls.append("--no-plots")
+
+    return {
+        "matched_controls": matched_controls,
+        "missing_scalable_controls": [
+            flag for flag in REQUIRED_SCALABLE_CONTROLS if flag not in matched_controls
+        ],
+    }
+
+
 def _normalize_text(value: Any) -> str | None:
     if value is None:
         return None

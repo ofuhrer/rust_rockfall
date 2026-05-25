@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-506: Strengthen Output-Profile Policy Reuse
-
-Goal: Consolidate one duplicated output-profile policy decision across command-plan, AOI preview, and hazard rebuild checks.
-
-Capability gap reduced: Prevents local-vs-CI drift in scalable output defaults and blocked heavy-debug behavior.
-
-Why this outranks alternatives: Output-profile drift has already caused CI/local mismatch risk, and scale tasks depend on consistent reduced-output assumptions.
-
-Inspect first:
-
-- `scripts/lib/output_profile_policy.py`
-- `scripts/check_hazard_output_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `tests/test_hazard_output_profile.py`
-
-Deliverables:
-
-- Move one repeated output-profile classification or blocked-default branch into the existing policy helper and update callers.
-- Preserve existing command-line JSON fields.
-
-Definition of done:
-
-- Focused output-profile tests pass and the diff reduces duplicated policy logic.
-
-Boundaries: Policy reuse only; no default-output change unless tests prove compatibility, no scale-up authorization, no operational claim, and no Balfrin dependency.
-
 ### TB-507: Add Scenario Storage Batch-Cap Regression
 
 Goal: Pin the compact candidate-batch storage cap with a focused regression that catches future manifest-size drift.

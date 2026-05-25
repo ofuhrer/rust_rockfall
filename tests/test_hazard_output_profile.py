@@ -40,6 +40,7 @@ class HazardOutputProfileTests(unittest.TestCase):
         )
 
         self.assertEqual(result["profile"], "full_debug")
+        self.assertEqual(result["output_profile_policy"]["classification"], "blocked_unscalable_default")
         self.assertIn("controls", result)
         self.assertFalse(result["controls"]["no_plots"])
 
@@ -63,6 +64,7 @@ class HazardOutputProfileTests(unittest.TestCase):
         )
 
         self.assertEqual(result["profile"], "scalable_conditional")
+        self.assertEqual(result["output_profile_policy"]["classification"], "scalable_default")
         self.assertIn("--conditional-curve-export summary-only", result["matched_controls"])
         self.assertIn("--grid-csv-export none", result["matched_controls"])
         self.assertIn("--no-plots", result["matched_controls"])

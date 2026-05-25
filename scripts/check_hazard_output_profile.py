@@ -9,6 +9,11 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+except ModuleNotFoundError:
+    from lib import output_profile_policy as OUTPUT_PROFILE_POLICY
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -188,26 +193,27 @@ def _collect_profile_controls(tokens: list[str]) -> tuple[dict[str, Any], list[s
 
 
 def _classify_controls(controls: dict[str, Any]) -> dict[str, Any]:
-    matched_controls: list[str] = []
     missing_controls: list[str] = []
     ambiguous_controls: list[str] = []
 
-    requires_scalable_curve = controls["conditional_curve_export"] == "summary-only"
-    requires_scalable_csv = controls["grid_csv_export"] == "none"
-    requires_no_plots = bool(controls["no_plots"])
+    output_profile_policy = OUTPUT_PROFILE_POLICY.classify_output_profile_policy(
+        conditional_curve_export=controls["conditional_curve_export"],
+        grid_csv_export=controls["grid_csv_export"],
+        no_plots=controls["no_plots"],
+        label="hazard_output_profile_command",
+    )
+    scalable_control_status = OUTPUT_PROFILE_POLICY.scalable_control_match_summary(output_profile_policy)
+    matched_controls = list(scalable_control_status["matched_controls"])
+    requires_scalable_curve = "--conditional-curve-export summary-only" in matched_controls
+    requires_scalable_csv = "--grid-csv-export none" in matched_controls
+    requires_no_plots = "--no-plots" in matched_controls
 
-    if requires_scalable_curve:
-        matched_controls.append("--conditional-curve-export summary-only")
-    else:
+    if not requires_scalable_curve:
         if controls["conditional_curve_export"] != "full":
             missing_controls.append("unexpected --conditional-curve-export value")
-    if requires_scalable_csv:
-        matched_controls.append("--grid-csv-export none")
-    else:
+    if not requires_scalable_csv:
         if controls["grid_csv_export"] != "full":
             missing_controls.append("unexpected --grid-csv-export value")
-    if requires_no_plots:
-        matched_controls.append("--no-plots")
 
     if controls["conditional_curve_export"] == "summary-only" and controls["grid_csv_export"] == "full":
         ambiguous_controls.append("conditional summary-only with full grid CSV output")
@@ -246,17 +252,6 @@ def _classify_controls(controls: dict[str, Any]) -> dict[str, Any]:
     if not scalability_ready and controls["grid_csv_export"] == "none" and controls["conditional_curve_export"] == "full":
         missing_controls.append("--conditional-curve-export summary-only for scalable_conditional")
 
-    required_scalable = [
-        "--conditional-curve-export summary-only",
-        "--grid-csv-export none",
-        "--no-plots",
-    ]
-    missing_scalable_controls = [
-        flag
-        for flag in required_scalable
-        if flag not in matched_controls
-    ]
-
     recommendations = []
     if profile == "scalable_conditional":
         if controls["trajectory_workers"] != 2:
@@ -270,10 +265,11 @@ def _classify_controls(controls: dict[str, Any]) -> dict[str, Any]:
         "profile": profile,
         "matched_controls": sorted(set(matched_controls)),
         "missing_controls": sorted(set(missing_controls)),
-        "missing_scalable_controls": missing_scalable_controls,
+        "missing_scalable_controls": scalable_control_status["missing_scalable_controls"],
         "unsupported_or_ambiguous_controls": sorted(set(ambiguous_controls)),
         "recommendations": sorted(set(recommendations)),
         "controls": controls,
+        "output_profile_policy": output_profile_policy,
     }
 
 
