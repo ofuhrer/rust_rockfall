@@ -851,14 +851,7 @@ def matrix_row(
 def build_next_milestone_recommendation(next_live_decision_report: dict[str, Any]) -> dict[str, Any]:
     next_action = dict(next_live_decision_report.get("recommended_next_action") or {})
     action_id = str(next_action.get("action_id") or "")
-    recommendation_map = {
-        "metrics_completion_rerun": "metrics completion",
-        "reducer_pressure_optimization": "reducer-pressure optimization",
-        "smallest_bounded_multi_zone_probe": "smallest multi-zone measurement",
-        "defer_portability_or_physical_evidence": "real second-site staging",
-        "hazard_builder_accumulation_optimization": "hazard-builder optimization",
-    }
-    recommendation = recommendation_map.get(action_id, "physical-evidence intake")
+    recommendation = next_live_decision.describe_next_action(action_id)
     return {
         "status": recommendation.replace(" ", "_"),
         "recommendation": recommendation,

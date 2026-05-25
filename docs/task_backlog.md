@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-560: Consolidate Duplicate Balfrin Decision Logic
-
-Goal: Reduce duplication between scale-readiness, next-live-run decision, and management-demo package logic.
-
-Capability gap reduced: Lowers workflow-shell complexity and reduces stale recommendation drift.
-
-Why this outranks alternatives: Recent decision surfaces have drifted and crashed in different ways; consolidation should remove logic, not add another wrapper.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Extract or reuse one shared ranking/evidence function for the overlapping next-action logic.
-- Delete or reduce duplicated constants or stale follow-up IDs where possible.
-
-Definition of done:
-
-- Focused tests pass and the diff removes more duplicated decision text or branches than it adds.
-
-Boundaries: No new top-level report, no behavior broadening beyond current evidence, no claim upgrade.
-
 ### TB-561: Add A Clean-Checkout AOI Workflow Smoke Regression
 
 Goal: Ensure the user-facing AOI workflow can run its smallest local smoke path without ignored artifacts.

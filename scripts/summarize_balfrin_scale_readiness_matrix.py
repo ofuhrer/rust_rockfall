@@ -1107,85 +1107,6 @@ def _projection_row() -> dict[str, Any]:
     }
 
 
-def _next_probe_ranking() -> list[dict[str, Any]]:
-    return [
-        {
-            "rank": 1,
-            "candidate_id": "reducer_pressure_optimization_probe",
-            "action_id": "summarize_multi_zone_reducer_pressure",
-            "category": "reducer_pressure",
-            "probe_scope": "scratch_local_and_fixture_backed",
-            "blocker": "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
-            "expected_evidence_gain": (
-                "compact reducer manifest pressure and explicit replay-critical family budgets for larger multi-zone batches"
-            ),
-            "required_pre_submit_gates": [
-                "measured_reducer_pressure_baseline",
-                "replay_critical_families_retained",
-                "merge_order_deterministic",
-                "no_live_submission",
-            ],
-            "evidence_basis": [
-                "tb312_four_zone_postproc_probe",
-                "multi_zone_reducer_pressure_probe",
-            ],
-            "summary": (
-                "Optimize reducer pressure next because the measured regional split comparison is complete and the reducer helper still shows manifest and replay metadata pressure as the next visible bottleneck."
-            ),
-        },
-        {
-            "rank": 2,
-            "candidate_id": "scenario_batching_pressure_probe",
-            "action_id": "measure_scenario_storage_output_tier_pressure",
-            "category": "scenario_cardinality",
-            "probe_scope": "scratch_local_and_fixture_backed",
-            "blocker": "scenario_cardinality_and_manifest_size_are_the_first_planning_bottlenecks",
-            "expected_evidence_gain": (
-                "measured scenario-table growth, CSV/manifest bytes, and batch-count pressure for compact candidate batches"
-            ),
-            "required_pre_submit_gates": [
-                "deterministic_candidate_bundle",
-                "compact_scenario_table",
-                "fixture_or_scratch_local_measurement_root",
-                "no_live_balfrin_submission",
-            ],
-            "evidence_basis": [
-                "management_aoi_multi_zone_run_failed_closed",
-                "swiss_scale_projection_scenario_cardinality_rank",
-            ],
-            "summary": (
-                "Batch scenarios next if the regional split retry is not the immediate target, because scenario cardinality "
-                "and manifest size are the first planning bottlenecks in the projection surface."
-            ),
-        },
-        {
-            "rank": 3,
-            "candidate_id": "local_candidate_evidence_probe",
-            "action_id": "summarize_balfrin_target_area_candidate_stability",
-            "category": "local_evidence",
-            "probe_scope": "scratch_local",
-            "blocker": "no_larger_measured_multi_zone_hazard_execution_exists_yet",
-            "expected_evidence_gain": (
-                "scratch-local candidate stability and accumulation-pressure evidence to refine the next live probe"
-            ),
-            "required_pre_submit_gates": [
-                "scratch_local_only",
-                "deterministic_inputs",
-                "placeholder_scan_clear",
-                "no_live_submission",
-            ],
-            "evidence_basis": [
-                "tb189_candidate_stability_sweep",
-                "tb181_real_terrain_candidate_sweep",
-            ],
-            "summary": (
-                "Collect more local evidence last because it can refine the next live probe, but it does not outrank a "
-                "live bounded retry or the measured scenario/reducer bottlenecks."
-            ),
-        },
-    ]
-
-
 def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
     decision_report = decision_gate.build_report()
@@ -1222,7 +1143,7 @@ def build_report() -> dict[str, Any]:
     overall_status = "blocked_missing_inputs" if reducer_projection_blocked else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
     regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
-    next_probe_ranking = _next_probe_ranking()
+    next_probe_ranking = decision_gate.build_reducer_first_probe_ranking()
     next_recommended_scaling_task = str(next_probe_ranking[0]["action_id"]) if next_probe_ranking else "second_site_public_context_progress"
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_backlog_recommendations = [

@@ -70,6 +70,92 @@ RANKED_ACTION_OPTIONS = (
     OPTION_PHYSICAL_EVIDENCE,
     OPTION_HAZARD_OPTIMIZATION,
 )
+NEXT_ACTION_LABELS = {
+    OPTION_METRICS: "metrics completion",
+    OPTION_REDUCER: "reducer-pressure optimization",
+    OPTION_MULTI_ZONE: "smallest multi-zone measurement",
+    OPTION_DEFER: "real second-site staging",
+    OPTION_SECOND_SITE: "real second-site staging",
+    OPTION_PHYSICAL_EVIDENCE: "physical-evidence intake",
+    OPTION_HAZARD_OPTIMIZATION: "hazard-builder optimization",
+}
+REDUCER_FIRST_PROBE_RANKING = (
+    {
+        "rank": 1,
+        "candidate_id": "reducer_pressure_optimization_probe",
+        "action_id": "summarize_multi_zone_reducer_pressure",
+        "category": "reducer_pressure",
+        "probe_scope": "scratch_local_and_fixture_backed",
+        "blocker": "reducer_pressure_and_replay_metadata_growth_remain_the_next_bottlenecks",
+        "expected_evidence_gain": (
+            "compact reducer manifest pressure and explicit replay-critical family budgets for larger multi-zone batches"
+        ),
+        "required_pre_submit_gates": [
+            "measured_reducer_pressure_baseline",
+            "replay_critical_families_retained",
+            "merge_order_deterministic",
+            "no_live_submission",
+        ],
+        "evidence_basis": [
+            "tb312_four_zone_postproc_probe",
+            "multi_zone_reducer_pressure_probe",
+        ],
+        "summary": (
+            "Optimize reducer pressure next because the measured regional split comparison is complete and the reducer "
+            "helper still shows manifest and replay metadata pressure as the next visible bottleneck."
+        ),
+    },
+    {
+        "rank": 2,
+        "candidate_id": "scenario_batching_pressure_probe",
+        "action_id": "measure_scenario_storage_output_tier_pressure",
+        "category": "scenario_cardinality",
+        "probe_scope": "scratch_local_and_fixture_backed",
+        "blocker": "scenario_cardinality_and_manifest_size_are_the_first_planning_bottlenecks",
+        "expected_evidence_gain": (
+            "measured scenario-table growth, CSV/manifest bytes, and batch-count pressure for compact candidate batches"
+        ),
+        "required_pre_submit_gates": [
+            "deterministic_candidate_bundle",
+            "compact_scenario_table",
+            "fixture_or_scratch_local_measurement_root",
+            "no_live_balfrin_submission",
+        ],
+        "evidence_basis": [
+            "management_aoi_multi_zone_run_failed_closed",
+            "swiss_scale_projection_scenario_cardinality_rank",
+        ],
+        "summary": (
+            "Batch scenarios next if the regional split retry is not the immediate target, because scenario cardinality "
+            "and manifest size are the first planning bottlenecks in the projection surface."
+        ),
+    },
+    {
+        "rank": 3,
+        "candidate_id": "local_candidate_evidence_probe",
+        "action_id": "summarize_balfrin_target_area_candidate_stability",
+        "category": "local_evidence",
+        "probe_scope": "scratch_local",
+        "blocker": "no_larger_measured_multi_zone_hazard_execution_exists_yet",
+        "expected_evidence_gain": (
+            "scratch-local candidate stability and accumulation-pressure evidence to refine the next live probe"
+        ),
+        "required_pre_submit_gates": [
+            "scratch_local_only",
+            "deterministic_inputs",
+            "placeholder_scan_clear",
+            "no_live_submission",
+        ],
+        "evidence_basis": [
+            "tb189_candidate_stability_sweep",
+            "tb181_real_terrain_candidate_sweep",
+        ],
+        "summary": (
+            "Collect more local evidence last because it can refine the next live probe, but it does not outrank a "
+            "live bounded retry or the measured scenario/reducer bottlenecks."
+        ),
+    },
+)
 
 
 class BalfrinNextLiveRunDecisionGateError(ValueError):
@@ -115,6 +201,14 @@ def _status(value: Any, default: str = "blocked_missing_inputs") -> str:
 
 def _bool(value: Any) -> bool:
     return bool(value)
+
+
+def describe_next_action(action_id: str, default: str = "physical-evidence intake") -> str:
+    return NEXT_ACTION_LABELS.get(str(action_id), default)
+
+
+def build_reducer_first_probe_ranking() -> list[dict[str, Any]]:
+    return [dict(row) for row in REDUCER_FIRST_PROBE_RANKING]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -475,34 +569,36 @@ def build_reducer_first_ranked_evidence(
 ) -> dict[str, Any]:
     scenario_cap = build_scenario_batching_cap_criteria(scenario_batching)
     candidate_result = build_candidate_stability_result_criteria(candidate_stability_report)
+    status_by_action = {
+        "summarize_multi_zone_reducer_pressure": _status(reducer.get("probe_status"), "blocked_missing_inputs"),
+        "measure_scenario_storage_output_tier_pressure": scenario_cap["status"],
+        "summarize_balfrin_target_area_candidate_stability": candidate_result["status"],
+    }
+    contextual_fields = {
+        "measure_scenario_storage_output_tier_pressure": {
+            "scenario_batching_cap": scenario_cap["scenario_batching_cap"],
+        },
+        "summarize_balfrin_target_area_candidate_stability": {
+            "selected_candidate_id": candidate_result["selected_candidate_id"],
+            "selected_candidate_class": candidate_result["selected_candidate_class"],
+        },
+    }
+    ladder = []
+    for row in build_reducer_first_probe_ranking():
+        action_id = str(row["action_id"])
+        ladder.append(
+            {
+                "rank": row["rank"],
+                "action_id": action_id,
+                "category": row["category"],
+                "status": status_by_action.get(action_id, "blocked_missing_inputs"),
+                "summary": row["summary"],
+                **contextual_fields.get(action_id, {}),
+            }
+        )
     return {
         "status": "ready",
-        "ranked_next_probe_ladder": [
-            {
-                "rank": 1,
-                "action_id": "summarize_multi_zone_reducer_pressure",
-                "category": "reducer_pressure",
-                "status": _status(reducer.get("probe_status"), "blocked_missing_inputs"),
-                "summary": "Reducer-pressure optimization ranks first because the refreshed reducer still shows manifest/replay metadata pressure.",
-            },
-            {
-                "rank": 2,
-                "action_id": "measure_scenario_storage_output_tier_pressure",
-                "category": "scenario_cardinality",
-                "status": scenario_cap["status"],
-                "scenario_batching_cap": scenario_cap["scenario_batching_cap"],
-                "summary": "Scenario batching ranks second and is capped at the measured candidate expansion boundary.",
-            },
-            {
-                "rank": 3,
-                "action_id": "summarize_balfrin_target_area_candidate_stability",
-                "category": "local_evidence",
-                "status": candidate_result["status"],
-                "selected_candidate_id": candidate_result["selected_candidate_id"],
-                "selected_candidate_class": candidate_result["selected_candidate_class"],
-                "summary": "Candidate stability ranks third because it refines local evidence without authorizing live execution.",
-            },
-        ],
+        "ranked_next_probe_ladder": ladder,
     }
 
 
