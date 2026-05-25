@@ -7220,3 +7220,28 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: policy reuse only; no default-output change, no scale-up authorization, no operational claim, and no Balfrin dependency.
 - Next task: `TB-507`
+
+### TB-507: Add Scenario Storage Batch-Cap Regression
+
+- Date: 2026-05-25
+- Commit: `f34aa8e`
+- Objective: pin the compact candidate-batch storage cap so future manifest-size or file-count drift fails explicitly.
+- Files changed: `scripts/measure_scenario_storage_output_tier_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `compact_batch_cap_regression_guard` to the existing scenario storage pressure report.
+  - Pinned the current compact cap envelope at 3 repeats, 30 candidate release-zone records, 300 scenario rows, 4 output paths, 211,277 manifest bytes, and 595,867 total bytes.
+  - Added a focused failure test proving that manifest-byte drift over the pinned envelope marks the guard as failing and requiring an explicit update.
+  - Preserved fixture-backed deterministic measurement only; no live execution or new storage report was added.
+  - Updated the current measured minimal tier byte expectation to 14,299 bytes.
+  - Removed TB-507 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_scenario_batching_contract_is_deterministic_and_budget_bounded tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_deterministic_release_candidates_generate_a_large_manifest_rich_table -v`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json --json-output /tmp/tb507_scenario_storage_pressure.json > /tmp/tb507_scenario_storage_pressure_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/measure_scenario_storage_output_tier_pressure.py scripts/generate_candidate_source_zone_scenarios.py tests/test_scenario_storage_output_tier_pressure.py tests/test_candidate_source_zone_scenario_stress.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: regression guard only; no new storage report, no live execution, no output claim upgrade, and no Balfrin dependency.
+- Next task: `TB-508`
