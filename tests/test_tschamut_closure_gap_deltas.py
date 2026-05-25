@@ -22,6 +22,7 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
             "accepted_diagnostic_gap",
             "deferred_gap",
             "no_go_gap",
+            "candidate_runout_failure_diagnostic",
             "claim_boundaries",
             "current_evidence",
             "scale_up_authorized",
@@ -76,8 +77,49 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertIn("workflow_product_blocker_deltas:", text)
         self.assertIn("summary_only_not_rebuildable", text)
         self.assertIn("claim_boundaries:", text)
+        self.assertIn("candidate_runout_failure_diagnostic:", text)
+        self.assertIn("source_placement_displaced_with_local_early_stopping", text)
         self.assertIn("operational_claims_allowed: false", text)
         self.assertIn("scale_up_authorized: false", text)
+
+    def test_candidate_failure_classifier_separates_source_and_physics_modes(self) -> None:
+        self.assertEqual(
+            summary.classify_candidate_failure_mode(
+                runout_ratio=0.05,
+                source_displacement_fraction=1.4,
+                centroid_error=220.0,
+                source_displacement=145.0,
+            ),
+            "source_placement_displaced_with_local_early_stopping",
+        )
+        self.assertEqual(
+            summary.classify_candidate_failure_mode(
+                runout_ratio=0.05,
+                source_displacement_fraction=0.2,
+                centroid_error=20.0,
+                source_displacement=20.0,
+            ),
+            "local_early_stopping_or_excess_dissipation",
+        )
+        self.assertEqual(
+            summary.classify_candidate_failure_mode(
+                runout_ratio=0.7,
+                source_displacement_fraction=1.0,
+                centroid_error=30.0,
+                source_displacement=100.0,
+            ),
+            "source_placement_displaced",
+        )
+
+    def test_centroid_reads_reviewed_release_cell_centers(self) -> None:
+        centroid = summary.centroid_xy(
+            [
+                {"release_cell_center_lv95_m": "[2696482.5, 1167530.0]"},
+                {"release_cell_center_lv95_m": "[2696486.5, 1167534.0]"},
+            ]
+        )
+
+        self.assertEqual(centroid, {"x_m": 2696484.5, "y_m": 1167532.0})
 
     def test_missing_inputs_override_reports_blocked_status(self) -> None:
         report = summary.build_report({"missing_inputs": ["docs/missing.json"]})
@@ -85,11 +127,30 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertEqual(report["current_closure_status"], "blocked_missing_inputs")
         self.assertEqual(report["current_interpretation_status"], "blocked_missing_inputs")
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])
+        self.assertEqual(report["candidate_runout_failure_diagnostic"]["diagnostic_status"], "blocked_missing_inputs")
         self.assertFalse(report["scale_up_authorized"])
         self.assertFalse(report["operational_claims_allowed"])
 
     def _evidence_override(self) -> dict[str, object]:
         return {
+            "candidate_runout_failure_diagnostic": {
+                "diagnostic_status": "ready",
+                "dominant_failure_mode": "source_placement_displaced_with_local_early_stopping",
+                "smallest_next_scientific_action": "compare an alternate reviewed candidate before physics tuning",
+                "candidate_vs_observed_geometry": {
+                    "candidate_release_to_observed_release_centroid_m": 145.0,
+                },
+                "runout_diagnostics": {
+                    "simulated_to_observed_runout_ratio": 0.055,
+                },
+                "claim_boundaries": {
+                    "diagnostic_only": True,
+                    "candidate_acceptance_upgrade": False,
+                    "parameter_tuning_authorized": False,
+                    "operational_claims_allowed": False,
+                    "physical_probability_claims_allowed": False,
+                },
+            },
             "diagnostic_report": {
                 "schema_version": "tschamut_conditional_diagnostic_interpretation_v1",
                 "interpretation_status": "inconclusive_conditional_diagnostic",

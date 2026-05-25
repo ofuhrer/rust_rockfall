@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-494: Diagnose Candidate-Runout Failure Locally
-
-Goal: Explain why the reviewed adjacent Tschamut candidate produced much shorter local runout than the observed-release baselines.
-
-Capability gap reduced: Turns a negative scientific result into an actionable source-placement, sampling, terrain, or model-behavior diagnosis.
-
-Why this outranks alternatives: The candidate path is scientifically weak until the repo can identify whether the failure is geometric, numerical, or physical.
-
-Inspect first:
-
-- `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `tests/test_tschamut_closure_gap_deltas.py`
-- `docs/public_tschamut_failure_mode_analysis.md`
-
-Deliverables:
-
-- Add or extend an existing local diagnostic that compares candidate release samples, observed release/deposition geometry, and simulated trajectory endpoints for the failed candidate comparison.
-- Produce one executable local check that names the dominant failure mode and the smallest next scientific action.
-
-Definition of done:
-
-- Focused tests pass, the diagnostic runs locally against committed/ignored local evidence, and it differentiates source-placement failure from terrain/physics failure without adding a new claim layer.
-
-Boundaries: Local diagnosis only; no tuning, no candidate acceptance upgrade, no operational claim, no annual-frequency or physical-probability semantics, and no Balfrin dependency.
-
 ### TB-495: Add Candidate Release-Sampling Geometry Regression
 
 Goal: Add a deterministic regression that checks reviewed candidate release sampling geometry against the source-zone metadata and terrain grid.
