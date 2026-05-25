@@ -8704,3 +8704,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local scratch pressure only; no Balfrin submission, no physics changes, no output-family deletion that breaks replay/rebuildability, no scale-up claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-571`
+
+### TB-571: Rebuild The 16-Zone Handoff After Reducer Optimization
+
+- Date: 2026-05-25
+- Commit: `df90b58`
+- Objective: rebuild the 16-zone no-submit handoff after TB-570 and determine whether it is live-run eligible under the pre-submit gates.
+- Files changed: `docs/balfrin_16_zone_handoff_tb571.md`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Ran the Balfrin read-only preflight, fast-forwarded `/users/olifu/work/rust_rockfall` to `92a6550f9f986a46f4f231bd1e0e56d63463b77c`, and reran the preflight against the aligned checkout.
+  - Generated the optimized 16-zone no-submit package under `/tmp/rust_rockfall/tb571_16_zone_handoff` with pressure scratch root `/tmp/rust_rockfall/tb571_16_zone_pressure`.
+  - Ran the authorization and submit-contract preflight against the canonical reviewed package path and fresh Balfrin preflight JSON.
+  - Confirmed authorization record status `authorized` and submit-contract status `ready`, but submission gate status remains `blocked_reducer_budget`.
+  - Recorded that reducer manifest files/bytes are now `0` in the compact handoff projection; the first handoff output-budget blocker is now `manifest_size_bytes`, while scenario pressure still first blocks on `release_zone_count`.
+  - Updated handoff tests for the post-TB-570 reducer-manifest reduction and removed TB-571 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb571_balfrin_preflight_after_sync.json`
+  - `ssh ... 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git rev-parse HEAD && git status --porcelain=v1 -uall'`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/rust_rockfall/tb571_16_zone_handoff --pressure-probe-root /tmp/rust_rockfall/tb571_16_zone_pressure --requested-release-zone-batch-size 16 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json --json-output /tmp/rust_rockfall/tb571_16_zone_handoff/package.json --text-output /tmp/rust_rockfall/tb571_16_zone_handoff/package.txt`
+  - `PYENV_VERSION=system uv run python scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py --reviewed-handoff-package /tmp/rust_rockfall/tb571_16_zone_handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /tmp/rust_rockfall/tb571_16_zone_handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /tmp/tb571_balfrin_preflight_after_sync.json --format json --json-output /tmp/rust_rockfall/tb571_16_zone_handoff/authorization_preflight_after_sync.json --text-output /tmp/rust_rockfall/tb571_16_zone_handoff/authorization_preflight_after_sync.txt`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+- Result/status: implemented_blocked_report
+- Boundaries: no `sbatch`, no live submission, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-572`
