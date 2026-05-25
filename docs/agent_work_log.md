@@ -7496,3 +7496,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: internal accounting simplification only; no output threshold change, no scale-up claim, no operational claim, and no Balfrin dependency.
 - Next task: `TB-518`
+
+### TB-518: Build A Minimal Second-Site Real-Terrain Smoke
+
+- Date: 2026-05-25
+- Commit: `e2a6a60`
+- Objective: add an executable local second-site hazard smoke using committed real-terrain inputs beyond Tschamut.
+- Files changed: `tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml`, `tests/fixtures/hazard/chant_sura_second_site_smoke_trajectory.csv`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a minimal Chant Sura / Flueelapass hazard smoke case that uses the committed public DEM crop `validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc`.
+  - Added a small committed RF16W200r1 segment trajectory subset with one trajectory id so the current hazard builder can consume it without private data or preprocessing.
+  - Added deterministic hazard-layer coverage that runs the smoke twice, checks completed real-terrain manifests, verifies trajectory/sample counts, confirms nontrivial reach output, and compares hazard-layer byte/hash signatures across runs.
+  - Ran a CLI proof into `/tmp/tb518_chant_sura_second_site_smoke`; it completed with `ascii_dem_clamped`, 1 trajectory, 12 trajectory samples, and 16 hazard-layer outputs.
+  - Kept the existing second-site public-geodata preflight boundary intact: core staged fixtures remain testable, while public context remains a deferred input boundary unless separately staged.
+  - Removed TB-518 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chant_sura_second_site_smoke_builds_real_terrain_layers -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chant_sura_second_site_smoke_builds_real_terrain_layers tests.test_hazard_layers.HazardLayerTests.test_hazard_manifest_includes_terrain_metadata_sidecar_provenance tests.test_second_site_public_geodata_preflight.SecondSitePublicGeodataPreflightTests.test_candidate_example_fixture_is_blocked_and_records_manifest_contract tests.test_second_site_public_geodata_preflight.SecondSitePublicGeodataPreflightTests.test_minimal_staging_helper_reduces_core_blockers -v`
+  - `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml --output-dir /tmp/tb518_chant_sura_second_site_smoke --cell-size 0.1 --no-plots`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml tests/fixtures/hazard/chant_sura_second_site_smoke_trajectory.csv tests/test_hazard_layers.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local second-site smoke only; no private data, no public-context claim upgrade, no validation claim, no operational claim, and no Balfrin dependency.
+- Next task: `TB-519`
