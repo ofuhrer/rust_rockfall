@@ -8598,3 +8598,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: one job only; `postproc` only; no partition-fill longer than 6 hours, no distributed execution, no non-`postproc` partition, no operational claim, and no Swiss-wide claim.
 - Next task: `TB-566`
+
+### TB-566: Collect And Preserve Regional Split Run Metrics
+
+- Date: 2026-05-25
+- Commit: `8b94521`
+- Objective: collect complete metrics, preservation, and output-budget evidence from the TB-565 regional split run root.
+- Files changed: `docs/balfrin_regional_split_run_root_metrics_tb566.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Collected run-root metrics for job `4367244` under `/scratch/mch/olifu/rust_rockfall/evidence/tb566_regional_split_run_4367244`.
+  - Ran the preservation gate against the collected metrics and run root; it reported `ready_for_demonstration_evidence`, required run-root entries `complete`, output families `sufficient`, and no blocked reasons.
+  - Ran the output-budget audit; it reported `blocked_missing_replay_artifacts` because the preserved run root exceeds the smallest-live compact budget and is missing replay-critical CSV families plus `probe_manifest_sha256`.
+  - Wrote the share-safe TB-566 run-root report with job id, metrics, output counts, memory, wall time, preservation status, output-budget blockers, and evidence hashes.
+  - Removed TB-566 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root ... --output-json ...`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_preservation_gate.py --run-root ... --evidence-json ... --format json ...`
+  - `PYENV_VERSION=system uv run python scripts/audit_balfrin_run_root_output_budget.py --run-root ... --format json ...`
+- Result/status: implemented_measured
+- Boundaries: evidence collection only; no rerun, no operational claim, no annual-frequency claim, no physical-probability claim, and no distributed-execution claim.
+- Next task: `TB-567`
