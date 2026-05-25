@@ -7969,3 +7969,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local fixtures and metadata only; no downloads, new real data, ensemble run, operational claim, or validation claim upgrade.
 - Next task: `TB-537`
+
+### TB-537: Add A Local Public-Context Staging Dry Run For Chant Sura
+
+- Date: 2026-05-25
+- Commit: `cf91b33`
+- Objective: add a no-download local staging dry run for Chant Sura public-context inputs.
+- Files changed: `scripts/plan_swisstopo_aoi_acquisition.py`, `tests/test_swisstopo_aoi_acquisition_planner.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `local_public_context_staging_dry_run` to the existing swisstopo AOI acquisition planner.
+  - The dry run now reports missing public-context inputs, expected cache roots, command sequence, unresolved decision IDs, and no-download boundaries.
+  - Extended planner tests to assert the six current missing/deferred context inputs and deterministic text output.
+  - Removed TB-537 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swisstopo_aoi_acquisition_planner -v`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --mode dry-run --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: no live downloads, credentials, new acquisition contract, external compute dependency, or claim that public context is complete.
+- Next task: `TB-538`
