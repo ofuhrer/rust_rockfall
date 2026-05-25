@@ -6702,3 +6702,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: human-review source-zone evidence only; no release-frequency, physical-probability, calibration, operational, or final source-zone interpretation claim.
 - Next task: `TB-483`
+
+### TB-483: Regenerate Scenarios From Reviewed Source Zones
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: regenerate scenario inputs from the reviewed adjacent Tschamut source-zone subset and preview the local execution pressure.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the existing candidate source-zone freezer on the TB-482 reviewed package into ignored output root `hazard/results/tb483_reviewed_adjacent_scenarios`.
+  - The freezer produced `source_zone_metadata.yaml`, `release_rows.csv`, `scenario_table.csv`, `source_scenario_policy.yaml`, and `reviewed_candidate_source_zone_freezer_manifest.json`.
+  - Generated scenario measurements: `accepted_candidate_count=1`, `release_row_count=1`, `scenario_row_count=3`, `trajectory_count=60`, and block families `reviewed_block_family_small`, `reviewed_block_family_medium`, and `reviewed_block_family_large`.
+  - Ran the existing AOI scenario preview against the TB-482 reviewed package. The preview reported `preview_status=ready`, `source_zone_count=1`, `scenario_family_count=1`, `scenario_cardinality.row_count=3`, recommended target `local_smoke`, nominal projected files `51`, and nominal projected bytes `11860806`.
+  - Removed TB-483 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py --mode freeze --review-package hazard/results/tb482_reviewed_adjacent_source_zones/tschamut_public_pilot_release_zone_candidate_review_manifest.json --accepted-candidate-ids tschamut_adjacent_prau_mulins_candidate_v1 --output-root hazard/results/tb483_reviewed_adjacent_scenarios --format json > /tmp/tb483_freeze.json`
+  - `PYENV_VERSION=system uv run python scripts/preview_aoi_scenario_cost_estimate.py --review-package hazard/results/tb482_reviewed_adjacent_source_zones/tschamut_public_pilot_release_zone_candidate_review_manifest.json --trajectory-count 60 --format json --json-output /tmp/tb483_preview.json --output-root hazard/results/tb483_reviewed_adjacent_scenarios/preview > /tmp/tb483_preview_stdout.json`
+  - `jq '{preview_status, source_zone_count, scenario_family_count, scenario_cardinality, projected_files, projected_bytes, execution_target}' /tmp/tb483_preview.json`
+  - `.venv/bin/python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_tschamut_block_scenario_table_generation tests.test_aoi_scenario_preview -v`
+- Result/status: implemented_measured
+- Boundaries: scenario inputs and preview only; no physical source frequency, annualized probability, risk/exposure/vulnerability, operational claim, scale-up claim, or Balfrin execution.
+- Next task: `TB-484`

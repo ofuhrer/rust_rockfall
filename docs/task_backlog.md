@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-483: Regenerate Scenarios From Reviewed Source Zones
-
-Goal: Generate a fresh scenario table from the reviewed adjacent Tschamut source-zone subset and run the smallest local scenario preview or smoke path that consumes it.
-
-Capability gap reduced: Connects reviewed release-zone evidence to executable scenario inputs instead of leaving candidates disconnected from simulations.
-
-Why this outranks alternatives: The next scientific comparison depends on running scenarios derived from reviewed source zones, not stale hand-authored tables.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `tests/test_candidate_source_zone_scenario_stress.py`
-- `tests/test_tschamut_block_scenario_table_generation.py`
-
-Deliverables:
-
-- Regenerate or update an existing scenario table from the reviewed candidate source zones.
-- Execute the existing scenario preview/cost-estimate path on that table and record concrete scenario counts, sampling weights, and expected output pressure.
-
-Definition of done:
-
-- Scenario-generation tests pass, the regenerated table is consumed by an existing preview command, and no new connector, contract, or standalone report script is added.
-
-Boundaries: Scenario inputs only; no physical source frequency, annualized probability, risk/exposure/vulnerability, or operational claim.
-
 ### TB-484: Run Candidate-Based Tschamut Local Comparison
 
 Goal: Run a local Tschamut validation or hazard smoke using the reviewed candidate/scenario inputs and compare the output against the observed Tschamut fixture.
