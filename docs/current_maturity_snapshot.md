@@ -5,6 +5,11 @@ and backlog-quality assessment that previously lived in `docs/task_backlog.md`.
 Keep `docs/task_backlog.md` compact and executable; update this snapshot during
 orchestrator/backlog-refill work when the maturity framing changes materially.
 
+This is historical context, not active process control. Prefer the current
+backlog and orchestration strategy for what to do next. Older wording about
+blocked states, gates, and claim boundaries should be read as evidence history,
+not as a reason to add more process before running useful measurements.
+
 ---
 ## Project Objective
 

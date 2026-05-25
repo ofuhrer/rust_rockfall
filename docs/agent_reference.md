@@ -53,20 +53,19 @@ changed JSON/TOML/Markdown with available local tools.
 - Prioritize single-socket throughput and local parallel trajectory execution before cluster orchestration.
 - Design outputs so summaries can be aggregated without requiring full trajectories to stay in memory.
 - For large-ensemble or hazard-layer work, design run manifests, chunk identifiers, output row counts, checksums, deterministic reducer merge rules, and resume semantics before adding new execution frameworks.
-- CSCS/SLURM orchestration is in scope for the hazard-map goal, but should follow stable local chunk/reducer contracts. Do not add MPI, GPU, or heavy distributed frameworks without an explicit phase change.
+- CSCS/SLURM orchestration is in scope for the hazard-map goal. Prefer simple
+  chunk/reducer contracts before introducing MPI, GPU, or heavier distributed
+  frameworks.
 - The current measured Balfrin path is single-node SLURM execution with
   rebuildable reduced outputs. The user has granted standing clearance for
   GPT-5.5 workers to submit and actively monitor jobs on Balfrin's `postproc`
   partition, including multiple concurrent jobs and filling that partition. If
   the work would keep `postproc` fully busy for more than 6 hours, rediscuss
   before continuing.
-- Standing `postproc` clearance does not bypass engineering or scientific
-  gates. Live Balfrin submissions still require GPT-5.5 routing, active
-  monitoring, clean or explicitly accepted pre-submit state, package readiness,
-  authorization-record/audit artifacts when helpers require them,
-  output-budget, preservation, and evidence collection. It does not authorize
-  non-postproc partitions, distributed execution, Swiss-wide scale-up,
-  annual/physical/risk semantics, or operational claims.
+- For `postproc` runs, keep the workflow practical: use a current checkout,
+  reviewed package inputs, active monitoring, `$SCRATCH` run roots, and
+  post-run collection so results can be replayed and compared. Treat
+  non-`postproc`, distributed, and Swiss-wide work as explicit phase changes.
 
 ## Versioning Rules
 
@@ -81,44 +80,31 @@ changed JSON/TOML/Markdown with available local tools.
 
 Before committing:
 
-- Run the focused task checks, then `git diff --check`,
-  `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`,
-  and `scripts/git-hooks/pre-commit`.
+- Run the focused task checks, `git diff --check`, and
+  `scripts/git-hooks/pre-commit`.
 - Inspect `git status --short --branch`.
 - Confirm generated outputs under `verification/results/`,
   `validation/results/`, `hazard/results/`, `target/`, and downloaded raw data
   are not staged.
-- Confirm new or changed features are covered by focused tests and listed in
-  relevant V&V docs when applicable.
+- Add focused tests for changed behavior. Update validation docs only when the
+  change affects validation meaning or user-facing interpretation.
 
-Before pushing:
-
-- Confirm the task-specific checks listed in the prompt or backlog have passed.
-- Do a final consistency pass:
-  - review the staged or committed diff with `git show --stat --oneline HEAD` and targeted `git show` sections;
-  - verify `README.md`, `AGENTS.md`, and relevant files in `docs/` agree on scope, commands, limitations, and validation status;
-  - verify public dataset metadata includes source, DOI or URL, license, local path, and download/preprocessing status;
-  - verify no proprietary data, large raw downloads, generated result reports, or unrelated local files are included;
-  - verify CLI commands in docs still match the implemented subcommands;
-  - verify all optional real-world validation cases skip gracefully when data are absent.
+Before pushing, check the diff, confirm generated or downloaded artifacts are
+not included, and make sure public commands/docs still match the code when the
+task touched them.
 
 If a check is intentionally skipped, record the exact reason in the final response or commit notes.
 
 ## Task Outcome Discipline
 
-For execution and measurement tasks, do not treat a blocked-state report or
-fixture-backed proof as equivalent to the requested measured capability. Use the
-taxonomy in `docs/orchestration_strategy.md`, and make the smallest follow-up
-unblock task visible before starting dependent synthesis work.
+For execution and measurement tasks, be direct about whether a run happened. If
+it did not, choose the next task that makes the run easier or more informative.
 
-For backlog and guidance work, avoid creating process artifacts as first-class
-progress. A new validator, gate, report, checklist, or management package must
-either enable a concrete command, recover or measure evidence, protect a
-workflow-critical boundary, or replace duplicated stale surfaces. Prefer
-capability-first tasks: release/scenario/AOI automation, restartability,
-runtime/output scaling, reducer-pressure measurement, real-input staging,
-uncertainty interpretation, physical-evidence acquisition, or simplification of
-the Python orchestration shell.
+For backlog and guidance work, avoid process artifacts as first-class progress.
+Prefer capability-first tasks: release/scenario/AOI automation,
+restartability, runtime/output scaling, reducer-pressure measurement,
+real-input staging, uncertainty interpretation, physical-evidence acquisition,
+or simplification of the Python orchestration shell.
 
 ## Test Coverage Expectations
 
@@ -128,9 +114,8 @@ the Python orchestration shell.
 - Every parser, serializer, and CLI-facing change must include success and failure cases.
 - Every bug fix must add a regression test that fails without the fix.
 - Integration tests must cover representative end-to-end trajectories across supported terrain and contact modes.
-- Maintain a comprehensive test suite that aims for exhaustive coverage of public APIs, edge cases, and failure paths.
-- Do not remove or weaken tests unless the behavior contract is intentionally changed and documented.
-- If exhaustive coverage is not feasible for a change, document the specific gap, why it remains, and what test should close it later.
+- Keep tests focused on behavior that matters. Do not remove useful regression
+  coverage unless the behavior intentionally changed.
 
 ## Review Checklist
 

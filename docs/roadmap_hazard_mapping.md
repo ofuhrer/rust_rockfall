@@ -15,7 +15,8 @@ efficient single-socket execution, local parallelism, reproducible chunking, a
 later CSCS/SLURM path, and roughly 10,000 trajectories per release zone where
 appropriate.
 
-The roadmap does not aim to clone proprietary workflows or claim equivalence with operational products. Public references are used as a fast feedback source for modeling choices, not as implementation targets.
+Public references are used as a fast feedback source for modeling choices, not
+as implementation targets.
 
 ## Current Position
 
@@ -44,14 +45,15 @@ Hazard modelling estimates where rockfall may travel and how intense it may be. 
   allow them;
 - scenario uncertainty layers across release, terrain, block, roughness, and contact parameters.
 
-Risk modelling requires exposure and vulnerability information that is outside the current simulator:
+Risk modelling needs inputs that are separate from the current simulator:
 
 - buildings, roads, railways, infrastructure, and people-at-risk layers;
 - temporal occupancy or traffic assumptions;
 - vulnerability or fragility functions;
 - consequence models and decision criteria.
 
-The simulator may eventually provide hazard inputs to risk workflows, but it should not present hazard layers as risk maps unless exposure and vulnerability data are explicitly included and documented.
+The simulator can provide hazard inputs to later risk workflows once exposure
+and vulnerability data are explicitly included.
 
 ## Scientific Development Path
 
@@ -184,7 +186,7 @@ Current status: no risk modelling is implemented.
 
 This project targets transparent, scalable hazard mapping, not operational warning or risk modelling. It is not validated for emergency planning, engineering design, regulatory decision-making, or national operational production.
 
-Future map layers should carry explicit metadata and disclaimers:
+Future map layers should carry explicit metadata:
 
 - model version and configuration;
 - calibration dataset and validation status;
@@ -201,4 +203,4 @@ The next high-impact work should support the Swiss hazard-mapping goal and close
 2. Improve single-socket throughput, local parallelism, chunk manifests, and deterministic reducers toward roughly 10,000 trajectories per release zone where appropriate.
 3. Strengthen uncertainty and convergence reporting for weighted conditional hazard layers and conditional intensity-exceedance products.
 4. Improve DEM/terrain handling, GeoTIFF/COG packaging, and CRS-aware visual QA for Swiss workflows.
-5. Use Chant Sura, Tschamut, Mel de la Niva, and Swiss pilot evidence to decide which physics gaps matter most, without hidden tuning or operational claims.
+5. Use Chant Sura, Tschamut, Mel de la Niva, and Swiss pilot evidence to decide which physics gaps matter most, with tuning assumptions kept visible.

@@ -25,22 +25,15 @@ execution, local parallelism,
 reproducible chunked ensembles, a path to CSCS/SLURM orchestration, and roughly
 10,000 trajectories per release zone where appropriate. The project is
 literature-based and transparent by design. It does not decompile or inspect
-proprietary binaries, and it does not claim numerical equivalence with any
-proprietary or operational hazard tool.
+proprietary binaries.
 
 Current Balfrin evidence has crossed from dry-run scaffolding into measured
-single-node SLURM execution. The repo records a measured single-release-zone
-demonstration, a live interruption/resume proof, and one authorized bounded
-target-area probe. These are conditional diagnostic demonstrations: they improve
-execution confidence and scaling realism, but they do not establish physical
-credibility, annual-frequency semantics, operational acceptance, distributed
-execution authorization, or Swiss-wide scale-up readiness.
-Post-TB-445 scale planning distinguishes measured single-job, target-area,
-four-zone postproc, and smallest multi-zone `postproc` evidence from
-failed-closed submit attempts and projection-only regional/Swiss-wide cases.
-The next ranked executable milestone is a bounded regional split `postproc`
-retry after regenerating the ready package with a fresh passing access
-preflight; that branch remains failed-closed/no-submit evidence until measured.
+single-node SLURM execution. The repo records measured single-release-zone,
+target-area, multi-zone, and regional-split `postproc` evidence plus
+interruption/resume and preservation checks. The next useful work is to keep
+turning that capacity into measured runtime, memory, output, and repeatability
+evidence while improving the scientific inputs needed for probability and
+validation.
 
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,
@@ -49,16 +42,13 @@ context is documented in `docs/roadmap_hazard_mapping.md`; it frames current
 conditional products such as reach, deposition, maximum kinetic energy, maximum
 jump height, threshold exceedance, and scenario uncertainty layers, plus future
 physical-probability and annual intensity-frequency products. Claim levels are
-defined in `docs/validation_maturity_framework.md`. Risk modelling,
-exposure/vulnerability analysis, and operational warning systems are out of
-scope; hazard maps must not be presented as risk maps or operational products
-without separate validation and review.
+defined in `docs/validation_maturity_framework.md`. Risk, exposure,
+vulnerability, and warning-system work should stay separate from the hazard
+workflow unless a task explicitly brings those inputs in.
 
-Development process should favor executable progress over process artifacts:
-new gates, YAML records, validators, roadmap labels, and consistency hooks are
-supporting mechanisms, not substitutes for implemented features, measured
-validation, scientific analysis, reproducibility improvements, performance
-work, or tested bug fixes.
+Development should favor executable progress over process artifacts. New
+reports or checks should either enable a run, capture evidence, simplify the
+workflow, or improve scientific interpretation.
 
 ## Current Model
 

@@ -1,8 +1,8 @@
 # Orchestration Strategy
 
-This document records the current strategy for executing TB tasks with small
-Codex workers while keeping the lead/orchestrator context small. It is a
-process contract, not a project roadmap.
+This document records the lightweight way to work through TB tasks without
+letting context or generated artifacts get out of hand. It is guidance, not a
+roadmap.
 
 ## Execution Model
 
@@ -10,24 +10,21 @@ process contract, not a project roadmap.
   execution.
 - Execute exactly one active task at a time, always the lowest-numbered
   `### TB-XXX:` heading in `docs/task_backlog.md`.
-- Treat each task as one transaction: clean pull, one worker, verification,
-  then continue or stop.
-- Stop on worker failure, dirty worktree, failed fast-forward pull, stale
-  completed task in the backlog, or `backlog_refill_needed=true`.
+- Keep `main` usable: pull before substantial work, make focused commits, and
+  verify the task is removed when done.
+- Pause only for failures that make the next action unsafe or ambiguous.
 
 ## Worker Prompt Shape
 
-Worker prompts should include only:
+Worker prompts should stay small:
 
 - the selected task title and body;
 - `print_agent_task_context.py --task TB-XXX --format json`;
 - `rg -n "^### TB-XXX:" docs/task_backlog.md`;
 - the task's `Inspect first` files;
-- hard boundaries and known pitfalls;
-- required focused checks and final report schema.
+- the focused checks that matter for the task.
 
-Do not paste unrelated backlog tasks or broad reference docs. Use
-`--detail full` only for orchestrator/review work.
+Avoid broad reference dumps unless the task needs them.
 
 When Balfrin access is unavailable, use:
 
@@ -73,20 +70,12 @@ worktree is clean and the completed task is absent from the backlog.
 
 Workers may access Balfrin over SSH when the selected task explicitly requires
 Balfrin inspection, evidence collection, or a user-authorized Balfrin run.
-Balfrin-capable read-only inspection and evidence-collection workers should use
-a stronger model than the default small implementation worker because these
-tasks combine remote state, scheduler semantics, ignored artifacts, and
-scientific claim boundaries. Live submissions are stricter: they must use a
-GPT-5.5 Balfrin worker under the authorization protocol below.
+Use a stronger worker for live Balfrin submissions and for read-only work that
+mixes remote state, scheduler state, and preserved run roots.
 
-Balfrin SSH access is time-limited and may expire. If SSH authentication,
-permissions, or mounted non-git artifacts are unavailable, the worker must fail
-closed with a clear blocked status and the exact missing access/artifact class.
-Do not fabricate Balfrin evidence from local fixtures, and do not treat a
-fixture-backed report as a measured Balfrin result. Live Balfrin submission
-still requires explicit task-level or user authorization; read-only inspection
-and collection from already-authorized run roots may proceed when SSH access is
-available.
+Balfrin SSH access can expire. If access or expected run roots are unavailable,
+record the missing piece and move to the next useful local action. Keep fixture
+results and measured Balfrin results clearly labeled.
 
 ## Live Balfrin Run Authorization
 
@@ -96,40 +85,29 @@ permission to submit multiple concurrent `postproc` jobs and to fill the
 partition. If a task would keep the `postproc` partition fully busy for more
 than 6 hours, the worker must stop and rediscuss before continuing.
 
-This clearance changes the authorization default, but not the engineering or
-scientific gates. Live Balfrin work still requires GPT-5.5 worker routing,
-active monitoring, a clean or explicitly accepted pre-submit state, applicable
-package/readiness preflights, reviewed handoff packages when required,
-authorization-record or audit artifacts when repository helpers require them,
-reduced-output/output-budget gates, preservation checks, and post-run evidence
-collection. The authorization/audit record is now a reproducibility artifact,
-not a request for permission, for postproc jobs covered by the standing
-clearance.
-
-The standing clearance does not authorize non-postproc partitions,
-multi-node/distributed execution, GPU/MPI phase changes, second-site execution,
-Swiss-wide scale-up, annual-frequency products, physical-probability claims,
-risk, exposure, vulnerability, regulatory use, or operational claims. Those
-remain separate phase changes.
+For `postproc` jobs covered by the standing clearance, authorization/audit
+records are reproducibility artifacts. Use reviewed packages, active
+monitoring, `$SCRATCH` run roots, and post-run collection so results can be
+replayed and compared. Non-`postproc`, multi-node, GPU/MPI, and Swiss-wide work
+should be introduced as explicit phase changes.
 
 ## Outcome Taxonomy
 
-Final worker reports must distinguish implementation status from capability
-status. Use these labels in `STATUS` or `SUMMARY` when relevant:
+Final worker reports should say plainly what happened. Use these labels when
+they help:
 
 - `implemented_measured`: the task's measured capability was actually achieved.
 - `implemented_fixture_backed`: helper/report behavior is proven only by
   fixtures or synthetic roots.
-- `implemented_blocked_report`: the task produced a useful blocked-state report
+- `implemented_waiting_report`: the task produced a useful waiting-state report
   but did not achieve the intended execution or measurement.
-- `blocked_unresolved`: the worker could not make the requested capability
+- `waiting_unresolved`: the worker could not make the requested capability
   executable.
 - `partial_needs_followup`: useful work landed, but the original capability
   still needs a follow-up task.
 
-For execution tasks, a blocked report is not equivalent to measured execution.
-The orchestrator must add or request an unblock task before continuing into
-tasks that depend on the missing measurement.
+For execution tasks, do not treat a report as a measurement. If a run did not
+happen, choose the next action that makes a run more likely.
 
 ## Post-Worker Verification
 
@@ -150,9 +128,8 @@ Verify:
 - the worker's outcome taxonomy matches the task definition of done;
 - no generated placeholder artifacts remain.
 
-If the task outcome is fixture-backed, blocked, or partial, the next backlog
-refill should capture the smallest unblock or measurement task before adding
-dependent synthesis work.
+If a task produced only fixture-backed or partial evidence, prefer the next
+measurement or simplification task over synthesis.
 
 ## Known Pitfalls
 

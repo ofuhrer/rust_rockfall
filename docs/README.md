@@ -134,6 +134,9 @@ starting context for implementation unless a task explicitly asks for them.
   regional split `postproc` run from the reviewed package gates.
 - `balfrin_regional_split_run_root_metrics_tb566.md`: TB-566 metrics,
   preservation, and output-budget audit for job `4367244`.
+- `balfrin_16_zone_handoff_tb569.md`: TB-569 16-zone handoff package record.
+- `balfrin_16_zone_handoff_tb571.md`: TB-571 refreshed 16-zone handoff package
+  record.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
