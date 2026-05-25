@@ -8363,6 +8363,30 @@ scan thousands of lines of completed history.
 - Boundaries: decision refresh only; no live submission, no operational claim, and no scale-up authorization beyond existing postproc rules.
 - Next task: `TB-555`
 
+### TB-555: Compare Measured Regional Split Against Scenario And Output Projections
+
+- Date: 2026-05-25
+- Commit: `0e485be`
+- Objective: thread measured regional split evidence into scenario/output-tier and GIS/COG projection surfaces before recommending another live step.
+- Files changed: `scripts/measure_scenario_storage_output_tier_pressure.py`, `scripts/summarize_balfrin_regional_gis_cog_pressure.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `tests/test_balfrin_regional_gis_cog_pressure.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `measured_regional_split_comparison` to scenario/output-tier pressure, comparing TB-448 measured validation and hazard outputs against rebuildable-reduced and GIS tier bands.
+  - Added `measured_regional_split_comparison` to regional GIS/COG pressure, comparing measured hazard output against standard and converted package bands.
+  - Preserved the distinction that the converted COG proof is byte-compatible but has a scope/file-count delta.
+  - Named the next measured run candidate as a bounded reduced-output regional split retry after COG and reducer review.
+  - Removed TB-555 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_gis_cog_pressure tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json >/tmp/tb555_scenario_pressure.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb555_scenario_pressure.json >/dev/null`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_regional_gis_cog_pressure.py --format json >/tmp/tb555_gis_cog_pressure.json && PYENV_VERSION=system python3 -m json.tool /tmp/tb555_gis_cog_pressure.json >/dev/null`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: evidence comparison only; no new live run, no Swiss-wide authorization, no physical-probability or annual-frequency semantics, and no new dashboard/report script.
+- Next task: `TB-556`
+
 ### TB-559: Refresh Swiss-Scale Feasibility Projection From Latest Measured Evidence
 
 - Date: 2026-05-25
