@@ -7073,3 +7073,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: Rust regression only; no physics tuning, no new data fixture, no operational claim, and no Balfrin dependency.
 - Next task: `TB-501`
+
+### TB-501: Consolidate Hazard Manifest Output Helpers
+
+- Date: 2026-05-25
+- Commit: `a67ba2e`
+- Objective: reduce duplicated hazard-output manifest bookkeeping in the hazard layer builder while preserving manifest JSON shape.
+- Files changed: `scripts/hazard_output_manifests.py`, `scripts/build_hazard_layers.py`, `tests/test_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `execution_sidecar_manifest_entries` to the existing hazard manifest helper module.
+  - Replaced two near-identical builder blocks for reducer and trajectory execution sidecars with calls to the shared helper.
+  - Preserved output entry kinds: `{prefix}_execution_plan`, `{prefix}_execution_index`, `{prefix}_merge_state`, and `{prefix}_chunk_manifest`.
+  - Added a focused helper assertion in `test_map_package_manifest_helpers_write_the_expected_schema`.
+  - The implementation removed more duplicated builder lines than it added and did not change output semantics.
+  - Removed TB-501 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_map_package_manifest_helpers_write_the_expected_schema tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_output_profile -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/build_hazard_layers.py scripts/hazard_output_manifests.py tests/test_hazard_layers.py tests/test_hazard_output_profile.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: internal simplification only; no output semantics change, no new script, no operational claim, and no Balfrin dependency.
+- Next task: `TB-502`
