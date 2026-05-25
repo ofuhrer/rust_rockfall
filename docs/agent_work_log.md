@@ -7120,3 +7120,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: test/serialization hardening only; no new review workflow, no status vocabulary change, no source-zone semantics change, and no Balfrin dependency.
 - Next task: `TB-503`
+
+### TB-503: Improve Local QGIS Package Inspectability
+
+- Date: 2026-05-25
+- Commit: `dba489b`
+- Objective: make an existing local AOI/QGIS review package easier to inspect without adding a dashboard or changing hazard products.
+- Files changed: `scripts/generate_aoi_map_qa_review.py`, `tests/test_aoi_map_qa_review.py`, `docs/tschamut_public_pilot_gis_package_review.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a deterministic `primary_artifact_index` section to the AOI map QA review manifest.
+  - The index gathers primary manifests, source-zone metadata, scenario table, terrain paths, terrain metadata, diagnostic hazard layers, vector overlays, and observed-evidence overlays into one list.
+  - Added a matching `Primary artifact index` HTML panel with direct path links and claim-boundary text, so a QGIS reviewer can start from one section instead of cross-referencing multiple JSON manifests.
+  - Preserved the existing review surface and package contents; no new dashboard, dependency, or product claim was added.
+  - Updated the Tschamut GIS package review note to mention the generated primary artifact index.
+  - Removed TB-503 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_map_qa_review -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_pilot_gis_package_manifest_records_review_artifacts_and_boundaries -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/generate_aoi_map_qa_review.py tests/test_aoi_map_qa_review.py docs/tschamut_public_pilot_gis_package_review.md scripts/build_hazard_layers.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: local package ergonomics only; no new GIS product claim, no operational claim, no new external dependency, and no Balfrin dependency.
+- Next task: `TB-504`
