@@ -161,6 +161,7 @@ REPLAY_CRITICAL_PACKAGE_HASHES = (
 )
 SMALLEST_LIVE_BUDGET_PROFILE_ID = "smallest_live_two_zone_probe"
 NEXT_REVIEW_BUDGET_PROFILE_ID = "next_larger_four_zone_review_only_probe"
+DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID = "diagnostic_16_zone_single_node_postproc_measurement"
 PRUNED_OUTPUT_FAMILIES = tuple(
     family for family in FULL_OUTPUT_FAMILY_MIX if family not in REPLAY_CRITICAL_OUTPUT_FAMILIES
 )
@@ -1817,6 +1818,7 @@ def build_handoff_output_budget_projection(
     budget_acceptance_validation = validate_output_budget_acceptance(
         projection={
             "release_zone_count": command_spec["release_zone_count"],
+            "projection_mode": manifest_mode,
             "reducer_chunk_count": command_spec["reducer_chunk_count"],
             "reducer_worker_count": command_spec["reducer_worker_count"],
             "manifest_size_bytes": target_profile.get("manifest_size_bytes", 0),
@@ -1824,6 +1826,7 @@ def build_handoff_output_budget_projection(
             "sidecar_file_count": target_profile.get("sidecar_file_count", 0),
             "reducer_manifest_file_count": target_profile.get("reducer_manifest_file_count", 0),
             "reducer_manifest_bytes": target_profile.get("reducer_manifest_bytes", 0),
+            "estimated_storage_bytes": target_profile.get("output_byte_count", 0),
             "output_family_file_counts": dict(target_profile.get("output_family_file_counts") or {}),
             "replay_critical_retained_output_families": replay_critical_retained_output_families,
             "projection_file_hashes": projection_file_hashes,
@@ -1874,6 +1877,7 @@ def build_handoff_output_budget_projection(
         "primary_output_byte_count": primary_output_byte_count,
         "primary_output_family_file_counts": primary_output_family_file_counts,
         "primary_output_family_bytes": primary_output_family_bytes,
+        "estimated_storage_bytes": target_profile.get("output_byte_count", 0),
         "replay_critical_retained_output_families": replay_critical_retained_output_families,
         "sidecar_file_count": target_profile.get("sidecar_file_count", 0),
         "sidecar_byte_count": target_profile.get("sidecar_byte_count", 0),
@@ -2177,6 +2181,33 @@ def build_output_budget_acceptance_thresholds() -> dict[str, Any]:
                     "pilot_gis_package_manifest": 1,
                 },
             },
+            DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID: {
+                "scope": "diagnostic 16-zone compact reduced-output measurement input",
+                "authorization_scope": "diagnostic only; does not authorize scale-up, submission, or distributed execution",
+                "release_zone_count": 16,
+                "scenario_count": 16,
+                "required_projection_mode": "compact",
+                "max_manifest_size_bytes": 18_000,
+                "max_total_output_files": 56,
+                "max_sidecar_files": 4,
+                "max_reducer_manifest_files": 0,
+                "max_reducer_manifest_bytes": 0,
+                "max_estimated_storage_bytes": 25_000,
+                "max_reducer_chunks": 2,
+                "required_replay_critical_families": replay_critical,
+                "required_package_hashes": required_hashes,
+                "required_zero_metrics": [
+                    "reducer_manifest_file_count",
+                    "reducer_manifest_bytes",
+                ],
+                "per_family_file_count_max": {
+                    "trajectory_csv": 16,
+                    "deposition_csv": 16,
+                    "impact_events_csv": 16,
+                    "trajectory_merge_state": 1,
+                    "reducer_merge_state": 1,
+                },
+            },
         },
         "excess_classification": {
             "compressible": [
@@ -2185,6 +2216,7 @@ def build_output_budget_acceptance_thresholds() -> dict[str, Any]:
                 "sidecar_file_count",
                 "reducer_manifest_file_count",
                 "reducer_manifest_bytes",
+                "estimated_storage_bytes",
                 "non_replay_critical_family_file_count",
             ],
             "replay_critical": [
@@ -2210,8 +2242,11 @@ def budget_profile_for_projection(
     thresholds: dict[str, Any],
 ) -> tuple[str, dict[str, Any]]:
     release_zone_count = int(projection.get("release_zone_count") or 0)
+    projection_mode = str(projection.get("projection_mode") or "")
     profiles = dict(thresholds.get("profiles") or {})
-    if release_zone_count <= 2:
+    if release_zone_count == 16 and projection_mode == "compact":
+        profile_id = DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID
+    elif release_zone_count <= 2:
         profile_id = SMALLEST_LIVE_BUDGET_PROFILE_ID
     else:
         profile_id = NEXT_REVIEW_BUDGET_PROFILE_ID
@@ -2244,12 +2279,47 @@ def validate_output_budget_acceptance(
                 }
             )
 
+    required_projection_mode = str(profile.get("required_projection_mode") or "").strip()
+    if required_projection_mode and str(projection.get("projection_mode") or "") != required_projection_mode:
+        failures.append(
+            {
+                "metric": "projection_mode",
+                "measured": str(projection.get("projection_mode") or ""),
+                "threshold": required_projection_mode,
+                "excess": 1,
+                "excess_classification": "compressible",
+                "replay_critical": False,
+                "compressible": True,
+                "reason": (
+                    f"projection_mode={projection.get('projection_mode')!r} is not allowed for {profile_id}; "
+                    f"expected {required_projection_mode}"
+                ),
+            }
+        )
+
     add_numeric_check("manifest_size_bytes", "max_manifest_size_bytes", "compressible")
     add_numeric_check("output_file_count", "max_total_output_files", "compressible")
     add_numeric_check("sidecar_file_count", "max_sidecar_files", "compressible")
     add_numeric_check("reducer_manifest_file_count", "max_reducer_manifest_files", "compressible")
     add_numeric_check("reducer_manifest_bytes", "max_reducer_manifest_bytes", "compressible")
+    add_numeric_check("estimated_storage_bytes", "max_estimated_storage_bytes", "compressible")
     add_numeric_check("reducer_chunk_count", "max_reducer_chunks", "replay_critical")
+
+    for metric in profile.get("required_zero_metrics") or []:
+        measured = int(projection.get(metric) or 0)
+        if measured != 0:
+            failures.append(
+                {
+                    "metric": metric,
+                    "measured": measured,
+                    "threshold": 0,
+                    "excess": measured,
+                    "excess_classification": "compressible",
+                    "replay_critical": False,
+                    "compressible": True,
+                    "reason": f"{metric}={measured} must be zero for {profile_id}",
+                }
+            )
 
     family_counts = dict(projection.get("output_family_file_counts") or {})
     per_family_max = dict(profile.get("per_family_file_count_max") or {})
@@ -2505,6 +2575,7 @@ def build_replay_critical_field_inventory() -> dict[str, dict[str, Any]]:
                 "primary_output_byte_count",
                 "sidecar_file_count",
                 "sidecar_byte_count",
+                "estimated_storage_bytes",
                 "reducer_manifest_file_count",
                 "reducer_manifest_bytes",
                 "manifest_size_bytes",

@@ -597,6 +597,53 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertTrue(any(failure["replay_critical"] for failure in validation["failures"]))
         self.assertIn("required_package_hashes", validation["exceeded_thresholds"])
 
+    def test_budget_acceptance_validator_accepts_sixteen_zone_compact_diagnostic_projection(self) -> None:
+        validation = MODULE.validate_output_budget_acceptance(
+            projection={
+                "release_zone_count": 16,
+                "reducer_chunk_count": 2,
+                "projection_mode": "compact",
+                "manifest_size_bytes": 15_954,
+                "output_file_count": 52,
+                "sidecar_file_count": 2,
+                "reducer_manifest_file_count": 0,
+                "reducer_manifest_bytes": 0,
+                "estimated_storage_bytes": 23_682,
+                "output_family_file_counts": {
+                    "trajectory_csv": 16,
+                    "deposition_csv": 16,
+                    "impact_events_csv": 16,
+                    "trajectory_merge_state": 1,
+                    "reducer_merge_state": 1,
+                },
+                "replay_critical_retained_output_families": [
+                    "trajectory_csv",
+                    "deposition_csv",
+                    "impact_events_csv",
+                    "trajectory_merge_state",
+                    "reducer_merge_state",
+                ],
+                "projection_file_hashes": {
+                    "probe_manifest_sha256": "a" * 64,
+                    "command_plan_sha256": "b" * 64,
+                    "output_manifest_sha256": "c" * 64,
+                },
+            }
+        )
+
+        self.assertEqual(validation["status"], "accepted")
+        self.assertEqual(
+            validation["threshold_profile_id"],
+            MODULE.DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID,
+        )
+        self.assertEqual(validation["failures"], [])
+        self.assertEqual(validation["threshold_profile"]["required_projection_mode"], "compact")
+        self.assertEqual(
+            validation["threshold_profile"]["required_zero_metrics"],
+            ["reducer_manifest_file_count", "reducer_manifest_bytes"],
+        )
+        self.assertEqual(validation["threshold_profile"]["max_estimated_storage_bytes"], 25_000)
+
     def test_scenario_pressure_projection_exposes_planning_thresholds(self) -> None:
         pressure_report = {
             "status": "measured_scratch_root",
@@ -779,6 +826,18 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(report["no_submit_handoff_contract"]["status"], "blocked")
         self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["sbatch_attempted"])
         self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["balfrin_job_submitted"])
+        self.assertEqual(report["handoff_output_budget_projection"]["budget_acceptance_validation"]["status"], "accepted")
+        self.assertEqual(
+            report["handoff_output_budget_projection"]["budget_acceptance_validation"]["threshold_profile_id"],
+            MODULE.DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID,
+        )
+        self.assertEqual(report["handoff_output_budget_projection"]["budget_acceptance_validation"]["failures"], [])
+        self.assertGreater(report["handoff_output_budget_projection"]["estimated_storage_bytes"], 0)
+        self.assertEqual(
+            report["handoff_output_budget_projection"]["estimated_storage_bytes"],
+            report["handoff_output_budget_projection"]["output_byte_count"],
+        )
+        self.assertLess(report["handoff_output_budget_projection"]["estimated_storage_bytes"], 25_000)
         self.assertEqual(
             report["scenario_pressure_projection"]["first_bottleneck_labels"]["first_blocked"],
             "release_zone_count",
@@ -789,6 +848,8 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         )
         self.assertEqual(report["handoff_output_budget_projection"]["reducer_manifest_file_count"], 0)
         self.assertEqual(report["handoff_output_budget_projection"]["reducer_manifest_bytes"], 0)
+        self.assertEqual(report["follow_up_recommendation"]["minimum_measured_multi_zone_run"]["release_zone_count"], 2)
+        self.assertEqual(report["no_submit_handoff_contract"]["scenario_limits"]["release_zone_count"], 2)
         first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
         self.assertEqual(first_blocker["status"], "blocked_reducer_or_scenario_limits")
         self.assertIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", first_blocker["reason"])

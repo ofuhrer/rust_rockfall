@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-572: Add A Diagnostic Postproc Measurement Profile For Larger Single-Node Runs
-
-Goal: Soften the current tiny review-budget check into an explicit diagnostic measurement profile that can approve bounded 16-zone single-node `postproc` evidence as diagnostic evidence.
-
-Capability gap reduced: Removes the self-imposed `reducer-budget` ambiguity that prevents using empty Balfrin capacity for measured scale evidence.
-
-Why this outranks alternatives: TB-571 shows the submit path is ready; the remaining issue is a too-small review-budget threshold.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-- `docs/balfrin_16_zone_handoff_tb571.md`
-
-Deliverables:
-
-- Add a diagnostic measurement profile distinct from `smallest_live_two_zone_probe` and `next_larger_four_zone_review_only_probe`.
-- Allow the profile to accept 16-zone compact reduced-output packages when reducer-manifest files/bytes are zero, output families are replay-preserving, and estimated storage stays under a bounded scratch/preservation cap.
-- Add tests proving the profile stays diagnostic and does not change execution scope.
-
-Definition of done:
-
-- Focused handoff/preflight tests pass and the 16-zone diagnostic handoff classifies as eligible for one bounded diagnostic `postproc` measurement or does not pass with one remaining concrete blocker.
-
-
 ### TB-573: Rebuild The 16-Zone Handoff Under The Diagnostic Profile
 
 Goal: Regenerate the 16-zone package using the diagnostic profile and preserve the exact pass/fail pre-submit evidence.
