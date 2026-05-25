@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-500: Tighten Real-Terrain Rust Regression Coverage
-
-Goal: Add one more Rust-level real-terrain invariant that catches nonphysical behavior on committed real DEM fixtures.
-
-Capability gap reduced: Improves core simulation confidence on real terrain without relying on external runs.
-
-Why this outranks alternatives: Scientific progress depends on core real-terrain behavior staying finite, bounded, and reproducible as Python workflows evolve.
-
-Inspect first:
-
-- `tests/terrain_edge_cases.rs`
-- `validation/cases/chant_sura_contact.yaml`
-- `validation/cases/tschamut_basic.yaml`
-- `src/simulation.rs`
-
-Deliverables:
-
-- Add one focused Rust regression for a committed real-terrain case covering finite motion, bounded energy/jump behavior, or deterministic replay.
-- Keep the test runtime small enough for local and CI execution.
-
-Definition of done:
-
-- The focused Rust test and relevant terrain edge-case test target pass locally.
-
-Boundaries: Regression only; no Rust physics tuning unless required to fix a demonstrated bug, no new data fixture, no operational claim, and no Balfrin dependency.
-
 ### TB-501: Consolidate Hazard Manifest Output Helpers
 
 Goal: Reduce duplicated hazard-output manifest bookkeeping in the hazard layer builder and manifest helper path.

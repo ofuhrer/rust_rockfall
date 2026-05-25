@@ -3,7 +3,8 @@
 
 use rust_rockfall::terrain::{ClampedDemGrid, DemGrid, Terrain, TerrainError};
 use rust_rockfall::{
-    simulate_one_trajectory, SimulationConfig, SphereBlock, TerrainConfig, TrajectoryRequest,
+    simulate_one_trajectory, RoughnessModel, SimulationConfig, SphereBlock, TerrainConfig,
+    TrajectoryRequest,
 };
 
 // ─── DEM header / construction errors ─────────────────────────────────────
@@ -223,6 +224,75 @@ fn real_tschamut_dem_trajectory_has_finite_bounded_physics() {
         max_jump_height_m < 20.0,
         "unexpected jump-height spike: {max_jump_height_m}"
     );
+}
+
+#[test]
+fn real_tschamut_stochastic_contact_replay_is_deterministic_and_bounded() {
+    let terrain_path = format!(
+        "{}/validation/data/processed/tschamut/terrain.asc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let terrain = ClampedDemGrid::from_grid(DemGrid::from_ascii_grid(&terrain_path).unwrap());
+    let radius_m = 0.176667;
+    let start_x = 33.4;
+    let start_y = 236.67;
+    let start_ground_z = terrain.try_height(start_x, start_y).unwrap();
+    let config = SimulationConfig {
+        block: SphereBlock::new(radius_m, 69.0),
+        initial_position_m: [start_x, start_y, start_ground_z + radius_m],
+        initial_velocity_mps: [0.74314, 1.3547, 0.76954],
+        initial_angular_velocity_radps: [0.0, 0.0, 0.0],
+        terrain: TerrainConfig::EsriAsciiGridClamped {
+            path: terrain_path.clone(),
+        },
+        dt_s: 0.02,
+        max_time_s: 3.0,
+        gravity_mps2: 9.81,
+        normal_restitution: 0.25,
+        tangential_restitution: 0.85,
+        friction_coefficient: 0.45,
+        rolling_resistance_coefficient: 0.0,
+        contact_model: Default::default(),
+        soil_interaction_model: Default::default(),
+        soil_strength_pa: 0.0,
+        scarring_drag_coefficient: 0.0,
+        scarring_layer_density_kgpm3: 0.0,
+        scarring_max_depth_m: None,
+        roughness_model: RoughnessModel::StochasticContactV1,
+        roughness_std_normal: 0.08,
+        roughness_std_tangent: 0.06,
+        roughness_std_angle: 0.08,
+        stop_speed_mps: 0.1,
+        random_seed: None,
+        release_perturbation: Default::default(),
+    };
+    let request = TrajectoryRequest::new(
+        "validation_tschamut_basic_replay",
+        "trajectory_000000",
+        Some(34014),
+    );
+
+    let first = simulate_one_trajectory(&config, request.clone()).unwrap();
+    let second = simulate_one_trajectory(&config, request).unwrap();
+
+    assert_eq!(first.summary, second.summary);
+    assert_eq!(first.samples, second.samples);
+    assert!(
+        first.samples.len() > 10,
+        "trajectory should contain a reproducible time history"
+    );
+    assert!(first.summary.runout_m > 1.0, "runout should be non-trivial");
+    assert!(first.summary.final_speed_mps.is_finite());
+    assert!(
+        first.summary.max_kinetic_energy_j.is_finite()
+            && first.summary.max_kinetic_energy_j < 25_000.0,
+        "unexpected kinetic-energy spike: {}",
+        first.summary.max_kinetic_energy_j
+    );
+    assert!(first
+        .samples
+        .iter()
+        .all(|sample| sample.x_m.is_finite() && sample.y_m.is_finite() && sample.z_m.is_finite()));
 }
 
 #[test]
