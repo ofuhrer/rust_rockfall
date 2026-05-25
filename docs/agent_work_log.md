@@ -8476,3 +8476,21 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: projection refresh only; no Swiss-wide run, no operational claim, no distributed execution phase change, and no Balfrin submission.
 - Next task: `TB-551`
+
+### TB-560: Consolidate Duplicate Balfrin Decision Logic
+
+- Date: 2026-05-25
+- Commit: `7462a6d`
+- Objective: reduce drift between the scale-readiness matrix, next live-run decision gate, and management demo package next-action surfaces.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Centralized the reducer-first probe ranking in the next live-run decision gate.
+  - Reused that shared ranking from the scale-readiness matrix instead of keeping a separate hard-coded ladder.
+  - Centralized next-action display labels in the decision gate and reused them from the management demo package milestone recommendation.
+  - Kept current recommendation ordering, claim boundaries, and behavior unchanged while removing duplicated decision text and stale mapping branches.
+  - Removed TB-560 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_fixture_backed
+- Boundaries: consolidation only; no new top-level report, no live Balfrin submission, no scale-up claim, and no claim upgrade.
+- Next task: `TB-561`
