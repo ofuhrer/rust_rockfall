@@ -6581,6 +6581,11 @@ def build_conditional_intensity_exceedance_curves(
         if layer.key.endswith("_standard_error") and "exceedance" in layer.key
     }
     rows: list[ConditionalCurveRow] = []
+    x_centers = [grid.xmin + (col + 0.5) * grid.cell_size for col in range(grid.ncols)]
+    y_centers = [
+        grid.ymin + (grid.nrows - 1 - row + 0.5) * grid.cell_size
+        for row in range(grid.nrows)
+    ]
     for layer in layers:
         parsed = parse_exceedance_layer_key(layer.key)
         if parsed is None:
@@ -6601,22 +6606,23 @@ def build_conditional_intensity_exceedance_curves(
         if denominator <= 0.0:
             continue
         standard_error_layer = standard_errors.get(layer.key)
+        append_row = rows.append
+        layer_values = layer.values
+        standard_error_values = standard_error_layer.values if standard_error_layer is not None else None
         for row in range(grid.nrows):
+            y = y_centers[row]
+            row_values = layer_values[row]
+            standard_error_row = standard_error_values[row] if standard_error_values is not None else None
             for col in range(grid.ncols):
-                value = layer.values[row][col]
+                value = row_values[col]
                 if not math.isfinite(value) or value == NODATA:
                     continue
-                x, y = grid.center(row, col)
-                standard_error = (
-                    standard_error_layer.values[row][col]
-                    if standard_error_layer is not None
-                    else None
-                )
-                rows.append(
+                standard_error = standard_error_row[col] if standard_error_row is not None else None
+                append_row(
                     ConditionalCurveRow(
                         row=row,
                         col=col,
-                        x_center_m=x,
+                        x_center_m=x_centers[col],
                         y_center_m=y,
                         intensity_measure=intensity_measure,
                         threshold=threshold,

@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-498: Optimize The Next Local Reducer Hotspot
-
-Goal: Profile the current local hazard/reducer path after the CSV writer optimization and remove the next measurable local hotspot.
-
-Capability gap reduced: Improves local iteration speed for scientific and scaling tasks.
-
-Why this outranks alternatives: Local tasks are now bottlenecked by repeated hazard generation and reducer materialization; measurable runtime reductions compound.
-
-Inspect first:
-
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_accumulation_benchmark.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Run the existing benchmark/profile locally, identify the next nontrivial hotspot, and implement one scoped optimization.
-- Preserve deterministic output signatures and record before/after benchmark metrics.
-
-Definition of done:
-
-- Focused benchmark/hazard tests pass, before/after metrics show a measurable improvement or a clearly bounded no-op, and no output semantics change.
-
-Boundaries: Local performance only; no physics changes, no output contract break, no new benchmark framework, and no Balfrin dependency.
-
 ### TB-499: Add A Second Candidate Local Comparison
 
 Goal: Run one more local comparison using a different reviewed or stable candidate shape to see whether the degraded runout is candidate-specific.
