@@ -8575,3 +8575,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: no `sbatch`, no live run, no distributed execution, no Swiss-wide claim, and no operational semantics.
 - Next task: `TB-565`
+
+### TB-565: Execute One Bounded Regional Split Postproc Run If Capacity Is Favorable
+
+- Date: 2026-05-25
+- Commit: `b1816e1` plus prerequisite helper commit `0008dcc`
+- Objective: submit and monitor exactly one reviewed regional split `postproc` job while recording job, package, queue, and run-root evidence.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `scripts/generate_balfrin_regional_split_submission_package.py`, `tests/test_balfrin_regional_split_submission_package.py`, `docs/balfrin_regional_split_postproc_run_tb565.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added support for reviewed Balfrin scratch package roots under `/scratch/mch/olifu/rust_rockfall` so live package roots do not rely on Balfrin memory-backed `/tmp`.
+  - Regenerated the regional split package on Balfrin under `/scratch/mch/olifu/rust_rockfall/submission_packages/tb565_regional_split_package`; it reported `ready_for_bounded_postproc_submission` and `first_blocker: None`.
+  - Submitted exactly one `postproc` job, `4367244`, from the reviewed package command.
+  - Monitored job `4367244` to `COMPLETED` with exit `0:0`, elapsed `00:00:24`, node `nid001225`, and batch MaxRSS `5512K`.
+  - Recorded current package hashes, queue context, run root, SLURM logs, command-plan/metrics hashes, and measured output counts in the TB-565 evidence note.
+  - Removed TB-565 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package.BalfrinRegionalSplitSubmissionPackageTests.test_reviewed_balfrin_scratch_package_root_is_allowed -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package -v`
+  - `ssh ... generate_balfrin_regional_split_submission_package.py --artifact-dir /scratch/mch/olifu/rust_rockfall/submission_packages/tb565_regional_split_package ...`
+  - `ssh ... scripts/submit_balfrin_probe.py ... --authorized-submit ...`
+  - `ssh ... sacct -j 4367244 --format=JobIDRaw,JobName,Partition,State,ExitCode,Elapsed,AllocCPUS,MaxRSS,NodeList -P`
+- Result/status: implemented_measured
+- Boundaries: one job only; `postproc` only; no partition-fill longer than 6 hours, no distributed execution, no non-`postproc` partition, no operational claim, and no Swiss-wide claim.
+- Next task: `TB-566`
