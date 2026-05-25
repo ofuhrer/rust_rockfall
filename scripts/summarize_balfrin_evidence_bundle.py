@@ -169,6 +169,42 @@ TB307_TARGET_AREA_METRICS_COMPLETION = {
     "preservation_status": "ready_for_demonstration_evidence",
     "metrics_completion_source": "new_metrics_completion_rerun",
 }
+TB557_BOUNDED_REDUCED_OUTPUT_PROBE = {
+    "task_id": "TB-557",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_multi_zone_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1",
+    "run_id": "tb557_bounded_reduced_output_probe_v1",
+    "source_paths": ["docs/balfrin_bounded_reduced_output_run_tb557.md"],
+    "git_commit": "6a49586",
+    "slurm_job_id": "4366534",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:01:29",
+    "batch_max_rss": "390804K",
+    "memory_peak_mb": 381.64453125,
+    "total_wall_seconds": 6.536354579031467,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_316,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 31_436_405,
+    "conditional_curve_row_count": 729_600,
+    "release_zone_count": 2,
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "authorization_status": "authorized",
+    "output_mode": "bounded_reduced_output",
+    "claim_boundary": "measured runtime/output/reducer evidence only; no operational or physical-probability claim",
+    "summary": (
+        "TB-557 completed one bounded reduced-output Balfrin postproc probe with complete metrics and a ready preservation gate."
+    ),
+}
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -372,12 +408,14 @@ def build_current_report() -> dict[str, Any]:
     post_run_report = post_run_gate.build_report(
         build_post_run_evidence(single_job_summary=single_job_summary, gis_report=gis_report, probe_metrics=probe_metrics)
     )
+    source_paths = build_source_paths(single_job_summary=single_job_summary, gis_report=gis_report)
+    source_paths["multi_zone_balfrin_evidence"] = dict(TB557_BOUNDED_REDUCED_OUTPUT_PROBE)
     return build_bundle_report(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
         post_run_report=post_run_report,
         gis_report=gis_report,
-        source_paths=build_source_paths(single_job_summary=single_job_summary, gis_report=gis_report),
+        source_paths=source_paths,
         canonical_bundle_path=CANONICAL_BUNDLE_DIR,
     )
 
@@ -511,6 +549,9 @@ def build_bundle_report(
         "multi_zone_balfrin_evidence": build_multi_zone_balfrin_evidence(
             source_paths.get("multi_zone_balfrin_evidence")
         ),
+        "latest_bounded_probe_interpretation_gate_report": build_latest_bounded_probe_interpretation_gate(
+            source_paths.get("multi_zone_balfrin_evidence")
+        ),
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": claim_boundaries,
         "source_paths": source_paths,
@@ -594,6 +635,63 @@ def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
     return classify_multi_zone_balfrin_root(evidence)
 
 
+def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict[str, Any]:
+    if not isinstance(evidence, dict):
+        return post_run_gate.blocked_report(
+            ["latest_bounded_probe_metrics"],
+            reason="latest bounded Balfrin probe evidence is missing",
+            run_id="latest_bounded_balfrin_probe",
+        )
+
+    measured = (
+        evidence.get("status") == "measured"
+        and evidence.get("metrics_json_promoted") is True
+        and evidence.get("post_run_collector_promoted") is True
+        and evidence.get("preservation_checked") is True
+    )
+    preservation_ready = evidence.get("preservation_gate_status") == "ready_for_demonstration_evidence"
+    output_ready = evidence.get("hazard_output_file_count") is not None and evidence.get("validation_output_file_count") is not None
+    interpretation_evidence = {
+        "pilot_id": DEFAULT_PILOT_ID,
+        "run_id": evidence.get("run_id") or "latest_bounded_balfrin_probe",
+        "contract_path": "docs/balfrin_bounded_reduced_output_run_tb557.md",
+        "readiness_check": {
+            "status": "ready" if measured else "blocked_missing_inputs",
+            "summary": evidence.get("summary") or "Latest bounded Balfrin probe evidence is available.",
+        },
+        "convergence_stability_check": {
+            "status": "inconclusive",
+            "summary": (
+                "The TB-557 run measures runtime/output/reducer feasibility; it does not by itself establish "
+                "a convergence or physical-probability claim."
+            ),
+        },
+        "output_check": {
+            "status": "bounded_reduced_output" if output_ready else "blocked_missing_inputs",
+            "summary": (
+                f"Validation output: {evidence.get('validation_output_file_count')} files / "
+                f"{evidence.get('validation_output_bytes')} bytes; hazard output: "
+                f"{evidence.get('hazard_output_file_count')} files / {evidence.get('hazard_output_bytes')} bytes."
+            ),
+        },
+        "gis_cog_check": {
+            "status": "gis_package_ready_cog_blocked",
+            "summary": "The run produced GIS package artifacts, while COG conversion remains a separate review step.",
+        },
+        "physical_credibility_check": {
+            "status": "not_established",
+            "summary": "Physical credibility remains outside this measured runtime/output evidence promotion.",
+        },
+    }
+    if not preservation_ready:
+        interpretation_evidence["readiness_check"] = {
+            "status": "blocked_missing_inputs",
+            "summary": "The latest bounded probe preservation gate is not ready.",
+            "blockers": ["preservation_gate_status"],
+        }
+    return post_run_gate.build_report(interpretation_evidence)
+
+
 def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]:
     run_root = str(evidence.get("run_root") or "")
     source_paths = [str(path) for path in evidence.get("source_paths", []) if str(path)] if isinstance(evidence.get("source_paths"), list) else []
@@ -648,13 +746,25 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
     return {
         "status": status,
         "evidence_type": evidence_type,
+        "task_id": evidence.get("task_id"),
         "root_class": root_class,
         "run_root": run_root or None,
         "release_zone_count": release_zone_count,
         "first_bottleneck_label": first_bottleneck,
         "slurm_job_id": evidence.get("slurm_job_id"),
+        "slurm_state": evidence.get("slurm_state"),
+        "exit_code": evidence.get("exit_code"),
+        "elapsed": evidence.get("elapsed"),
+        "memory_peak_mb": evidence.get("memory_peak_mb"),
+        "total_wall_seconds": evidence.get("total_wall_seconds"),
+        "validation_output_file_count": evidence.get("validation_output_file_count"),
+        "validation_output_bytes": evidence.get("validation_output_bytes"),
+        "hazard_output_file_count": evidence.get("hazard_output_file_count"),
+        "hazard_output_bytes": evidence.get("hazard_output_bytes"),
+        "conditional_curve_row_count": evidence.get("conditional_curve_row_count"),
         "metrics_json_promoted": bool(evidence.get("metrics_json_promoted")),
         "preservation_checked": bool(evidence.get("preservation_checked")),
+        "preservation_gate_status": evidence.get("preservation_gate_status"),
         "preservation_gate_promoted": bool(evidence.get("preservation_gate_promoted")),
         "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
         "authorization_status": evidence.get("authorization_status"),
@@ -925,6 +1035,17 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"  root_class: {multi_zone.get('root_class', 'unknown')}",
                 f"  first_bottleneck_label: {multi_zone.get('first_bottleneck_label', 'unknown')}",
                 f"  next_blocker: {multi_zone.get('next_blocker', 'unknown')}",
+            ]
+        )
+    latest_gate = report.get("latest_bounded_probe_interpretation_gate_report")
+    if isinstance(latest_gate, dict):
+        lines.extend(
+            [
+                "latest_bounded_probe_interpretation_gate_report:",
+                f"  interpretation_status: {latest_gate.get('interpretation_status', 'unknown')}",
+                f"  artifact_acceptance_status: {latest_gate.get('artifact_acceptance_status', 'unknown')}",
+                f"  output_status: {latest_gate.get('output_check', {}).get('status', 'unknown')}",
+                f"  physical_credibility_status: {latest_gate.get('physical_credibility_check', {}).get('status', 'unknown')}",
             ]
         )
     section_provenance_profile = report.get("section_provenance_profile") or []

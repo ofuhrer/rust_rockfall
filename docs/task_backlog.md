@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-558: Collect And Promote The Next Probe Evidence
-
-Goal: Integrate the latest completed bounded Balfrin probe into the existing evidence bundle and preservation surfaces.
-
-Capability gap reduced: Prevents measured run evidence from remaining only as raw remote artifacts.
-
-Why this outranks alternatives: A successful run is not useful for planning until metrics, output budgets, and preservation status are collected and surfaced.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_post_run_interpretation_gate.py`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Updated local reports that classify the new run root as measured, failed-closed, or blocked.
-- Runtime/output/reducer metrics are separated from scientific claim boundaries.
-
-Definition of done:
-
-- The evidence bundle and interpretation gate consume the new run-root metrics or fail closed with exact missing artifacts.
-
-Boundaries: Evidence collection only; no rerun, no operational claim, no physical validation claim.
-
 ### TB-560: Consolidate Duplicate Balfrin Decision Logic
 
 Goal: Reduce duplication between scale-readiness, next-live-run decision, and management-demo package logic.

@@ -79,6 +79,29 @@ From `balfrin_probe_metrics_collected_tb557.json` and
   - `map_package_manifest`: `1`
   - `pilot_gis_package_manifest`: `1`
 
+## Preservation Gate
+
+`scripts/summarize_balfrin_probe_preservation_gate.py` reported:
+
+- `gate_status`: `ready_for_demonstration_evidence`
+- `required_run_root_entries_status`: `complete`
+- `output_family_summaries.status`: `sufficient`
+- Blocked reasons: none
+
+## Evidence Promotion
+
+`scripts/summarize_balfrin_evidence_bundle.py` now promotes this run as the
+current measured multi-zone Balfrin evidence:
+
+- `multi_zone_balfrin_evidence.status`: `measured`
+- `multi_zone_balfrin_evidence.evidence_type`: `measured`
+- `multi_zone_balfrin_evidence.slurm_job_id`: `4366534`
+- `latest_bounded_probe_interpretation_gate_report.interpretation_status`:
+  `inconclusive_conditional_diagnostic`
+
+The interpretation gate accepts the artifact as a conditional diagnostic while
+keeping convergence and physical-credibility claims inconclusive.
+
 ## Boundaries
 
 - Exactly one TB-557 live job was submitted.
