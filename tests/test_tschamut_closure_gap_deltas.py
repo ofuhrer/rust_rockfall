@@ -82,6 +82,7 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         self.assertIn("source_placement_displaced_with_local_early_stopping", text)
         self.assertIn("candidate_geometry_ablation:", text)
         self.assertIn("source_offset_dominates_with_candidate_local_stopping_signal", text)
+        self.assertIn("endpoint_shape=unknown", text)
         self.assertIn("operational_claims_allowed: false", text)
         self.assertIn("scale_up_authorized: false", text)
 
@@ -136,6 +137,22 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
             ablation["deltas"]["deposition_centroid_error_delta_candidate_minus_source_aligned_m"],
             200.0,
         )
+        self.assertEqual(
+            ablation["endpoint_shape_interpretation"],
+            "centroid_and_endpoint_shape_degrade_together",
+        )
+        self.assertGreater(
+            ablation["deltas"]["endpoint_cloud_mean_nearest_error_delta_candidate_minus_source_aligned_m"],
+            150.0,
+        )
+        self.assertGreater(
+            ablation["deltas"]["endpoint_shape_error_delta_candidate_minus_source_aligned_m"],
+            150.0,
+        )
+        self.assertGreater(
+            ablation["candidate_aligned_variant"]["endpoint_cloud_shape"]["mean_nearest_error_m"],
+            ablation["source_aligned_variant"]["endpoint_cloud_shape"]["mean_nearest_error_m"],
+        )
         self.assertGreater(
             ablation["source_aligned_variant"]["simulated_to_observed_runout_ratio"],
             0.25,
@@ -146,6 +163,67 @@ class TschamutClosureGapDeltaTests(unittest.TestCase):
         )
         self.assertFalse(ablation["claim_boundaries"]["parameter_tuning_authorized"])
         self.assertFalse(ablation["claim_boundaries"]["candidate_acceptance_upgrade"])
+
+    def test_endpoint_cloud_metrics_detect_shape_and_orientation_errors(self) -> None:
+        observed = [
+            {"x_m": "0", "y_m": "0"},
+            {"x_m": "10", "y_m": "0"},
+            {"x_m": "20", "y_m": "0"},
+        ]
+        simulated = [
+            {"x_m": "0", "y_m": "0"},
+            {"x_m": "0", "y_m": "10"},
+            {"x_m": "0", "y_m": "20"},
+        ]
+
+        metrics = summary.endpoint_cloud_metrics(simulated, observed)
+
+        self.assertEqual(metrics["metric_status"], "ready")
+        self.assertEqual(metrics["simulated_point_count"], 3)
+        self.assertEqual(metrics["observed_point_count"], 3)
+        self.assertGreater(metrics["mean_nearest_error_m"], 9.0)
+        self.assertAlmostEqual(metrics["radial_spread_error_m"], 0.0)
+        self.assertAlmostEqual(metrics["orientation_difference_deg"], 90.0)
+
+    def test_endpoint_shape_classifier_separates_centroid_only_from_shape_failure(self) -> None:
+        candidate = {
+            "endpoint_cloud_shape": {
+                "mean_nearest_error_m": 80.0,
+                "lateral_spread_error_m": 10.0,
+                "shape_error_m": 90.0,
+            }
+        }
+        source = {
+            "endpoint_cloud_shape": {
+                "mean_nearest_error_m": 20.0,
+                "lateral_spread_error_m": 5.0,
+                "shape_error_m": 25.0,
+            }
+        }
+
+        centroid_only = summary.classify_endpoint_shape_delta(
+            candidate,
+            source,
+            {
+                "deposition_centroid_error_delta_candidate_minus_source_aligned_m": -30.0,
+                "endpoint_shape_error_delta_candidate_minus_source_aligned_m": 65.0,
+                "endpoint_lateral_spread_error_delta_candidate_minus_source_aligned_m": 5.0,
+                "deposition_overlap_delta_candidate_minus_source_aligned": 0.0,
+            },
+        )
+        combined = summary.classify_endpoint_shape_delta(
+            candidate,
+            source,
+            {
+                "deposition_centroid_error_delta_candidate_minus_source_aligned_m": 80.0,
+                "endpoint_shape_error_delta_candidate_minus_source_aligned_m": 65.0,
+                "endpoint_lateral_spread_error_delta_candidate_minus_source_aligned_m": 5.0,
+                "deposition_overlap_delta_candidate_minus_source_aligned": -0.2,
+            },
+        )
+
+        self.assertEqual(centroid_only, "centroid_improves_but_endpoint_shape_degrades")
+        self.assertEqual(combined, "centroid_and_endpoint_shape_degrade_together")
 
     def test_candidate_geometry_ablation_fails_closed_on_missing_metrics(self) -> None:
         ablation = summary.summarize_candidate_geometry_ablation(

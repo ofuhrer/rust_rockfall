@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-519: Improve Candidate Endpoint Comparison Metrics
-
-Goal: Add endpoint-shape metrics that compare simulated deposition clouds to observed deposition beyond centroid and mean runout.
-
-Capability gap reduced: Makes candidate comparison scientifically less brittle by measuring spread, nearest-neighbor structure, and endpoint orientation.
-
-Why this outranks alternatives: Candidate decisions based only on centroid/runout can miss shape failures that matter for local hazard interpretation.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`
-- `tests/test_tschamut_closure_gap_deltas.py`
-- `data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv`
-
-Deliverables:
-
-- Extend the existing local candidate diagnostic with one or two deterministic endpoint-cloud metrics using committed or ignored local evidence.
-- Add focused tests with small synthetic point clouds.
-
-Definition of done:
-
-- Focused closure-gap tests pass and the diagnostic can distinguish centroid-only improvement from cloud-shape or spread failure.
-
-Boundaries: Diagnostic metrics only; no tuning, no candidate acceptance upgrade, no operational claim, and no Balfrin dependency.
-
 ### TB-520: Add Deterministic Reduced-Output Rebuild Test
 
 Goal: Prove that a reduced-output hazard run can be rebuilt from its retained artifacts without hidden local state.

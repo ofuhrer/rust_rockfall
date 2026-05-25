@@ -579,12 +579,29 @@ def summarize_candidate_geometry_ablation(evidence_override: dict[str, Any] | No
             candidate_variant["simulated_to_observed_runout_ratio"] - source_variant["simulated_to_observed_runout_ratio"],
             6,
         ),
+        "endpoint_cloud_mean_nearest_error_delta_candidate_minus_source_aligned_m": round(
+            candidate_variant["endpoint_cloud_shape"]["mean_nearest_error_m"]
+            - source_variant["endpoint_cloud_shape"]["mean_nearest_error_m"],
+            6,
+        ),
+        "endpoint_lateral_spread_error_delta_candidate_minus_source_aligned_m": round(
+            candidate_variant["endpoint_cloud_shape"]["lateral_spread_error_m"]
+            - source_variant["endpoint_cloud_shape"]["lateral_spread_error_m"],
+            6,
+        ),
+        "endpoint_shape_error_delta_candidate_minus_source_aligned_m": round(
+            candidate_variant["endpoint_cloud_shape"]["shape_error_m"]
+            - source_variant["endpoint_cloud_shape"]["shape_error_m"],
+            6,
+        ),
     }
     dominant_effect = classify_candidate_geometry_ablation(candidate_variant, source_variant, deltas)
+    endpoint_shape_interpretation = classify_endpoint_shape_delta(candidate_variant, source_variant, deltas)
     return {
         "ablation_status": "fixture_replay_ready",
         "record_path": display_path(record_path),
         "dominant_effect": dominant_effect,
+        "endpoint_shape_interpretation": endpoint_shape_interpretation,
         "source_aligned_variant": source_variant,
         "candidate_aligned_variant": candidate_variant,
         "deltas": deltas,
@@ -651,7 +668,124 @@ def build_ablation_variant(label: str, metrics: dict[str, Any]) -> dict[str, Any
         "runout_distance_error_m": float(metrics.get("runout_distance_error_m") or 0.0),
         "deposition_centroid_error_m": float(metrics.get("deposition_centroid_error_m") or 0.0),
         "deposition_cloud_overlap_fraction": float(metrics.get("deposition_cloud_overlap_fraction") or 0.0),
+        "endpoint_cloud_shape": endpoint_cloud_shape_from_metrics(metrics),
     }
+
+
+def endpoint_cloud_shape_from_metrics(metrics: dict[str, Any]) -> dict[str, float]:
+    mean_nearest = float(metrics.get("deposition_cloud_mean_nearest_error_m") or 0.0)
+    lateral_spread = float(metrics.get("lateral_spread_error_m") or 0.0)
+    centroid_error = float(metrics.get("deposition_centroid_error_m") or 0.0)
+    shape_error = mean_nearest + abs(lateral_spread)
+    return {
+        "mean_nearest_error_m": mean_nearest,
+        "lateral_spread_error_m": lateral_spread,
+        "shape_error_m": round(shape_error, 6),
+        "shape_to_centroid_error_ratio": round(shape_error / centroid_error, 6) if centroid_error else 0.0,
+    }
+
+
+def endpoint_cloud_metrics(
+    simulated_rows: list[dict[str, Any]],
+    observed_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    simulated_points = valid_xy_points(simulated_rows)
+    observed_points = valid_xy_points(observed_rows)
+    if not simulated_points or not observed_points:
+        return {
+            "metric_status": "blocked_missing_points",
+            "simulated_point_count": len(simulated_points),
+            "observed_point_count": len(observed_points),
+        }
+    simulated_spread = point_cloud_spread(simulated_points)
+    observed_spread = point_cloud_spread(observed_points)
+    nearest = nearest_neighbor_distances(simulated_points, observed_points)
+    return {
+        "metric_status": "ready",
+        "simulated_point_count": len(simulated_points),
+        "observed_point_count": len(observed_points),
+        "mean_nearest_error_m": round(sum(nearest) / len(nearest), 6),
+        "p95_nearest_error_m": round(percentile(nearest, 0.95), 6),
+        "simulated_radial_spread_rms_m": round(simulated_spread["radial_spread_rms_m"], 6),
+        "observed_radial_spread_rms_m": round(observed_spread["radial_spread_rms_m"], 6),
+        "radial_spread_error_m": round(abs(simulated_spread["radial_spread_rms_m"] - observed_spread["radial_spread_rms_m"]), 6),
+        "simulated_orientation_deg": round(simulated_spread["orientation_deg"], 6),
+        "observed_orientation_deg": round(observed_spread["orientation_deg"], 6),
+        "orientation_difference_deg": round(
+            orientation_difference_deg(simulated_spread["orientation_deg"], observed_spread["orientation_deg"]),
+            6,
+        ),
+    }
+
+
+def valid_xy_points(rows: list[dict[str, Any]]) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    for row in rows:
+        xy = row_xy(row)
+        if xy is not None:
+            points.append(xy)
+    return points
+
+
+def nearest_neighbor_distances(
+    simulated_points: list[tuple[float, float]],
+    observed_points: list[tuple[float, float]],
+) -> list[float]:
+    return [
+        min(math.hypot(x - obs_x, y - obs_y) for obs_x, obs_y in observed_points)
+        for x, y in simulated_points
+    ]
+
+
+def point_cloud_spread(points: list[tuple[float, float]]) -> dict[str, float]:
+    centroid_x = sum(x for x, _ in points) / len(points)
+    centroid_y = sum(y for _, y in points) / len(points)
+    centered = [(x - centroid_x, y - centroid_y) for x, y in points]
+    radial_spread_rms = math.sqrt(sum(x * x + y * y for x, y in centered) / len(centered))
+    if len(points) < 2:
+        return {"radial_spread_rms_m": radial_spread_rms, "orientation_deg": 0.0}
+    xx = sum(x * x for x, _ in centered) / len(centered)
+    yy = sum(y * y for _, y in centered) / len(centered)
+    xy = sum(x * y for x, y in centered) / len(centered)
+    orientation = 0.5 * math.degrees(math.atan2(2.0 * xy, xx - yy))
+    if orientation < 0.0:
+        orientation += 180.0
+    return {"radial_spread_rms_m": radial_spread_rms, "orientation_deg": orientation}
+
+
+def percentile(values: list[float], fraction: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, math.ceil(fraction * len(ordered)) - 1))
+    return ordered[index]
+
+
+def orientation_difference_deg(left: float, right: float) -> float:
+    raw = abs(left - right) % 180.0
+    return min(raw, 180.0 - raw)
+
+
+def classify_endpoint_shape_delta(
+    candidate_variant: dict[str, Any],
+    source_variant: dict[str, Any],
+    deltas: dict[str, float],
+) -> str:
+    centroid_delta = deltas["deposition_centroid_error_delta_candidate_minus_source_aligned_m"]
+    shape_delta = deltas["endpoint_shape_error_delta_candidate_minus_source_aligned_m"]
+    spread_delta = deltas["endpoint_lateral_spread_error_delta_candidate_minus_source_aligned_m"]
+    overlap_delta = deltas["deposition_overlap_delta_candidate_minus_source_aligned"]
+    candidate_shape = candidate_variant["endpoint_cloud_shape"]
+    source_shape = source_variant["endpoint_cloud_shape"]
+    if centroid_delta > 50.0 and shape_delta > 50.0 and overlap_delta < -0.1:
+        return "centroid_and_endpoint_shape_degrade_together"
+    if centroid_delta < -20.0 and shape_delta > 20.0:
+        return "centroid_improves_but_endpoint_shape_degrades"
+    if centroid_delta > 20.0 and shape_delta <= 0.0:
+        return "centroid_degrades_without_endpoint_shape_degradation"
+    if abs(spread_delta) > 20.0 and candidate_shape["shape_error_m"] > source_shape["shape_error_m"]:
+        return "spread_failure_dominates_endpoint_shape"
+    return "endpoint_shape_delta_inconclusive"
 
 
 def classify_candidate_geometry_ablation(
@@ -912,8 +1046,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         "  - "
         + f"status={ablation.get('ablation_status', 'unknown')}"
         + f" | dominant_effect={ablation.get('dominant_effect', 'unknown')}"
+        + f" | endpoint_shape={ablation.get('endpoint_shape_interpretation', 'unknown')}"
         + " | centroid_delta_m="
         + str(ablation_deltas.get("deposition_centroid_error_delta_candidate_minus_source_aligned_m", "unknown"))
+        + " | shape_delta_m="
+        + str(ablation_deltas.get("endpoint_shape_error_delta_candidate_minus_source_aligned_m", "unknown"))
         + " | runout_error_delta_m="
         + str(ablation_deltas.get("runout_distance_error_delta_candidate_minus_source_aligned_m", "unknown"))
         + f" | next_action={ablation.get('smallest_next_scientific_action', 'unknown')}"
