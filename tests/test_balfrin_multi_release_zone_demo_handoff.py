@@ -866,6 +866,38 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
         self.assertIsNone(first_blocker)
 
+    def test_diagnostic_no_submit_contract_ignores_unrelated_four_zone_efficiency_blocker(self) -> None:
+        report = {
+            "artifact_dir": "/scratch/mch/olifu/rust_rockfall/tb574_unblocked_16_zone_handoff",
+            "package_status": "ready",
+            "package_constraint_status": "warning",
+            "review_readiness_classification": "blocked_efficiency",
+            "review_readiness_reason": "single-job sufficiency or reducer scaling is not yet ready for the four-zone review package",
+            "authorization_review_command": "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --generate-only",
+            "authorization_submit_command": "PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --authorized-submit",
+            "constraint_pressure": {
+                "status": "warning",
+                "diagnostic_handoff_budget_accepted": True,
+                "requested_release_zone_batch_size": 16,
+                "requested_reducer_chunk_count": 2,
+                "requested_reducer_worker_count": 2,
+                "measured_constraints": {},
+            },
+            "follow_up_recommendation": {
+                "minimum_measured_multi_zone_run": {
+                    "output_mode": "rebuildable_reduced_output",
+                    "conditional_curve_export": "summary-only",
+                    "grid_csv_export": "none",
+                    "bounded_gis_cog_settings": {"no_plots": True},
+                }
+            },
+        }
+
+        contract = MODULE.build_no_submit_handoff_contract(report)
+
+        self.assertEqual(contract["status"], "ready_for_review")
+        self.assertIsNone(contract["first_blocker"])
+
     def test_missing_required_inputs_fail_closed_with_a_blocked_report(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"

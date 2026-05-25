@@ -3219,6 +3219,7 @@ def build_no_submit_handoff_contract(report: dict[str, Any]) -> dict[str, Any]:
     package_status = str(report.get("package_status") or "")
     constraint_status = str(report.get("package_constraint_status") or "")
     review_readiness = str(report.get("review_readiness_classification") or "")
+    diagnostic_handoff_accepted = bool(constraint_pressure.get("diagnostic_handoff_budget_accepted"))
     exact_review_command = str(report.get("authorization_review_command") or "")
     exact_submit_command = str(report.get("authorization_submit_command") or "")
 
@@ -3265,7 +3266,7 @@ def build_no_submit_handoff_contract(report: dict[str, Any]) -> dict[str, Any]:
                 ]
             ),
         }
-    elif review_readiness.startswith("blocked"):
+    elif review_readiness.startswith("blocked") and not diagnostic_handoff_accepted:
         blocker = {
             "status": review_readiness,
             "reason": report.get("review_readiness_reason") or "review package is not ready",
