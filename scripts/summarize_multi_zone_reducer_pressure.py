@@ -1451,6 +1451,7 @@ def build_merge_manifest(
     output_family_mix: tuple[str, ...],
 ) -> dict[str, Any]:
     outputs = ensure_list_of_mappings(output_manifest.get("outputs"), "output_manifest.outputs")
+    compact_manifest_mode = dict(output_manifest.get("manifest_encoding") or {}).get("mode") == "compact_v1"
     sorted_outputs = sorted(
         outputs,
         key=lambda entry: (
@@ -1472,11 +1473,12 @@ def build_merge_manifest(
     missing_rebuild_families = [
         family for family in expected_rebuild_families if family not in rebuild_compatible_families
     ]
+    merge_outputs = build_compact_merge_output_entries(sorted_outputs) if compact_manifest_mode else build_full_merge_output_entries(sorted_outputs, probe_root)
     return {
         "schema_version": "regional_split_merge_manifest_v1",
         "status": "merged_fixture_outputs",
-        "probe_root": str(probe_root),
-        "manifest_path": str(merge_manifest_path),
+        "probe_root": display_repo_or_absolute_path(probe_root),
+        "manifest_path": display_repo_or_absolute_path(merge_manifest_path),
         "split_count": regional_split_plan.get("split_count"),
         "merge_key_policy": regional_split_plan.get("merge_key_policy"),
         "merge_order": "sorted_chunk_id_then_output_family_then_path",
@@ -1485,17 +1487,9 @@ def build_merge_manifest(
         "merged_output_summary": {
             "file_count": sum(number_or_zero(entry.get("file_count")) for entry in sorted_outputs),
             "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in sorted_outputs),
+            "output_listing_mode": "compact_kind_index_bytes" if compact_manifest_mode else "full_path_listing",
         },
-        "outputs": [
-            {
-                "kind": str(entry.get("kind") or ""),
-                "path": merge_manifest_output_path(entry.get("path"), probe_root),
-                "file_count": number_or_zero(entry.get("file_count")),
-                "row_count": number_or_zero(entry.get("row_count")),
-                "total_bytes": number_or_zero(entry.get("total_bytes")),
-            }
-            for entry in sorted_outputs
-        ],
+        "outputs": merge_outputs,
         "claim_boundaries": {
             "fixture_backed": True,
             "generated_artifact_commit_required": False,
@@ -1504,6 +1498,70 @@ def build_merge_manifest(
             "operational_claims_allowed": False,
         },
     }
+
+
+def build_full_merge_output_entries(outputs: list[dict[str, Any]], probe_root: Path) -> list[dict[str, Any]]:
+    return [
+        {
+            "kind": str(entry.get("kind") or ""),
+            "path": merge_manifest_output_path(entry.get("path"), probe_root),
+            "file_count": number_or_zero(entry.get("file_count")),
+            "row_count": number_or_zero(entry.get("row_count")),
+            "total_bytes": number_or_zero(entry.get("total_bytes")),
+        }
+        for entry in outputs
+    ]
+
+
+def build_compact_merge_output_entries(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    compact_outputs: list[dict[str, Any]] = []
+    for entry in outputs:
+        compact_entry = {
+            "kind": str(entry.get("kind") or ""),
+            "total_bytes": number_or_zero(entry.get("total_bytes")),
+        }
+        zone_index = source_zone_index_from_path(entry.get("path"))
+        if zone_index is not None:
+            compact_entry["zone_index"] = zone_index
+        chunk_index = reducer_chunk_index_from_path(entry.get("path"))
+        if chunk_index is not None:
+            compact_entry["chunk_index"] = chunk_index
+        row_count = number_or_zero(entry.get("row_count"))
+        if row_count:
+            compact_entry["row_count"] = row_count
+        compact_outputs.append(compact_entry)
+    return compact_outputs
+
+
+def source_zone_index_from_path(path: Any) -> int | None:
+    text = str(path or "")
+    marker = "source_zone_"
+    if marker not in text:
+        return None
+    suffix = text.split(marker, 1)[1][:2]
+    try:
+        return int(suffix)
+    except ValueError:
+        return None
+
+
+def reducer_chunk_index_from_path(path: Any) -> int | None:
+    text = str(path or "")
+    marker = "reducer_chunk_"
+    if marker not in text:
+        return None
+    suffix = text.split(marker, 1)[1][:2]
+    try:
+        return int(suffix)
+    except ValueError:
+        return None
+
+
+def display_repo_or_absolute_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def merge_manifest_output_path(path: Any, probe_root: Path) -> str:

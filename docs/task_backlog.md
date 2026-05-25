@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-497: Reduce Eight-Zone Manifest Pressure Locally
-
-Goal: Reduce the remaining local eight-zone manifest-size blocker in the multi-zone scaling ladder.
-
-Capability gap reduced: Advances the local scale frontier beyond the current manifest-pressure limit without live cluster access.
-
-Why this outranks alternatives: TB-488 moved the first blocked rung to eight zones; shrinking that blocker directly improves local scalability.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- Profile or inspect the eight-zone manifest payload and remove one redundant field family or long path family using existing manifest structures.
-- Re-run the local ladder before/after and record whether the eight-zone rung improves or clears.
-
-Definition of done:
-
-- Focused multi-zone tests pass, before/after local ladder metrics are recorded in scratch output, and manifest size is measurably reduced without adding another report surface.
-
-Boundaries: Local manifest/output simplification only; no distributed execution, no Balfrin submission, no Swiss-wide claim, and no operational claim.
-
 ### TB-498: Optimize The Next Local Reducer Hotspot
 
 Goal: Profile the current local hazard/reducer path after the CSV writer optimization and remove the next measurable local hotspot.

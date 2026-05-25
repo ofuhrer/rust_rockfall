@@ -136,7 +136,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
         self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
         self.assertEqual(report["compact_manifest_recommendation"]["release_zone_count"], 12)
-        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -10386)
+        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -14618)
         self.assertEqual(report["compact_manifest_recommendation"]["output_file_count_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_bytes_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_file_count_delta"], 0)
@@ -257,11 +257,34 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
             self.assertEqual(first_merge, second_merge)
             output_order = [(entry["kind"], entry["path"]) for entry in first_merge["outputs"]]
             self.assertEqual(output_order, sorted(output_order))
-            self.assertEqual(set(first_merge["merged_output_summary"]), {"file_count", "byte_count"})
+            self.assertEqual(set(first_merge["merged_output_summary"]), {"file_count", "byte_count", "output_listing_mode"})
+            self.assertEqual(first_merge["merged_output_summary"]["output_listing_mode"], "full_path_listing")
             self.assertGreater(first_merge["merged_output_summary"]["file_count"], 0)
             self.assertGreater(first_merge["merged_output_summary"]["byte_count"], 0)
             self.assertNotIn("sample_support_summary", first_merge)
             self.assertNotIn("rebuild_compatible_output_families", first_merge)
+
+    def test_compact_merge_manifest_uses_kind_index_listing_without_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            probe_root = Path(tmpdir) / "probe"
+            MODULE.materialize_probe_root(
+                probe_root,
+                release_zone_count=8,
+                reducer_worker_count=2,
+                reducer_chunk_count=2,
+                manifest_mode="compact",
+            )
+            merge_manifest = json.loads(
+                (probe_root / "output" / "merged" / "regional_split_merge_manifest.json").read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(merge_manifest["merged_output_summary"]["output_listing_mode"], "compact_kind_index_bytes")
+        self.assertTrue(all("path" not in entry for entry in merge_manifest["outputs"]))
+        trajectory_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "trajectory_csv"]
+        reducer_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "reducer_chunk_manifest"]
+        self.assertEqual([entry["zone_index"] for entry in trajectory_entries], list(range(8)))
+        self.assertEqual([entry["chunk_index"] for entry in reducer_entries], [0, 1])
+        self.assertTrue(all(entry["total_bytes"] > 0 for entry in merge_manifest["outputs"]))
 
     def test_merge_manifest_ordering_is_stable_when_batch_plan_order_changes(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
