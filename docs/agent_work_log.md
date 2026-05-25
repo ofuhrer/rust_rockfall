@@ -7419,3 +7419,29 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local rebuildability only; no claim upgrade, no new dashboard, no operational semantics, no physics tuning, and no Balfrin dependency.
 - Next task: `TB-515`
+
+### TB-515: Reduce Scenario Table Memory Footprint
+
+- Date: 2026-05-25
+- Commit: `875830b`
+- Objective: reduce redundant local scenario-table materialization pressure while preserving deterministic freezer outputs.
+- Files changed: `scripts/generate_candidate_source_zone_scenarios.py`, `scripts/measure_scenario_storage_output_tier_pressure.py`, `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_candidate_source_zone_scenario_stress.py`, `tests/test_scenario_storage_output_tier_pressure.py`, `tests/test_management_aoi_scenario_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `retain_row_payloads` to `build_freezer_report`; compatibility remains the default, while pressure/report callers can omit duplicate in-memory `source_zone_metadata`, `release_rows`, `scenario_table_rows`, and `policy` payloads after writing deterministic files and compact manifests.
+  - Added `row_payload_materialization` accounting with before/after JSON-byte and field-count measurements plus a reconstruction contract.
+  - Kept compact freezer manifests deterministic by carrying compact scenario/release family cardinality instead of relying on retained full row lists.
+  - Updated scenario-storage and management AOI pressure reports to consume cardinality summaries when row payloads are omitted.
+  - Measured local scratch evidence: fixture freezer row payload report materialization dropped from `13466` bytes to `2`, and real AOI row payload report materialization dropped from `14533` bytes to `2`; deterministic CSV/manifest outputs remained present.
+  - Removed TB-515 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress.CandidateSourceZoneScenarioStressTests.test_freezer_can_omit_duplicate_row_payloads_after_writing_outputs tests.test_scenario_storage_output_tier_pressure -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_management_aoi_scenario_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json --json-output /tmp/tb515_scenario_storage_pressure.json > /tmp/tb515_scenario_storage_pressure_stdout.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_candidate_source_zone_scenario_stress tests.test_scenario_storage_output_tier_pressure tests.test_management_aoi_scenario_pressure -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/generate_candidate_source_zone_scenarios.py scripts/measure_scenario_storage_output_tier_pressure.py scripts/summarize_management_aoi_scenario_pressure.py tests/test_candidate_source_zone_scenario_stress.py tests/test_scenario_storage_output_tier_pressure.py tests/test_management_aoi_scenario_pressure.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local scenario generation only; no probability semantics change, no annual-frequency claim, no new storage report, no operational claim, and no Balfrin dependency.
+- Next task: `TB-516`
