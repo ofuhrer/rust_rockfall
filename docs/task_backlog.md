@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-564: Regenerate Current Regional Split Submission Package
-
-Goal: Rebuild the 12-split reduced-output regional Balfrin package against the synchronized Balfrin checkout.
-
-Capability gap reduced: Converts the current blocked `remote_head_mismatch` package into a reviewed current-HEAD submission candidate.
-
-Why this outranks alternatives: The package already reports ready authorization and accepted output budget except for HEAD alignment; this is the smallest unblock before a large measured run.
-
-Inspect first:
-
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `tests/test_balfrin_regional_split_submission_package.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `docs/balfrin_regional_split_run_root_metrics_tb448.md`
-
-Deliverables:
-
-- Generate a fresh no-submit regional split package under `/tmp/rust_rockfall/tb564_regional_split_package`.
-- Verify authorization preflight, output budget, compact manifest freshness, writable remote roots, and no-submit semantics.
-- Preserve the exact later submit command without executing it.
-
-Definition of done:
-
-- Focused package tests pass, the generated package reports `ready_for_bounded_postproc_submission`, and the first blocker is `none`.
-
-Boundaries: No `sbatch`, no live run, no distributed execution, no Swiss-wide claim, and no operational semantics.
-
 ### TB-565: Execute One Bounded Regional Split Postproc Run If Capacity Is Favorable
 
 Goal: Use the current Balfrin availability window to run exactly one reviewed 12-split reduced-output regional probe.
