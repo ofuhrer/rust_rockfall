@@ -8140,3 +8140,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: review triage only; no new source-zone algorithm, manual digitizing, GIS dependency, or validated candidate-selection claim.
 - Next task: `TB-545`
+
+### TB-545: Measure Local Candidate Scenario Cardinality Pressure
+
+- Date: 2026-05-25
+- Commit: `a318006`
+- Objective: report scenario count, expected trajectory count, and the first cardinality growth driver in local scenario previews.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `scripts/summarize_management_aoi_scenario_pressure.py`, `tests/test_aoi_scenario_preview.py`, `tests/test_management_aoi_scenario_pressure.py`
+- Implementation summary:
+  - Added `cardinality_pressure_summary` to AOI scenario preview outputs, selected-zone pressure outputs, and management AOI scenario pressure outputs.
+  - Each summary now reports scenario count, expected trajectory count, per-candidate trajectory count, cardinality factors, first growth driver, and recommended local response.
+  - Added per-row expected trajectory counts to preview rows.
+  - Added focused tests for tiny, multi-zone, selected-zone, zero-candidate, adjacent-candidate, and non-empty management AOI paths.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_scenario_preview tests.test_management_aoi_scenario_pressure -v`
+  - `PYENV_VERSION=system uv run python scripts/preview_aoi_scenario_cost_estimate.py --review-package tests/fixtures/aoi_scenario_preview/tiny_review_package.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: local pre-execution estimate only; no external compute, cluster submission, distributed execution, or scientific claim upgrade.
+- Next task: `TB-546`
