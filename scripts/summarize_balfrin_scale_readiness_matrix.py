@@ -24,6 +24,7 @@ from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
 from scripts import measure_scenario_storage_output_tier_pressure as scenario_pressure  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
+from scripts import summarize_balfrin_evidence_bundle as evidence_bundle  # noqa: E402
 from scripts import summarize_balfrin_next_live_run_decision_gate as decision_gate  # noqa: E402
 from scripts import summarize_balfrin_single_job_execution as single_job  # noqa: E402
 from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  # noqa: E402
@@ -1017,6 +1018,71 @@ def _regional_split_measured_row() -> dict[str, Any]:
     }
 
 
+def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | None:
+    if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
+        return None
+    release_zone_count = evidence.get("release_zone_count")
+    return {
+        "tier_id": f"diagnostic_{release_zone_count}_zone_reducer_pressure",
+        "tier_label": f"{release_zone_count}-zone diagnostic reducer-pressure run",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_diagnostic_reducer_pressure",
+        "classification": "measured_diagnostic_reducer_pressure",
+        "output_budget_status": "single_run_record_complete",
+        "output_pressure_status": "measured_diagnostic_output_pressure",
+        "reducer_pressure_status": "measured_diagnostic_reducer_pressure",
+        "execution_efficiency_status": "measured_postproc_diagnostic_run",
+        "hazard_execution_status": "no_hazard_execution_reducer_diagnostic_only",
+        "file_count": evidence.get("diagnostic_output_file_count"),
+        "bytes": evidence.get("diagnostic_output_bytes"),
+        "diagnostic_output_file_count": evidence.get("diagnostic_output_file_count"),
+        "diagnostic_output_bytes": evidence.get("diagnostic_output_bytes"),
+        "manifest_bytes": evidence.get("diagnostic_manifest_size_bytes"),
+        "root_file_count": evidence.get("diagnostic_root_file_count"),
+        "runtime_seconds": evidence.get("reducer_wall_time_seconds"),
+        "memory_peak_mb": evidence.get("memory_peak_mb"),
+        "run_root_preservation_status": evidence.get("preservation_gate_status"),
+        "replayability_status": evidence.get("required_run_root_entries_status"),
+        "authorization_status": "standing_postproc_clearance_used",
+        "next_evidence_field": "promote_diagnostic_run_record_ceiling",
+        "next_recommended_action": "update_measured_batch_ceiling_from_diagnostic_run_record",
+        "next_recommended_action_reason": (
+            "The simplified Balfrin diagnostic runner produced measured 16-zone reducer-pressure evidence; "
+            "the next step is to let reducer-pressure constraints consume this run record directly."
+        ),
+        "next_blocker_category": "stale_reducer_constraint_projection",
+        "blocker": None,
+        "current_blocker": None,
+        "summary": evidence.get("summary"),
+        "latest_measured_task": "simplified_balfrin_diagnostic_runner",
+        "job_id": evidence.get("slurm_job_id"),
+        "slurm": {
+            "job_id": evidence.get("slurm_job_id"),
+            "state": evidence.get("slurm_state"),
+            "exit_code": evidence.get("exit_code"),
+            "elapsed": evidence.get("elapsed"),
+        },
+        "run_root": evidence.get("run_root"),
+        "release_zone_count": release_zone_count,
+        "metrics_contract_status": "single_run_record_complete",
+        "preservation_status": evidence.get("preservation_gate_status"),
+        "required_run_root_entries_status": evidence.get("required_run_root_entries_status"),
+        "output_family_status": evidence.get("output_family_status"),
+        "source_report": first_source_path(evidence, "run_record.json"),
+        "claim_boundary": evidence.get("claim_boundary"),
+    }
+
+
+def first_source_path(evidence: dict[str, Any], default: str) -> str:
+    source_paths = evidence.get("source_paths")
+    if isinstance(source_paths, list):
+        for path in source_paths:
+            text = str(path or "").strip()
+            if text:
+                return text
+    return default
+
+
 def _postproc_microbenchmark_row() -> dict[str, Any]:
     return {
         "tier_id": "postproc_microbenchmark",
@@ -1139,6 +1205,8 @@ def build_report() -> dict[str, Any]:
     single_job_summary = single_job.build_summary()
     decision_report = _decision_gate_summary_for_scale_matrix()
     regional_split_projection_delta_summary = _regional_split_projection_delta_summary()
+    latest_multi_zone_evidence = evidence_bundle.build_latest_multi_zone_balfrin_evidence()
+    diagnostic_row = _diagnostic_run_record_row(latest_multi_zone_evidence)
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
@@ -1148,6 +1216,7 @@ def build_report() -> dict[str, Any]:
         _two_zone_preserved_row(),
         _management_aoi_failed_closed_row(),
         _regional_split_measured_row(),
+        *([diagnostic_row] if diagnostic_row is not None else []),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
         _scratch_local_reducer_row(),

@@ -304,6 +304,47 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertEqual(partial["next_blocker"], "partial_multi_zone_evidence_incomplete")
         self.assertIn("remains incomplete", partial["summary"])
 
+    def test_diagnostic_run_record_promotes_to_measured_multi_zone_evidence(self) -> None:
+        record = {
+            "schema_version": "balfrin_diagnostic_run_record_v1",
+            "status": "completed",
+            "run_id": "diagnostic_16_zone_simplified_20260525",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525",
+            "git_head": "665971e",
+            "job_id": "4367731",
+            "terminal_state": "COMPLETED",
+            "diagnostic_shape": {"release_zone_count": 16},
+            "collection": {
+                "status": "complete",
+                "time_verbose": {"elapsed": "0:01.24", "max_rss_mb": 34.066},
+                "pressure_report": {
+                    "status": "measured_scratch_root",
+                    "release_zone_count": 16,
+                    "output_file_count": 52,
+                    "output_byte_count": 23661,
+                    "manifest_size_bytes": 15898,
+                    "root_file_count": 57,
+                    "reducer_wall_time_seconds": 3.07,
+                    "recommended_reducer_constraints": {"simultaneous_release_zone_batch_max": 8},
+                },
+            },
+        }
+
+        evidence = bundle.build_multi_zone_balfrin_evidence(record)
+
+        self.assertEqual(evidence["status"], "measured")
+        self.assertEqual(evidence["evidence_type"], "measured")
+        self.assertEqual(evidence["root_class"], "measured_multi_zone_balfrin_root")
+        self.assertEqual(evidence["release_zone_count"], 16)
+        self.assertEqual(evidence["slurm_job_id"], "4367731")
+        self.assertEqual(evidence["slurm_state"], "COMPLETED")
+        self.assertEqual(evidence["elapsed"], "0:01.24")
+        self.assertEqual(evidence["memory_peak_mb"], 34.066)
+        self.assertEqual(evidence["diagnostic_output_file_count"], 52)
+        self.assertEqual(evidence["diagnostic_output_bytes"], 23661)
+        self.assertEqual(evidence["diagnostic_manifest_size_bytes"], 15898)
+        self.assertEqual(evidence["next_blocker"], "none")
+
     def test_metrics_evidence_state_propagates_recovered_run_root_fields(self) -> None:
         summary = self.single_job_summary()
         summary["metrics_contract"]["status"] = "complete"

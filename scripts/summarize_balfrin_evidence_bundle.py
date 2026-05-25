@@ -31,6 +31,9 @@ SCHEMA_VERSION = "balfrin_evidence_bundle_v1"
 GIS_COG_PARITY_SCHEMA_VERSION = "balfrin_gis_cog_parity_report_v1"
 GIS_COG_SCOPE_SCHEMA_VERSION = "balfrin_gis_cog_scope_report_v1"
 CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"
+DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json"
+)
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
 FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
@@ -302,6 +305,21 @@ def load_evidence_override(path: Path | None) -> dict[str, Any] | None:
     return data
 
 
+def load_json_object(path: Path) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
+    record = load_json_object(DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD)
+    if record is not None:
+        return build_multi_zone_balfrin_evidence(record)
+    return dict(TB565_REGIONAL_SPLIT_PROBE)
+
+
 def _metrics_completion_source(single_job_summary: dict[str, Any], probe_metrics_status: str) -> str:
     explicit_source = single_job_summary.get("metrics_completion_source")
     if isinstance(explicit_source, str) and explicit_source in ALLOWED_METRICS_COMPLETION_SOURCES:
@@ -450,7 +468,7 @@ def build_current_report() -> dict[str, Any]:
         build_post_run_evidence(single_job_summary=single_job_summary, gis_report=gis_report, probe_metrics=probe_metrics)
     )
     source_paths = build_source_paths(single_job_summary=single_job_summary, gis_report=gis_report)
-    source_paths["multi_zone_balfrin_evidence"] = dict(TB565_REGIONAL_SPLIT_PROBE)
+    source_paths["multi_zone_balfrin_evidence"] = build_latest_multi_zone_balfrin_evidence()
     return build_bundle_report(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
@@ -609,6 +627,8 @@ def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
         return classify_multi_zone_balfrin_root({"run_root": evidence, "source_paths": [evidence]})
     if not isinstance(evidence, dict):
         return dict(TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE)
+    if evidence.get("schema_version") == "balfrin_diagnostic_run_record_v1":
+        return classify_multi_zone_balfrin_root(convert_diagnostic_run_record_to_evidence(evidence))
     if evidence.get("status") == "partial" or evidence.get("evidence_type") == "partial":
         payload = dict(TB352_MULTI_ZONE_PARTIAL_EVIDENCE)
         payload.update(evidence)
@@ -674,6 +694,56 @@ def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
         payload["next_blocker"] = f"blocked_reducer_budget:{payload['first_bottleneck_label']}"
         return payload
     return classify_multi_zone_balfrin_root(evidence)
+
+
+def convert_diagnostic_run_record_to_evidence(record: dict[str, Any]) -> dict[str, Any]:
+    collection = dict(record.get("collection") or {})
+    pressure = dict(collection.get("pressure_report") or {})
+    time_verbose = dict(collection.get("time_verbose") or {})
+    measured = (
+        record.get("status") == "completed"
+        and record.get("terminal_state") == "COMPLETED"
+        and collection.get("status") == "complete"
+        and pressure.get("status") == "measured_scratch_root"
+    )
+    return {
+        "status": "measured" if measured else "partial",
+        "evidence_type": "measured" if measured else "partial",
+        "root_class": "measured_multi_zone_balfrin_root" if measured else "partial_multi_zone_root",
+        "run_id": record.get("run_id"),
+        "run_root": record.get("run_root"),
+        "source_paths": [str(DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD)],
+        "git_commit": record.get("git_head"),
+        "slurm_job_id": record.get("job_id"),
+        "slurm_state": record.get("terminal_state"),
+        "exit_code": "0:0" if record.get("terminal_state") == "COMPLETED" else None,
+        "elapsed": time_verbose.get("elapsed"),
+        "memory_peak_mb": time_verbose.get("max_rss_mb"),
+        "total_wall_seconds": pressure.get("reducer_wall_time_seconds"),
+        "release_zone_count": pressure.get("release_zone_count")
+        or dict(record.get("diagnostic_shape") or {}).get("release_zone_count"),
+        "diagnostic_output_file_count": pressure.get("output_file_count"),
+        "diagnostic_output_bytes": pressure.get("output_byte_count"),
+        "diagnostic_manifest_size_bytes": pressure.get("manifest_size_bytes"),
+        "diagnostic_root_file_count": pressure.get("root_file_count"),
+        "reducer_wall_time_seconds": pressure.get("reducer_wall_time_seconds"),
+        "recommended_reducer_constraints": pressure.get("recommended_reducer_constraints"),
+        "metrics_json_promoted": measured,
+        "preservation_checked": measured,
+        "preservation_gate_promoted": measured,
+        "post_run_collector_promoted": measured,
+        "preservation_gate_status": "single_run_record_complete" if measured else "incomplete_run_record",
+        "required_run_root_entries_status": "complete" if measured else "incomplete",
+        "output_family_status": "diagnostic_reducer_outputs_measured" if measured else "incomplete",
+        "authorization_status": "standing_postproc_clearance_used",
+        "output_mode": "diagnostic_reducer_pressure",
+        "claim_boundary": "measured reducer-pressure diagnostic evidence only; no operational or physical-probability claim",
+        "summary": (
+            "The simplified Balfrin diagnostic runner completed one 16-zone postproc reducer-pressure measurement and stored one run record."
+            if measured
+            else "The simplified Balfrin diagnostic run record is present but incomplete."
+        ),
+    }
 
 
 def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict[str, Any]:
@@ -814,6 +884,12 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         "validation_output_bytes": evidence.get("validation_output_bytes"),
         "hazard_output_file_count": evidence.get("hazard_output_file_count"),
         "hazard_output_bytes": evidence.get("hazard_output_bytes"),
+        "diagnostic_output_file_count": evidence.get("diagnostic_output_file_count"),
+        "diagnostic_output_bytes": evidence.get("diagnostic_output_bytes"),
+        "diagnostic_manifest_size_bytes": evidence.get("diagnostic_manifest_size_bytes"),
+        "diagnostic_root_file_count": evidence.get("diagnostic_root_file_count"),
+        "reducer_wall_time_seconds": evidence.get("reducer_wall_time_seconds"),
+        "recommended_reducer_constraints": evidence.get("recommended_reducer_constraints"),
         "conditional_curve_row_count": evidence.get("conditional_curve_row_count"),
         "required_run_root_entries_status": evidence.get("required_run_root_entries_status"),
         "output_family_status": evidence.get("output_family_status"),
@@ -825,6 +901,8 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         "preservation_gate_promoted": bool(evidence.get("preservation_gate_promoted")),
         "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
         "authorization_status": evidence.get("authorization_status"),
+        "output_mode": evidence.get("output_mode"),
+        "claim_boundary": evidence.get("claim_boundary"),
         "source_paths": source_paths,
         "next_blocker": (
             "none"
