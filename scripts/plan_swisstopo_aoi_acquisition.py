@@ -225,6 +225,19 @@ def build_report(
         "aoi_tile_discovery": aoi_tile_discovery,
         "tile_manifest": tile_manifest,
         "product_manifest": product_manifest,
+        "real_aoi_acquisition_dry_run_manifest": build_real_aoi_acquisition_dry_run_manifest(
+            candidate_site_id=candidate_site_id,
+            candidate_site_name=candidate_site_name,
+            selection_rationale=selection_rationale,
+            site_extent=site_extent,
+            aoi_definition_status=aoi_definition_status,
+            tile_manifest=tile_manifest,
+            product_rows=product_rows,
+            metadata_rows=metadata_rows,
+            unresolved_acquisition_decisions=unresolved_acquisition_decisions,
+            expected_staging_paths=expected_staging_paths,
+            acquisition_command_set=acquisition_command_set,
+        ),
         "acquisition_command_set": acquisition_command_set,
         "local_public_context_staging_dry_run": build_local_public_context_staging_dry_run(
             candidate_site_id=candidate_site_id,
@@ -248,6 +261,69 @@ def build_report(
         "operational_claims_allowed": False,
     }
     return report
+
+
+def build_real_aoi_acquisition_dry_run_manifest(
+    *,
+    candidate_site_id: str,
+    candidate_site_name: str,
+    selection_rationale: str,
+    site_extent: dict[str, Any],
+    aoi_definition_status: str,
+    tile_manifest: dict[str, Any],
+    product_rows: list[dict[str, Any]],
+    metadata_rows: list[dict[str, Any]],
+    unresolved_acquisition_decisions: list[dict[str, Any]],
+    expected_staging_paths: dict[str, str],
+    acquisition_command_set: dict[str, Any],
+) -> dict[str, Any]:
+    missing_or_deferred = [
+        row
+        for row in [*product_rows, *metadata_rows]
+        if row.get("required") and row.get("current_status") != "ready"
+    ]
+    next_actions = [
+        {
+            "action_id": decision["decision_id"],
+            "category": decision["category"],
+            "product": decision["product"],
+            "expected_staged_path": decision["expected_staged_path"],
+            "action": decision["decision_type"],
+            "status": "blocked_until_public_input_is_staged",
+        }
+        for decision in unresolved_acquisition_decisions
+    ]
+    no_download_boundary = {
+        "downloads_authorized": False,
+        "local_copy_authorized": False,
+        "manifest_mutation_authorized": False,
+        "download_command_requires_explicit_flag": "--mode download --download",
+        "dry_run_command": acquisition_command_set.get("dry_run_stage_command", ""),
+    }
+    return {
+        "schema_version": "real_aoi_public_geodata_acquisition_dry_run_manifest_v1",
+        "dry_run_status": (
+            "actionable_blocked_acquisition_report"
+            if aoi_definition_status == "ready"
+            else "blocked_missing_aoi_definition"
+        ),
+        "candidate_site_id": candidate_site_id,
+        "candidate_site_name": candidate_site_name if candidate_site_name != "unspecified" else "placeholder_second_site",
+        "real_aoi_metadata_status": "real_aoi_metadata_only" if selection_rationale and site_extent else "blocked_missing_aoi_metadata",
+        "synthetic_fixture_used_as_evidence": False,
+        "site_extent": site_extent if site_extent else "placeholder_extent_missing",
+        "tile_ids": list(tile_manifest.get("tile_ids") or []),
+        "required_product_count": sum(1 for row in product_rows if row.get("required")),
+        "required_metadata_count": sum(1 for row in metadata_rows if row.get("required")),
+        "missing_or_deferred_input_count": len(missing_or_deferred),
+        "required_public_geodata_products": product_rows,
+        "required_metadata_records": metadata_rows,
+        "expected_staging_paths": expected_staging_paths,
+        "missing_or_deferred_inputs": missing_or_deferred,
+        "next_acquisition_actions": next_actions,
+        "no_download_boundary": no_download_boundary,
+        "claim_boundaries": PREFLIGHT.claim_boundaries(),
+    }
 
 
 def build_local_public_context_staging_dry_run(
@@ -672,6 +748,9 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("product_manifest:")
     lines.extend(render_manifest_rows(report.get("product_manifest") or {}))
     lines.append("")
+    lines.append("real_aoi_acquisition_dry_run_manifest:")
+    lines.extend(render_real_aoi_dry_run_manifest_rows(report.get("real_aoi_acquisition_dry_run_manifest") or {}))
+    lines.append("")
     lines.append("acquisition_command_set:")
     lines.extend(render_acquisition_command_set_rows(report.get("acquisition_command_set") or {}))
     lines.append("")
@@ -709,6 +788,32 @@ def render_text_report(report: dict[str, Any]) -> str:
         for key, path in report["acquisition_package_paths"].items():
             lines.append(f"- {key}: {path}")
     return "\n".join(lines)
+
+
+def render_real_aoi_dry_run_manifest_rows(report: dict[str, Any]) -> list[str]:
+    if not report:
+        return ["- none"]
+    rendered = [
+        f"- schema_version: {report.get('schema_version', '')}",
+        f"- dry_run_status: {report.get('dry_run_status', '')}",
+        f"- real_aoi_metadata_status: {report.get('real_aoi_metadata_status', '')}",
+        f"- synthetic_fixture_used_as_evidence: {report.get('synthetic_fixture_used_as_evidence', '')}",
+        f"- missing_or_deferred_input_count: {report.get('missing_or_deferred_input_count', 0)}",
+    ]
+    rendered.append("- tile_ids:")
+    rendered.extend(f"  - {tile_id}" for tile_id in report.get("tile_ids", []))
+    rendered.append("- next_acquisition_actions:")
+    for entry in report.get("next_acquisition_actions") or []:
+        rendered.append(
+            f"  - {entry.get('category', '')}: action={entry.get('action', '')}, "
+            f"expected_staged_path={entry.get('expected_staged_path', '')}"
+        )
+    if not report.get("next_acquisition_actions"):
+        rendered.append("  - none")
+    rendered.append("- no_download_boundary:")
+    for key, value in (report.get("no_download_boundary") or {}).items():
+        rendered.append(f"  - {key}: {value}")
+    return rendered
 
 
 def render_rows(rows: list[dict[str, Any]]) -> list[str]:

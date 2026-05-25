@@ -104,6 +104,30 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertEqual(report["tile_manifest"]["tile_ids"], ["2793-1180"])
         self.assertEqual(report["product_manifest"]["schema_version"], "swisstopo_aoi_public_geodata_product_manifest_v1")
         self.assertTrue(report["product_manifest"]["terrain_rows"])
+        dry_run_manifest = report["real_aoi_acquisition_dry_run_manifest"]
+        self.assertEqual(
+            dry_run_manifest["schema_version"],
+            "real_aoi_public_geodata_acquisition_dry_run_manifest_v1",
+        )
+        self.assertEqual(dry_run_manifest["dry_run_status"], "actionable_blocked_acquisition_report")
+        self.assertEqual(dry_run_manifest["real_aoi_metadata_status"], "real_aoi_metadata_only")
+        self.assertFalse(dry_run_manifest["synthetic_fixture_used_as_evidence"])
+        self.assertEqual(dry_run_manifest["tile_ids"], ["2793-1180"])
+        self.assertEqual(dry_run_manifest["missing_or_deferred_input_count"], 6)
+        self.assertEqual(
+            [entry["category"] for entry in dry_run_manifest["next_acquisition_actions"]],
+            [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisstlm3d_metadata",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+        )
+        self.assertFalse(dry_run_manifest["no_download_boundary"]["downloads_authorized"])
+        self.assertFalse(dry_run_manifest["no_download_boundary"]["local_copy_authorized"])
+        self.assertIn("--mode dry-run", dry_run_manifest["no_download_boundary"]["dry_run_command"])
         self.assertTrue(
             any("do not commit raw swisstopo inputs" in warning for warning in report["generated_root_warnings"])
         )
@@ -330,6 +354,8 @@ class SwisstopoAoiAcquisitionPlannerTests(unittest.TestCase):
         self.assertIn("schema_version: swisstopo_aoi_acquisition_dry_run_v1", text_report)
         self.assertIn("public_geodata_workflow_contract:", text_report)
         self.assertIn("acquisition_command_set:", text_report)
+        self.assertIn("real_aoi_acquisition_dry_run_manifest:", text_report)
+        self.assertIn("synthetic_fixture_used_as_evidence: False", text_report)
         self.assertIn("local_public_context_staging_dry_run:", text_report)
         self.assertIn("missing_public_context_input_count: 6", text_report)
         self.assertIn("dry_run_stage_command:", text_report)

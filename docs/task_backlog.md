@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-562: Measure Real-AOI Public-Geodata Acquisition Dry Run
-
-Goal: Exercise the public-geodata acquisition/staging dry-run path for a real AOI without downloading or claiming readiness.
-
-Capability gap reduced: Moves Swiss-wide portability from fixture semantics toward real AOI acquisition planning.
-
-Why this outranks alternatives: Public-geodata acquisition and staging remain the largest practical gap before arbitrary target-area preparation.
-
-Inspect first:
-
-- `docs/swisstopo_data_strategy.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-
-Deliverables:
-
-- A deterministic dry-run manifest listing required swisstopo products, expected staging roots, missing inputs, and next acquisition actions for one real AOI.
-- Focused tests or fixture assertions for blocked/no-download behavior.
-
-Definition of done:
-
-- The dry-run command produces an actionable blocked/acquisition report without using synthetic fixtures as evidence.
-
-Boundaries: No downloads unless explicitly authorized later, no second-site ensemble, no operational or validation claim.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
