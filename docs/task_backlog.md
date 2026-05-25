@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-542: Add Deterministic Energy-Budget Checks To Minimal Smoke
-
-Goal: Verify that the minimal trajectory smoke preserves deterministic sample count and bounded energy fields.
-
-Capability gap reduced: Adds a physics-adjacent regression check to the local smoke path instead of validating only file existence.
-
-Why this outranks alternatives: Energy and sample-count regressions would undermine every downstream hazard layer, and they are cheap to catch locally.
-
-Inspect first:
-
-- `examples/inclined_plane.json`
-- `tests/terrain_edge_cases.rs`
-- `src/main.rs`
-- `src/io.rs`
-
-Deliverables:
-
-- Add or tighten a Rust test around the existing inclined-plane example that checks deterministic sample count and finite, bounded energy outputs.
-- Keep the test small enough for normal local and GitHub Actions runs.
-
-Definition of done:
-
-- `cargo test` for the focused Rust test passes and would fail on non-finite or unexpectedly unbounded energy output.
-
-Boundaries: No physics model rewrite, no parameter tuning, no new example family, and no performance-heavy ensemble.
-
 ### TB-543: Tighten Same-Scale Uncertainty Summary Around Scientific Decision Thresholds
 
 Goal: Make same-scale uncertainty summaries identify which layer differences affect interpretation and which are diagnostic-only.

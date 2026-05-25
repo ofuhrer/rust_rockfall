@@ -3,9 +3,10 @@
 
 use rust_rockfall::terrain::{ClampedDemGrid, DemGrid, Terrain, TerrainError};
 use rust_rockfall::{
-    simulate_one_trajectory, RoughnessModel, SimulationConfig, SphereBlock, TerrainConfig,
+    io, simulate_one_trajectory, RoughnessModel, SimulationConfig, SphereBlock, TerrainConfig,
     TrajectoryRequest, TrajectoryRun,
 };
+use std::path::Path;
 
 // ─── DEM header / construction errors ─────────────────────────────────────
 
@@ -163,6 +164,68 @@ fn python_generated_plane_fixture_replays_deterministically_in_rust() {
         "max kinetic energy drifted out of fixture envelope: {}",
         first.summary.max_kinetic_energy_j
     );
+}
+
+#[test]
+fn readme_inclined_plane_smoke_preserves_sample_count_and_energy_budget() {
+    let config_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/inclined_plane.json");
+    let config = io::read_config(&config_path).unwrap();
+    let run = config.run().unwrap();
+
+    assert_eq!(run.samples.len(), 2001);
+    let max_speed_mps = run
+        .samples
+        .iter()
+        .map(|sample| sample.speed_mps)
+        .fold(0.0, f64::max);
+    let max_kinetic_j = run
+        .samples
+        .iter()
+        .map(|sample| sample.kinetic_j)
+        .fold(0.0, f64::max);
+    assert!(max_speed_mps.is_finite());
+    assert!(
+        max_speed_mps <= 15.0,
+        "unexpected speed spike: {max_speed_mps}"
+    );
+    assert!(max_kinetic_j.is_finite());
+    assert!(max_kinetic_j >= 0.0);
+    assert!(
+        max_kinetic_j <= 90_000.0,
+        "unexpected kinetic-energy spike: {max_kinetic_j}"
+    );
+
+    for sample in &run.samples {
+        assert!(sample.time_s.is_finite(), "non-finite sample time");
+        assert!(sample.speed_mps.is_finite(), "non-finite sample speed");
+        assert!(sample.kinetic_j.is_finite(), "non-finite kinetic energy");
+        assert!(
+            sample.rotational_j.is_finite(),
+            "non-finite rotational energy"
+        );
+        assert!(
+            sample.potential_j.is_finite(),
+            "non-finite potential energy"
+        );
+        assert!(sample.total_energy_j.is_finite(), "non-finite total energy");
+        assert!(sample.kinetic_j >= 0.0, "negative kinetic energy");
+        assert!(sample.rotational_j >= 0.0, "negative rotational energy");
+        assert!(
+            sample.speed_mps <= 15.0,
+            "sample speed exceeded budget: {}",
+            sample.speed_mps
+        );
+        assert!(
+            sample.kinetic_j <= 90_000.0,
+            "sample kinetic energy exceeded budget: {}",
+            sample.kinetic_j
+        );
+        assert!(
+            sample.total_energy_j.abs() <= 130_000.0,
+            "sample total energy exceeded budget: {}",
+            sample.total_energy_j
+        );
+    }
 }
 
 // ─── DemGrid cell-center coordinate helpers ────────────────────────────────
