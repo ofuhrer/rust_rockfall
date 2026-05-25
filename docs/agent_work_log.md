@@ -7674,3 +7674,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: documentation/interface classification only; no new command wrapper, no workflow claim change, no operational claim, and no Balfrin dependency.
 - Next task: `TB-525`
+
+### TB-525: Collapse README Documentation Map
+
+- Date: 2026-05-25
+- Commit: `a1bdcb3`
+- Objective: reduce README navigation load by replacing the broad documentation map with a short start-here path.
+- Files changed: `README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Replaced the 10-link README documentation map with a five-link `Start Here` section.
+  - Kept setup, AOI use, detailed project context, maturity/claim boundaries, and agent/backlog navigation reachable from the root front door.
+  - Relied on `docs/project_overview.md` for the deeper documentation map and `AGENTS.md` for active backlog/orchestration routing.
+  - Reduced the README from 158 lines to 141 lines while preserving the front-door quick-start and public command-surface sections.
+  - Removed TB-525 from the active backlog.
+- Checks run:
+  - `wc -l README.md`
+  - `rg -n "docs/(onboarding|aoi_user_manual|project_overview|current_maturity_snapshot)\\.md|AGENTS\\.md|docs/task_backlog\\.md|docs/validation_maturity_framework\\.md" README.md docs/project_overview.md AGENTS.md`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: documentation simplification only; no new doc file, no scientific claim upgrade, and no Balfrin dependency.
+- Next task: `TB-526`
