@@ -39,6 +39,415 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
+### TB-563: Sync Balfrin Checkout And Capture Live Capacity Window
+
+Goal: Align Balfrin with current `origin/main` and capture whether the `postproc` partition is actually available for opportunistic large-scale work.
+
+Capability gap reduced: Removes remote-head drift and prevents stale package generation or unsafe submission decisions.
+
+Why this outranks alternatives: The latest regional split package is currently blocked only by remote HEAD mismatch, and a large run should not be attempted without a fresh queue/capacity snapshot.
+
+Inspect first:
+
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `docs/orchestration_strategy.md`
+- `docs/balfrin_skills.md`
+
+Deliverables:
+
+- Fast-forward `/users/olifu/work/rust_rockfall` on Balfrin to current `origin/main`.
+- Record a fresh Balfrin access preflight and a `postproc` queue/capacity snapshot under `/tmp`.
+- Classify whether the current queue state is `run_now`, `run_soon`, or `defer_due_to_capacity`.
+
+Definition of done:
+
+- Remote checkout hygiene is `pass`, remote HEAD matches local `origin/main`, the queue snapshot is captured with absolute timestamps, and the task is removed only if the run-window classification is explicit.
+
+Boundaries: No `sbatch`, no generated artifact deletion, no non-postproc work, no scale-up claim, and no operational claim.
+
+### TB-564: Regenerate Current Regional Split Submission Package
+
+Goal: Rebuild the 12-split reduced-output regional Balfrin package against the synchronized Balfrin checkout.
+
+Capability gap reduced: Converts the current blocked `remote_head_mismatch` package into a reviewed current-HEAD submission candidate.
+
+Why this outranks alternatives: The package already reports ready authorization and accepted output budget except for HEAD alignment; this is the smallest unblock before a large measured run.
+
+Inspect first:
+
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `tests/test_balfrin_regional_split_submission_package.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `docs/balfrin_regional_split_run_root_metrics_tb448.md`
+
+Deliverables:
+
+- Generate a fresh no-submit regional split package under `/tmp/rust_rockfall/tb564_regional_split_package`.
+- Verify authorization preflight, output budget, compact manifest freshness, writable remote roots, and no-submit semantics.
+- Preserve the exact later submit command without executing it.
+
+Definition of done:
+
+- Focused package tests pass, the generated package reports `ready_for_bounded_postproc_submission`, and the first blocker is `none`.
+
+Boundaries: No `sbatch`, no live run, no distributed execution, no Swiss-wide claim, and no operational semantics.
+
+### TB-565: Execute One Bounded Regional Split Postproc Run If Capacity Is Favorable
+
+Goal: Use the current Balfrin availability window to run exactly one reviewed 12-split reduced-output regional probe.
+
+Capability gap reduced: Moves regional feasibility from one historical measured run root toward a current, reproducible, package-gated large-run measurement.
+
+Why this outranks alternatives: A current reviewed package plus a favorable queue window is the highest-leverage way to demonstrate Balfrin efficiency and feasibility.
+
+Inspect first:
+
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `scripts/submit_balfrin_probe.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- Submit exactly one `postproc` job using the reviewed TB-564 package only if TB-563 classifies the window as `run_now` or `run_soon`.
+- Actively monitor the job to terminal state.
+- Record SLURM job id, state, exit code, elapsed time, MaxRSS, run root, package hashes, and queue context.
+
+Definition of done:
+
+- The job reaches `COMPLETED` with exit `0:0`, or a failed/blocked state is captured with exact scheduler/package diagnostics and no ambiguous partial promotion.
+
+Boundaries: One job only; `postproc` only; do not keep the partition fully busy for more than 6 hours; no distributed execution, no non-postproc partition, no operational claim, and no Swiss-wide claim.
+
+### TB-566: Collect And Preserve Regional Split Run Metrics
+
+Goal: Collect complete run-root metrics and preservation evidence from the TB-565 regional split run.
+
+Capability gap reduced: Turns a completed scheduler job into durable measured evidence usable by feasibility, performance, and demonstration surfaces.
+
+Why this outranks alternatives: Raw SLURM success is not enough; the project needs preserved validation, hazard, reducer, output-family, and memory/runtime evidence.
+
+Inspect first:
+
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_probe_preservation_gate.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/balfrin_failure_recovery_playbook.md`
+
+Deliverables:
+
+- Run the metrics collector on the TB-565 run root.
+- Run preservation and output-budget audits on the same run root.
+- Write a share-safe run report in `docs/` with job, metrics, output counts, memory, wall time, preservation, and output-budget status.
+
+Definition of done:
+
+- Metrics contract is `complete`, preservation is `ready_for_demonstration_evidence`, required run-root entries are complete, and the run report names any remaining blockers without claim upgrades.
+
+Boundaries: Evidence collection only; no rerun, no operational claim, no annual-frequency claim, no physical-probability claim, and no distributed-execution claim.
+
+### TB-567: Promote Current Regional Split Evidence Into Decision Surfaces
+
+Goal: Thread the TB-566 measured regional split evidence into the evidence bundle, scale readiness matrix, and next live-run decision gate.
+
+Capability gap reduced: Prevents stale recommendations after the new measured Balfrin run and keeps management/demo surfaces aligned with actual evidence.
+
+Why this outranks alternatives: The current decision gate still ranks reducer-pressure optimization from local scratch evidence; that must be recomputed after a current measured large run.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
+- `tests/test_balfrin_evidence_bundle.py`
+- `tests/test_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Promote the TB-566 run as current regional split evidence with job id, run root, output footprints, memory, and preservation status.
+- Refresh scale-readiness and next-action logic without upgrading scientific claims.
+- Add focused tests proving the new measured evidence is current and recommendation boundaries remain closed.
+
+Definition of done:
+
+- Focused tests pass, decision surfaces no longer rely on stale TB-448/TB-557-only evidence for the regional branch, and the next recommended action is justified by measured TB-566 data.
+
+Boundaries: Evidence promotion only; no new run, no operational claim, no scale-up authorization, and no physical-probability claim.
+
+### TB-568: Quantify Current Balfrin Efficiency Against CI And Historical Runs
+
+Goal: Compare the TB-566 Balfrin regional split runtime, memory, and output footprint against CI performance, TB-557, TB-448, and local projections.
+
+Capability gap reduced: Produces a concrete efficiency narrative rather than isolated job records.
+
+Why this outranks alternatives: A full demonstration needs to show not only that a run completed, but how efficiently it completed relative to known baselines.
+
+Inspect first:
+
+- `scripts/performance_ci_tracking.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `docs/performance_ci_tracking.md`
+- `docs/balfrin_bounded_reduced_output_run_tb557.md`
+- `docs/balfrin_regional_split_run_root_metrics_tb448.md`
+
+Deliverables:
+
+- Add or update a compact performance comparison surface that reports normalized wall time, MaxRSS, output bytes, file counts, and trajectory/conditional-row counts across current and historical runs.
+- Include the exact command that regenerates the comparison.
+- Keep CI timings separate from Balfrin scheduler timings.
+
+Definition of done:
+
+- Focused tests pass and the comparison reports clear efficiency deltas without mixing CI diagnostics, Balfrin measured evidence, and scientific validation claims.
+
+Boundaries: Analysis only; no run, no operational claim, no physical-probability claim, and no benchmark-as-validation claim.
+
+### TB-569: Build A 16-Zone Reduced-Output Handoff Without Submission
+
+Goal: Create a no-submit 16-zone reduced-output Balfrin handoff to test whether the next scale step is package-ready.
+
+Capability gap reduced: Identifies whether the next larger single-node/postproc step is blocked by reducer pressure, output budget, manifest size, or authorization before any live run.
+
+Why this outranks alternatives: Current projections name a 10-zone single-AOI planning ceiling, but no current 16-zone package has been reviewed under the reduced-output contract.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/summarize_multi_zone_reducer_pressure.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
+
+Deliverables:
+
+- Generate a 16-zone no-submit package in `/tmp` with compact manifests, reduced outputs, reducer limits, output-budget status, and exact first blocker.
+- If ready, preserve the exact later submit-gate command; if blocked, name the smallest package/output/reducer repair.
+
+Definition of done:
+
+- Focused tests or fixture assertions pass, and the package status is either `ready_for_review` or a fail-closed blocker with a concrete recovery command.
+
+Boundaries: No `sbatch`, no live submission, no distributed execution, no Swiss-wide claim, and no operational claim.
+
+### TB-570: Optimize Reducer Manifest Pressure For The Next Larger Package
+
+Goal: Reduce the reducer/replay metadata pressure that blocks larger reduced-output packages without changing hazard semantics.
+
+Capability gap reduced: Attacks the current first scaling bottleneck: manifest/replay metadata and reducer pressure.
+
+Why this outranks alternatives: The scale matrix and 16-zone scratch probe show reducer pressure remains the dominant blocker before larger single-node/postproc measurements.
+
+Inspect first:
+
+- `scripts/summarize_multi_zone_reducer_pressure.py`
+- `scripts/validate_multi_zone_reducer_pressure_gate.py`
+- `tests/test_multi_zone_reducer_pressure.py`
+- `tests/test_multi_zone_reducer_pressure_gate.py`
+
+Deliverables:
+
+- Implement the smallest compact-manifest or replay-critical-family reduction that lowers 16-zone package pressure while preserving rebuildability.
+- Add tests proving replay-critical families remain present and merge order remains deterministic.
+- Regenerate the 16-zone scratch pressure report after the change.
+
+Definition of done:
+
+- Focused reducer tests pass and the 16-zone pressure report shows a lower manifest/output-family pressure classification or a smaller explicit first blocker.
+
+Boundaries: No physics changes, no output-family deletion that breaks replay/rebuildability, no Balfrin submission, and no claim upgrade.
+
+### TB-571: Rebuild The 16-Zone Handoff After Reducer Optimization
+
+Goal: Re-run the 16-zone no-submit handoff after TB-570 to determine whether the package is live-run eligible.
+
+Capability gap reduced: Converts reducer optimization into a concrete pass/fail pre-submit decision for the next Balfrin scale step.
+
+Why this outranks alternatives: A larger live run should be attempted only after the optimized package passes the same review gates as smaller measured runs.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
+
+Deliverables:
+
+- Generate the optimized 16-zone handoff on a clean Balfrin-aligned checkout.
+- Run authorization, output-budget, submit-contract, and remote-head alignment gates without submitting.
+- Record exact ready/blocked status and later submit command.
+
+Definition of done:
+
+- The handoff is either `ready_for_bounded_postproc_submission` or fails closed with one concrete blocker that can be addressed before execution.
+
+Boundaries: No `sbatch`, no live run, no non-postproc partition, no distributed execution, and no scientific/operational claim upgrade.
+
+### TB-572: Execute One Optimized 16-Zone Postproc Probe If Gates Pass
+
+Goal: Run one optimized 16-zone reduced-output Balfrin probe when TB-571 and the queue window both permit it.
+
+Capability gap reduced: Provides the first current measured evidence beyond the 12-split/regional boundary under the reduced-output contract.
+
+Why this outranks alternatives: This is the largest practical single-node/postproc measurement that can materially improve the feasibility demonstration without authorizing distributed execution.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `docs/orchestration_strategy.md`
+
+Deliverables:
+
+- Submit exactly one optimized 16-zone `postproc` job from the reviewed handoff if all gates pass.
+- Monitor to terminal state.
+- Record scheduler state, job id, exit code, elapsed time, MaxRSS, run root, queue state, and package hashes.
+
+Definition of done:
+
+- The job completes successfully or the failed/blocked result is captured with exact package, queue, and scheduler diagnostics; no ambiguous partial result is promoted.
+
+Boundaries: One job only; `postproc` only; do not keep the partition fully busy for more than 6 hours; no distributed execution, no Swiss-wide run, no operational claim, and no physical-probability claim.
+
+### TB-573: Collect And Promote 16-Zone Probe Metrics
+
+Goal: Preserve and promote the TB-572 run-root evidence into the Balfrin evidence and scale-readiness surfaces.
+
+Capability gap reduced: Turns a larger scheduler run into measured scale evidence with explicit output, memory, and preservation status.
+
+Why this outranks alternatives: A large run is not useful for the project goal unless its outputs are collected, preserved, compared, and bounded by claim gates.
+
+Inspect first:
+
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_probe_preservation_gate.py`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `tests/test_balfrin_evidence_bundle.py`
+
+Deliverables:
+
+- Collect metrics, run preservation and output-budget audits, and write a share-safe TB-572/TB-573 run report.
+- Promote the 16-zone evidence into the evidence bundle and scale matrix with tests.
+- Keep older measured runs available as historical comparisons.
+
+Definition of done:
+
+- Metrics contract is complete, preservation is ready or explicitly blocked with recovery, focused tests pass, and the promoted evidence does not upgrade physical or operational claims.
+
+Boundaries: Evidence collection and promotion only; no rerun, no distributed execution, no annual-frequency claim, no operational claim, and no physical-probability claim.
+
+### TB-574: Recompute Swiss-Scale Feasibility From Current Large-Run Evidence
+
+Goal: Recompute the Swiss-scale feasibility projection using TB-566 and, if available, TB-573 measured evidence.
+
+Capability gap reduced: Replaces stale projection coefficients with the latest measured Balfrin runtime, memory, reducer, and output-footprint data.
+
+Why this outranks alternatives: The project needs an honest feasibility statement before considering any further scale step or demonstration narrative.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- `tests/test_balfrin_scale_readiness_matrix.py`
+- `tests/test_large_scale_execution_probe.py`
+
+Deliverables:
+
+- Update projection inputs and outputs from the latest measured run evidence.
+- Distinguish 10-zone, 16-zone, 100-zone, regional, and Swiss-wide feasibility classes.
+- Name the next blocker as runtime, memory, output bytes, reducer pressure, queue policy, or missing scientific evidence.
+
+Definition of done:
+
+- Focused projection tests pass and the projection document/report clearly separates measured evidence, extrapolation, no-go classes, and claim boundaries.
+
+Boundaries: Projection only; no Swiss-wide run, no distributed execution authorization, no operational claim, and no physical-probability claim.
+
+### TB-575: Build A Balfrin Demonstration Evidence Package For Review
+
+Goal: Package the latest measured Balfrin efficiency, performance, output, preservation, and feasibility evidence into one reviewer-facing demonstration surface.
+
+Capability gap reduced: Converts scattered run reports and helper outputs into a coherent demonstration of what has been achieved and what remains blocked.
+
+Why this outranks alternatives: A full demonstration needs one reproducible entry point, not a chain of historical TB reports.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `docs/balfrin_scale_demonstration_management_package.md`
+- `docs/project_overview.md`
+- `docs/current_maturity_snapshot.md`
+- `README.md`
+
+Deliverables:
+
+- Refresh the management demo package from the latest measured evidence.
+- Ensure README/project overview point to the current performance and Balfrin demonstration surfaces without overclaiming.
+- Include exact reproduction commands and live evidence boundaries.
+
+Definition of done:
+
+- Focused management package tests pass and the package clearly reports measured efficiency/performance/feasibility evidence plus remaining scientific and scale blockers.
+
+Boundaries: Packaging and documentation only; no new run, no operational claim, no annual-frequency claim, and no physical-probability claim.
+
+### TB-576: Add A Queue-Aware Balfrin Run Gate To Prevent Missed Capacity Windows
+
+Goal: Make the Balfrin run decision gate aware of live queue capacity, age of access preflight, and package freshness.
+
+Capability gap reduced: Avoids manual judgment drift when Balfrin is empty or busy and prevents stale packages from blocking opportunistic execution.
+
+Why this outranks alternatives: The current decision surfaces know package evidence but not whether the partition is currently usable; this caused the “empty Balfrin” opportunity to require manual review.
+
+Inspect first:
+
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `tests/test_balfrin_next_live_run_decision_gate.py`
+
+Deliverables:
+
+- Add a small queue snapshot parser/classifier that can be fed into the next-run decision gate.
+- Classify capacity as `run_now`, `run_soon`, `defer_due_to_capacity`, or `unknown`.
+- Add tests for empty queue, busy queue, stale preflight, and remote-head mismatch.
+
+Definition of done:
+
+- Focused tests pass and the next-run decision report can explain whether the current live queue state supports immediate postproc submission.
+
+Boundaries: Decision logic only; no `sbatch`, no queue polling loop, no job cancellation, no non-postproc partition, and no claim upgrade.
+
+### TB-577: Publish Current Balfrin Performance Evidence On The GitHub Pages Dashboard
+
+Goal: Extend the public performance dashboard with a clearly separated Balfrin measured-performance section.
+
+Capability gap reduced: Makes Balfrin efficiency evidence visible outside raw docs and work logs while keeping CI diagnostics separate.
+
+Why this outranks alternatives: The project front door should show both CI performance trend and measured Balfrin feasibility when large-run evidence exists.
+
+Inspect first:
+
+- `scripts/performance_ci_tracking.py`
+- `.github/workflows/performance_main.yml`
+- `README.md`
+- `docs/performance_ci_tracking.md`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+
+Deliverables:
+
+- Add a generated Balfrin evidence JSON/SVG/table section to the Pages artifact using promoted measured run data.
+- Keep CI runner timings and Balfrin scheduler timings visually and semantically separate.
+- Link the new section from README only with bounded claim language.
+
+Definition of done:
+
+- Focused performance tracking tests pass, local site generation includes the Balfrin section, and Pages paths remain stable for `/performance/latest.json` and `/performance/main_performance.svg`.
+
+Boundaries: Publishing/reporting only; no new run, no scientific validation claim, no operational claim, and no benchmark-as-validation claim.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
