@@ -8727,3 +8727,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_blocked_report
 - Boundaries: no `sbatch`, no live submission, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-572`
+
+### TB-572: Add A Diagnostic Postproc Measurement Profile For Larger Single-Node Runs
+
+- Date: 2026-05-26
+- Commit: `73c7dcd`
+- Objective: add a diagnostic-only 16-zone compact `postproc` measurement profile so reducer-budget checks no longer block solely on the old four-zone review thresholds.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `diagnostic_16_zone_compact_postproc_probe` as a separate output-budget acceptance profile from the smallest live and four-zone review profiles.
+  - Required compact projection mode, zero reducer-manifest files/bytes, replay-critical output families, package hashes, and a bounded estimated-storage cap for the 16-zone diagnostic path.
+  - Passed estimated storage into budget acceptance validation and kept the 16-zone handoff blocked only on the existing reducer/scenario envelope.
+  - Removed TB-572 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff.BalfrinMultiReleaseZoneDemoHandoffTests.test_budget_acceptance_validator_accepts_sixteen_zone_compact_diagnostic_projection tests.test_balfrin_multi_release_zone_demo_handoff.BalfrinMultiReleaseZoneDemoHandoffTests.test_sixteen_zone_handoff_fails_closed_with_concrete_blockers -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_smallest_multi_zone_authorization_preflight.BalfrinSmallestMultiZoneAuthorizationPreflightTests.test_ready_package_reports_smallest_run_shape_without_granting_authorization tests.test_balfrin_smallest_multi_zone_authorization_preflight.BalfrinSmallestMultiZoneAuthorizationPreflightTests.test_budget_threshold_validation_mode_ignores_missing_authorization_and_access -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_smallest_multi_zone_authorization_preflight -v`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_fixture_backed
+- Boundaries: local profile and fixture-backed handoff validation only; no `sbatch`, no Balfrin run, no non-postproc partition, no distributed execution, no physics changes, no scale-up claim, no operational claim, and no physical-probability claim.
+- Next task: `TB-573`
