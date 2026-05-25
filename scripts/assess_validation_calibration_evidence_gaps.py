@@ -35,6 +35,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "validation_calibration_evidence_gaps_v1"
 ALLOWED_CLASSIFICATIONS = {"present", "partial", "missing", "out_of_scope", "not_inferred"}
 
+import audit_chant_sura_holdout_split as holdout_split  # noqa: E402
+import check_calibration_separation_preflight as calibration_separation  # noqa: E402
+
 BLOCK_POPULATION_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
     {
         "blocker_id": "block_population_survey_missing",
@@ -132,6 +135,10 @@ def build_report() -> dict[str, Any]:
     calibration = calibration_gap(tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout, chant_model_selection)
     holdout = holdout_gap(tschamut_gate, tschamut_target, chant_contact_heldout, chant_split, balfrin_readiness, balfrin_reproduction)
     transfer = transfer_gap(candidate_manifest, candidate_portability, chant_contact, chant_contact_heldout, balfrin_readiness)
+    validation_leakage_guardrails = build_validation_leakage_guardrails(
+        holdout_split.build_report(),
+        calibration_separation.build_report(),
+    )
 
     claim_boundary_matrix = [
         {
@@ -223,6 +230,7 @@ def build_report() -> dict[str, Any]:
         "scale_up_authorized": False,
         "evidence_gap_categories": evidence_gap_categories,
         "claim_boundary_matrix": claim_boundary_matrix,
+        "validation_leakage_guardrails": validation_leakage_guardrails,
         "product_layer_claim_boundaries": product_layer_claim_boundaries(),
         "site_reference_evidence": site_reference_evidence(
             datasets,
@@ -249,6 +257,63 @@ def build_report() -> dict[str, Any]:
     validate_report_boundaries(report)
     shared_scan_text_for_misleading_claims(report, require_fn=require)
     return report
+
+
+def build_validation_leakage_guardrails(
+    holdout_report: dict[str, Any],
+    calibration_report: dict[str, Any],
+) -> dict[str, Any]:
+    failing_checks = []
+    if holdout_report.get("audit_status") != "passed":
+        failing_checks.append(
+            {
+                "guardrail": "holdout_split_independence",
+                "status": holdout_report.get("audit_status", "unknown"),
+                "dataset_or_parameter_source": holdout_report.get("dataset_id", "unknown"),
+                "failure_detail": ", ".join(holdout_report.get("shared_trajectory_ids") or []) or "holdout split did not pass",
+                "next_local_command": (
+                    "PYENV_VERSION=system uv run python scripts/audit_chant_sura_holdout_split.py --format json"
+                ),
+            }
+        )
+    if calibration_report.get("preflight_status") != "passed":
+        replay = calibration_report.get("failure_replay") or {}
+        blocker = replay.get("first_blocker") if isinstance(replay.get("first_blocker"), dict) else {}
+        failing_checks.append(
+            {
+                "guardrail": "calibration_validation_separation",
+                "status": calibration_report.get("preflight_status", "unknown"),
+                "dataset_or_parameter_source": blocker.get("value")
+                or blocker.get("case_path")
+                or calibration_report.get("calibration_root", "unknown"),
+                "failure_detail": replay.get("missing_evidence_or_invalid_coupling")
+                or "calibration separation preflight did not pass",
+                "next_local_command": (
+                    "PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json"
+                ),
+            }
+        )
+    return {
+        "schema_version": "validation_leakage_guardrails_v1",
+        "guardrail_status": "passed" if not failing_checks else "blocked_validation_leakage_risk",
+        "holdout_split_audit_status": holdout_report.get("audit_status", "unknown"),
+        "calibration_separation_preflight_status": calibration_report.get("preflight_status", "unknown"),
+        "failing_checks": failing_checks,
+        "interpretation_allowed": not failing_checks,
+        "next_local_recovery_command": (
+            failing_checks[0]["next_local_command"]
+            if failing_checks
+            else "PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json"
+        ),
+        "claim_boundaries": {
+            "calibration_performed": False,
+            "parameter_tuning_performed": False,
+            "external_validation_claimed": False,
+            "validation_acceptance_claimed": False,
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+        },
+    }
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -1041,6 +1106,18 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines.append("claim_boundary_matrix:")
     for entry in report["claim_boundary_matrix"]:
         lines.append(f"- {entry['boundary']}: {entry['classification']}")
+    lines.append("")
+    guardrails = report["validation_leakage_guardrails"]
+    lines.append("validation_leakage_guardrails:")
+    lines.append(f"- guardrail_status: {guardrails['guardrail_status']}")
+    lines.append(f"- holdout_split_audit_status: {guardrails['holdout_split_audit_status']}")
+    lines.append(f"- calibration_separation_preflight_status: {guardrails['calibration_separation_preflight_status']}")
+    if guardrails["failing_checks"]:
+        lines.append("- failing_checks:")
+        for item in guardrails["failing_checks"]:
+            lines.append(f"  - {item['guardrail']}: {item['status']} ({item['dataset_or_parameter_source']})")
+    else:
+        lines.append("- failing_checks: none")
     lines.append("")
     lines.append("site_reference_evidence:")
     for entry in report["site_reference_evidence"]:

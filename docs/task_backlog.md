@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-540: Wire Holdout And Calibration Separation Into Validation Guardrails
-
-Goal: Ensure validation evidence summaries warn or fail closed when holdout overlap or selected-parameter leakage is detected.
-
-Capability gap reduced: Protects scientific validation from accidental calibration/validation leakage.
-
-Why this outranks alternatives: The existing holdout and calibration separation checks need to govern validation evidence, not remain disconnected diagnostics.
-
-Inspect first:
-
-- `scripts/audit_chant_sura_holdout_split.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `tests/test_chant_sura_holdout_split_audit.py`
-- `tests/test_calibration_separation_preflight.py`
-
-Deliverables:
-
-- Update an existing validation evidence or preflight surface to consume holdout and calibration separation results.
-- Add focused tests covering a clean separation case and a leakage/overlap warning case.
-
-Definition of done:
-
-- Focused guardrail tests pass and the validation evidence command names the exact dataset or parameter source that blocks interpretation when separation fails.
-
-Boundaries: Fixture-backed guardrails only; no recalibration, no new validation claim, no parameter tuning, and no Balfrin dependency.
-
 ### TB-541: Create A Local Tschamut Micro-Validation Smoke From Existing Fixtures
 
 Goal: Provide one tiny local command path that produces a trajectory sample and one hazard layer from existing Tschamut-compatible fixtures.

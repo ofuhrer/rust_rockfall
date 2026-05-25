@@ -20,6 +20,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "scale_up_authorized",
             "evidence_gap_categories",
             "claim_boundary_matrix",
+            "validation_leakage_guardrails",
             "product_layer_claim_boundaries",
             "site_reference_evidence",
             "required_evidence_for_physical_credibility",
@@ -33,6 +34,12 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
         self.assertFalse(report["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["scale_up_authorized"])
+        self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
+        self.assertTrue(report["validation_leakage_guardrails"]["interpretation_allowed"])
+        self.assertEqual(report["validation_leakage_guardrails"]["failing_checks"], [])
+        self.assertFalse(
+            report["validation_leakage_guardrails"]["claim_boundaries"]["validation_acceptance_claimed"]
+        )
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
         report = assessment.build_report()
@@ -138,6 +145,34 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             categories["observed_deposition_runout_evidence"]["minimum_additional_evidence_needed"].lower(),
         )
 
+    def test_validation_leakage_guardrails_fail_closed(self) -> None:
+        guardrails = assessment.build_validation_leakage_guardrails(
+            {
+                "audit_status": "blocked_overlap_detected",
+                "dataset_id": "fixture_split",
+                "shared_trajectory_ids": ["A"],
+            },
+            {
+                "preflight_status": "blocked_forbidden_validation_reference",
+                "calibration_root": "calibration",
+                "failure_replay": {
+                    "missing_evidence_or_invalid_coupling": "bad_case selected_parameters_path=calibration/experiments/example/selected_parameters.yaml",
+                    "first_blocker": {
+                        "case_path": "validation/cases/bad_case.yaml",
+                        "value": "calibration/experiments/example/selected_parameters.yaml",
+                    },
+                },
+            },
+        )
+
+        self.assertEqual(guardrails["guardrail_status"], "blocked_validation_leakage_risk")
+        self.assertFalse(guardrails["interpretation_allowed"])
+        self.assertEqual(
+            [item["guardrail"] for item in guardrails["failing_checks"]],
+            ["holdout_split_independence", "calibration_validation_separation"],
+        )
+        self.assertIn("audit_chant_sura_holdout_split.py", guardrails["next_local_recovery_command"])
+
     def test_missing_evidence_is_not_inferred_as_present(self) -> None:
         report = assessment.build_report()
         site_map = {entry["site"]: entry for entry in report["site_reference_evidence"]}
@@ -145,6 +180,13 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(site_map["Balfrin"]["classification"], "not_inferred")
         self.assertNotEqual(report["physical_credibility_status"], "present")
         self.assertNotEqual(report["physical_credibility_status"], "accepted")
+
+    def test_text_report_names_validation_leakage_guardrails(self) -> None:
+        text = assessment.render_text_report(assessment.build_report())
+
+        self.assertIn("validation_leakage_guardrails:", text)
+        self.assertIn("guardrail_status: passed", text)
+        self.assertIn("failing_checks: none", text)
 
 
 if __name__ == "__main__":  # pragma: no cover
