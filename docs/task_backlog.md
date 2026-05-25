@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-499: Add A Second Candidate Local Comparison
-
-Goal: Run one more local comparison using a different reviewed or stable candidate shape to see whether the degraded runout is candidate-specific.
-
-Capability gap reduced: Separates one bad candidate from a broader candidate-generation failure mode.
-
-Why this outranks alternatives: A single degraded candidate run is not enough to decide whether the candidate workflow is scientifically salvageable.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-
-Deliverables:
-
-- Use existing candidate generation/review/freezer paths to select one alternative local candidate and run a bounded local validation comparison.
-- Record the comparison beside existing pilot-run records with the same metrics schema.
-
-Definition of done:
-
-- The local comparison completes or fails closed with a concrete blocker, focused checks pass, and the result classifies whether the alternative improves, degrades, or remains inconclusive versus observed-release baselines.
-
-Boundaries: Local comparison only; no tuning, no field validation claim, no candidate acceptance upgrade, no operational claim, and no Balfrin dependency.
-
 ### TB-500: Tighten Real-Terrain Rust Regression Coverage
 
 Goal: Add one more Rust-level real-terrain invariant that catches nonphysical behavior on committed real DEM fixtures.

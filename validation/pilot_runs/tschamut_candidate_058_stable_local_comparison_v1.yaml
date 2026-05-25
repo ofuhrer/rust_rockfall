@@ -1,0 +1,100 @@
+schema_version: candidate_source_zone_local_comparison_v1
+record_id: tschamut_candidate_058_stable_local_comparison_v1
+task_id: TB-499
+date: '2026-05-25'
+execution_status: completed
+scientific_interpretation: degraded_relative_to_observed_release_baseline_but_improved_vs_adjacent_candidate
+classification_rationale: >
+  The stable workflow-generated candidate 058 local smoke completed against the
+  public Tschamut LV95 terrain and observed deposition fixture. It improves
+  substantially over the earlier adjacent Prau Mulins candidate on runout,
+  centroid, and nearest-deposition errors, which shows the prior degradation is
+  partly candidate-specific. It still remains degraded relative to the observed-
+  release baselines because centroid and runout errors are larger and the
+  deposition cloud has zero overlap with the observed fixture.
+inputs:
+  review_package_source: hazard/results/release_zone_candidates_tb479/tschamut_public_pilot_release_zone_candidate_review_manifest.json
+  reviewed_candidate_review_package: hazard/results/tb499_stable_candidate_review/tschamut_public_pilot_release_zone_candidate_review_manifest.json
+  reviewed_source_zone_metadata: hazard/results/tb499_stable_candidate_scenarios/source_zone_metadata.yaml
+  reviewed_release_rows: hazard/results/tb499_stable_candidate_scenarios/release_rows.csv
+  reviewed_scenario_table: hazard/results/tb499_stable_candidate_scenarios/scenario_table.csv
+  scratch_case: validation/results/tb499_stable_candidate_local_comparison/candidate_release_zone_case.yaml
+  scratch_release_zone_metadata: validation/results/tb499_stable_candidate_local_comparison/candidate_release_zone_metadata.yaml
+  terrain: data/processed/swisstopo/tschamut_public_pilot/input/tschamut_public_swissalti3d_crop.asc
+  observed_deposition: data/processed/swisstopo/tschamut_public_pilot/input/observed_deposition_lv95.csv
+candidate_selection:
+  candidate_release_zone_id: tschamut_public_lps_release_bbox_candidate_058
+  selection_basis: stable workflow-generated candidate from the existing local terrain candidate review package
+  candidate_stability_class: stable
+  candidate_stability_score: 0.9601328903654485
+  candidate_size_cell_count: 602
+  candidate_size_area_m2: 2408.0
+  candidate_slope_mean_deg: 51.20107467212553
+  candidate_bbox_lv95_m:
+    xmin: 2696776.0
+    ymin: 1167386.0
+    xmax: 2696872.0
+    ymax: 1167438.0
+candidate_local_smoke:
+  command: PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/results/tb499_stable_candidate_local_comparison/candidate_release_zone_case.yaml
+  release_zone_point_count: 60.0
+  observed_mean_runout_m: 102.84352800000002
+  simulated_mean_runout_m: 149.3096659592848
+  runout_distance_error_m: 46.466137959284794
+  deposition_centroid_error_m: 130.93795573121153
+  deposition_cloud_mean_nearest_error_m: 89.10280753123178
+  deposition_cloud_overlap_fraction: 0.0
+  lateral_spread_error_m: 21.498786943962504
+prior_baselines:
+  observed_release_local_baseline:
+    source_record: validation/cases/validation_tschamut_baseline.yaml
+    validation_release_count: 10.0
+    validation_simulated_trajectory_count: 60.0
+    observed_mean_runout_m: 102.84352800000002
+    simulated_mean_runout_m: 71.23501092796347
+    runout_distance_error_m: 31.60851707203655
+    deposition_centroid_error_m: 30.905269411165524
+    deposition_cloud_mean_nearest_error_m: 25.230329123228408
+    deposition_cloud_overlap_fraction: 0.43333333333333335
+    lateral_spread_error_m: 16.60955428373063
+  public_target_gate_observed_release_baseline:
+    source_record: validation/pilot_runs/tschamut_public_balfrin_target_gate_reproduction_v1.yaml
+    validation_release_count: 10.0
+    validation_simulated_trajectory_count: 1000.0
+    observed_mean_runout_m: 102.84352800000002
+    simulated_mean_runout_m: 72.06819369632703
+    runout_distance_error_m: 30.77533430367299
+    deposition_centroid_error_m: 30.218287182188995
+    deposition_cloud_mean_nearest_error_m: 23.869086482077364
+    deposition_cloud_overlap_fraction: 0.761
+    lateral_spread_error_m: 16.857580834708518
+  adjacent_prau_mulins_candidate:
+    source_record: validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml
+    release_zone_point_count: 60.0
+    observed_mean_runout_m: 102.84352800000002
+    simulated_mean_runout_m: 5.741224328825325
+    runout_distance_error_m: 97.1023036711747
+    deposition_centroid_error_m: 235.77209866421458
+    deposition_cloud_mean_nearest_error_m: 204.92526761982197
+    deposition_cloud_overlap_fraction: 0.0
+    lateral_spread_error_m: 6.980220536346668
+comparison:
+  runout_distance_error_delta_vs_local_baseline_m: 14.857620887248245
+  deposition_centroid_error_delta_vs_local_baseline_m: 100.03268632004601
+  deposition_overlap_delta_vs_local_baseline: -0.43333333333333335
+  lateral_spread_error_delta_vs_local_baseline_m: 4.8892326602318725
+  runout_distance_error_delta_vs_public_target_gate_m: 15.690803655611802
+  deposition_centroid_error_delta_vs_public_target_gate_m: 100.71966854902254
+  deposition_overlap_delta_vs_public_target_gate: -0.761
+  lateral_spread_error_delta_vs_public_target_gate_m: 4.641206109253986
+  runout_distance_error_delta_vs_adjacent_candidate_m: -50.6361657118899
+  deposition_centroid_error_delta_vs_adjacent_candidate_m: -104.83414293300305
+  deposition_cloud_mean_nearest_error_delta_vs_adjacent_candidate_m: -115.82246008859019
+  simulated_mean_runout_delta_vs_adjacent_candidate_m: 143.5684416304595
+notes:
+  - The scratch Rust release-zone metadata samples candidate 058 with 60 deterministic points to match the reviewed scenario trajectory-count target for a local smoke comparison.
+  - Candidate 058 is much less short-runout than the adjacent Prau Mulins candidate and reduces the largest candidate-specific errors.
+  - The zero deposition overlap and larger errors versus observed-release baselines mean this candidate should not be treated as a validation improvement.
+boundaries:
+  - No parameter tuning, calibration, annual frequency, physical probability, or operational hazard claim is made.
+  - This record compares local diagnostic outputs only.
