@@ -204,13 +204,21 @@ Filesystem snapshot from `balfrin-ln003` on 2026-05-08:
 
 | Path | Environment variable | Type | Observed capacity | Intended use |
 | --- | --- | --- | ---: | --- |
+| `/tmp` | none | node-local `tmpfs` | `214G` total, `405M` used, `213G` available by `df -hT` on `balfrin-ln002` on 2026-05-25 | Ephemeral small scripts, probes, and short-lived helper files only. This is memory-backed and should not hold bulky workload data, package roots, run outputs, or anything that must survive login-node changes or cleanup. Remove temporary files when no longer needed. |
 | `/users/olifu` | `$HOME` | Lustre mounted under `/users` | `80G` total, `77G` used, `3.6G` available by `df -hT` | Shell configuration, credentials, small source checkouts, small scripts, and lightweight logs. Do not run compute-heavy or I/O-heavy jobs here. |
-| `/scratch/mch/olifu` | `$SCRATCH` | Lustre mounted under `/scratch/mch` | `800T` total, `718T` used, `83T` available by `df -hT` | Shared login/compute work area for builds, job working directories, generated outputs, caches, and large temporary files. |
+| `/scratch/mch/olifu` | `$SCRATCH` | Lustre mounted under `/scratch/mch` | `800T` total, `718T` used, `83T` available by `df -hT` on 2026-05-08; `800T` total, `791T` used, `9.1T` available by `df -hT` on 2026-05-25 | Shared login/compute work area for builds, job working directories, generated outputs, caches, and large temporary files. Check free space before large runs because this filesystem can be close to full. |
 
 Both filesystems are visible on login and compute nodes, but `$SCRATCH` is the
 right location for scheduled work. Keep `$HOME` small and quiet: it is shared
 infrastructure, was 96% full in the 2026-05-08 probe, and should not be used
 for heavy builds, bulk output, or large intermediate files.
+
+`/tmp` is also visible on login nodes, but it is `tmpfs` rather than Lustre.
+Use it only for small ephemeral command wrappers, SSH probe transcripts, and
+short-lived diagnostics. Do not place Balfrin package roots, run roots, large
+intermediates, or persistent evidence under `/tmp`; use `$SCRATCH` for
+workload/run data and the git checkout under `/users/olifu/work/rust_rockfall`
+for tracked persistent source or documentation changes.
 
 Use this pattern for Balfrin runs:
 
