@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-521: Vectorize A Hot Grid Reduction Loop
-
-Goal: Replace one measurable Python per-cell grid reduction hotspot with a faster local implementation while preserving exact outputs.
-
-Capability gap reduced: Improves local hazard layer generation throughput for repeated scientific experiments.
-
-Why this outranks alternatives: Profiling has repeatedly found output/reduction loops as local bottlenecks; a focused exact-output optimization can unlock faster iteration.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_accumulation_benchmark.py`
-- `tests/test_hazard_layers.py`
-- `tests/test_hazard_accumulation_benchmark.py`
-
-Deliverables:
-
-- Profile the current grid reduction path, optimize one loop or data movement step, and compare before/after benchmark metrics.
-- Preserve deterministic layer signatures and manifest hashes where applicable.
-
-Definition of done:
-
-- Focused hazard/benchmark tests pass and before/after metrics show improvement or identify the next nontrivial hotspot if exact-output optimization is not feasible.
-
-Boundaries: Local performance only; no output semantics change, no new dependency unless already used in repo, no physics change, and no Balfrin dependency.
-
 ### TB-522: Consolidate Candidate Diagnostic Point Geometry Helpers
 
 Goal: Reduce duplicated point/centroid/geometry parsing across candidate diagnostics and freezer tests.

@@ -5469,15 +5469,16 @@ def copy_grid(values: list[list[float]]) -> list[list[float]]:
 
 
 def scaled_grid(values: list[list[float]], factor: float) -> list[list[float]]:
-    result = copy_grid(values)
-    scale_grid(result, factor)
-    return result
+    return [
+        [value * factor if value != NODATA else NODATA for value in row]
+        for row in values
+    ]
 
 
 def add_grid_into(target: list[list[float]], source: list[list[float]]) -> None:
-    for row_index, row in enumerate(source):
-        for col_index, value in enumerate(row):
-            target[row_index][col_index] += value
+    for target_row, source_row in zip(target, source, strict=True):
+        for col_index, value in enumerate(source_row):
+            target_row[col_index] += value
 
 
 def merge_max_grid_into(target: list[list[float]], source: list[list[float]]) -> None:

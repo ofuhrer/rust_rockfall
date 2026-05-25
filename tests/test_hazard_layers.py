@@ -312,6 +312,16 @@ class HazardLayerTests(unittest.TestCase):
         self.assertEqual(layer_value(first_layers, "kinetic_energy_exceedance_1j"), 1.0)
         self.assertEqual(layer_value(second_layers, "kinetic_energy_exceedance_1j"), 1.0)
 
+    def test_grid_reduction_helpers_preserve_exact_values(self) -> None:
+        source = [[1.0, hazard.NODATA], [3.5, 0.0]]
+        scaled = hazard.scaled_grid(source, 0.5)
+        self.assertEqual(scaled, [[0.5, hazard.NODATA], [1.75, 0.0]])
+        self.assertEqual(source, [[1.0, hazard.NODATA], [3.5, 0.0]])
+
+        target = [[10.0, 20.0], [30.0, 40.0]]
+        hazard.add_grid_into(target, [[1.0, 2.0], [3.0, 4.0]])
+        self.assertEqual(target, [[11.0, 22.0], [33.0, 44.0]])
+
     def test_deposition_batch_reader_preserves_coordinates_and_properties(self) -> None:
         warnings: list[str] = []
         batch = hazard.read_deposition_batch(FIXTURE / "deposition.csv", warnings)
