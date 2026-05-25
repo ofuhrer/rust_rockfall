@@ -1679,6 +1679,7 @@ def build_freezer_source_zone_metadata(
             "trajectory_count_target": trajectory_count,
             "sampling_weight_semantics": "conditional_sampling_only",
         },
+        "candidate_terrain_support_summary": summarize_reviewed_candidate_terrain_support(review_package, accepted_ids),
         "provenance": {
             "source": text_value(review_package.get("candidate_selection_rationale")) or "reviewed candidate freeze package",
             "notes": [
@@ -1687,6 +1688,42 @@ def build_freezer_source_zone_metadata(
             ],
         },
         "annual_release_frequency_per_year": None,
+    }
+
+
+def summarize_reviewed_candidate_terrain_support(
+    review_package: dict[str, Any],
+    accepted_ids: list[str],
+) -> dict[str, Any]:
+    accepted_id_set = set(accepted_ids)
+    rows = [
+        row
+        for row in review_package.get("candidate_review_rows", [])
+        if isinstance(row, dict) and text_value(row.get("candidate_release_zone_id")) in accepted_id_set
+    ]
+    status_counts: dict[str, int] = {}
+    missing_ids: list[str] = []
+    ready_count = 0
+    for row in rows:
+        support = row.get("candidate_terrain_support")
+        if isinstance(support, dict):
+            status = text_value(support.get("support_status")) or text_value(row.get("candidate_terrain_support_status")) or "not_recorded"
+        else:
+            status = text_value(row.get("candidate_terrain_support_status")) or "not_recorded"
+        status_counts[status] = status_counts.get(status, 0) + 1
+        if status == "ready":
+            ready_count += 1
+        else:
+            missing_ids.append(text_value(row.get("candidate_release_zone_id")))
+    accepted_count = len(rows)
+    return {
+        "schema_version": "reviewed_candidate_terrain_support_summary_v1",
+        "support_summary_status": "ready" if accepted_count > 0 and ready_count == accepted_count else "weak_or_missing_support",
+        "accepted_candidate_count": accepted_count,
+        "ready_accepted_candidate_count": ready_count,
+        "support_status_counts": status_counts,
+        "weak_or_missing_accepted_candidate_ids": missing_ids,
+        "claim_boundary": "terrain support only; not source-zone validation or candidate acceptance",
     }
 
 

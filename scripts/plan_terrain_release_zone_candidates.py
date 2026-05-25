@@ -2324,6 +2324,9 @@ def emit_candidate_products(
     ]
     enrich_candidate_features_with_stability(component_features, report["candidate_sensitivity_report"])
     component_area_values = [float(feature["properties"]["component_area_m2"]) for feature in component_features]
+    terrain_support_summary = summarize_candidate_terrain_supports(
+        [feature["properties"].get("candidate_terrain_support") for feature in component_features]
+    )
 
     manifest_path = output_root / f"{report['candidate_site_id']}_release_zone_candidates_manifest.json"
     product_bundle: dict[str, Any] = {
@@ -2343,6 +2346,7 @@ def emit_candidate_products(
             "search_domain_output_path": display_path(search_domain_path, repo_root),
         },
         "candidate_summary": report["candidate_summary"],
+        "candidate_terrain_support_summary": terrain_support_summary,
         "provenance": report["provenance"],
         "component_area_distribution_m2": summarize_distribution(component_area_values),
     }
@@ -2440,6 +2444,9 @@ def build_candidate_review_package(
         "candidate_review_rows": review_rows,
         "candidate_stability_summary": candidate_stability_summary,
         "candidate_sensitivity_summary": candidate_review_sensitivity_summary(report["candidate_sensitivity_report"]),
+        "candidate_terrain_support_summary": summarize_candidate_terrain_supports(
+            [row.get("candidate_terrain_support") for row in review_rows]
+        ),
         "candidate_footprint_comparison": report["candidate_footprint_comparison"],
         "frozen_source_zone_footprint": report["frozen_source_zone_footprint"],
         "candidate_search_domain": {
@@ -2934,6 +2941,8 @@ def build_candidate_review_row(feature: dict[str, Any]) -> dict[str, Any]:
         "component_slope_max_deg": properties["component_slope_max_deg"],
         "component_slope_mean_deg": properties["component_slope_mean_deg"],
         "component_slope_median_deg": properties["component_slope_median_deg"],
+        "candidate_terrain_support_status": properties.get("candidate_terrain_support_status"),
+        "candidate_terrain_support": properties.get("candidate_terrain_support"),
         "candidate_slope_band_min_deg": properties.get("candidate_slope_band_min_deg"),
         "candidate_slope_band_max_deg": properties.get("candidate_slope_band_max_deg"),
         "candidate_slope_band_summary": properties.get("candidate_slope_band_summary"),
@@ -3546,6 +3555,7 @@ def write_candidate_review_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         "component_slope_max_deg",
         "component_slope_mean_deg",
         "component_slope_median_deg",
+        "candidate_terrain_support_status",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns, lineterminator="\n")
@@ -3613,6 +3623,100 @@ def component_sort_key(component: list[tuple[int, int]]) -> tuple[int, int, int,
     return (min(rows), min(cols), max(rows), max(cols), len(component))
 
 
+def build_candidate_terrain_support(
+    *,
+    terrain: dict[str, Any],
+    terrain_masks: dict[str, np.ndarray],
+    component: list[tuple[int, int]],
+) -> dict[str, Any]:
+    component_mask = np.zeros_like(terrain_masks["candidate_mask"], dtype=bool)
+    for row, col in component:
+        component_mask[row, col] = True
+    component_cell_count = len(component)
+    valid_cell_count = int((component_mask & terrain["valid_mask"]).sum())
+    screenable_cell_count = int((component_mask & terrain_masks["screenable_mask"]).sum())
+    valid_interior_cell_count = int((component_mask & terrain_masks["valid_interior_mask"]).sum())
+    nodata_cell_count = component_cell_count - valid_cell_count
+    bbox = component_bbox(component, terrain)
+    extent = {
+        "xmin": float(terrain["xllcorner"]),
+        "ymin": float(terrain["yllcorner"]),
+        "xmax": float(terrain["xllcorner"] + terrain["ncols"] * terrain["cellsize"]),
+        "ymax": float(terrain["yllcorner"] + terrain["nrows"] * terrain["cellsize"]),
+    }
+    bbox_inside_extent = (
+        bbox["xmin"] >= extent["xmin"]
+        and bbox["xmax"] <= extent["xmax"]
+        and bbox["ymin"] >= extent["ymin"]
+        and bbox["ymax"] <= extent["ymax"]
+    )
+    release_cell_center_count = 0
+    release_cell_centers_inside_extent = 0
+    for row, col in component:
+        x = terrain["xllcorner"] + (col + 0.5) * terrain["cellsize"]
+        y = terrain["yllcorner"] + (terrain["nrows"] - row - 0.5) * terrain["cellsize"]
+        release_cell_center_count += 1
+        if extent["xmin"] <= x <= extent["xmax"] and extent["ymin"] <= y <= extent["ymax"]:
+            release_cell_centers_inside_extent += 1
+    ready = (
+        component_cell_count > 0
+        and nodata_cell_count == 0
+        and screenable_cell_count == component_cell_count
+        and valid_interior_cell_count == component_cell_count
+        and bbox_inside_extent
+        and release_cell_centers_inside_extent == release_cell_center_count
+    )
+    return {
+        "schema_version": "candidate_terrain_support_v1",
+        "support_status": "ready" if ready else "weak_or_partial_terrain_support",
+        "support_mode": "candidate_component_cells_against_terrain_grid",
+        "component_cell_count": component_cell_count,
+        "valid_cell_count": valid_cell_count,
+        "screenable_cell_count": screenable_cell_count,
+        "valid_interior_cell_count": valid_interior_cell_count,
+        "nodata_cell_count": nodata_cell_count,
+        "release_cell_center_count": release_cell_center_count,
+        "release_cell_centers_inside_extent": release_cell_centers_inside_extent,
+        "bbox_inside_terrain_extent": bbox_inside_extent,
+        "terrain_extent_lv95_m": extent,
+        "candidate_bbox_lv95_m": bbox,
+        "interpretation": (
+            "candidate footprint cells have sufficient terrain-grid support for local trajectory evaluation"
+            if ready
+            else "candidate footprint has partial terrain-grid support and should fail closed before local trajectory interpretation"
+        ),
+    }
+
+
+def summarize_candidate_terrain_supports(items: list[Any]) -> dict[str, Any]:
+    statuses: dict[str, int] = {}
+    candidate_count = 0
+    ready_count = 0
+    weak_ids: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            status = "not_recorded"
+        else:
+            status = text_value(item.get("support_status")) or "not_recorded"
+        statuses[status] = statuses.get(status, 0) + 1
+        candidate_count += 1
+        if status == "ready":
+            ready_count += 1
+        elif isinstance(item, dict):
+            candidate_id = text_value(item.get("candidate_release_zone_id"))
+            if candidate_id:
+                weak_ids.append(candidate_id)
+    return {
+        "schema_version": "candidate_terrain_support_summary_v1",
+        "support_summary_status": "ready" if candidate_count > 0 and ready_count == candidate_count else "weak_or_missing_support",
+        "candidate_count": candidate_count,
+        "ready_candidate_count": ready_count,
+        "support_status_counts": statuses,
+        "weak_or_missing_candidate_ids": weak_ids,
+        "claim_boundary": "terrain support only; not source-zone validation or candidate acceptance",
+    }
+
+
 def build_candidate_component_feature(
     *,
     terrain: dict[str, Any],
@@ -3660,6 +3764,13 @@ def build_candidate_component_feature(
         "candidate_sensitivity_label": candidate_sensitivity_label,
         "review_editable": True,
     }
+    properties["candidate_terrain_support"] = build_candidate_terrain_support(
+        terrain=terrain,
+        terrain_masks=terrain_masks,
+        component=component,
+    )
+    properties["candidate_terrain_support"]["candidate_release_zone_id"] = candidate_release_zone_id
+    properties["candidate_terrain_support_status"] = properties["candidate_terrain_support"]["support_status"]
     properties.update(
         build_candidate_feature_explanation_fields(
             terrain=terrain,

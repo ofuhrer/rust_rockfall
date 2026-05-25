@@ -50,6 +50,20 @@ def square_feature(candidate_id: str, xmin: float, ymin: float, size: float) -> 
                 "xmax": xmin + size,
                 "ymax": ymin + size,
             },
+            "candidate_terrain_support_status": "ready",
+            "candidate_terrain_support": {
+                "schema_version": "candidate_terrain_support_v1",
+                "candidate_release_zone_id": candidate_id,
+                "support_status": "ready",
+                "component_cell_count": 1,
+                "valid_cell_count": 1,
+                "screenable_cell_count": 1,
+                "valid_interior_cell_count": 1,
+                "nodata_cell_count": 0,
+                "release_cell_center_count": 1,
+                "release_cell_centers_inside_extent": 1,
+                "bbox_inside_terrain_extent": True,
+            },
         },
         "geometry": {
             "type": "Polygon",
@@ -135,6 +149,20 @@ def write_prau_mulins_review_package(workdir: Path) -> Path:
                 "review_provenance_note": "Selected from expanded terrain-screening plus user visual review; not field validation.",
                 "provenance_ref": "terrain_and_user_visual_review",
                 "review_editable": True,
+                "candidate_terrain_support_status": "ready",
+                "candidate_terrain_support": {
+                    "schema_version": "candidate_terrain_support_v1",
+                    "candidate_release_zone_id": "tschamut_adjacent_prau_mulins_candidate_v1",
+                    "support_status": "ready",
+                    "component_cell_count": 1,
+                    "valid_cell_count": 1,
+                    "screenable_cell_count": 1,
+                    "valid_interior_cell_count": 1,
+                    "nodata_cell_count": 0,
+                    "release_cell_center_count": 1,
+                    "release_cell_centers_inside_extent": 1,
+                    "bbox_inside_terrain_extent": True,
+                },
                 "comparison_to_frozen_footprint_excludes_source_zone": True,
                 "comparison_to_frozen_footprint_cell_count": 0,
                 "source_inputs": [
@@ -487,6 +515,14 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertEqual(manifest["rejected_candidate_ids"], ["cand_rejected"])
         self.assertEqual(manifest["conditional_weight_semantics"], "conditional_sampling_only")
         self.assertEqual(manifest["release_sampling_geometry_check"]["geometry_check_status"], "ready")
+        self.assertEqual(
+            first["source_zone_metadata"]["candidate_terrain_support_summary"]["support_summary_status"],
+            "ready",
+        )
+        self.assertEqual(
+            first["source_zone_metadata"]["candidate_terrain_support_summary"]["ready_accepted_candidate_count"],
+            2,
+        )
         self.assertNotIn("release_rows", manifest)
         self.assertNotIn("scenario_table_rows", manifest)
         self.assertNotIn("source_zone_metadata", manifest)
@@ -601,6 +637,7 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
         self.assertEqual(report["freezer_status"], "ready")
         self.assertEqual(report["accepted_candidate_ids"], ["tschamut_adjacent_prau_mulins_candidate_v1"])
         self.assertEqual(source_zone_metadata["source_zone_id"], "tschamut_adjacent_prau_mulins_reviewed_source_zone_v1")
+        self.assertEqual(source_zone_metadata["candidate_terrain_support_summary"]["support_summary_status"], "ready")
         self.assertEqual(
             source_zone_metadata["source_review_package_path"],
             str(review_package_path.resolve()),

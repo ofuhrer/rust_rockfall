@@ -256,6 +256,8 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first["candidate_release_zone_products"]["output_mode"], "both")
             self.assertEqual(first["candidate_release_zone_products"]["candidate_release_zone_ids"], second["candidate_release_zone_products"]["candidate_release_zone_ids"])
             self.assertEqual(first["candidate_release_zone_products"]["component_count"], 65)
+            self.assertEqual(first["candidate_release_zone_products"]["candidate_terrain_support_summary"]["support_summary_status"], "ready")
+            self.assertEqual(first["candidate_release_zone_products"]["candidate_terrain_support_summary"]["ready_candidate_count"], 65)
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["polygon"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["mask"]).exists())
             self.assertTrue(Path(first["candidate_release_zone_products"]["outputs"]["search_domain"]).exists())
@@ -267,6 +269,7 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
                 ["workflow_generated", "field_supported", "mixed_provenance", "blocked_missing_provenance"],
             )
             self.assertEqual(first["candidate_review_package"]["review_summary"]["candidate_count"], 65)
+            self.assertEqual(first["candidate_review_package"]["candidate_terrain_support_summary"]["support_summary_status"], "ready")
             self.assertEqual(first["candidate_review_package"]["review_summary"]["default_review_decision"], "needs_field_review")
             self.assertEqual(first["candidate_review_package"]["review_summary"]["review_decision_counts"]["needs_field_review"], first["candidate_review_package"]["review_summary"]["candidate_count"])
             self.assertEqual(first["candidate_review_package"]["review_summary"]["provenance_label_counts"]["workflow_generated"], first["candidate_review_package"]["review_summary"]["candidate_count"])
@@ -297,6 +300,12 @@ class TerrainReleaseZoneCandidateMetricsTests(unittest.TestCase):
             self.assertEqual(first_feature["properties"]["provenance_label"], "workflow_generated")
             self.assertEqual(first_feature["properties"]["candidate_sensitivity_label"], "heuristic_sensitive_across_bounded_heuristics")
             self.assertEqual(first_feature["properties"]["release_cell_count"], len(first_feature["properties"]["release_cell_ids"]))
+            self.assertEqual(first_feature["properties"]["candidate_terrain_support_status"], "ready")
+            self.assertEqual(first_feature["properties"]["candidate_terrain_support"]["support_status"], "ready")
+            self.assertEqual(
+                first_feature["properties"]["candidate_terrain_support"]["screenable_cell_count"],
+                first_feature["properties"]["component_cell_count"],
+            )
             self.assertTrue(first_feature["properties"]["release_cell_ids"][0].startswith(first_feature["properties"]["candidate_release_zone_id"]))
             self.assertIn("candidate_slope_band_summary", first_feature["properties"])
             self.assertIn("candidate_local_relief_summary", first_feature["properties"])

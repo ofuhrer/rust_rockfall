@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-513: Compare Candidate Footprint Against Terrain Support
-
-Goal: Measure whether reviewed candidate footprints occupy terrain cells with enough support for meaningful local trajectory evaluation.
-
-Capability gap reduced: Prevents candidate comparisons from being interpreted when the source footprint sits on weak terrain/support geometry.
-
-Why this outranks alternatives: The failed candidate comparison may be partly geometric; footprint/support quality should be measured before more candidate runs are trusted.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_plan_terrain_release_zone_candidates.py`
-- `tests/test_candidate_source_zone_freezer.py`
-
-Deliverables:
-
-- Add a local check or regression that compares reviewed candidate bbox/cell centers against terrain-grid support and records support status in an existing candidate/freezer artifact.
-- Reuse existing candidate review/freezer paths.
-
-Definition of done:
-
-- Focused candidate tests pass and candidate freeze/review artifacts expose whether sampled release cells are terrain-supported.
-
-Boundaries: Geometry/support measurement only; no candidate acceptance upgrade, no tuning, no new review status vocabulary, and no Balfrin dependency.
-
 ### TB-514: Make Same-Scale Closure Rebuildable Locally
 
 Goal: Convert one summary-only same-scale closure input into a locally rebuildable reduced artifact.
