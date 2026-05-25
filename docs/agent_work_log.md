@@ -6784,3 +6784,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local hazard-layer support metadata only; no tuning, no physical credibility upgrade, no annualized semantics, no operational claim, no new audit script, and no Balfrin execution.
 - Next task: `TB-487`
+
+### TB-487: Optimize The Next Hazard Writer Hotspot
+
+- Date: 2026-05-25
+- Commit: to-be-recorded
+- Objective: profile the local hazard accumulation benchmark after compact chunk-state output and optimize the next dominant writer/serialization hotspot.
+- Files changed: `scripts/build_hazard_layers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Captured the before benchmark under ignored root `hazard/results/tb487_before` and a cProfile run under `hazard/results/tb487_profile_before`.
+  - The profile showed grid CSV writing as the next writer hotspot: `write_grid_csv` and `_csv.writer.writerow` dominated the output-heavy grid export path, with `csv_grid` writer time `0.1244452529354021 s`.
+  - Replaced per-cell `csv.writer.writerow` calls for grid CSV output with deterministic row-buffered text emission using the same column order and CSV line endings.
+  - The after benchmark under `hazard/results/tb487_after` reduced output-heavy `csv_grid` writer time from `0.1244452529354021 s` to `0.03702141501707956 s`.
+  - Output-heavy `output_write_seconds` improved from `0.34092549997149035 s` to `0.2541354169952683 s`, and total wall time improved from `0.380350332998205 s` to `0.294573916005902 s`.
+  - Baseline replay determinism remained clean: `baseline_replay_match=true`, `layer_signature_match=true`, and stable manifest hashes matched after the change.
+  - Removed TB-487 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/tb487_before --json-output /tmp/tb487_before.json`
+  - `PYENV_VERSION=system uv run python -m cProfile -o /tmp/tb487_before.prof scripts/hazard_accumulation_benchmark.py --format text --benchmark-root hazard/results/tb487_profile_before`
+  - `.venv/bin/python -m unittest tests.test_hazard_layers.HazardLayerTests.test_fixture_layers_are_reproducible_and_interpretable tests.test_hazard_layers.HazardLayerTests.test_exceedance_layers_are_additive_and_manifested tests.test_hazard_accumulation_benchmark -v`
+  - `PYENV_VERSION=system uv run python scripts/hazard_accumulation_benchmark.py --format json --benchmark-root hazard/results/tb487_after --json-output /tmp/tb487_after.json`
+  - `PYENV_VERSION=system uv run python -m cProfile -o /tmp/tb487_after.prof scripts/hazard_accumulation_benchmark.py --format text --benchmark-root hazard/results/tb487_profile_after`
+- Result/status: implemented_measured
+- Boundaries: local writer optimization only; no output semantics change, no distributed execution, no scale-up claim, and no Balfrin submission.
+- Next task: `TB-488`

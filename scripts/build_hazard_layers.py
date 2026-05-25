@@ -5972,13 +5972,21 @@ def write_grid_csv(
     digest = hashlib.sha256()
     with path.open("w", newline="") as file:
         tracked_file = _OutputByteTracker(file, digest)
-        writer = csv.writer(tracked_file)
-        writer.writerow(["row", "col", "x_center_m", "y_center_m", layer.key])
+        x_centers = [f"{grid.xmin + (col + 0.5) * grid.cell_size:.6f}" for col in range(grid.ncols)]
+        y_centers = [
+            f"{grid.ymin + (grid.nrows - 1 - row + 0.5) * grid.cell_size:.6f}"
+            for row in range(grid.nrows)
+        ]
+        tracked_file.write(f"row,col,x_center_m,y_center_m,{layer.key}\r\n")
         for row in range(grid.nrows):
-            for col in range(grid.ncols):
-                x, y = grid.center(row, col)
-                value = layer.values[row][col]
-                writer.writerow([row, col, f"{x:.6f}", f"{y:.6f}", f"{value:.12g}"])
+            y_text = y_centers[row]
+            row_values = layer.values[row]
+            tracked_file.write(
+                "".join(
+                    f"{row},{col},{x_centers[col]},{y_text},{row_values[col]:.12g}\r\n"
+                    for col in range(grid.ncols)
+                )
+            )
         tracked_file.flush()
     _register_written_output(
         path,

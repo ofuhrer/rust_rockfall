@@ -39,33 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-487: Optimize The Next Hazard Writer Hotspot
-
-Goal: Profile the local hazard accumulation benchmark after compact chunk-state output and optimize the next dominant writer or serialization hotspot.
-
-Capability gap reduced: Improves local-to-scale throughput by reducing measured hazard-output overhead.
-
-Why this outranks alternatives: TB-481 removed one bottleneck; the next performance task should follow the profile rather than guessing.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/hazard_accumulation_benchmark.py`
-- `scripts/hazard_output_writers.py`
-- `tests/test_hazard_accumulation_benchmark.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Capture before/after profile and runtime measurements on the same benchmark root.
-- Implement one targeted optimization in an existing writer/serializer/reducer path and preserve output parity.
-
-Definition of done:
-
-- The optimized path shows measured runtime or output-size improvement on the selected local case, focused tests pass, and no new benchmark/admin script is added.
-
-Boundaries: Local performance optimization only; no output semantics change, no distributed execution, no scale-up claim, and no Balfrin submission.
-
 ### TB-488: Extend The Local Multi-Zone Scaling Ladder
 
 Goal: Run the existing local multi-zone scaling ladder after recent reducer/writer changes and advance the first blocker by reducing one measured bottleneck if feasible.
