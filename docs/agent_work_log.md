@@ -8118,3 +8118,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: interpretation aid only; no new uncertainty theory, threshold tuning, operational decision threshold, or claim upgrade.
 - Next task: `TB-544`
+
+### TB-544: Make Source-Zone Candidate Review Produce A Rejection-Reasons Summary
+
+- Date: 2026-05-25
+- Commit: `1d7f73c`
+- Objective: make source-zone candidate review explain accepted, rejected, and pending candidates by deterministic reason codes.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_plan_terrain_release_zone_candidates.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `rejection_reasons_summary` to the existing candidate review summary and review-apply output.
+  - Derived reason codes from review decision, heuristic stability class, provenance label, and existing context-exclusion reasons.
+  - Surfaced the summary through the AOI `candidate-review` front door and compact text rendering.
+  - Added focused tests for emitted candidate packages, review-apply rejection reasons, and front-door rendering.
+  - Removed TB-544 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_review_apply_edits_candidates_and_validates_provenance tests.test_plan_terrain_release_zone_candidates.TerrainReleaseZoneCandidateMetricsTests.test_committed_tschamut_inputs_produce_deterministic_candidate_metrics tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_candidate_review_command_renders_overlay_report -v`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review --candidate-review-output-root /tmp/tb544_candidate_review --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: review triage only; no new source-zone algorithm, manual digitizing, GIS dependency, or validated candidate-selection claim.
+- Next task: `TB-545`
