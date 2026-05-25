@@ -230,8 +230,9 @@ Interpretation rule:
   - `--trajectory-workers 1`
   - no `--pilot-gis-package`.
 - Use explicit profile intent in runbooks; local smoke recommendations should
-  point at rebuildable reduced outputs, while full-debug output remains an
-  intentional opt-in.
+  point at rebuildable reduced outputs, while the guidance payload also carries
+  the full-output recovery command/metadata for explicit heavy requests. Full-debug
+  output remains an intentional opt-in.
 
 ## Recommended practical balfrin command templates
 

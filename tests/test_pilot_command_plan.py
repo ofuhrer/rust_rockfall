@@ -48,6 +48,15 @@ class PilotCommandPlanTest(unittest.TestCase):
                 "recommendation_status": "recommended",
                 "recommended_validation_output_mode": "rebuildable_reduced_output",
                 "next_command": "PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --rebuild-proof-output-dir /tmp/rust_rockfall/rebuildable_reduced_local_smoke --format json",
+                "recommended_profile_id": "target_rebuildable_reduced",
+                "recommended_profile_label": "native_rebuildable_reduced_output",
+                "recommended_profile_root": "validation/private/tschamut_public_pilot/target_gate_v1_rebuildable_reduced",
+                "full_output_recovery": {
+                    "recovery_status": "full_outputs_available_on_explicit_request",
+                    "full_output_profile_id": "target_validation",
+                    "full_output_case_path": "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                    "full_output_command": "PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                },
                 "claim_boundary": "local smoke recommendation only; no scale-up authorization or claim upgrade",
             },
         }
@@ -171,6 +180,15 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(
             report["default_local_hazard_smoke_recommendation"]["recommended_validation_output_mode"],
             "rebuildable_reduced_output",
+        )
+        self.assertEqual(report["default_local_hazard_smoke_recommendation"]["recommended_profile_id"], "target_rebuildable_reduced")
+        self.assertEqual(
+            report["default_local_hazard_smoke_recommendation"]["full_output_recovery"]["full_output_profile_id"],
+            "target_validation",
+        )
+        self.assertIn(
+            "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+            report["default_local_hazard_smoke_recommendation"]["full_output_recovery"]["full_output_command"],
         )
         self.assertIn(
             "rebuildable_reduced_local_smoke",
@@ -447,6 +465,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         output = buffer.getvalue()
         self.assertIn("command_plan_status: ready", output)
+        self.assertIn("default_local_hazard_smoke_recommendation:", output)
+        self.assertIn("profile_id: target_rebuildable_reduced", output)
+        self.assertIn("full_output_recovery_status: full_outputs_available_on_explicit_request", output)
+        self.assertIn("full_output_case_path: validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml", output)
         self.assertIn("blocked_template_commands:", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)

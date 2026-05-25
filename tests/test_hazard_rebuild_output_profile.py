@@ -216,8 +216,17 @@ class HazardRebuildOutputProfileTests(unittest.TestCase):
             recommendation = report["default_local_hazard_smoke_recommendation"]
             self.assertEqual(recommendation["recommendation_status"], "recommended")
             self.assertEqual(recommendation["recommended_validation_output_mode"], "rebuildable_reduced_output")
+            self.assertEqual(recommendation["recommended_profile_id"], "target_rebuildable_reduced")
             self.assertEqual(recommendation["default_output_policy"]["grid_csv_export"], "none")
             self.assertIn("rebuildable_reduced_local_smoke", recommendation["next_command"])
+            self.assertEqual(
+                recommendation["full_output_recovery"]["full_output_profile_id"],
+                "target_validation",
+            )
+            self.assertIn(
+                "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                recommendation["full_output_recovery"]["full_output_command"],
+            )
             self.assertIn("no scale-up authorization", recommendation["claim_boundary"])
 
     def test_local_rebuild_proof_executes_closure_relevant_layers(self) -> None:

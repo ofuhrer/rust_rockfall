@@ -180,7 +180,27 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
             {
                 "recommendation_status": "blocked_missing_rebuildable_reduced_profile",
                 "recommended_validation_output_mode": "rebuildable_reduced_output",
+                "recommended_profile_id": None,
+                "recommended_profile_label": None,
+                "recommended_profile_root": None,
                 "next_command": "PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json",
+                "rebuild_instruction": "restore or derive the native rebuildable reduced profile before local hazard smoke replay",
+                "full_output_recovery": {
+                    "recovery_status": "full_outputs_available_on_explicit_request",
+                    "full_output_profile_id": "target_validation",
+                    "full_output_profile_label": "bounded_probe_full_v1",
+                    "full_output_profile_root": "validation/private/tschamut_public_pilot/target_gate_v1",
+                    "full_output_case_path": "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml",
+                    "full_output_command": (
+                        "PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case "
+                        "validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml"
+                    ),
+                    "full_output_notes": (
+                        "Use the full validation case when explicitly requesting the heavier historical output set; "
+                        "the reduced profile remains the local default."
+                    ),
+                },
+                "claim_boundary": "local smoke recommendation only; no scale-up authorization or claim upgrade",
             },
         ),
         "second_site_portability_status": second_site_report["portability_preflight_status"],
@@ -1677,8 +1697,35 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         f"operational_claims_allowed: {str(report['operational_claims_allowed']).lower()}",
         "",
-        "command_groups:",
+        "default_local_hazard_smoke_recommendation:",
     ]
+    recommendation = report.get("default_local_hazard_smoke_recommendation") or {}
+    lines.extend(
+        [
+            f"- status: {recommendation.get('recommendation_status')}",
+            f"- profile_id: {recommendation.get('recommended_profile_id')}",
+            f"- validation_output_mode: {recommendation.get('recommended_validation_output_mode')}",
+        ]
+    )
+    if recommendation.get("recommended_profile_label"):
+        lines.append(f"- profile_label: {recommendation.get('recommended_profile_label')}")
+    if recommendation.get("recommended_profile_root"):
+        lines.append(f"- profile_root: {recommendation.get('recommended_profile_root')}")
+    if recommendation.get("next_command"):
+        lines.append(f"- replay_command: {recommendation.get('next_command')}")
+    recovery = recommendation.get("full_output_recovery") or {}
+    if recovery:
+        lines.extend(
+            [
+                f"- full_output_recovery_status: {recovery.get('recovery_status')}",
+                f"- full_output_profile_id: {recovery.get('full_output_profile_id')}",
+            ]
+        )
+        if recovery.get("full_output_case_path"):
+            lines.append(f"- full_output_case_path: {recovery.get('full_output_case_path')}")
+        if recovery.get("full_output_command"):
+            lines.append(f"- full_output_command: {recovery.get('full_output_command')}")
+    lines.extend(["", "command_groups:"])
     for group in report["command_groups"]:
         lines.append(f"- {group['site']}::{group['id']} [{group['status']}]: {group['description']}")
     lines.append("")
