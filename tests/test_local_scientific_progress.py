@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts import summarize_local_scientific_progress as progress
+from scripts.lib import local_scientific_progress as progress
 
 
 class LocalScientificProgressTests(unittest.TestCase):

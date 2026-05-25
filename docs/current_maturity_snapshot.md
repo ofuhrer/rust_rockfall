@@ -50,7 +50,7 @@ split comparison path, AOI/QGIS review readiness, candidate and scenario
 separation, and the next ranked executable milestone without changing the
 measured scale boundary.
 TB-462 through TB-470 added a local-only scientific audit layer for work that
-does not require Balfrin: `scripts/summarize_local_scientific_progress.py`,
+does not require Balfrin: `scripts/recommend_local_scientific_backlog.py --report progress`,
 `scripts/audit_conditional_denominator_provenance.py`,
 `scripts/audit_trajectory_deposition_traceability.py`,
 `scripts/rank_local_hazard_layer_fragility.py`,

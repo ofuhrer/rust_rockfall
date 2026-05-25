@@ -1,47 +1,19 @@
-#!/usr/bin/env python3
-"""Summarize local scientific progress paths that do not require Balfrin.
+"""Local scientific progress report helpers.
 
-The helper is read-only. It composes existing local evidence reports into a
+The report is read-only. It composes existing local evidence reports into a
 compact ranking of work that can improve scientific auditability without
 claiming physical probability, annual frequency, operational use, or scale-up.
 """
 
 from __future__ import annotations
 
-import argparse
-import json
-import sys
-from pathlib import Path
 from typing import Any
-
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from scripts import assess_validation_calibration_evidence_gaps as evidence_gaps
 from scripts import check_same_scale_artifact_readiness as same_scale_readiness
 
 
 SCHEMA_VERSION = "local_scientific_progress_summary_v1"
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--format", choices=("text", "json"), default="text")
-    parser.add_argument("--json-output", type=Path, default=None)
-    args = parser.parse_args(argv)
-
-    report = build_report()
-    if args.json_output is not None:
-        args.json_output.parent.mkdir(parents=True, exist_ok=True)
-        args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    if args.format == "json":
-        print(json.dumps(report, indent=2, sort_keys=True))
-    else:
-        print(render_text_report(report))
-    return 0
 
 
 def build_report() -> dict[str, Any]:
@@ -197,7 +169,3 @@ def render_text_report(report: dict[str, Any]) -> str:
     for layer in report["most_fragile_layers"]:
         lines.append(f"  - {layer['layer_key']}: {layer['fragility']} ({layer['reason']})")
     return "\n".join(lines)
-
-
-if __name__ == "__main__":  # pragma: no cover
-    raise SystemExit(main())

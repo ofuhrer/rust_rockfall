@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-529: Convert One Summarizer Script Into A Library Helper Or Existing Command Option
-
-Goal: Eliminate one narrow `summarize_*` script from the direct command surface by moving reusable logic behind an existing command or library helper.
-
-Capability gap reduced: Reduces script sprawl while preserving the measured output or summary behavior users still need.
-
-Why this outranks alternatives: There are 52 `summarize_*` scripts; retiring one representative narrow script establishes the pattern for shrinking the command surface.
-
-Inspect first:
-
-- `scripts/summarize_local_scientific_progress.py`
-- `scripts/recommend_local_scientific_backlog.py`
-- `scripts/run_ci_local.py`
-- `tests/test_local_scientific_progress.py`
-- `tests/test_local_scientific_backlog_recommendation.py`
-
-Deliverables:
-
-- Move one selected summarizer's reusable logic into an existing module or expose it through an existing command path, then mark or remove the redundant direct script if tests allow.
-- Preserve existing JSON fields consumed by tests or docs.
-
-Definition of done:
-
-- Focused tests pass, direct script count is reduced or the script is clearly marked internal/deprecated through existing inventory, and no summary capability is lost.
-
-Boundaries: One-script consolidation only; no new command, no new report surface, no scientific claim change, and no Balfrin dependency.
-
 ### TB-530: Simplify Local CI Entry Points
 
 Goal: Make `scripts/run_ci_local.py` the obvious local verification entry point and hide duplicate test incantations from first-line docs.

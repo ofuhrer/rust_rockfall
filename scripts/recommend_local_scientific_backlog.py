@@ -29,7 +29,7 @@ from scripts import inventory_second_site_local_blockers as second_site
 from scripts import print_agent_task_context as task_context
 from scripts import rank_local_hazard_layer_fragility as fragility
 from scripts import summarize_extreme_layer_sensitivity_smoke as sensitivity
-from scripts import summarize_local_scientific_progress as local_progress
+from scripts.lib import local_scientific_progress as local_progress
 
 
 SCHEMA_VERSION = "local_scientific_backlog_recommendation_v1"
@@ -37,20 +37,32 @@ SCHEMA_VERSION = "local_scientific_backlog_recommendation_v1"
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--report",
+        choices=("backlog", "progress"),
+        default="backlog",
+        help="Report to render. 'progress' replaces the retired summarize_local_scientific_progress.py script.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report()
+    report = build_progress_report() if args.report == "progress" else build_report()
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.report == "progress":
+        print(local_progress.render_text_report(report))
     else:
         print(render_text_report(report))
     return 0
+
+
+def build_progress_report() -> dict[str, Any]:
+    return local_progress.build_report()
 
 
 def build_report() -> dict[str, Any]:

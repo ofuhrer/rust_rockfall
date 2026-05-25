@@ -101,7 +101,14 @@ def build_inventory(
     *,
     root: Path = ROOT,
 ) -> dict[str, Any]:
-    selected_paths = sorted((Path(path) for path in (paths or discover_tracked_text_paths(root))), key=str)
+    selected_paths = sorted(
+        (
+            Path(path)
+            for path in (paths or discover_tracked_text_paths(root))
+            if (root / Path(path)).exists()
+        ),
+        key=str,
+    )
     records = [build_file_record(path=path, root=root) for path in selected_paths]
     public_records = [{key: value for key, value in record.items() if key != "text"} for record in records]
 

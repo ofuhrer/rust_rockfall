@@ -43,6 +43,13 @@ class LocalScientificBacklogRecommendationTests(unittest.TestCase):
         self.assertIn("holdout_calibration_guardrail_integration", text)
         self.assertIn("scale_up_authorized: False", text)
 
+    def test_progress_report_is_available_through_existing_command_module(self) -> None:
+        report = recommendation.build_progress_report()
+
+        self.assertEqual(report["schema_version"], "local_scientific_progress_summary_v1")
+        self.assertFalse(report["claim_boundaries"]["balfrin_required"])
+        self.assertEqual(report["ranked_local_tracks"][0]["track_id"], "conditional_denominator_provenance")
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

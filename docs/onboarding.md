@@ -212,7 +212,7 @@ Before proposing Balfrin work or broad scientific rewrites, run the local
 scientific audit surface:
 
 ```bash
-.venv/bin/python scripts/summarize_local_scientific_progress.py --format text
+.venv/bin/python scripts/recommend_local_scientific_backlog.py --report progress --format text
 .venv/bin/python scripts/recommend_local_scientific_backlog.py --format text
 ```
 
