@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-553: Sync The Balfrin Remote Checkout To A Reviewed Commit
-
-Goal: Align the Balfrin remote checkout with the reviewed repository commit before any further package or submission work.
-
-Capability gap reduced: Removes stale remote-head mismatch from Balfrin package readiness.
-
-Why this outranks alternatives: Read-only access is back, but package generation has recently failed closed when the Balfrin remote HEAD lagged behind the local package source.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `docs/orchestration_strategy.md`
-- `tests/test_balfrin_regional_split_submission_package.py`
-
-Deliverables:
-
-- Run the remote access preflight, update the remote clone only by a safe fast-forward path if possible, and rerun the preflight.
-- Record before/after remote HEAD and any remaining remote hygiene blockers.
-
-Definition of done:
-
-- The Balfrin access preflight reports a clean remote checkout with documented head alignment, or it fails closed with exact operator recovery commands.
-
-Boundaries: Remote git hygiene only; no `sbatch`, no generated artifact deletion beyond documented stale checkout cleanup, no live run.
-
 ### TB-554: Recompute Balfrin Decision Gate After Access And Scratch Repair
 
 Goal: Recompute the next-live-run decision gate after clean-checkout and Balfrin remote-head blockers are resolved.
