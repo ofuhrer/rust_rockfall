@@ -8011,3 +8011,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: existing local fixtures only; no hazard model change, tuning, operational threshold, or physical-probability claim.
 - Next task: `TB-539`
+
+### TB-539: Promote Denominator And Deposition Audits Into A Single Interpretation Gate
+
+- Date: 2026-05-25
+- Commit: `c78ec81`
+- Objective: combine conditional denominator provenance and trajectory-deposition traceability into one local map interpretation gate.
+- Files changed: `scripts/recommend_local_scientific_backlog.py`, `tests/test_local_scientific_backlog_recommendation.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `local_map_interpretation_gate` to the existing local scientific recommendation output.
+  - The gate passes only when denominator provenance is `complete` and deposition traceability is `traceable`.
+  - Added fail-closed output with failing evidence and the next local recovery command for blocked cases.
+  - Removed TB-539 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_conditional_denominator_provenance tests.test_trajectory_deposition_traceability tests.test_local_scientific_backlog_recommendation -v`
+  - `PYENV_VERSION=system uv run python scripts/recommend_local_scientific_backlog.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: consolidated existing audits only; no new standalone dashboard, claim upgrade, annual-frequency semantics, or tuning.
+- Next task: `TB-540`
