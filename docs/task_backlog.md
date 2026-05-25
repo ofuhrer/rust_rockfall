@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-509: Clear The Eight-Zone Local Scaling Blocker
-
-Goal: Move the local multi-zone scaling ladder past the eight-zone blocker rather than only reducing its manifest pressure.
-
-Capability gap reduced: Advances the local scalability frontier to a larger measured rung without Balfrin access.
-
-Why this outranks alternatives: TB-497 reduced the eight-zone manifest bundle but left the first blocked rung unchanged, so the next scalability task should clear or precisely reclassify that blocker.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_scaling_ladder.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `tests/test_multi_zone_scaling_ladder.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-
-Deliverables:
-
-- Identify the remaining eight-zone blocker after compact merge manifests and remove one real pressure source or tighten an over-conservative classifier using measured evidence.
-- Re-run before/after local ladder metrics and record whether the first blocked rung moves beyond eight zones.
-
-Definition of done:
-
-- Focused multi-zone tests pass, before/after ladder output shows eight-zone status improved or a rigorously justified no-clear result, and no new report surface is added.
-
-Boundaries: Local fixture-backed scaling only; no Balfrin submission, no distributed execution, no Swiss-wide claim, and no operational claim.
-
 ### TB-510: Run Candidate Geometry Ablation Locally
 
 Goal: Ablate candidate release placement locally to separate source offset from local stopping behavior in the Tschamut candidate failure.

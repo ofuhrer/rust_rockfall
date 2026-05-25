@@ -131,6 +131,33 @@ class MultiZoneScalingLadderTests(unittest.TestCase):
         self.assertEqual(blocked["threshold_profile_id"], "next_larger_four_zone_review_only_probe")
         self.assertIn("output_file_count", blocked["exceeded_thresholds"])
         self.assertTrue(blocked["replay_critical_excesses"] or blocked["compressible_excesses"])
+        self.assertEqual(
+            MODULE.first_budget_blocker_metric(blocked),
+            "output_budget:replay_critical_deposition_csv_output_family_file_count",
+        )
+
+    def test_eight_zone_resolution_names_replay_critical_no_clear(self) -> None:
+        report = MODULE.build_eight_zone_blocker_resolution(
+            [
+                {
+                    "release_zone_count": 8,
+                    "budget_status": "multi_zone_dry_run_blocked",
+                    "first_bottleneck": "output_budget:replay_critical_deposition_csv_output_family_file_count",
+                    "output_budget_validation": {
+                        "status": "blocked_threshold_exceeded",
+                        "exceeded_thresholds": ["output_family_file_count"],
+                        "replay_critical_excesses": [
+                            {"metric": "output_family_file_count", "family": "deposition_csv"}
+                        ],
+                        "compressible_excesses": [],
+                    },
+                }
+            ]
+        )
+
+        self.assertEqual(report["status"], "not_cleared_replay_critical_family_count")
+        self.assertEqual(report["replay_critical_excess_count"], 1)
+        self.assertIn("not merely compact-manifest pressure", report["summary"])
 
 
 if __name__ == "__main__":

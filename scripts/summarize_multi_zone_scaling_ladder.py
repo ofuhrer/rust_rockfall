@@ -210,6 +210,7 @@ def build_report(ladder_root: Path, *, zone_counts: tuple[int, ...] = DEFAULT_ZO
         "first_blocked_zone_count": first_blocked_zone_count,
         "first_blocked_metric": first_blocked_metric,
         "first_budget_blocker": first_blocked_rung.get("first_budget_failure") if first_blocked_rung else None,
+        "eight_zone_blocker_resolution": build_eight_zone_blocker_resolution(rung_reports),
         "output_budget_thresholds": handoff.build_output_budget_acceptance_thresholds(),
         "measurement_command": measurement_command,
         "claim_boundaries": {
@@ -960,7 +961,66 @@ def rung_result_to_dict(result: LadderRungResult) -> dict[str, Any]:
 
 
 def first_bottleneck(result: LadderRungResult) -> str:
+    budget_metric = first_budget_blocker_metric(result.output_budget_validation)
+    if budget_metric:
+        return budget_metric
     return first_pressure_bottleneck_metric(result.pressure_report) or str(result.hazard_bottleneck.get("label") or "unknown")
+
+
+def first_budget_blocker_metric(output_budget_validation: dict[str, Any]) -> str | None:
+    if output_budget_validation.get("status") == "accepted":
+        return None
+    replay_critical = output_budget_validation.get("replay_critical_excesses")
+    if isinstance(replay_critical, list) and replay_critical:
+        metric = str(replay_critical[0].get("metric") or "unknown")
+        family = replay_critical[0].get("family")
+        return f"output_budget:replay_critical_{family}_{metric}" if family else f"output_budget:replay_critical_{metric}"
+    compressible = output_budget_validation.get("compressible_excesses")
+    if isinstance(compressible, list) and compressible:
+        return f"output_budget:compressible_{compressible[0].get('metric') or 'unknown'}"
+    failures = output_budget_validation.get("failures")
+    if isinstance(failures, list) and failures:
+        return f"output_budget:{failures[0].get('metric') or 'unknown'}"
+    return "output_budget:blocked_without_metric"
+
+
+def build_eight_zone_blocker_resolution(rungs: list[dict[str, Any]]) -> dict[str, Any]:
+    eight_zone = next((rung for rung in rungs if rung.get("release_zone_count") == 8), None)
+    if eight_zone is None:
+        return {
+            "status": "not_measured",
+            "release_zone_count": 8,
+            "summary": "8-zone rung was not part of this ladder measurement.",
+        }
+    validation = dict(eight_zone.get("output_budget_validation") or {})
+    replay_critical = list(validation.get("replay_critical_excesses") or [])
+    compressible = list(validation.get("compressible_excesses") or [])
+    if validation.get("status") == "accepted" and eight_zone.get("budget_status") == "probe_ready":
+        status = "cleared"
+        summary = "8-zone rung is probe-ready under local fixture-backed pressure and output-budget checks."
+    elif replay_critical:
+        status = "not_cleared_replay_critical_family_count"
+        summary = (
+            "8-zone rung remains blocked because replay-critical trajectory, deposition, or impact-event "
+            "family counts exceed the current review profile; this is not merely compact-manifest pressure."
+        )
+    elif compressible:
+        status = "not_cleared_compressible_output_budget"
+        summary = "8-zone rung remains blocked by compressible output-budget excesses."
+    else:
+        status = "not_cleared_pressure_classifier"
+        summary = "8-zone rung remains blocked by the reducer pressure classifier."
+    return {
+        "status": status,
+        "release_zone_count": 8,
+        "budget_status": eight_zone.get("budget_status"),
+        "first_bottleneck": eight_zone.get("first_bottleneck"),
+        "output_budget_status": validation.get("status"),
+        "exceeded_thresholds": list(validation.get("exceeded_thresholds") or []),
+        "replay_critical_excess_count": len(replay_critical),
+        "compressible_excess_count": len(compressible),
+        "summary": summary,
+    }
 
 
 def first_pressure_bottleneck_metric(pressure_report: dict[str, Any]) -> str | None:
