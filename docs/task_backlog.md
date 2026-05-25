@@ -39,32 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-569: Build A 16-Zone Reduced-Output Handoff Without Submission
-
-Goal: Create a no-submit 16-zone reduced-output Balfrin handoff to test whether the next scale step is package-ready.
-
-Capability gap reduced: Identifies whether the next larger single-node/postproc step is blocked by reducer pressure, output budget, manifest size, or authorization before any live run.
-
-Why this outranks alternatives: Current projections name a 10-zone single-AOI planning ceiling, but no current 16-zone package has been reviewed under the reduced-output contract.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Generate a 16-zone no-submit package in `/tmp` with compact manifests, reduced outputs, reducer limits, output-budget status, and exact first blocker.
-- If ready, preserve the exact later submit-gate command; if blocked, name the smallest package/output/reducer repair.
-
-Definition of done:
-
-- Focused tests or fixture assertions pass, and the package status is either `ready_for_review` or a fail-closed blocker with a concrete recovery command.
-
-Boundaries: No `sbatch`, no live submission, no distributed execution, no Swiss-wide claim, and no operational claim.
-
 ### TB-570: Optimize Reducer Manifest Pressure For The Next Larger Package
 
 Goal: Reduce the reducer/replay metadata pressure that blocks larger reduced-output packages without changing hazard semantics.

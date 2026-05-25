@@ -762,6 +762,36 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertTrue(any(check["status"] == "blocked" for check in report["constraint_pressure"]["constraint_checks"]))
         self.assertEqual(report["submission_classification"], "blocked_pending_new_human_authorization")
 
+    def test_sixteen_zone_handoff_fails_closed_with_concrete_blockers(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            artifact_dir = Path(tmpdir) / "tb569_16_zone_handoff"
+            pressure_probe_root = Path(tmpdir) / "tb569_16_zone_pressure"
+
+            report = MODULE.build_report(
+                artifact_dir=artifact_dir,
+                pressure_probe_root=pressure_probe_root,
+                requested_release_zone_batch_size=16,
+                requested_reducer_chunk_count=2,
+                requested_reducer_worker_count=2,
+            )
+
+        self.assertEqual(report["package_constraint_status"], "blocked")
+        self.assertEqual(report["no_submit_handoff_contract"]["status"], "blocked")
+        self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["sbatch_attempted"])
+        self.assertFalse(report["no_submit_handoff_contract"]["no_submit_semantics"]["balfrin_job_submitted"])
+        self.assertEqual(
+            report["scenario_pressure_projection"]["first_bottleneck_labels"]["first_blocked"],
+            "release_zone_count",
+        )
+        self.assertEqual(
+            report["handoff_output_budget_projection"]["first_bottleneck_labels"]["first_blocked"],
+            "output_file_count",
+        )
+        first_blocker = report["no_submit_handoff_contract"]["first_blocker"]
+        self.assertEqual(first_blocker["status"], "blocked_reducer_or_scenario_limits")
+        self.assertIn("requested simultaneous_release_zone_batch_size=16 exceeds measured max 8", first_blocker["reason"])
+        self.assertIn("--requested-release-zone-batch-size 2", first_blocker["recovery_command"])
+
     def test_missing_required_inputs_fail_closed_with_a_blocked_report(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
             artifact_dir = Path(tmpdir) / "balfrin_multi_release_zone_demo_v1"
