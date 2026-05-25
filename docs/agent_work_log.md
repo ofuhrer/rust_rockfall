@@ -7295,3 +7295,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: local fixture-backed scaling only; no Balfrin submission, no distributed execution, no Swiss-wide claim, and no operational claim.
 - Next task: `TB-510`
+
+### TB-510: Run Candidate Geometry Ablation Locally
+
+- Date: 2026-05-25
+- Commit: `1a243d6`
+- Objective: separate source-offset effects from local stopping behavior in the failed Tschamut reviewed-candidate comparison.
+- Files changed: `scripts/summarize_tschamut_closure_gap_deltas.py`, `tests/test_tschamut_closure_gap_deltas.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `candidate_geometry_ablation` to the existing Tschamut closure-gap delta report instead of adding a new report script.
+  - Fixture-replayed the candidate-aligned local smoke against the observed-release local baseline as the source-aligned variant.
+  - Measured candidate-minus-source-aligned deltas: `+65.493787 m` runout-distance error, `+204.866829 m` deposition-centroid error, `-0.433333` deposition overlap, and `-0.636829` simulated/observed runout ratio.
+  - Classified the result as `source_offset_dominates_with_candidate_local_stopping_signal`, with the next action to test a source-aligned reviewed candidate before physics tuning.
+  - Added fail-closed behavior for missing comparison records and focused tests for the ablation classification and boundaries.
+  - Removed TB-510 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_closure_gap_deltas -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_tschamut_closure_gap_deltas.py --format json --json-output /tmp/tb510_closure_gap_deltas.json > /tmp/tb510_closure_gap_deltas_stdout.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `rg -n "PLACEHOLDER|TODO|TBD|XXX|stub|dummy" scripts/summarize_tschamut_closure_gap_deltas.py tests/test_tschamut_closure_gap_deltas.py docs/task_backlog.md` (only intentional backlog task-template `TB-XXX` entries matched)
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Boundaries: local fixture-replay ablation only; no physics tuning, no candidate acceptance upgrade, no annual-frequency semantics, no operational claim, and no Balfrin dependency.
+- Next task: `TB-511`
