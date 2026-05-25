@@ -58,6 +58,7 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/plan_swisstopo_aoi_acquisition.py`
 - `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
 - `scripts/package_aoi_hazard_map.py`
+- `scripts/run_balfrin_diagnostic.py`
 - `scripts/run_aoi_hazard_workflow.py`
 - `scripts/submit_balfrin_probe.py`
 - `scripts/stage_public_geodata_cache.py`

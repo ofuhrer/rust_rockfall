@@ -62,6 +62,7 @@ clean_checkout_ci = [
   "tests.test_qgis_processing_connector_manifest",
   "tests.test_release_plan_dry_run",
   "tests.test_repo_consistency_module_split",
+  "tests.test_run_balfrin_diagnostic",
   "tests.test_run_ci_local",
   "tests.test_same_scale_cog_package_conversion",
   "tests.test_same_scale_stability_frontier",

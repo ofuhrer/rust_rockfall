@@ -110,6 +110,9 @@ the AOI front door. New users should start with this smaller command surface:
 - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py ...`
   for AOI status, preparation, candidate review, local smoke runs, and map
   packaging readiness.
+- `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run`
+  for one bounded Balfrin `postproc` diagnostic run with prepare, submit,
+  monitor, collect, and one run record under `$SCRATCH`.
 - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py`
   for portable pilot command plans without executing them.
 
@@ -119,8 +122,18 @@ normally be reached through these commands or through a documented workflow.
 ## Advanced Scaling
 
 The first path through the repository is local. Balfrin/HPC work is an advanced
-scaling topic for already-prepared experiments, and it starts from the
-[`Balfrin Tschamut pilot runbook`](docs/balfrin_tschamut_pilot_runbook.md).
+scaling topic for already-prepared experiments. The compact execution path is:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run \
+  --release-zones 16 \
+  --manifest-mode compact \
+  --format text
+```
+
+This writes a single `run_record.json` under the selected `$SCRATCH` run root.
+The older Balfrin runbook remains useful background, but routine diagnostic
+runs should use the single command above.
 
 ## Development Workflow
 
