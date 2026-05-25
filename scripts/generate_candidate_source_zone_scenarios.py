@@ -32,6 +32,7 @@ from lib.workflow_validation import (
     build_release_zone_provenance_intake,
     validate_release_candidate_physical_meaning_firewall,
 )
+from lib.point_geometry import point_in_bounds
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1615,13 +1616,6 @@ def validate_freezer_release_sampling_geometry(
         "all_centers_inside_candidate_bbox": all(item["inside_candidate_bbox"] for item in checked),
         "checked_release_cells": checked,
     }
-
-
-def point_in_bounds(x: float, y: float, bounds: dict[str, Any]) -> bool:
-    return (
-        float(bounds.get("xmin", 0.0)) <= x <= float(bounds.get("xmax", 0.0))
-        and float(bounds.get("ymin", 0.0)) <= y <= float(bounds.get("ymax", 0.0))
-    )
 
 
 def source_zone_bounds(geometry: dict[str, Any]) -> dict[str, float]:

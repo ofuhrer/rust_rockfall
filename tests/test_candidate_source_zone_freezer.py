@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.lib import point_geometry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
@@ -321,6 +323,22 @@ def write_prau_mulins_review_package(workdir: Path) -> Path:
 
 
 class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
+    def test_freezer_and_diagnostic_helpers_parse_release_cell_centers_consistently(self) -> None:
+        rows = [
+            {"release_cell_center_lv95_m": [2696482.5, 1167530.0]},
+            {"release_cell_center_lv95_m": "[2696486.5, 1167534.0]"},
+        ]
+        bounds = {"xmin": 2696480.0, "xmax": 2696490.0, "ymin": 1167528.0, "ymax": 1167538.0}
+
+        centroid = point_geometry.centroid_xy(rows)
+
+        self.assertEqual(centroid, {"x_m": 2696484.5, "y_m": 1167532.0})
+        for row in rows:
+            xy = point_geometry.xy_from_row(row)
+            self.assertIsNotNone(xy)
+            assert xy is not None
+            self.assertTrue(freezer.point_in_bounds(xy[0], xy[1], bounds))
+
     def _write_review_package(self, workdir: Path) -> Path:
         emitted_geojson_path = workdir / "review_candidates.geojson"
         emitted_mask_path = workdir / "review_candidates_mask.asc"

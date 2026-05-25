@@ -29,6 +29,12 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from lib.point_geometry import centroid_xy, distance_xy, xy_from_row
+
 SCHEMA_VERSION = "tschamut_closure_gap_deltas_v1"
 DEFAULT_CANDIDATE_LOCAL_COMPARISON_RECORD = (
     ROOT / "validation/pilot_runs/tschamut_candidate_adjacent_prau_mulins_local_comparison_v1.yaml"
@@ -721,7 +727,7 @@ def endpoint_cloud_metrics(
 def valid_xy_points(rows: list[dict[str, Any]]) -> list[tuple[float, float]]:
     points: list[tuple[float, float]] = []
     for row in rows:
-        xy = row_xy(row)
+        xy = xy_from_row(row)
         if xy is not None:
             points.append(xy)
     return points
@@ -854,50 +860,6 @@ def next_candidate_failure_action(dominant_failure_mode: str) -> str:
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         return [dict(row) for row in csv.DictReader(handle)]
-
-
-def centroid_xy(rows: list[dict[str, Any]], *, x_key: str = "x_m", y_key: str = "y_m") -> dict[str, float]:
-    xs: list[float] = []
-    ys: list[float] = []
-    for row in rows:
-        xy = row_xy(row, x_key=x_key, y_key=y_key)
-        if xy is None:
-            continue
-        x, y = xy
-        xs.append(x)
-        ys.append(y)
-    if not xs or not ys:
-        return {"x_m": 0.0, "y_m": 0.0}
-    return {
-        "x_m": round(sum(xs) / len(xs), 6),
-        "y_m": round(sum(ys) / len(ys), 6),
-    }
-
-
-def row_xy(row: dict[str, Any], *, x_key: str = "x_m", y_key: str = "y_m") -> tuple[float, float] | None:
-    try:
-        x = float(row.get(x_key) or "")
-        y = float(row.get(y_key) or "")
-    except (TypeError, ValueError):
-        center = row.get("release_cell_center_lv95_m")
-        if not center:
-            return None
-        try:
-            values = json.loads(str(center))
-            x = float(values[0])
-            y = float(values[1])
-        except (TypeError, ValueError, json.JSONDecodeError, IndexError):
-            return None
-    if not math.isfinite(x) or not math.isfinite(y):
-        return None
-    return x, y
-
-
-def distance_xy(left: dict[str, float], right: dict[str, float]) -> float:
-    return math.hypot(
-        float(left.get("x_m", 0.0)) - float(right.get("x_m", 0.0)),
-        float(left.get("y_m", 0.0)) - float(right.get("y_m", 0.0)),
-    )
 
 
 def resolve_repo_path(path: Path) -> Path:

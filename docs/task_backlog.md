@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-522: Consolidate Candidate Diagnostic Point Geometry Helpers
-
-Goal: Reduce duplicated point/centroid/geometry parsing across candidate diagnostics and freezer tests.
-
-Capability gap reduced: Lowers risk of subtle coordinate parsing drift in candidate science tasks.
-
-Why this outranks alternatives: Recent candidate diagnostics and freezer geometry checks both parse LV95 point data; duplicated parsing can create inconsistent scientific conclusions.
-
-Inspect first:
-
-- `scripts/summarize_tschamut_closure_gap_deltas.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `tests/test_tschamut_closure_gap_deltas.py`
-- `tests/test_candidate_source_zone_freezer.py`
-
-Deliverables:
-
-- Move one shared point parsing or centroid helper into an existing appropriate helper module or reuse an existing helper without adding a new script.
-- Update affected tests to prove candidate diagnostics and freezer geometry interpret the same coordinate fields consistently.
-
-Definition of done:
-
-- Focused candidate/freezer tests pass and duplicated coordinate parsing is reduced.
-
-Boundaries: Internal simplification only; no new coordinate semantics, no source-zone claim change, no tuning, and no Balfrin dependency.
-
 ### TB-523: Measure Local End-To-End Candidate Loop Runtime
 
 Goal: Measure the local end-to-end candidate loop from review/freezing through reduced hazard comparison for a tiny fixture.
