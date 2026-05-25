@@ -44,21 +44,11 @@ Run the main local checks:
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 ```
 
-Run the Rust tests directly:
+For focused debugging, run individual checks directly:
 
 ```bash
 cargo test
-```
-
-Run a small example simulation:
-
-```bash
 cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
-```
-
-Verify benchmark and validation cases:
-
-```bash
 cargo run -- verify --all
 cargo run -- validate --all
 ```
@@ -94,20 +84,22 @@ normally be reached through these commands or through a documented workflow.
 
 ## Development Workflow
 
-Use the repository CI runner when changing code:
+Use the repository CI runner when changing code. This is the first-line local
+verification path and mirrors the GitHub Actions suite layout:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 ```
 
-For the clean-checkout Python suite used by GitHub Actions:
+For focused debugging, the same runner exposes narrower suites. The
+clean-checkout Python suite used by GitHub Actions is:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
 ```
 
-For the full local Python suite on machines that also have local/generated
-artifacts:
+The full local Python suite is useful on machines that also have
+local/generated artifacts:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python-full

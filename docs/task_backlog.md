@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-530: Simplify Local CI Entry Points
-
-Goal: Make `scripts/run_ci_local.py` the obvious local verification entry point and hide duplicate test incantations from first-line docs.
-
-Capability gap reduced: Reduces local-vs-CI drift and lowers onboarding friction.
-
-Why this outranks alternatives: A clean user interface needs one verification command before it needs more workflow features.
-
-Inspect first:
-
-- `scripts/run_ci_local.py`
-- `README.md`
-- `docs/onboarding.md`
-- `tests/python_test_tiers.toml`
-- `.github/workflows`
-
-Deliverables:
-
-- Update README/onboarding so the default local verification path starts with one `run_ci_local.py` command and secondary direct commands are clearly optional.
-- Add or update a focused test/check if the CI-suite command mapping is not already covered.
-
-Definition of done:
-
-- Local CI runner help or focused tests pass, README/onboarding references are consistent, and direct command duplication in front-door docs is reduced.
-
-Boundaries: Verification interface simplification only; no CI workflow expansion, no new script, and no Balfrin dependency.
-
 ### TB-531: Move Balfrin-Specific User Noise Out Of The Main Front Door
 
 Goal: Keep Balfrin/HPC details available but prevent them from dominating the initial user-facing path.

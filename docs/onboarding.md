@@ -155,19 +155,22 @@ scripts/git-hooks/pre-commit
 After Rust and Python are available, run:
 
 ```bash
-cargo fmt --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test
-cargo run -- verify --all
-cargo run -- validate --all
-python -m unittest discover -s tests -p 'test_*.py'
-.venv/bin/python scripts/check_repo_consistency.py
-scripts/git-hooks/pre-commit
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 ```
 
-`cargo run -- verify --all` and `cargo run -- validate --all` write ignored
-diagnostic outputs. Do not stage those generated files unless a tiny fixture is
-being intentionally added and documented.
+For focused debugging, the same runner exposes narrower suites:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite lint
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite rust-tests
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite verify
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python-full
+```
+
+The `verify` and full `ci` suites write ignored diagnostic outputs. Do not
+stage those generated files unless a tiny fixture is being intentionally added
+and documented.
 
 ## Current Workflow Orientation
 
