@@ -365,6 +365,12 @@ class PilotCommandPlanTest(unittest.TestCase):
             [str(MODULE.CASE_SKELETON_OUTPUT_PATH)],
         )
         self.assertIn(str(MODULE.CASE_SKELETON_OUTPUT_ROOT), dry_run_command["command"])
+        release_plan_command = next(
+            command for command in report["commands"] if command["id"] == "second_site_release_plan_dry_run"
+        )
+        self.assertIn("Internal/deprecated direct helper", release_plan_command["description"])
+        self.assertIn("portable command plan", release_plan_command["description"])
+        self.assertIn("plan_release_plan_dry_run.py", release_plan_command["command"])
         contract_plan = report["site_plans"]["chant_sura_fluelapass"]
         self.assertEqual(contract_plan["contract_audit_status"], "measured")
         self.assertFalse(contract_plan["read_only"])

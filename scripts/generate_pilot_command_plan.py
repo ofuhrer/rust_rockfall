@@ -1221,7 +1221,10 @@ def build_second_site_plan(
             site="chant_sura_fluelapass",
             group="second_site_release_plan",
             command_id="second_site_release_plan_dry_run",
-            description="Derive deterministic release and block-scenario rows for the Chant Sura / Fluelapass candidate source-zone record.",
+            description=(
+                "Internal/deprecated direct helper retained for deterministic release-plan dry-run reports; "
+                "prefer this portable command plan for user-facing release-plan routing."
+            ),
             command=command_string(
                 [
                     "PYENV_VERSION=system",

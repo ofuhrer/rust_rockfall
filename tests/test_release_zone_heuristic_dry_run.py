@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import yaml
@@ -29,6 +31,17 @@ staging = _load_module(STAGING_SCRIPT_PATH, "prepare_chant_sura_fluelapass_minim
 
 
 class ReleaseZoneHeuristicDryRunTests(unittest.TestCase):
+    def test_help_warns_that_direct_helper_is_internal(self) -> None:
+        output = io.StringIO()
+
+        with self.assertRaises(SystemExit) as context, redirect_stdout(output):
+            planner.main(["--help"])
+
+        self.assertEqual(context.exception.code, 0)
+        help_text = output.getvalue()
+        self.assertIn("Deprecated/internal helper", help_text)
+        self.assertIn("scripts/run_aoi_hazard_workflow.py candidate-review", help_text)
+
     def test_candidate_fixture_reports_deferred_public_context_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)

@@ -30,6 +30,11 @@ SCHEMA_VERSION = "release_plan_dry_run_v1"
 SCENARIO_GENERATION_CONTRACT_SCHEMA_VERSION = "release_plan_generation_contract_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 TSCHAMUT_POLICY = ROOT / "validation/policies/tschamut_public_source_scenario_policy_v1.yaml"
+INTERNAL_HELP_NOTE = """Deprecated/internal helper:
+  Prefer `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site chant_sura_fluelapass ...`
+  for user-facing portable release-plan routing. This helper is retained for
+  deterministic dry-run reports used by tests and internal command plans.
+"""
 GENERIC_SCENARIO_GENERATION_COMMAND_ID = "candidate_source_zone_block_scenario_generation"
 UNSUPPORTED_PHYSICAL_FREQUENCY_FIELDS = [
     "annual_frequency",
@@ -54,7 +59,11 @@ PREFLIGHT = _load_preflight_module()
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=INTERNAL_HELP_NOTE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--format", choices=("text", "json"), default="text")

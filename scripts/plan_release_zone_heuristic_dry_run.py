@@ -27,6 +27,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "release_zone_heuristic_dry_run_v1"
 CONTRACT_SCHEMA_VERSION = "release_zone_candidate_generation_contract_v1"
 DEFAULT_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
+INTERNAL_HELP_NOTE = """Deprecated/internal helper:
+  Prefer `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py candidate-review ...`
+  for user-facing candidate release-zone review. This helper is retained for
+  deterministic dry-run reports used by tests and internal command plans.
+"""
 DEFERRED_PUBLIC_CONTEXT_CATEGORIES = {
     "swissimage_context",
     "swisstlm3d_context",
@@ -52,7 +57,11 @@ PREFLIGHT = _load_preflight_module()
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=INTERNAL_HELP_NOTE,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--site-config", type=Path, default=DEFAULT_SITE_CONFIG)
     parser.add_argument("--repo-root", type=Path, default=ROOT)
     parser.add_argument("--format", choices=("text", "json"), default="text")

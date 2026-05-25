@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-533: Add A Deprecated-Internal Script Warning For One Legacy Helper Family
-
-Goal: Prevent new users from invoking legacy/internal helper scripts directly when a better front-door path exists.
-
-Capability gap reduced: Shrinks the practical command surface without risky file deletion.
-
-Why this outranks alternatives: Some scripts may still be used by tests or agents; warnings are a safer first step than broad deletion.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_release_zone_heuristic_dry_run.py`
-- `scripts/plan_release_plan_dry_run.py`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- Add one consistent warning, help text, or inventory classification for a small legacy helper family that points users to the supported front-door command.
-- Preserve existing behavior for tests and internal automation.
-
-Definition of done:
-
-- Focused command/help tests pass and the deprecated/internal helper family points to the supported path without breaking existing callers.
-
-Boundaries: Warning/classification only; no script deletion, no new wrapper, no workflow claim change, and no Balfrin dependency.
-
 ### TB-534: Create A Minimal User-Facing Smoke Path
 
 Goal: Provide one small local smoke path that exercises the Rust core and one reviewable output without requiring users to understand the full research workflow.
