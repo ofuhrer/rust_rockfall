@@ -6852,3 +6852,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented
 - Boundaries: internal simplification only; no new script, no new workflow contract, no status-vocabulary change, no physics/tuning change, no operational claim, and no Balfrin execution.
 - Next task: `TB-492`
+
+### TB-492: Consolidate Release-Candidate Review Logic
+
+- Date: 2026-05-25
+- Commit: `81ee8a6`
+- Objective: simplify release-zone candidate review artifact emission without changing candidate semantics or review contracts.
+- Files changed: `scripts/plan_terrain_release_zone_candidates.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added shared candidate-review artifact path helpers used by both emitted review packages and review-apply output packages.
+  - Added a shared candidate-review GeoJSON envelope helper so review-ready and review-applied GeoJSON outputs no longer rebuild the common schema/header fields separately.
+  - Preserved existing output filenames, manifest fields, review CSV writing, mask writing/copying, and review validation behavior.
+  - Removed TB-492 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m py_compile scripts/plan_terrain_release_zone_candidates.py scripts/plan_release_zone_heuristic_dry_run.py tests/test_plan_terrain_release_zone_candidates.py tests/test_release_candidate_zero_result_diagnostic.py`
+  - `.venv/bin/python -m unittest tests.test_plan_terrain_release_zone_candidates tests.test_release_candidate_zero_result_diagnostic -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite repo-consistency`
+- Result/status: implemented
+- Boundaries: internal simplification only; no new source-zone semantics, no threshold tuning, no candidate acceptance upgrade, no operational claim, no new script, and no Balfrin execution.
+- Next task: `TB-493`
