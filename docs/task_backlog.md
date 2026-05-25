@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-523: Measure Local End-To-End Candidate Loop Runtime
-
-Goal: Measure the local end-to-end candidate loop from review/freezing through reduced hazard comparison for a tiny fixture.
-
-Capability gap reduced: Gives the project a concrete local iteration-time target for scientific candidate work.
-
-Why this outranks alternatives: Scientific progress depends on how quickly candidate hypotheses can be tested locally; individual helper timings do not show full-loop latency.
-
-Inspect first:
-
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_candidate_source_zone_freezer.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Use existing tiny fixtures to run the local candidate loop end to end or build a fixture-backed timing smoke through existing helpers.
-- Record phase timings and identify the largest local bottleneck without adding a new dashboard.
-
-Definition of done:
-
-- Focused candidate/hazard tests pass and the measured loop either completes with phase timings or fails closed with the exact missing fixture/input.
-
-Boundaries: Local timing smoke only; no new workflow contract, no operational claim, no Balfrin dependency, and no candidate acceptance upgrade.
-
 ### TB-524: Define The Public Command Surface
 
 Goal: Make the intended user-facing command set explicit and small so new users do not have to choose among hundreds of helper scripts.

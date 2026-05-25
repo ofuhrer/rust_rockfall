@@ -3,14 +3,17 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
+import time
 import tempfile
 import unittest
 from pathlib import Path
 
+import scripts.build_hazard_layers as hazard
 from scripts.lib import point_geometry
 
 
 ROOT = Path(__file__).resolve().parents[1]
+HAZARD_FIXTURE = ROOT / "tests" / "fixtures" / "hazard"
 SCRIPT_PATH = ROOT / "scripts" / "generate_candidate_source_zone_scenarios.py"
 PLANNER_SCRIPT_PATH = ROOT / "scripts" / "plan_terrain_release_zone_candidates.py"
 POLICY_VALIDATOR_PATH = ROOT / "scripts" / "validate_source_scenario_policy.py"
@@ -587,6 +590,99 @@ class ReviewedCandidateSourceZoneFreezerTests(unittest.TestCase):
             self.assertLessEqual(x, bbox["xmax"])
             self.assertGreaterEqual(y, bbox["ymin"])
             self.assertLessEqual(y, bbox["ymax"])
+
+    def test_local_candidate_loop_timing_smoke_records_phase_bottleneck(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
+            workdir = Path(tmp)
+            phase_seconds: dict[str, float] = {}
+
+            started = time.perf_counter()
+            review_package_path = self._write_review_package(workdir)
+            phase_seconds["review_apply_seconds"] = time.perf_counter() - started
+
+            started = time.perf_counter()
+            freezer_report = freezer.build_freezer_report(
+                review_package_path=review_package_path,
+                accepted_candidate_ids=["cand_accept_a", "cand_accept_b"],
+                output_root=workdir / "validation/private/chant_sura_fluelapass_portability_example_v1",
+                trajectory_count=24,
+                seed=34014,
+            )
+            phase_seconds["freeze_seconds"] = time.perf_counter() - started
+
+            hazard_output_root = workdir / "hazard/reduced_candidate_loop"
+            started = time.perf_counter()
+            status = hazard.main_with_args(
+                [
+                    "--case",
+                    str(HAZARD_FIXTURE / "plane_case.yaml"),
+                    "--diagnostics",
+                    str(HAZARD_FIXTURE / "diagnostics.json"),
+                    "--source-zone-metadata-path",
+                    freezer_report["output_paths"]["source_zone_metadata"],
+                    "--map-product-id",
+                    "fixture_local_candidate_loop_timing_smoke",
+                    "--probability-mode",
+                    "unweighted_diagnostic",
+                    "--normalization-scope",
+                    "conditioned_on_scenario",
+                    "--output-dir",
+                    str(hazard_output_root),
+                    "--grid-csv-export",
+                    "none",
+                    "--no-plots",
+                ]
+            )
+            phase_seconds["reduced_hazard_seconds"] = time.perf_counter() - started
+
+            started = time.perf_counter()
+            hazard_manifest = json.loads((hazard_output_root / "hazard_fixture_plane_manifest.json").read_text())
+            phase_timing = json.loads((hazard_output_root / "hazard_fixture_plane_phase_timing.json").read_text())
+            compared_layers = [
+                output["kind"]
+                for output in hazard_manifest["outputs"]
+                if output.get("kind") in {"hazard_layer", "metadata", "manifest"}
+            ]
+            phase_seconds["hazard_comparison_seconds"] = time.perf_counter() - started
+
+            largest_phase, largest_seconds = max(phase_seconds.items(), key=lambda item: item[1])
+            timing_report = {
+                "schema_version": "local_candidate_loop_timing_smoke_v1",
+                "loop_status": "ready",
+                "phase_seconds": {key: round(value, 6) for key, value in phase_seconds.items()},
+                "largest_bottleneck_phase": largest_phase,
+                "largest_bottleneck_seconds": round(largest_seconds, 6),
+                "accepted_candidate_count": len(freezer_report["accepted_candidate_ids"]),
+                "scenario_row_count": freezer_report["scenario_row_count"],
+                "hazard_output_count": hazard_manifest["performance"]["output_file_count"],
+                "hazard_builder_phase_seconds": phase_timing["phase_seconds"],
+                "compared_output_kinds": sorted(set(compared_layers)),
+                "boundary": "fixture-backed local timing smoke only; no candidate acceptance, validation, or operational claim",
+            }
+            timing_report_path = workdir / "local_candidate_loop_timing_smoke.json"
+            timing_report_path.write_text(json.dumps(timing_report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            timing_report_written = timing_report_path.exists()
+
+        self.assertEqual(status, 0)
+        self.assertEqual(freezer_report["freezer_status"], "ready")
+        self.assertEqual(timing_report["loop_status"], "ready")
+        self.assertEqual(timing_report["accepted_candidate_count"], 2)
+        self.assertEqual(timing_report["scenario_row_count"], 6)
+        self.assertGreater(timing_report["hazard_output_count"], 0)
+        self.assertEqual(
+            set(timing_report["phase_seconds"]),
+            {
+                "review_apply_seconds",
+                "freeze_seconds",
+                "reduced_hazard_seconds",
+                "hazard_comparison_seconds",
+            },
+        )
+        self.assertIn(timing_report["largest_bottleneck_phase"], timing_report["phase_seconds"])
+        self.assertGreaterEqual(timing_report["largest_bottleneck_seconds"], 0.0)
+        self.assertIn("hazard_layer", timing_report["compared_output_kinds"])
+        self.assertGreaterEqual(timing_report["hazard_builder_phase_seconds"]["input_read_seconds"], 0.0)
+        self.assertTrue(timing_report_written)
 
     def test_freezer_rejects_invalid_block_weights(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp:
