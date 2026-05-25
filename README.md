@@ -38,6 +38,18 @@ model.
 Install Rust, `cargo`, `rustfmt`, `clippy`, and `uv`. See
 [`docs/onboarding.md`](docs/onboarding.md) for setup details.
 
+Run the smallest smoke example:
+
+```bash
+cargo run -- run --config examples/inclined_plane.json --output /tmp/rust_rockfall_minimal_smoke.csv
+head -5 /tmp/rust_rockfall_minimal_smoke.csv
+```
+
+This writes a deterministic trajectory CSV with columns for time, position,
+velocity, energy diagnostics, and contact state. The example uses only
+[`examples/inclined_plane.json`](examples/inclined_plane.json) and does not
+download data.
+
 Run the main local checks:
 
 ```bash
@@ -48,7 +60,6 @@ For focused debugging, run individual checks directly:
 
 ```bash
 cargo test
-cargo run -- run --config examples/inclined_plane.json --output trajectory.csv
 cargo run -- verify --all
 cargo run -- validate --all
 ```

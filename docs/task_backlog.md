@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-534: Create A Minimal User-Facing Smoke Path
-
-Goal: Provide one small local smoke path that exercises the Rust core and one reviewable output without requiring users to understand the full research workflow.
-
-Capability gap reduced: Gives users a fast confidence-building path from checkout to visible result.
-
-Why this outranks alternatives: A clean interface needs a tiny end-to-end experience, not only tests and specialist AOI commands.
-
-Inspect first:
-
-- `README.md`
-- `examples/inclined_plane.json`
-- `scripts/run_ci_local.py`
-- `docs/aoi_user_manual.md`
-- `tests/terrain_edge_cases.rs`
-
-Deliverables:
-
-- Document and, if necessary, lightly adjust one existing example or command so it produces a small deterministic output and names where to inspect it.
-- Reuse existing examples and commands; do not add a new app, dashboard, or dataset.
-
-Definition of done:
-
-- The documented smoke command runs locally or has focused test coverage, produces a deterministic small output, and appears in the README quick start.
-
-Boundaries: Minimal local smoke only; no new physics, no new dataset, no operational claim, and no Balfrin dependency.
-
 ### TB-535: Prune One Generated-Or-Archived Reference From Active Navigation
 
 Goal: Remove one obsolete generated-output or archive-style reference from active navigation so active docs only point to maintained surfaces.
