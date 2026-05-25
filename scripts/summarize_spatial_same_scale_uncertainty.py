@@ -27,6 +27,8 @@ CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION = "conditional_hazard_region_summary_v1
 HOTSPOT_PERSISTENCE_SCHEMA_VERSION = "spatial_hotspot_persistence_v1"
 CONFIDENCE_PRODUCT_MANIFEST_SCHEMA_VERSION = "spatial_confidence_product_manifest_v1"
 CONFIDENCE_PRODUCT_SCHEMA_VERSION = "spatial_confidence_product_v1"
+NODATA_SUPPORT_INTERPRETATION_THRESHOLD = 0.15
+LOCALIZED_HIGH_UNCERTAINTY_THRESHOLD = 0.12
 DEFAULT_HAZARD_LAYERS = (
     "max_kinetic_energy",
     "max_jump_height",
@@ -219,6 +221,7 @@ def build_report(
             "blocked_reason": "",
         }
     )
+    interpretation_relevance_summary = build_interpretation_relevance_summary(layer_summaries)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -233,6 +236,7 @@ def build_report(
         "dominant_layers_by_mean_range": [item["layer_key"] for item in dominant_layers],
         "dominant_layer_summaries": dominant_layers,
         "uncertainty_layer_summary": uncertainty_layer_summary,
+        "interpretation_relevance_summary": interpretation_relevance_summary,
         "conditional_hazard_region_summary": conditional_hazard_region_summary,
         "hotspot_persistence_summary": hotspot_persistence_summary,
         "confidence_product_summary": confidence_product_summary,
@@ -285,6 +289,13 @@ def blocked_report(
             "stable_region_status": "blocked_missing_inputs",
             "unstable_region_status": "blocked_missing_inputs",
         },
+        "interpretation_relevance_summary": {
+            "summary_status": "blocked_missing_inputs",
+            "interpretation_relevant_layers": [],
+            "diagnostic_only_layers": [],
+            "threshold_basis": [],
+            "claim_boundary": "blocked_missing_inputs",
+        },
         "conditional_hazard_region_summary": {
             "schema_version": CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION,
             "summary_status": "blocked_missing_inputs",
@@ -325,11 +336,19 @@ def render_text(report: dict[str, Any]) -> str:
         summary = report["layer_summaries"][layer_key]
         lines.append(
             f"- {layer_key}: {summary['uncertainty_concentration_class']} | "
+            f"relevance={summary['interpretation_relevance']['classification']} | "
             f"shared_valid={summary['shared_valid_cell_count']}/{summary['analysis_cell_count']} | "
             f"nodata_disagreement={summary['nodata_disagreement_count']} | "
             f"stability={summary['nonzero_support_stability_fraction']:.6g} | "
             f"range_p95={summary['range_summary']['p95_range']:.6g}"
         )
+        relevance = summary.get("interpretation_relevance") or {}
+        if relevance:
+            lines.append(
+                f"  relevance basis: layer={relevance.get('layer_key')} | "
+                f"threshold={relevance.get('threshold_basis')} | "
+                f"claim={relevance.get('claim_boundary')}"
+            )
         decomposition = summary.get("disagreement_decomposition") or {}
         if decomposition:
             fractions = decomposition.get("high_uncertainty_fraction_explained") or {}
@@ -392,10 +411,19 @@ def render_text(report: dict[str, Any]) -> str:
         for layer in uncertainty_layer_summary.get("layer_summaries", []):
             lines.append(
                 f"- {layer['layer_key']}: confidence={layer['confidence_class']} | "
+                f"relevance={layer.get('interpretation_relevance_classification')} | "
                 f"uncertainty={layer['uncertainty_concentration_class']} | "
                 f"stable={layer['stable_region']['cell_count']} | "
                 f"unstable={layer['unstable_region']['cell_count']}"
             )
+    relevance_summary = report.get("interpretation_relevance_summary") or {}
+    if relevance_summary:
+        lines.append(
+            "interpretation relevance summary: "
+            f"{relevance_summary.get('summary_status')} | "
+            f"interpretation-relevant={', '.join(relevance_summary.get('interpretation_relevant_layers', [])) or 'none'} | "
+            f"diagnostic-only={', '.join(relevance_summary.get('diagnostic_only_layers', [])) or 'none'}"
+        )
     conditional_hazard_region_summary = report.get("conditional_hazard_region_summary") or {}
     if conditional_hazard_region_summary:
         lines.append(
@@ -606,6 +634,8 @@ def summarize_uncertainty_layer(layer_key: str, layer: dict[str, Any], stability
         "layer_key": layer_key,
         "closure_role": closure_role,
         "confidence_class": confidence_class,
+        "interpretation_relevance_classification": (layer.get("interpretation_relevance") or {}).get("classification"),
+        "interpretation_relevance_threshold_basis": (layer.get("interpretation_relevance") or {}).get("threshold_basis"),
         "uncertainty_concentration_class": layer.get("uncertainty_concentration_class"),
         "stability_zone_class": layer.get("stability_zone_class"),
         "dominant_zone_category": layer.get("stability_zone_dominant_category"),
@@ -627,6 +657,35 @@ def summarize_uncertainty_layer(layer_key: str, layer: dict[str, Any], stability
         "stable_vs_unstable": stable_vs_unstable_fraction,
         "stable_region_status": "measured_existing_artifacts",
         "unstable_region_status": "measured_existing_artifacts",
+    }
+
+
+def build_interpretation_relevance_summary(layer_summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    interpretation_relevant_layers = []
+    diagnostic_only_layers = []
+    threshold_basis = []
+    for layer_key in sorted(layer_summaries):
+        relevance = dict(layer_summaries[layer_key].get("interpretation_relevance") or {})
+        classification = relevance.get("classification")
+        if classification == "interpretation_relevant":
+            interpretation_relevant_layers.append(layer_key)
+        elif classification == "diagnostic_only":
+            diagnostic_only_layers.append(layer_key)
+        if relevance.get("threshold_basis"):
+            threshold_basis.append(
+                {
+                    "layer_key": layer_key,
+                    "classification": classification,
+                    "threshold_basis": relevance["threshold_basis"],
+                    "claim_boundary": relevance.get("claim_boundary"),
+                }
+            )
+    return {
+        "summary_status": "measured_existing_artifacts",
+        "interpretation_relevant_layers": interpretation_relevant_layers,
+        "diagnostic_only_layers": diagnostic_only_layers,
+        "threshold_basis": threshold_basis,
+        "claim_boundary": "diagnostic interpretation aid only; no claim upgrade, threshold tuning, or operational decision threshold",
     }
 
 
@@ -1043,6 +1102,14 @@ def summarize_layer_grids(
         analysis_cell_count=analysis_cell_count,
         high_uncertainty_count=len(selected_high_uncertainty),
     )
+    closure_role = mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"])
+    interpretation_relevance = classify_interpretation_relevance(
+        layer_key=layer_key,
+        concentration_class=interpretation["uncertainty_concentration_class"],
+        closure_role=closure_role,
+        nodata_disagreement_fraction=nodata_disagreement_count / any_valid_count if any_valid_count else 0.0,
+        high_uncertainty_threshold=range_threshold,
+    )
 
     bbox = bbox_for_cells(selected_high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
     centroid = centroid_for_cells(selected_high_uncertainty, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
@@ -1059,7 +1126,7 @@ def summarize_layer_grids(
         cellsize=cellsize,
         xllcorner=xllcorner,
         yllcorner=yllcorner,
-        closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+        closure_role=closure_role,
     )
     conditional_hazard_region_summary = summarize_conditional_hazard_regions(
         layer_key=layer_key,
@@ -1074,7 +1141,7 @@ def summarize_layer_grids(
         cellsize=cellsize,
         xllcorner=xllcorner,
         yllcorner=yllcorner,
-        closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+        closure_role=closure_role,
     )
     mask_cells = dedupe_cells(selected_high_uncertainty + support_nodata_cells + shared_support_magnitude_cells)
     mask_bbox = bbox_for_cells(mask_cells, nrows=nrows, cellsize=cellsize, xllcorner=xllcorner, yllcorner=yllcorner)
@@ -1177,7 +1244,7 @@ def summarize_layer_grids(
             layer_key=layer_key,
             layer_grids=layer_grids,
             mask_status="available",
-            closure_role=mask_closure_role(layer_key, interpretation["uncertainty_concentration_class"]),
+            closure_role=closure_role,
             nrows=nrows,
             cellsize=cellsize,
             xllcorner=xllcorner,
@@ -1191,6 +1258,8 @@ def summarize_layer_grids(
             range_threshold=range_threshold,
         ),
         "uncertainty_concentration_class": interpretation["uncertainty_concentration_class"],
+        "closure_role": closure_role,
+        "interpretation_relevance": interpretation_relevance,
         "interpretation_note": interpretation["interpretation_note"],
     }
 
@@ -1674,6 +1743,43 @@ def mask_closure_role(layer_key: str, concentration_class: str) -> str:
     return "unresolved"
 
 
+def classify_interpretation_relevance(
+    *,
+    layer_key: str,
+    concentration_class: str,
+    closure_role: str,
+    nodata_disagreement_fraction: float,
+    high_uncertainty_threshold: float,
+) -> dict[str, Any]:
+    classification = "interpretation_relevant" if closure_role == "closure_limiting" else "diagnostic_only"
+    threshold_basis = (
+        f"closure_role={closure_role}; nodata/support interpretation threshold "
+        f"{NODATA_SUPPORT_INTERPRETATION_THRESHOLD:.2f}; localized high-uncertainty threshold "
+        f"{LOCALIZED_HIGH_UNCERTAINTY_THRESHOLD:.2f}; high-uncertainty cell threshold p95={high_uncertainty_threshold:.6g}"
+    )
+    if classification == "interpretation_relevant":
+        rationale = (
+            f"{layer_key} is interpretation-relevant because the measured same-scale concentration class "
+            f"`{concentration_class}` maps to the closure-limiting role under the existing conservative boundary."
+        )
+    else:
+        rationale = (
+            f"{layer_key} is diagnostic-only because the measured same-scale concentration class "
+            f"`{concentration_class}` does not map to the closure-limiting role under the existing conservative boundary."
+        )
+    return {
+        "layer_key": layer_key,
+        "classification": classification,
+        "closure_role": closure_role,
+        "concentration_class": concentration_class,
+        "nodata_disagreement_fraction": nodata_disagreement_fraction,
+        "high_uncertainty_threshold": high_uncertainty_threshold,
+        "threshold_basis": threshold_basis,
+        "rationale": rationale,
+        "claim_boundary": "diagnostic interpretation aid only; no claim upgrade or operational decision threshold",
+    }
+
+
 def dedupe_cells(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
     seen: set[tuple[int, int]] = set()
     deduped: list[dict[str, Any]] = []
@@ -1750,7 +1856,7 @@ def classify_layer(
     high_uncertainty_count: int,
 ) -> dict[str, str]:
     nodata_fraction = nodata_disagreement_count / any_valid_count if any_valid_count else 0.0
-    if nodata_fraction >= 0.15:
+    if nodata_fraction >= NODATA_SUPPORT_INTERPRETATION_THRESHOLD:
         return {
             "uncertainty_concentration_class": "dominated_by_nodata_support_differences",
             "interpretation_note": (
@@ -1772,7 +1878,7 @@ def classify_layer(
     high_fraction = high_uncertainty_count / shared_valid_count if shared_valid_count else 1.0
     stability = nonzero_intersection_count / nonzero_union_count if nonzero_union_count else 1.0
 
-    if bbox_fraction <= 0.12 and high_fraction <= 0.12:
+    if bbox_fraction <= LOCALIZED_HIGH_UNCERTAINTY_THRESHOLD and high_fraction <= LOCALIZED_HIGH_UNCERTAINTY_THRESHOLD:
         return {
             "uncertainty_concentration_class": "spatially_localized_shared_support_magnitude",
             "interpretation_note": (

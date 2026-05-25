@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-543: Tighten Same-Scale Uncertainty Summary Around Scientific Decision Thresholds
-
-Goal: Make same-scale uncertainty summaries identify which layer differences affect interpretation and which are diagnostic-only.
-
-Capability gap reduced: Converts same-scale comparison output into a clearer scientific decision aid.
-
-Why this outranks alternatives: Same-scale uncertainty is already measured locally; the next leverage is making its interpretation boundary explicit.
-
-Inspect first:
-
-- `scripts/summarize_spatial_same_scale_uncertainty.py`
-- `scripts/summarize_same_scale_uncertainty_envelope.py`
-- `docs/tschamut_public_same_scale_uncertainty_envelope.md`
-- `tests/test_spatial_same_scale_uncertainty.py`
-
-Deliverables:
-
-- Update existing uncertainty output to classify differences as interpretation-relevant or diagnostic-only using existing thresholds or explicit conservative defaults.
-- Add focused tests for both classifications.
-
-Definition of done:
-
-- Focused same-scale uncertainty tests pass and the summary makes no claim upgrade while naming the relevant layer and threshold basis.
-
-Boundaries: No new uncertainty theory, no threshold tuning from outcomes, no operational decision threshold, and no new report script.
-
 ### TB-544: Make Source-Zone Candidate Review Produce A Rejection-Reasons Summary
 
 Goal: Show why source-zone candidates are accepted or rejected so local scientific review can fix the highest-impact candidate defects first.

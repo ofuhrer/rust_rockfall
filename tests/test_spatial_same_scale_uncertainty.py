@@ -77,6 +77,34 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
                 report["layer_summaries"]["velocity_exceedance_5mps"]["stability_zone_summary"]["dominant_zone_category"],
                 "support_nodata_sensitive",
             )
+            self.assertEqual(
+                report["layer_summaries"]["max_kinetic_energy"]["interpretation_relevance"]["classification"],
+                "interpretation_relevant",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["max_jump_height"]["interpretation_relevance"]["classification"],
+                "interpretation_relevant",
+            )
+            self.assertEqual(
+                report["layer_summaries"]["velocity_exceedance_5mps"]["interpretation_relevance"]["classification"],
+                "diagnostic_only",
+            )
+            self.assertIn(
+                "nodata/support interpretation threshold 0.15",
+                report["layer_summaries"]["max_jump_height"]["interpretation_relevance"]["threshold_basis"],
+            )
+            self.assertIn(
+                "high-uncertainty cell threshold p95=",
+                report["layer_summaries"]["velocity_exceedance_5mps"]["interpretation_relevance"]["threshold_basis"],
+            )
+            relevance_summary = report["interpretation_relevance_summary"]
+            self.assertEqual(relevance_summary["summary_status"], "measured_existing_artifacts")
+            self.assertEqual(
+                relevance_summary["interpretation_relevant_layers"],
+                ["max_jump_height", "max_kinetic_energy"],
+            )
+            self.assertEqual(relevance_summary["diagnostic_only_layers"], ["velocity_exceedance_5mps"])
+            self.assertIn("no claim upgrade", relevance_summary["claim_boundary"])
             conditional_summary = report["conditional_hazard_region_summary"]
             self.assertEqual(conditional_summary["schema_version"], summary_script.CONDITIONAL_HAZARD_REGION_SCHEMA_VERSION)
             self.assertEqual(conditional_summary["summary_status"], "measured_existing_artifacts")
@@ -139,6 +167,17 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertLess(report["layer_summaries"]["max_kinetic_energy"]["nodata_disagreement_fraction"], 0.15)
             self.assertEqual(report["uncertainty_layer_summary"]["schema_version"], summary_script.UNCERTAINTY_LAYER_SCHEMA_VERSION)
             self.assertEqual(report["uncertainty_layer_summary"]["summary_status"], "measured_existing_artifacts")
+            uncertainty_layer_by_key = {
+                layer["layer_key"]: layer for layer in report["uncertainty_layer_summary"]["layer_summaries"]
+            }
+            self.assertEqual(
+                uncertainty_layer_by_key["max_kinetic_energy"]["interpretation_relevance_classification"],
+                "interpretation_relevant",
+            )
+            self.assertEqual(
+                uncertainty_layer_by_key["velocity_exceedance_5mps"]["interpretation_relevance_classification"],
+                "diagnostic_only",
+            )
             self.assertEqual(
                 [layer["layer_key"] for layer in report["uncertainty_layer_summary"]["layer_summaries"]],
                 sorted(summary_script.DEFAULT_HAZARD_LAYERS),
@@ -332,6 +371,9 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertIn("support_nodata_sensitive", rendered)
             self.assertIn("persistent_agreement", rendered)
             self.assertIn("uncertainty layer summary:", rendered)
+            self.assertIn("interpretation relevance summary:", rendered)
+            self.assertIn("relevance=interpretation_relevant", rendered)
+            self.assertIn("relevance=diagnostic_only", rendered)
             self.assertIn("conditional hazard region summary:", rendered)
             self.assertIn("hotspot persistence summary:", rendered)
             self.assertIn("confidence product summary:", rendered)
@@ -370,6 +412,7 @@ class SpatialSameScaleUncertaintyTests(unittest.TestCase):
             self.assertEqual(report["spatial_uncertainty_status"], "blocked_missing_inputs")
             self.assertEqual(report["stability_zone_status"], "blocked_missing_inputs")
             self.assertEqual(report["confidence_product_summary"]["summary_status"], "blocked_missing_inputs")
+            self.assertEqual(report["interpretation_relevance_summary"]["summary_status"], "blocked_missing_inputs")
             self.assertIn("missing", report["blocked_reason"])
             self.assertTrue(report["missing_input_paths"])
 
