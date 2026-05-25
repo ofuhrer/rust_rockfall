@@ -30,6 +30,22 @@ class HazardClaimHygieneTests(unittest.TestCase):
             ["docs/next_development_targets 2.md", "docs/archive/old copy.md"],
         )
 
+    def test_rejects_generated_copy_suffix_artifacts(self) -> None:
+        paths = [
+            "validation/results/swissalti3d_pilot_manifest.json",
+            "validation/results/swissalti3d_pilot_manifest 2.json",
+            "hazard/results/local_probe/layer copy.csv",
+            "docs/not_generated 2.md",
+        ]
+
+        self.assertEqual(
+            check_repo_consistency.find_generated_copy_suffix_artifact_paths(paths),
+            [
+                "validation/results/swissalti3d_pilot_manifest 2.json",
+                "hazard/results/local_probe/layer copy.csv",
+            ],
+        )
+
     def test_current_roadmap_target_authority_is_unambiguous(self) -> None:
         self.assertEqual(check_repo_consistency.check_roadmap_target_authority(), [])
 

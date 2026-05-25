@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-493: Shrink Generated-Result Clutter
-
-Goal: Reduce generated-result clutter by tightening one existing output path, fixture path, or cleanup rule that currently leaves stale artifacts around local runs.
-
-Capability gap reduced: Keeps the repo easier to inspect and faster to test as more measured outputs are produced.
-
-Why this outranks alternatives: Scientific and scale work will keep generating artifacts; the repo needs active simplification to avoid accumulating stale ignored outputs and accidental fixtures.
-
-Inspect first:
-
-- `.gitignore`
-- `tests/test_hazard_layers.py`
-- `tests/test_bounded_validation_output_profile.py`
-- `scripts/check_repo_consistency.py`
-
-Deliverables:
-
-- Identify one duplicated or stale generated-result family under an ignored output root that is produced by existing tests or local workflows.
-- Tighten the existing writer, fixture setup, cleanup, or ignore/consistency rule so that family is no longer left behind unnecessarily.
-
-Definition of done:
-
-- Relevant tests and repository consistency pass, local generated clutter is measurably reduced or better contained, and no ignored generated outputs are accidentally committed.
-
-Boundaries: Repository simplification only; do not delete unique observed evidence, real-terrain inputs, provenance records, or current benchmark fixtures.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

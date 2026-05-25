@@ -96,6 +96,13 @@ ALLOWED_GENERATED = {
     "calibration/results/.gitkeep",
     "hazard/results/.gitkeep",
 }
+GENERATED_COPY_SUFFIX_PREFIXES = (
+    "verification/results/",
+    "validation/results/",
+    "calibration/results/",
+    "hazard/results/",
+)
+GENERATED_COPY_SUFFIX_PATTERN = re.compile(r"(?:^|/)[^/]+(?: copy| [0-9]+)\.[^/]+$")
 TOP_LEVEL_HISTORICAL_DOC_MARKERS = (
     "Historical status note:",
     "Status: historical",
@@ -266,6 +273,7 @@ def main() -> int:
     errors: list[str] = []
     errors.extend(check_staged_generated_outputs())
     errors.extend(check_tracked_copy_suffix_docs())
+    errors.extend(check_generated_copy_suffix_artifacts())
     errors.extend(check_python_tool_dependency_metadata())
     errors.extend(check_python_execution_policy_guidance())
     errors.extend(check_roadmap_target_authority())
@@ -2194,6 +2202,38 @@ def find_copy_suffix_doc_paths(tracked_paths: list[str]) -> list[str]:
         path
         for path in tracked_paths
         if copy_suffix.search(path)
+    ]
+
+
+def check_generated_copy_suffix_artifacts() -> list[str]:
+    ignored = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            "--",
+            *GENERATED_COPY_SUFFIX_PREFIXES,
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    ).stdout.splitlines()
+    return [
+        f"ignored generated duplicate/copy-suffix artifact should be cleaned: {path}"
+        for path in find_generated_copy_suffix_artifact_paths(ignored)
+        if (ROOT / path).exists()
+    ]
+
+
+def find_generated_copy_suffix_artifact_paths(paths: list[str]) -> list[str]:
+    return [
+        path
+        for path in paths
+        if path.startswith(GENERATED_COPY_SUFFIX_PREFIXES)
+        and GENERATED_COPY_SUFFIX_PATTERN.search(path)
     ]
 
 
