@@ -6831,3 +6831,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: local bounded scaling evidence only; no Swiss-wide claim, no distributed execution, no operational claim, no new scale dashboard, and no Balfrin submission.
 - Next task: `TB-489` is Balfrin-access required and was not executed under the current no-Balfrin scope.
+
+### TB-491: Consolidate Scenario Pressure Helpers
+
+- Date: 2026-05-25
+- Commit: `ec1e887`
+- Objective: reduce duplicated scenario/output-pressure logic across the AOI preview, management AOI pressure, and scenario storage-tier reports.
+- Files changed: `scripts/preview_aoi_scenario_cost_estimate.py`, `scripts/summarize_management_aoi_scenario_pressure.py`, `scripts/measure_scenario_storage_output_tier_pressure.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added shared AOI-preview helpers for scenario cardinality, scenario-table row family summaries, output pressure labels, and output budget assessments.
+  - Replaced hand-built scenario-family/release-zone counting in the management AOI and storage-tier reports with the shared row-summary helper.
+  - Replaced duplicated output-pressure label and budget-assessment construction in the management candidate-expansion ladder with the shared AOI-preview helpers.
+  - Preserved existing CLI JSON shape and status vocabulary while removing TB-491 from the active backlog.
+- Checks run:
+  - `.venv/bin/python -m unittest tests.test_aoi_scenario_preview tests.test_management_aoi_scenario_pressure tests.test_scenario_storage_output_tier_pressure -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies -path '*placeholder_second_site_v1*' -print`
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite repo-consistency`
+- Result/status: implemented
+- Boundaries: internal simplification only; no new script, no new workflow contract, no status-vocabulary change, no physics/tuning change, no operational claim, and no Balfrin execution.
+- Next task: `TB-492`
