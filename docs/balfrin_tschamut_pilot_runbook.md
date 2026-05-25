@@ -5,6 +5,9 @@ pilot on balfrin. It assumes the shared local workflow contract is already in
 place (`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` by
 default) and keeps the process read-only where possible.
 
+For cluster rules, filesystem guidance, partition boundaries, and operational
+queue exclusions, read [`docs/balfrin_skills.md`](./balfrin_skills.md) first.
+
 ## 1) Scope and prerequisites
 
 - Scope: readiness verification, frozen command-plan execution, reducer provenance

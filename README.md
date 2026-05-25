@@ -26,8 +26,8 @@ Swiss terrain.
 - GIS-oriented outputs, map-package manifests, and review surfaces.
 - Reproducible local and CI checks for model logic, workflow helpers, and
   repository consistency.
-- A documented path for scaling from local development to larger HPC-backed
-  experiments.
+- A local-first workflow that can hand advanced scaling experiments to a
+  separate HPC runbook when needed.
 
 This repository is research and engineering software. It is not an official
 hazard product, regulatory map, warning system, or risk/exposure/vulnerability
@@ -81,6 +81,12 @@ the AOI front door. New users should start with this smaller command surface:
 
 Specialist scripts remain available for developers and agents, but they should
 normally be reached through these commands or through a documented workflow.
+
+## Advanced Scaling
+
+The first path through the repository is local. Balfrin/HPC work is an advanced
+scaling topic for already-prepared experiments, and it starts from the
+[`Balfrin Tschamut pilot runbook`](docs/balfrin_tschamut_pilot_runbook.md).
 
 ## Development Workflow
 

@@ -40,6 +40,11 @@ The AOI user-facing surface is intentionally small:
 Other Python files in `scripts/` are developer, diagnostic, or implementation
 helpers unless this manual explicitly says otherwise.
 
+Balfrin/HPC execution is outside this local AOI path. Advanced scaling work
+starts from the
+[`Balfrin Tschamut pilot runbook`](balfrin_tschamut_pilot_runbook.md), after
+the local AOI inputs and diagnostics are explicit.
+
 ## Command Path
 
 1. Plan the public-geodata acquisition command set.

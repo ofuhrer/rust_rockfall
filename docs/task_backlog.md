@@ -93,33 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-531: Move Balfrin-Specific User Noise Out Of The Main Front Door
-
-Goal: Keep Balfrin/HPC details available but prevent them from dominating the initial user-facing path.
-
-Capability gap reduced: Separates ordinary local users from advanced scale/HPC operators.
-
-Why this outranks alternatives: Many active docs and scripts are Balfrin-specific; the public front door should emphasize local reproducible workflows first.
-
-Inspect first:
-
-- `README.md`
-- `docs/aoi_user_manual.md`
-- `docs/balfrin_skills.md`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Update front-door docs so Balfrin is linked as an advanced scaling topic, not part of the first local path.
-- Preserve the explicit Balfrin runbooks and orchestration guidance for agents/operators.
-
-Definition of done:
-
-- README/AOI manual remain link-valid and local-first, while Balfrin docs remain reachable through one advanced/scaling link.
-
-Boundaries: Documentation navigation only; no Balfrin workflow change, no access/preflight change, no operational claim, and no remote execution.
-
 ### TB-532: Consolidate AOI Manual Command Blocks
 
 Goal: Reduce duplicated or low-level command blocks in the AOI user manual so a user can follow one minimal local path.
