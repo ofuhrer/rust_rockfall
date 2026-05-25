@@ -649,6 +649,60 @@ class HazardLayerTests(unittest.TestCase):
             self.assertFalse((output_dir / "index.html").exists())
             self.assertEqual(list(output_dir.glob("*.png")), [])
 
+    def test_chant_sura_second_site_smoke_builds_real_terrain_layers(self) -> None:
+        case_path = FIXTURE / "chant_sura_second_site_smoke_case.yaml"
+        first_signatures: dict[str, tuple[int, str]] | None = None
+        first_reach: dict[tuple[int, int], float] | None = None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            for output_dir in (work / "first", work / "second"):
+                status = hazard.main_with_args(
+                    [
+                        "--case",
+                        str(case_path),
+                        "--output-dir",
+                        str(output_dir),
+                        "--cell-size",
+                        "0.1",
+                        "--no-plots",
+                    ]
+                )
+                self.assertEqual(status, 0)
+
+                metadata = json.loads((output_dir / "chant_sura_second_site_smoke_metadata.json").read_text())
+                manifest = json.loads((output_dir / "chant_sura_second_site_smoke_manifest.json").read_text())
+                self.assertEqual(manifest["completion_status"], "completed")
+                self.assertEqual(manifest["execution_status"], "completed")
+                self.assertEqual(manifest["terrain"]["terrain_type"], "ascii_dem_clamped")
+                self.assertTrue(manifest["terrain"]["path"].endswith("terrain_rf16_contact.asc"))
+                self.assertEqual(manifest["inputs"]["trajectory_count"], 1)
+                self.assertEqual(manifest["inputs"]["trajectory_sample_count"], 12)
+                self.assertEqual(metadata["inputs"]["trajectory_count"], 1)
+                self.assertGreater(manifest["grid"]["ncols"], 1)
+                self.assertGreater(manifest["grid"]["nrows"], 1)
+                self.assertIn("no ensemble deposition CSV supplied", " ".join(manifest["warnings"]))
+
+                reach_path = output_dir / "chant_sura_second_site_smoke_reach_probability.csv"
+                reach = read_layer(reach_path, "reach_probability")
+                self.assertEqual(max(reach.values()), 1.0)
+                self.assertGreater(sum(1 for value in reach.values() if value > 0.0), 1)
+
+                layer_outputs = {
+                    f"{output['layer_name']}:{output['format']}": (int(output["total_bytes"]), str(output["sha256"]))
+                    for output in manifest["outputs"]
+                    if output["kind"] == "hazard_layer"
+                }
+                self.assertIn("reach_probability:csv_grid", layer_outputs)
+                self.assertIn("kinetic_energy_exceedance_4000j:csv_grid", layer_outputs)
+                self.assertIn("velocity_exceedance_6mps:csv_grid", layer_outputs)
+                if first_signatures is None:
+                    first_signatures = layer_outputs
+                    first_reach = reach
+                else:
+                    self.assertEqual(layer_outputs, first_signatures)
+                    self.assertEqual(reach, first_reach)
+
     def test_hazard_manifest_includes_terrain_metadata_sidecar_provenance(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             work = Path(tmp)

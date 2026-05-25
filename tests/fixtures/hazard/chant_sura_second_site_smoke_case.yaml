@@ -1,0 +1,29 @@
+case_id: chant_sura_second_site_smoke
+title: Chant Sura second-site real-terrain hazard smoke
+level: 4
+description: Minimal committed second-site smoke using a public Chant Sura DEM-backed trajectory subset.
+terrain:
+  type: ascii_dem_clamped
+  path: validation/data/processed/chant_sura_2020/terrain_rf16_contact.asc
+block: { mass: 210.0, radius: 0.265790716577 }
+release:
+  position: [2793260.85, 1180275.93, 2381.115790716577]
+  velocity: [1.17599999905, -4.33600000013, -4.23375]
+parameters:
+  gravity: 9.81
+  normal_restitution: 0.25
+  tangential_restitution: 0.85
+  friction_coefficient: 0.45
+simulation: { dt: 0.005, t_max: 0.055, max_steps: 12, stop_velocity: 0.05 }
+random: { seed: null, ensemble_size: 1 }
+hazard_layers:
+  kinetic_energy_exceedance_j: [4000.0]
+  jump_height_exceedance_m: [0.05]
+  velocity_exceedance_mps: [6.0]
+outputs:
+  trajectory_csv: tests/fixtures/hazard/chant_sura_second_site_smoke_trajectory.csv
+references:
+  dataset: chant_sura_2020
+  notes:
+    - "Uses a small committed RF16W200r1 segment subset and the committed Chant Sura DEM crop."
+    - "This is a portability smoke only, not validation or operational hazard evidence."

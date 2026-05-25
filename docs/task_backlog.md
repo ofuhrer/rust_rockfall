@@ -93,32 +93,6 @@ Definition of done:
 
 Boundaries: Evidence comparison only; no new live run, no operational claim, no Swiss-wide authorization, and no physical-probability or annual-frequency semantics.
 
-### TB-518: Build A Minimal Second-Site Real-Terrain Smoke
-
-Goal: Run a minimal committed second-site terrain case locally to test portability beyond Tschamut without requiring private geodata.
-
-Capability gap reduced: Moves the project toward multi-site credibility with executable local evidence rather than placeholder portability notes.
-
-Why this outranks alternatives: Scientific generality needs at least one non-Tschamut smoke path that exercises real terrain and current output contracts.
-
-Inspect first:
-
-- `validation/cases/chant_sura_contact.yaml`
-- `scripts/build_hazard_layers.py`
-- `tests/test_hazard_layers.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-
-Deliverables:
-
-- Run or fixture-generate a minimal second-site hazard output using committed inputs and record deterministic output checks in existing tests or artifacts.
-- Fail closed if public inputs are insufficient, with the smallest concrete input gap named.
-
-Definition of done:
-
-- Focused hazard/portability tests pass and the second-site smoke either produces local measured output or a precise blocked input gap.
-
-Boundaries: Local smoke only; no new private data, no operational claim, no public-context claim upgrade unless evidence exists, and no Balfrin dependency.
-
 ### TB-519: Improve Candidate Endpoint Comparison Metrics
 
 Goal: Add endpoint-shape metrics that compare simulated deposition clouds to observed deposition beyond centroid and mean runout.
