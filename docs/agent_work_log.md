@@ -8074,3 +8074,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: tiny local smoke only; no large AOI run, live data acquisition, new workflow framework, operational claim, or statistical validation claim.
 - Next task: `TB-542`
+
+### TB-542: Add Deterministic Energy-Budget Checks To Minimal Smoke
+
+- Date: 2026-05-25
+- Commit: `5445d40`
+- Objective: add a Rust regression check for deterministic sample count and bounded energy fields in the minimal inclined-plane smoke.
+- Files changed: `tests/terrain_edge_cases.rs`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a Rust test that reads `examples/inclined_plane.json` directly.
+  - Asserted the deterministic 2,001-sample trajectory length.
+  - Checked finite, non-negative, bounded speed, kinetic, rotational, potential, and total-energy fields for every sample.
+  - Removed TB-542 from the active backlog.
+- Checks run:
+  - `cargo run --quiet -- run --config examples/inclined_plane.json --output /tmp/tb542_inclined_plane.csv`
+  - `cargo test --test terrain_edge_cases readme_inclined_plane_smoke_preserves_sample_count_and_energy_budget`
+  - `cargo fmt`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: no physics model rewrite, parameter tuning, new example family, or performance-heavy ensemble.
+- Next task: `TB-543`
