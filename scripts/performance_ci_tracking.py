@@ -47,6 +47,64 @@ CHART_METRICS: tuple[tuple[str, str, str], ...] = (
     ("hazard_output_write_seconds", "Hazard write", "#ea580c"),
 )
 
+BALFRIN_EFFICIENCY_RUNS: tuple[dict[str, Any], ...] = (
+    {
+        "task_id": "TB-448",
+        "label": "regional split metrics baseline",
+        "job_id": "4350232",
+        "source": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+        "scheduler_elapsed": "00:00:24",
+        "scheduler_max_rss_kb": 5488,
+        "collector_wall_seconds": 6.738646155004972,
+        "memory_peak_mb": 172.921875,
+        "validation_output_file_count": 130,
+        "validation_output_bytes": 34_565_323,
+        "hazard_output_file_count": 53,
+        "hazard_output_bytes": 55_837_701,
+        "conditional_curve_rows": 729_600,
+        "trajectory_count": None,
+    },
+    {
+        "task_id": "TB-557",
+        "label": "bounded reduced-output probe",
+        "job_id": "4366534",
+        "source": "docs/balfrin_bounded_reduced_output_run_tb557.md",
+        "scheduler_elapsed": "00:01:29",
+        "scheduler_max_rss_kb": 390804,
+        "collector_wall_seconds": 6.536354579031467,
+        "memory_peak_mb": 381.64453125,
+        "validation_output_file_count": 130,
+        "validation_output_bytes": 34_565_316,
+        "hazard_output_file_count": 57,
+        "hazard_output_bytes": 31_436_405,
+        "conditional_curve_rows": 729_600,
+        "trajectory_count": None,
+    },
+    {
+        "task_id": "TB-566",
+        "label": "current regional split evidence",
+        "job_id": "4367244",
+        "source": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+        "scheduler_elapsed": "00:00:24",
+        "scheduler_max_rss_kb": 5512,
+        "collector_wall_seconds": 5.261369686049875,
+        "memory_peak_mb": 172.921875,
+        "validation_output_file_count": 130,
+        "validation_output_bytes": 34_565_330,
+        "hazard_output_file_count": 57,
+        "hazard_output_bytes": 57_670_915,
+        "conditional_curve_rows": 729_600,
+        "trajectory_count": None,
+    },
+)
+BALFRIN_PROJECTION_REFERENCE = {
+    "source": "scripts/summarize_balfrin_scale_readiness_matrix.py",
+    "runtime_seconds": 463.84,
+    "output_bytes": 102_793_652,
+    "memory_peak_mb": 409.22,
+    "classification": "projection_only_not_measured",
+}
+
 
 @dataclass(frozen=True)
 class AggregateMetrics:
@@ -82,6 +140,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     record.add_argument("--site-index-out", type=Path, default=None)
     record.add_argument("--max-points", type=int, default=180)
 
+    balfrin = subparsers.add_parser("balfrin-efficiency", help="compare measured Balfrin runs with CI kept separate")
+    balfrin.add_argument("--summary-csv", type=Path, default=None)
+    balfrin.add_argument("--output-json", type=Path, required=True)
+    balfrin.add_argument("--output-markdown", type=Path, required=True)
+
     return parser.parse_args(argv)
 
 
@@ -91,7 +154,138 @@ def main(argv: list[str] | None = None) -> int:
         return compare_pr(args)
     if args.command == "record-main":
         return record_main(args)
+    if args.command == "balfrin-efficiency":
+        return balfrin_efficiency(args)
     raise ValueError(f"unsupported command: {args.command}")
+
+
+def balfrin_efficiency(args: argparse.Namespace) -> int:
+    report = build_balfrin_efficiency_report(summary_csv=args.summary_csv)
+    args.output_json.parent.mkdir(parents=True, exist_ok=True)
+    args.output_json.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    args.output_markdown.parent.mkdir(parents=True, exist_ok=True)
+    args.output_markdown.write_text(render_balfrin_efficiency_markdown(report), encoding="utf-8")
+    return 0
+
+
+def build_balfrin_efficiency_report(summary_csv: Path | None = None) -> dict[str, Any]:
+    runs = [normalize_balfrin_run(row) for row in BALFRIN_EFFICIENCY_RUNS]
+    current = next(row for row in runs if row["task_id"] == "TB-566")
+    historical = [row for row in runs if row["task_id"] != current["task_id"]]
+    ci_section: dict[str, Any]
+    if summary_csv is not None:
+        aggregate = aggregate_summary_csv(summary_csv)
+        ci_section = {
+            "status": "measured_ci_standard_profile",
+            "summary_csv": str(summary_csv),
+            "metrics": aggregate.values,
+            "run_count": aggregate.run_count,
+            "trajectory_count": aggregate.trajectory_count,
+            "impact_count": aggregate.impact_count,
+            "output_bytes": aggregate.output_bytes,
+        }
+    else:
+        ci_section = {
+            "status": "not_supplied",
+            "summary_csv": None,
+            "metrics": {},
+            "run_count": 0,
+            "trajectory_count": None,
+            "impact_count": None,
+            "output_bytes": None,
+        }
+    projection = build_projection_delta(current)
+    return {
+        "schema_version": "balfrin_efficiency_comparison_v1",
+        "comparison_status": "measured_current_with_separate_ci_context",
+        "current_task_id": current["task_id"],
+        "current_job_id": current["job_id"],
+        "current_run": current,
+        "historical_balfrin_runs": historical,
+        "deltas_vs_current": [build_balfrin_delta(current=current, baseline=row) for row in historical],
+        "projection_delta": projection,
+        "ci_standard_profile": ci_section,
+        "ci_balfrin_separation": {
+            "status": "separate_contexts",
+            "reason": "CI benchmark timings run on GitHub-hosted runners and are not normalized into Balfrin scheduler/runtime claims.",
+        },
+        "claim_boundaries": {
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "scale_up_authorized": False,
+            "benchmark_as_validation_claim_allowed": False,
+        },
+        "regeneration_command": (
+            "PYENV_VERSION=system uv run python scripts/performance_ci_tracking.py balfrin-efficiency "
+            "--summary-csv <optional_ci_summary.csv> --output-json /tmp/balfrin_efficiency.json "
+            "--output-markdown /tmp/balfrin_efficiency.md"
+        ),
+    }
+
+
+def normalize_balfrin_run(row: dict[str, Any]) -> dict[str, Any]:
+    scheduler_elapsed_seconds = parse_slurm_elapsed(str(row["scheduler_elapsed"]))
+    validation_bytes = int(row["validation_output_bytes"])
+    hazard_bytes = int(row["hazard_output_bytes"])
+    conditional_rows = int(row["conditional_curve_rows"])
+    total_output_bytes = validation_bytes + hazard_bytes
+    total_output_files = int(row["validation_output_file_count"]) + int(row["hazard_output_file_count"])
+    return {
+        **row,
+        "scheduler_elapsed_seconds": scheduler_elapsed_seconds,
+        "scheduler_max_rss_mb": round(float(row["scheduler_max_rss_kb"]) / 1024.0, 6),
+        "total_output_file_count": total_output_files,
+        "total_output_bytes": total_output_bytes,
+        "collector_seconds_per_100k_conditional_rows": round(float(row["collector_wall_seconds"]) / conditional_rows * 100_000, 6),
+        "scheduler_seconds_per_100k_conditional_rows": round(scheduler_elapsed_seconds / conditional_rows * 100_000, 6),
+        "output_bytes_per_conditional_row": round(total_output_bytes / conditional_rows, 6),
+        "trajectory_count_status": "not_recorded_in_preserved_balfrin_metrics" if row.get("trajectory_count") is None else "measured",
+    }
+
+
+def build_balfrin_delta(*, current: dict[str, Any], baseline: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "baseline_task_id": baseline["task_id"],
+        "baseline_job_id": baseline["job_id"],
+        "scheduler_elapsed_seconds_delta": round(current["scheduler_elapsed_seconds"] - baseline["scheduler_elapsed_seconds"], 6),
+        "collector_wall_seconds_delta": round(float(current["collector_wall_seconds"]) - float(baseline["collector_wall_seconds"]), 6),
+        "scheduler_max_rss_mb_delta": round(float(current["scheduler_max_rss_mb"]) - float(baseline["scheduler_max_rss_mb"]), 6),
+        "memory_peak_mb_delta": round(float(current["memory_peak_mb"]) - float(baseline["memory_peak_mb"]), 6),
+        "validation_output_bytes_delta": int(current["validation_output_bytes"]) - int(baseline["validation_output_bytes"]),
+        "hazard_output_bytes_delta": int(current["hazard_output_bytes"]) - int(baseline["hazard_output_bytes"]),
+        "total_output_bytes_delta": int(current["total_output_bytes"]) - int(baseline["total_output_bytes"]),
+        "validation_output_file_count_delta": int(current["validation_output_file_count"]) - int(baseline["validation_output_file_count"]),
+        "hazard_output_file_count_delta": int(current["hazard_output_file_count"]) - int(baseline["hazard_output_file_count"]),
+        "conditional_curve_rows_delta": int(current["conditional_curve_rows"]) - int(baseline["conditional_curve_rows"]),
+    }
+
+
+def build_projection_delta(current: dict[str, Any]) -> dict[str, Any]:
+    projection = dict(BALFRIN_PROJECTION_REFERENCE)
+    return {
+        **projection,
+        "scheduler_elapsed_seconds_delta": round(float(current["scheduler_elapsed_seconds"]) - float(projection["runtime_seconds"]), 6),
+        "total_output_bytes_delta": int(current["total_output_bytes"]) - int(projection["output_bytes"]),
+        "memory_peak_mb_delta": round(float(current["memory_peak_mb"]) - float(projection["memory_peak_mb"]), 6),
+        "interpretation": "current_measured_runtime_below_projection_but_output_budget_still_blocked",
+    }
+
+
+def parse_slurm_elapsed(value: str) -> float:
+    days = 0
+    time_part = value
+    if "-" in value:
+        day_part, time_part = value.split("-", 1)
+        days = int(day_part)
+    parts = [int(part) for part in time_part.split(":")]
+    if len(parts) == 3:
+        hours, minutes, seconds = parts
+    elif len(parts) == 2:
+        hours = 0
+        minutes, seconds = parts
+    else:
+        raise ValueError(f"unsupported Slurm elapsed value: {value}")
+    return float(days * 86400 + hours * 3600 + minutes * 60 + seconds)
 
 
 def compare_pr(args: argparse.Namespace) -> int:
@@ -402,6 +596,87 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
             "</svg>",
         ]
     )
+
+
+def render_balfrin_efficiency_markdown(report: dict[str, Any]) -> str:
+    current = report["current_run"]
+    lines = [
+        "# Balfrin Efficiency Comparison",
+        "",
+        f"Status: `{report['comparison_status']}`",
+        "",
+        "This compares measured Balfrin scheduler/runtime evidence with historical Balfrin runs. CI benchmark data is shown separately and is not normalized into Balfrin scheduler claims.",
+        "",
+        "## Current Run",
+        "",
+        f"- Task/job: `{current['task_id']}` / `{current['job_id']}`",
+        f"- Scheduler elapsed: `{current['scheduler_elapsed_seconds']:.3f}` seconds",
+        f"- Collector wall time: `{float(current['collector_wall_seconds']):.3f}` seconds",
+        f"- Scheduler MaxRSS: `{current['scheduler_max_rss_mb']:.3f}` MB",
+        f"- Collector memory peak: `{float(current['memory_peak_mb']):.3f}` MB",
+        f"- Outputs: `{current['total_output_file_count']}` files / `{current['total_output_bytes']}` bytes",
+        f"- Conditional curve rows: `{current['conditional_curve_rows']}`",
+        f"- Trajectory count: `{current.get('trajectory_count')}` ({current['trajectory_count_status']})",
+        "",
+        "## Historical Balfrin Deltas",
+        "",
+        "| Baseline | Scheduler Δ s | Collector Δ s | MaxRSS Δ MB | Total bytes Δ | Hazard files Δ | Conditional rows Δ |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for delta in report["deltas_vs_current"]:
+        lines.append(
+            "| {task} / {job} | {sched:+.3f} | {collector:+.3f} | {rss:+.3f} | {bytes_delta:+d} | {hazard_files:+d} | {rows:+d} |".format(
+                task=delta["baseline_task_id"],
+                job=delta["baseline_job_id"],
+                sched=float(delta["scheduler_elapsed_seconds_delta"]),
+                collector=float(delta["collector_wall_seconds_delta"]),
+                rss=float(delta["scheduler_max_rss_mb_delta"]),
+                bytes_delta=int(delta["total_output_bytes_delta"]),
+                hazard_files=int(delta["hazard_output_file_count_delta"]),
+                rows=int(delta["conditional_curve_rows_delta"]),
+            )
+        )
+    projection = report["projection_delta"]
+    lines.extend(
+        [
+            "",
+            "## Projection Context",
+            "",
+            f"- Source: `{projection['source']}`",
+            f"- Runtime delta versus projection: `{float(projection['scheduler_elapsed_seconds_delta']):+.3f}` seconds",
+            f"- Output-byte delta versus projection: `{int(projection['total_output_bytes_delta']):+d}` bytes",
+            f"- Memory delta versus projection: `{float(projection['memory_peak_mb_delta']):+.3f}` MB",
+            f"- Interpretation: `{projection['interpretation']}`",
+            "",
+            "## CI Context",
+            "",
+        ]
+    )
+    ci = report["ci_standard_profile"]
+    lines.append(f"- Status: `{ci['status']}`")
+    if ci["status"] == "measured_ci_standard_profile":
+        metrics = ci.get("metrics") or {}
+        lines.extend(
+            [
+                f"- Summary CSV: `{ci['summary_csv']}`",
+                f"- CI total wall seconds: `{float(metrics.get('total_wall_seconds') or 0.0):.3f}`",
+                f"- CI trajectories: `{ci['trajectory_count']}`",
+                f"- CI output bytes: `{ci['output_bytes']}`",
+            ]
+        )
+    lines.extend(
+        [
+            f"- Separation: `{report['ci_balfrin_separation']['status']}`",
+            "",
+            "## Regeneration",
+            "",
+            "```bash",
+            report["regeneration_command"],
+            "```",
+            "",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def read_json_url(url: str) -> Any:

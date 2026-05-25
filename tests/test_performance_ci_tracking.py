@@ -186,6 +186,54 @@ class PerformanceCiTrackingTests(unittest.TestCase):
             self.assertIn("url=performance/", root_index)
             self.assertIn("Open the performance dashboard", root_index)
 
+    def test_balfrin_efficiency_report_keeps_ci_context_separate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.csv"
+            self._write_summary(summary_path)
+            report = perf_ci.build_balfrin_efficiency_report(summary_csv=summary_path)
+
+        self.assertEqual(report["schema_version"], "balfrin_efficiency_comparison_v1")
+        self.assertEqual(report["current_task_id"], "TB-566")
+        self.assertEqual(report["current_job_id"], "4367244")
+        self.assertEqual(report["current_run"]["scheduler_elapsed_seconds"], 24.0)
+        self.assertEqual(report["current_run"]["conditional_curve_rows"], 729600)
+        self.assertIsNone(report["current_run"]["trajectory_count"])
+        self.assertEqual(
+            report["current_run"]["trajectory_count_status"],
+            "not_recorded_in_preserved_balfrin_metrics",
+        )
+        deltas = {row["baseline_task_id"]: row for row in report["deltas_vs_current"]}
+        self.assertEqual(deltas["TB-448"]["scheduler_elapsed_seconds_delta"], 0.0)
+        self.assertEqual(deltas["TB-557"]["scheduler_elapsed_seconds_delta"], -65.0)
+        self.assertEqual(deltas["TB-448"]["hazard_output_file_count_delta"], 4)
+        self.assertEqual(report["projection_delta"]["scheduler_elapsed_seconds_delta"], -439.84)
+        self.assertEqual(report["ci_standard_profile"]["status"], "measured_ci_standard_profile")
+        self.assertEqual(report["ci_standard_profile"]["trajectory_count"], 12)
+        self.assertEqual(report["ci_balfrin_separation"]["status"], "separate_contexts")
+        self.assertFalse(report["claim_boundaries"]["benchmark_as_validation_claim_allowed"])
+
+    def test_balfrin_efficiency_cli_writes_json_and_markdown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            summary_path = Path(tmp) / "summary.csv"
+            self._write_summary(summary_path)
+            output_json = Path(tmp) / "balfrin_efficiency.json"
+            output_markdown = Path(tmp) / "balfrin_efficiency.md"
+            args = SimpleNamespace(
+                summary_csv=summary_path,
+                output_json=output_json,
+                output_markdown=output_markdown,
+            )
+
+            ret = perf_ci.balfrin_efficiency(args)
+
+            self.assertEqual(ret, 0)
+            self.assertTrue(output_json.exists())
+            self.assertTrue(output_markdown.exists())
+            markdown = output_markdown.read_text(encoding="utf-8")
+            self.assertIn("Balfrin Efficiency Comparison", markdown)
+            self.assertIn("CI benchmark data is shown separately", markdown)
+            self.assertIn("PYENV_VERSION=system uv run python scripts/performance_ci_tracking.py balfrin-efficiency", markdown)
+
     def _write_summary(self, path: Path) -> None:
         fieldnames = [
             "stage",

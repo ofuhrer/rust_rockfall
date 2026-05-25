@@ -79,3 +79,24 @@ The README embeds `main_performance.svg` directly from Pages.
 - The history list is capped to avoid unbounded growth.
 - These timings are CI diagnostics; they are not scientific validation metrics
   and should be interpreted across comparable runners.
+
+## Balfrin Efficiency Comparison
+
+TB-568 adds a local comparison surface for measured Balfrin evidence:
+
+```bash
+PYENV_VERSION=system uv run python scripts/performance_ci_tracking.py balfrin-efficiency \
+  --summary-csv <optional_ci_summary.csv> \
+  --output-json /tmp/balfrin_efficiency.json \
+  --output-markdown /tmp/balfrin_efficiency.md
+```
+
+The report compares the current TB-566 regional split run against TB-557,
+TB-448, and the scale-matrix projection. It reports scheduler elapsed time,
+collector wall time, MaxRSS, memory peak, output bytes, file counts, and
+conditional-row counts. Trajectory counts are explicit: CI benchmark summaries
+record them, while the preserved Balfrin metrics currently do not.
+
+CI data stays in its own `ci_standard_profile` section. It is useful context
+for local/runtime drift, but it is not normalized into Balfrin scheduler
+measurements and does not create a scientific-validation or scale-up claim.

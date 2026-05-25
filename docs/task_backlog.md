@@ -39,34 +39,6 @@ execution, scale-up claims, or scientific/operational claim upgrades.
 
 ## Active Tasks
 
-### TB-568: Quantify Current Balfrin Efficiency Against CI And Historical Runs
-
-Goal: Compare the TB-566 Balfrin regional split runtime, memory, and output footprint against CI performance, TB-557, TB-448, and local projections.
-
-Capability gap reduced: Produces a concrete efficiency narrative rather than isolated job records.
-
-Why this outranks alternatives: A full demonstration needs to show not only that a run completed, but how efficiently it completed relative to known baselines.
-
-Inspect first:
-
-- `scripts/performance_ci_tracking.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/performance_ci_tracking.md`
-- `docs/balfrin_bounded_reduced_output_run_tb557.md`
-- `docs/balfrin_regional_split_run_root_metrics_tb448.md`
-
-Deliverables:
-
-- Add or update a compact performance comparison surface that reports normalized wall time, MaxRSS, output bytes, file counts, and trajectory/conditional-row counts across current and historical runs.
-- Include the exact command that regenerates the comparison.
-- Keep CI timings separate from Balfrin scheduler timings.
-
-Definition of done:
-
-- Focused tests pass and the comparison reports clear efficiency deltas without mixing CI diagnostics, Balfrin measured evidence, and scientific validation claims.
-
-Boundaries: Analysis only; no run, no operational claim, no physical-probability claim, and no benchmark-as-validation claim.
-
 ### TB-569: Build A 16-Zone Reduced-Output Handoff Without Submission
 
 Goal: Create a no-submit 16-zone reduced-output Balfrin handoff to test whether the next scale step is package-ready.
