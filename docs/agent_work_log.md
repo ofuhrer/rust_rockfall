@@ -9641,3 +9641,22 @@ scan thousands of lines of completed history.
 - Metrics: remote prepared package `3` files / `16,052` bytes; local same-shape pressure `100` release zones, `100` scenarios, `4` reducer chunks, `4` reducer workers, `13.55` reducer wall seconds, `304` output files, `121,016` output bytes, `309` scratch-root files, `207,258` scratch-root bytes, `60,703` manifest bytes, and `2` sidecar files / `215` bytes. Projection bands remain `133.779` / `178.4` / `552.77` runtime seconds, `12,862,070` / `39,536,020` / `2,675,271,200` storage bytes, and `60` / `170` / `1,910` files.
 - Boundaries: no 100-zone job was submitted; this is package and local reducer-pressure evidence only, with no Balfrin runtime/memory measurement and no Swiss-wide, distributed, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-612`
+
+### TB-612: Submit A 100-Zone Diagnostic Only If Prior Evidence Supports It
+
+- Date: 2026-05-26
+- Commit: `94e8af4`
+- Objective: submit, monitor, and collect the prepared 100-zone diagnostic only if the prior measured diagnostic series, queue state, and scratch state keep it within the standing bounded `postproc` clearance.
+- Files changed: `docs/balfrin_100_zone_diagnostic_run_tb612.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Rechecked Balfrin `$SCRATCH` capacity and `postproc` state, fast-forwarded the remote checkout, and submitted the prepared TB-611 run root with `scripts/run_balfrin_diagnostic.py run`.
+  - Monitored job `4372447` to terminal scheduler state and collected the run record, `/usr/bin/time` metrics, pressure report, and SLURM accounting under the same `$SCRATCH` run root.
+  - Recorded the measured 100-zone diagnostic result and removed TB-612 from the active backlog.
+- Checks run:
+  - `ssh balfrin 'df -h /scratch/mch; squeue -p postproc ...; cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git status --short --branch'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 100 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526 --time 00:30:00 --poll-seconds 30 --monitor-timeout-seconds 21600 --format text'`
+  - `ssh balfrin 'sacct -P -j 4372447 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,MaxRSS,ReqCPUS,AllocCPUS'`
+- Result/status: implemented_measured
+- Metrics: job `4372447` completed on `postproc` with exit `0:0`; scheduler elapsed `00:00:01`; batch MaxRSS `5,468K`; `/usr/bin/time` elapsed `0:01.26`; `/usr/bin/time` MaxRSS `34.16 MB`; release zones `100`; scenarios `100`; reducer wall time `13.55` s; output files `304`; output bytes `121,172`; pressure-root footprint `309` files / `212,978` bytes; run-root footprint `318` files / `448,376` bytes; manifest bytes `61,119`.
+- Boundaries: measured 100-zone diagnostic reducer-pressure evidence only; no 100-zone hazard-throughput, Swiss-wide, distributed, non-`postproc`, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-613`
