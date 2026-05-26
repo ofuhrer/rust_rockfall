@@ -8985,3 +8985,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: diagnostic reducer-pressure feasibility only; 100-zone, regional, Swiss-wide, operational, physical-probability, distributed, and non-`postproc` claims remain deferred.
 - Next task: `TB-584`
+
+### TB-584: Build A Reviewer-Facing Balfrin Diagnostic Evidence Package
+
+- Date: 2026-05-26
+- Commit: `c5806ec`
+- Objective: package the latest measured Balfrin diagnostic performance, output, preservation, repeatability, feasibility, and claim-boundary evidence into one reviewer-facing surface.
+- Files changed: `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_management_demo_package.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/current_maturity_snapshot.md`, `docs/project_overview.md`, `README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `diagnostic_performance_section` to the management package with the 24-zone run, repeatability pair, exact reproduction commands, run roots, submitted git heads, runtime, memory, output, manifest, and claim-boundary fields.
+  - Added a readiness-matrix row for diagnostic performance repeatability while keeping hazard-throughput, Swiss-wide, distributed, non-`postproc`, operational, and physical-probability claims closed.
+  - Updated the package docs, README, project overview, and maturity snapshot to point at the current reviewer-facing Balfrin evidence surface without overselling the result.
+  - Made the management package tolerate missing local reducer-constraint run records by reporting the handoff dependency as blocked instead of failing package construction.
+  - Removed TB-584 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_management_demo_package.py tests/test_balfrin_management_demo_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --run-root tests/fixtures/balfrin_probe_metrics_contract/complete_run_root --artifact-dir /tmp/tb584_management_package --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: reviewer package for measured diagnostic/repeatability evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-585`
