@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-605: Run A Balfrin Scheduler-Level Distributed Chunk Dry Run
-
-Goal: Exercise distributed chunk submission, collection, and sorted merge semantics on Balfrin without attempting Swiss-wide execution.
-
-Capability gap reduced: Moves distributed execution from local fixture semantics to cluster-observed behavior.
-
-Why this outranks alternatives: The local distributed dry run proves logic, but Balfrin feasibility needs scheduler, shared-filesystem, and collection evidence.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/run_balfrin_diagnostic.py`
-- `docs/tschamut_public_scalable_conditional_execution.md`
-- external: Balfrin `$SCRATCH` shared filesystem and `postproc` scheduler
-
-Deliverables:
-
-- Run a small multi-chunk Balfrin dry run that records chunk IDs, scheduler array or split-job mapping, partial state paths, merge order, run roots, and final merged output status.
-
-Definition of done:
-
-- The dry run proves or fails the cluster-side distributed semantics with measured scheduler and filesystem evidence.
-
-
 ### TB-606: Measure Balfrin Restart And Resume Behavior For Chunked Runs
 
 Goal: Verify that a chunked Balfrin run can resume after one missing, stale, or failed chunk without corrupting the merge.
