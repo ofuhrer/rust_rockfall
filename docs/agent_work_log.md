@@ -9418,3 +9418,31 @@ scan thousands of lines of completed history.
 - Metrics: job `4372257`, terminal `COMPLETED`; reducer wall time `6.35 s`; `/usr/bin/time -v` elapsed `0:01.40`; MaxRSS `33.902 MB`; diagnostic output files `124`; diagnostic output bytes `51,493`; manifest size `28,818 bytes`; run-root files `137`; run-root bytes `212,134`.
 - Boundaries: single-node `postproc` reducer-pressure diagnostic only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed. The default diagnostic ceiling remains 32 zones until a promotion task threads 40-zone evidence into the scale surfaces.
 - Next task: `TB-602`
+
+### TB-602: Build A Larger Bounded Hazard-Throughput Submission Package
+
+- Date: 2026-05-26
+- Commit: `cf193ec`
+- Objective: prepare the next bounded hazard-throughput package with scalable output controls and a `$SCRATCH` run root.
+- Files changed: `docs/balfrin_hazard_throughput_package_tb602.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to `71dedd44ccb4d396d1d76ead23da454be6aa39ec` so package source and remote source matched.
+  - Regenerated the Balfrin access preflight; SSH, remote checkout hygiene, run-root visibility, and scheduler query all passed for read-only/pre-submit use.
+  - Materialized a local 12-zone hazard-throughput profile at `/tmp/tb602_hazard_throughput_profile`.
+  - Generated a no-submit regional split submission package at `/private/tmp/tb602_hazard_throughput_submission_package`.
+  - Recorded the ready package in `docs/balfrin_hazard_throughput_package_tb602.md` and removed TB-602 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - Remote `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/tb602_hazard_throughput_profile --profile multi_zone --format json --json-output /tmp/tb602_hazard_throughput_profile.json --markdown-output /tmp/tb602_hazard_throughput_profile.md`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /tmp/tb602_hazard_throughput_submission_package --balfrin-access-preflight-json /tmp/tb602_balfrin_access.json --format json --json-output /tmp/tb602_regional_package.json --text-output /tmp/tb602_regional_package.txt`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_balfrin_regional_split_submission_package.py scripts/generate_balfrin_multi_release_zone_demo_handoff.py scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py scripts/summarize_multi_zone_hazard_throughput_profile.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_regional_split_submission_package tests.test_multi_zone_hazard_throughput_profile -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_waiting_report
+- Package status: `ready_for_bounded_postproc_submission`; first blocker `null`; exact later command targets `postproc`, one node, 16 CPUs, 30 minutes, and run root `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1`.
+- Output controls: `summary-only` conditional curves, no full grid CSV, no plots, compact manifest, and replay-critical trajectory/deposition/impact/merge-state outputs retained.
+- Boundaries: package generation only; no `sbatch` was attempted and no Balfrin job was submitted. No operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
+- Next task: `TB-603`
