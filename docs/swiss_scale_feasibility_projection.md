@@ -132,6 +132,13 @@ branches into measured capability:
   `357.796875` MB, `57` hazard output files, `31,439,786` hazard output bytes,
   `130` validation-output files, `34,565,316` validation-output bytes, and
   `729,600` conditional-curve rows represented in summary-only mode.
+- TB-611 prepared the no-submit 100-zone diagnostic package at
+  `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526`
+  and measured the same reducer-pressure shape locally: `100` release zones,
+  `4` reducer chunks, `304` output files, `121,016` output bytes, `60,703`
+  manifest bytes, and `13.55` reducer wall seconds. The 100-zone case remains
+  `projection_only_deferred`; no Balfrin scheduler runtime or memory evidence
+  exists for it yet.
 - TB-565 and TB-566 measured the current regional split probe: one bounded
   Balfrin `postproc` job completed as job `4367244`, the preserved run root
   recorded `130` validation files, `57` hazard files, `729600`

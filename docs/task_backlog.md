@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-611: Build A 100-Zone Diagnostic Submission Package Without Submitting It
-
-Goal: Prepare a 100-zone diagnostic package to expose exact package size, commands, output budget, and pre-submit blockers.
-
-Capability gap reduced: Converts the 100-zone case from broad projection into a concrete reviewed package boundary.
-
-Why this outranks alternatives: The 100-zone case is the nearest useful proxy for Swiss-scale single-AOI pressure, but should not be submitted until smaller measured steps justify it.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- external: Balfrin queue and `$SCRATCH` capacity if package paths are materialized remotely
-
-Deliverables:
-
-- Materialize or plan a 100-zone diagnostic package with exact commands, expected runtime/storage/file-count bands, run-root paths on `$SCRATCH`, and pre-submit no-go conditions.
-
-Definition of done:
-
-- The package is ready for review or fails closed with a precise blocker; no 100-zone live submission occurs in this task.
-
-
 ### TB-612: Submit A 100-Zone Diagnostic Only If Prior Evidence Supports It
 
 Goal: Run the 100-zone diagnostic on Balfrin only if the 32-zone and next larger diagnostic evidence show low risk.
