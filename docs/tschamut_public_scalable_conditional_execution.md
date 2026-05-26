@@ -69,6 +69,20 @@ which records reducer mode, worker count, chunk count, merge order, chunk
 manifest count, summary-only curve export state, grid cell count, output budget
 fields, and required convergence checks.
 
+The portable command plan also exposes a machine-readable
+`distributed_execution_contract_v1` section:
+
+```bash
+PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py \
+  --site tschamut_same_scale --format json
+```
+
+That contract defines the split-task manifest shape, stable chunk-key policy,
+sorted merge order, retry/restart semantics, and per-chunk provenance fields
+needed before a distributed dry run. It is intentionally a design contract only:
+`distributed_execution_authorized` remains `false`, and no multi-node,
+scheduler, Swiss-wide, or operational claim follows from the contract.
+
 ## Output-Volume Controls
 
 Target-scale runs must use `--conditional-curve-export summary-only`. This keeps

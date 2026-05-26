@@ -212,6 +212,16 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertEqual(report["output_profile_policy"]["classification"], OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT)
         self.assertEqual(report["output_profile_validation"]["status"], "ready")
         self.assertEqual(report["output_profile_validation"]["blocked_command_ids"], [])
+        distributed_contract = report["distributed_execution_contract"]
+        self.assertEqual(distributed_contract["schema_version"], "distributed_execution_contract_v1")
+        self.assertEqual(distributed_contract["contract_status"], "defined_not_executed")
+        self.assertFalse(distributed_contract["distributed_execution_authorized"])
+        self.assertEqual(distributed_contract["merge_contract"]["merge_order"], "sorted_chunk_id")
+        self.assertEqual(
+            distributed_contract["chunk_key_contract"]["chunk_id_policy"],
+            "stable_prefix_sorted_chunk_index",
+        )
+        self.assertIn("tschamut_target_hazard_build", distributed_contract["applicable_command_ids"])
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", report["ignored_output_paths"])
         self.assertIn(
@@ -501,10 +511,50 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("first_site_specific_blocker: terrain_crop_path", output)
         self.assertIn("next_local_fixture_or_staging_action:", output)
         self.assertIn("blocked_template_commands:", output)
+        self.assertIn("distributed_execution_contract:", output)
+        self.assertIn("schema_version: distributed_execution_contract_v1", output)
+        self.assertIn("merge_order: sorted_chunk_id", output)
+        self.assertIn("distributed_execution_authorized: false", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
         self.assertIn("tschamut_next_ensemble_feasibility_probe_template", output)
+
+    def test_distributed_contract_has_deterministic_split_merge_and_restart_semantics(self) -> None:
+        report = self._fixture_report("tschamut_same_scale")
+        contract = report["distributed_execution_contract"]
+
+        fixture_chunks = contract["chunk_key_contract"]["fixture_chunk_id_examples"]
+        self.assertEqual(
+            [chunk["chunk_id"] for chunk in fixture_chunks],
+            [
+                "tschamut_public_target_gate_v1__chunk_0000",
+                "tschamut_public_target_gate_v1__chunk_0001",
+                "tschamut_public_target_gate_v1__chunk_0002",
+                "tschamut_public_target_gate_v1__chunk_0003",
+            ],
+        )
+        self.assertEqual([chunk["chunk_id"] for chunk in fixture_chunks], sorted(chunk["chunk_id"] for chunk in fixture_chunks))
+        self.assertEqual(
+            fixture_chunks,
+            MODULE.build_distributed_fixture_chunk_records(
+                prefix="tschamut_public_target_gate_v1",
+                chunk_count=4,
+                phase="hazard_reduction",
+            ),
+        )
+        self.assertEqual(contract["split_task_manifest"]["required_fields"][0], "plan_id")
+        self.assertIn("chunk_manifests", contract["split_task_manifest"]["required_fields"])
+        self.assertIn("input_signature", contract["chunk_key_contract"]["identity_fields"])
+        self.assertIn("execution_signature", contract["chunk_key_contract"]["identity_fields"])
+        self.assertEqual(contract["retry_and_restart_contract"]["max_chunk_attempts"], 3)
+        self.assertEqual(contract["retry_and_restart_contract"]["claim_ttl_seconds"], 3600)
+        self.assertIn("chunk_id and input_signature and execution_signature", contract["retry_and_restart_contract"]["reuse_rule"])
+        self.assertEqual(contract["provenance_contract"]["claim_boundary"].startswith("contract only"), True)
+        self.assertIn(
+            "merged fixture output equals single-process fixture output",
+            contract["smallest_future_distributed_dry_run_task"]["expected_assertions"],
+        )
 
     def test_shared_output_profile_validator_blocks_scalable_full_debug_drift(self) -> None:
         command = COMMAND_PLAN.build_command_record(

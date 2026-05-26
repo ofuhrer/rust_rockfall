@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-594: Design A Distributed Execution Contract Without Running It
-
-Goal: Specify the chunking, merge, idempotency, restartability, and provenance contract required for distributed execution.
-
-Capability gap reduced: Converts distributed execution from a currently deferred boundary into an implementable architecture contract.
-
-Why this outranks alternatives: Distributed execution should not be attempted until merge determinism, replay, and failure recovery are explicit.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/build_hazard_layers.py`
-- `docs/tschamut_public_scalable_conditional_execution.md`
-- `tests/test_pilot_command_plan.py`
-
-Deliverables:
-
-- Define the distributed execution manifest shape for split tasks, chunk keys, reducer inputs, merge order, retry semantics, and output provenance.
-- Add fixture-backed command-plan tests proving deterministic split/merge ordering and restartable chunk identity.
-- Identify the smallest future distributed dry-run implementation task.
-
-Definition of done:
-
-- Focused command-plan tests pass and the contract can be validated locally without launching distributed jobs.
-
-
 ### TB-595: Prototype Local Distributed-Orchestration Semantics
 
 Goal: Exercise the distributed execution contract locally with deterministic fixture chunks and reducer replay.

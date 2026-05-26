@@ -26,6 +26,7 @@ from scripts.lib.workflow_validation import load_repo_script_module
 
 
 SCHEMA_VERSION = "portable_pilot_command_plan_v1"
+DISTRIBUTED_EXECUTION_CONTRACT_SCHEMA_VERSION = "distributed_execution_contract_v1"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 
 
@@ -88,6 +89,7 @@ VALIDATION_OUTPUT_DEBUG_CLASSES = [
     "ensemble_impact_events_dir",
     "ensemble_impact_events_parquet",
 ]
+SUPPORTED_DISTRIBUTED_PHASES = ("trajectory_generation", "hazard_reduction")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -153,6 +155,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         flattened_commands,
         label="pilot_command_plan",
     )
+    distributed_execution_contract = build_distributed_execution_contract(flattened_commands)
     ignored_output_paths = sorted(
         {
             *readiness_ignored_output_paths(),
@@ -219,6 +222,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
             output_profile_policies, label="pilot_command_plan"
         ),
         "output_profile_validation": output_profile_validation,
+        "distributed_execution_contract": distributed_execution_contract,
         "command_groups": flattened_groups,
         "commands": flattened_commands,
         "command_ids": COMMAND_PLAN.command_ids(flattened_commands),
@@ -229,6 +233,163 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "command_group_keys": [group["group_key"] for group in flattened_groups],
     }
     return report
+
+
+def build_distributed_execution_contract(commands: list[dict[str, Any]]) -> dict[str, Any]:
+    scalable_hazard_commands = [
+        command
+        for command in commands
+        if command.get("group") == "hazard_builds"
+        and command.get("output_profile_policy", {}).get("classification") == OUTPUT_PROFILE_POLICY.SCALABLE_DEFAULT
+    ]
+    return {
+        "schema_version": DISTRIBUTED_EXECUTION_CONTRACT_SCHEMA_VERSION,
+        "contract_status": "defined_not_executed",
+        "distributed_execution_authorized": False,
+        "execution_model": "single_node_chunk_contract_ready_multi_process_deferred",
+        "supported_phases": list(SUPPORTED_DISTRIBUTED_PHASES),
+        "applicable_command_ids": [str(command["id"]) for command in scalable_hazard_commands],
+        "split_task_manifest": {
+            "schema_versions": {
+                "trajectory_execution_plan": "trajectory_execution_plan_v1",
+                "hazard_reducer_execution_plan": "execution_plan_v1",
+                "trajectory_chunk_manifest": "trajectory_generation_chunk_manifest_v1",
+                "hazard_reducer_chunk_manifest": "hazard_reducer_chunk_manifest_v1",
+                "execution_index": "reducer_execution_index_v1",
+                "merge_state": "reducer_merge_state_v1",
+            },
+            "required_fields": [
+                "plan_id",
+                "plan_status",
+                "chunk_count",
+                "chunk_ids",
+                "chunk_manifests",
+                "merge_order",
+                "merge_group_id",
+                "scheduler_index",
+                "scheduler_count",
+                "owner_id",
+                "max_chunk_attempts",
+                "claim_ttl_seconds",
+                "input_file_count",
+            ],
+        },
+        "chunk_key_contract": {
+            "chunk_id_policy": "stable_prefix_sorted_chunk_index",
+            "trajectory_chunk_template": "{prefix}__trajectory_chunk_{chunk_index:04d}",
+            "hazard_reducer_chunk_template": "{prefix}__chunk_{chunk_index:04d}",
+            "chunk_index_base": 0,
+            "chunk_assignment_rule": "scheduler_index selects chunks where chunk_index % scheduler_count == scheduler_index",
+            "identity_fields": [
+                "site",
+                "phase",
+                "prefix",
+                "chunk_index",
+                "input_index_start",
+                "input_index_end_exclusive",
+                "input_signature",
+                "execution_signature",
+            ],
+            "fixture_chunk_id_examples": build_distributed_fixture_chunk_records(
+                prefix="tschamut_public_target_gate_v1",
+                chunk_count=4,
+                phase="hazard_reduction",
+            ),
+        },
+        "merge_contract": {
+            "merge_order": "sorted_chunk_id",
+            "merge_group_id_source": "hash_of_plan_prefix_ranges_and_input_artifacts",
+            "operations": {
+                "reach_counts": "cellwise integer counts add across chunks",
+                "threshold_exceedance_counts": "cellwise integer or sampling-weighted counts add across chunks",
+                "max_kinetic_energy": "cellwise maximum across chunks",
+                "max_jump_height": "cellwise maximum across chunks",
+                "deposition_density_counts": "cellwise deposition counts add across chunks",
+                "significant_impact_counts": "cellwise significant-impact counts add across chunks",
+            },
+            "required_pre_merge_state": "all chunks completed or merge_state remains incomplete",
+        },
+        "retry_and_restart_contract": {
+            "max_chunk_attempts": 3,
+            "claim_ttl_seconds": 3600,
+            "restart_state": "partial_state_path plus execution_signature",
+            "reuse_rule": "reuse completed partial state only when chunk_id and input_signature and execution_signature match",
+            "stale_state_rule": "release and rerun stale chunks when signatures differ or claims expire",
+            "failure_rule": "record failed chunk ids; do not emit a completed merge state until all planned chunks complete",
+        },
+        "idempotency_contract": {
+            "rerun_same_plan": "same prefix and sorted input artifacts keep chunk ids stable",
+            "rerun_changed_inputs": "input_signature changes force stale-state rejection",
+            "output_write_policy": "chunk manifests and partial states are addressed by chunk id; final merge output is deterministic after sorted merge",
+        },
+        "provenance_contract": {
+            "required_per_chunk_fields": [
+                "chunk_id",
+                "chunk_index",
+                "input_signature",
+                "execution_signature",
+                "execution_plan.plan_id",
+                "execution_plan.plan_path",
+                "merge_group_id",
+                "attempt_count",
+                "retry_count",
+                "ownership",
+                "input_artifacts",
+                "output_bytes",
+                "timings",
+            ],
+            "required_plan_fields": [
+                "plan_id",
+                "output_manifest_path",
+                "scheduled_chunk_ids",
+                "completed_chunk_count",
+                "failed_chunk_count",
+                "chunk_ids_completed",
+                "chunk_ids_failed",
+            ],
+            "claim_boundary": "contract only; no multi-node, scheduler, Swiss-wide, or operational execution claim",
+        },
+        "smallest_future_distributed_dry_run_task": {
+            "task": "Implement a local distributed dry run that splits fixture hazard inputs into at least three chunks, simulates one stale/retried chunk by preserving partial state, merges by sorted chunk id, and compares the merged output with an equivalent single-process fixture output.",
+            "expected_fixture_inputs": [
+                "tests/fixtures/hazard/plane_case.yaml",
+                "tests/fixtures/hazard/*trajectory*.csv",
+            ],
+            "expected_assertions": [
+                "chunk ids are stable across reruns",
+                "changed input signatures invalidate stale partial state",
+                "merge order is sorted by chunk id",
+                "merged fixture output equals single-process fixture output",
+            ],
+        },
+    }
+
+
+def build_distributed_fixture_chunk_records(
+    *,
+    prefix: str,
+    chunk_count: int,
+    phase: str,
+) -> list[dict[str, Any]]:
+    if chunk_count < 1:
+        raise ValueError("chunk_count must be at least 1")
+    if phase not in SUPPORTED_DISTRIBUTED_PHASES:
+        raise ValueError(f"unsupported distributed phase: {phase}")
+    safe_prefix = str(prefix).replace(" ", "_")
+    infix = "trajectory_chunk" if phase == "trajectory_generation" else "chunk"
+    records = [
+        {
+            "phase": phase,
+            "chunk_index": index,
+            "chunk_id": f"{safe_prefix}__{infix}_{index:04d}",
+            "input_index_start": index,
+            "input_index_end_exclusive": index + 1,
+            "partial_state_path": f"<output_root>/{phase}_chunks/{safe_prefix}__{infix}_{index:04d}_state.json",
+            "manifest_path": f"<output_root>/{phase}_chunks/{safe_prefix}__{infix}_{index:04d}_manifest.json",
+        }
+        for index in range(chunk_count)
+    ]
+    return sorted(records, key=lambda record: record["chunk_id"])
 
 
 def build_tschamut_site_plan(
@@ -1732,6 +1893,21 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"- full_output_case_path: {recovery.get('full_output_case_path')}")
         if recovery.get("full_output_command"):
             lines.append(f"- full_output_command: {recovery.get('full_output_command')}")
+    distributed_contract = report.get("distributed_execution_contract") or {}
+    if distributed_contract:
+        lines.extend(
+            [
+                "",
+                "distributed_execution_contract:",
+                f"- schema_version: {distributed_contract.get('schema_version')}",
+                f"- status: {distributed_contract.get('contract_status')}",
+                f"- execution_model: {distributed_contract.get('execution_model')}",
+                f"- distributed_execution_authorized: {str(distributed_contract.get('distributed_execution_authorized')).lower()}",
+                f"- merge_order: {distributed_contract.get('merge_contract', {}).get('merge_order')}",
+                f"- chunk_id_policy: {distributed_contract.get('chunk_key_contract', {}).get('chunk_id_policy')}",
+                f"- future_task: {distributed_contract.get('smallest_future_distributed_dry_run_task', {}).get('task')}",
+            ]
+        )
     lines.extend(["", "command_groups:"])
     for group in report["command_groups"]:
         lines.append(f"- {group['site']}::{group['id']} [{group['status']}]: {group['description']}")
