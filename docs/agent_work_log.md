@@ -9549,3 +9549,20 @@ scan thousands of lines of completed history.
 - Metrics: recovery job `4372418` completed in `00:00:06`; merge job `4372419` completed in `00:01:01`; target chunk decision `completed_state_reset_for_rerun`; target chunk attempt count `2`; final plan `completed`; completed chunks `3`; failed chunks `0`; reducer merge state `ready`; stable hazard-product hash comparison `37` baseline files / `37` recovered files / `0` changed artifacts; output footprint `49` files / `91,981,158` bytes.
 - Boundaries: one copied TB-605 run root and one removed reducer partial state only. No Swiss-wide readiness, operational hazard-map readiness, physical-probability semantics, non-`postproc` behavior, multi-node behavior, or concurrent shared-plan write safety is established.
 - Next task: `TB-607`
+
+### TB-607: Build A National Swiss Tiling And Data-Volume Inventory
+
+- Date: 2026-05-26
+- Commit: `99943ee`
+- Objective: decompose the Swiss-wide `data_ready` blocker into concrete national terrain/context inventory classes without downloading or staging data.
+- Files changed: `docs/swiss_national_tiling_inventory_tb607.md`, `docs/swiss_national_tiling_inventory_tb607.json`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a machine-readable `swiss_national_tiling_inventory_v1` inventory with deterministic LV95 1 km tile IDs, national tile-count estimates, expected raw/processed cache paths, version/checksum fields, and cache status.
+  - Added a concise human-readable inventory note summarizing terrain, visual/vector context, obstacle/geology context, and byte ranges for the national data-ready blocker.
+  - Indexed the inventory in `docs/README.md` and removed TB-607 from the active backlog.
+- Checks run:
+  - Reviewed `scripts/estimate_swiss_wide_execution_envelope.py`, `docs/public_real_site_geodata_preparation.md`, `docs/swisstopo_data_strategy.md`, `scripts/plan_swisstopo_aoi_acquisition.py`, and `scripts/stage_public_geodata_cache.py`
+- Result/status: implemented_fixture_backed
+- Inventory summary: national 1 km tile estimate `43,500`; swissALTI3D 2 m raw float32 planning estimate `43.5 GB`; swissALTI3D 0.5 m estimate `696 GB`; SWISSIMAGE RGB raw planning estimate `12.81 TB` at 10 cm or `2.05 TB` at 25 cm; swissSURFACE3D Raster 0.5 m estimate `696 GB`; swissTLM3D, GeoCover/geology, and swissBUILDINGS3D remain product/package-selection inventory items with missing version/checksum/cache fields.
+- Boundaries: share-safe inventory only; no download, no staged national cache, no Swiss-wide execution authorization, and no operational hazard, annual-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-608`
