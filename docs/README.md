@@ -66,6 +66,8 @@ starting context for implementation unless a task explicitly asks for them.
 - `swisstopo_data_strategy.md`: Swiss public geodata roles, metadata
   requirements, AOI automation gaps, explicit acquisition/staging modes, and
   second-site boundaries.
+- `swiss_national_tiling_inventory_tb607.md`: TB-607 share-safe national
+  swisstopo tiling, byte, cache-path, and checksum-field inventory.
 - `aoi_conditional_workflow_contract.md`: canonical AOI conditional-map phase
   model and front-door command contract.
 - `aoi_user_manual.md`: compact AOI preparation, candidate review, package,

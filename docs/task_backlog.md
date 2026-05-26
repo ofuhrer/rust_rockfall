@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-607: Build A National Swiss Tiling And Data-Volume Inventory
-
-Goal: Quantify the national public-geodata input footprint that a Swiss-scale run would require.
-
-Capability gap reduced: Replaces national data readiness assumptions with a concrete tile, byte, context-product, and cache inventory.
-
-Why this outranks alternatives: Swiss-wide compute feasibility is not meaningful without knowing national DEM/context tiling and cache requirements.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/swisstopo_data_strategy.md`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/stage_public_geodata_cache.py`
-
-Deliverables:
-
-- Produce a share-safe national tiling inventory for swissALTI3D and required context products, including estimated tile count, bytes, cache paths, versions/checksum fields, and tiling IDs.
-
-Definition of done:
-
-- The Swiss-wide `data_ready` blocker is decomposed into concrete staged/missing national input classes without downloading excessive data.
-
-
 ### TB-608: Prototype A National Tile-To-Chunk Mapping
 
 Goal: Map the national tiling inventory to stable execution chunks and merge groups.

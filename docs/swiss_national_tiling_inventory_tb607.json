@@ -1,0 +1,209 @@
+{
+  "schema_version": "swiss_national_tiling_inventory_v1",
+  "task_id": "TB-607",
+  "inventory_status": "share_safe_no_download_inventory",
+  "created_date": "2026-05-26",
+  "tiling_grid": {
+    "crs": "EPSG:2056",
+    "vertical_datum": "LN02 where applicable",
+    "tile_size_m": 1000,
+    "tile_id_policy": "lv95_1km_{easting_km}_{northing_km}",
+    "sample_tile_ids": [
+      "lv95_1km_2696_1167",
+      "lv95_1km_2600_1200",
+      "lv95_1km_2480_1070"
+    ],
+    "national_1km_tile_count_estimate": 43500,
+    "inventory_id": "swiss_lv95_1km_national_inventory_v1"
+  },
+  "checksum_and_version_fields": {
+    "required_per_tile": [
+      "source_product_id",
+      "source_product_version_or_delivery_date",
+      "source_url_or_download_record",
+      "license_or_terms_reference",
+      "tile_id",
+      "source_filename",
+      "raw_sha256",
+      "processed_sha256",
+      "crs",
+      "vertical_datum",
+      "resolution_m",
+      "extent_lv95_m",
+      "cache_status"
+    ],
+    "current_status": "missing_for_national_inventory"
+  },
+  "products": [
+    {
+      "product_id": "swissalti3d_2m",
+      "swisstopo_product": "swissALTI3D",
+      "role": "mandatory_terrain_foundation",
+      "cache_class": "terrain_dem",
+      "tile_count_estimate": 43500,
+      "resolution_m": 2.0,
+      "cells_per_1km_tile": 250000,
+      "estimated_raw_bytes_per_tile_float32": 1000000,
+      "estimated_raw_bytes_national_float32": 43500000000,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swissalti3d/2m/{tile_id}/source.tif",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swissalti3d/2m/{tile_id}/dem.tif",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "swissalti3d_0_5m",
+      "swisstopo_product": "swissALTI3D",
+      "role": "optional_high_resolution_terrain",
+      "cache_class": "terrain_dem_high_resolution",
+      "tile_count_estimate": 43500,
+      "resolution_m": 0.5,
+      "cells_per_1km_tile": 4000000,
+      "estimated_raw_bytes_per_tile_float32": 16000000,
+      "estimated_raw_bytes_national_float32": 696000000000,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swissalti3d/0_5m/{tile_id}/source.tif",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swissalti3d/0_5m/{tile_id}/dem.tif",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "swissimage_10cm_or_25cm",
+      "swisstopo_product": "SWISSIMAGE",
+      "role": "visual_qa_and_release_zone_review_context",
+      "cache_class": "orthophoto_context",
+      "tile_count_estimate": 42700,
+      "resolution_m_options": [
+        0.1,
+        0.25
+      ],
+      "estimated_raw_bytes_national_rgb_10cm": 12810000000000,
+      "estimated_raw_bytes_national_rgb_25cm": 2049600000000,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swissimage/{resolution}/{tile_id}/source.tif",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swissimage/{resolution}/{tile_id}/overview.tif",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "swisssurface3d_raster_0_5m",
+      "swisstopo_product": "swissSURFACE3D Raster",
+      "role": "obstacle_and_canopy_context_before_operational_interpretation",
+      "cache_class": "surface_raster_context",
+      "tile_count_estimate": 43500,
+      "resolution_m": 0.5,
+      "cells_per_1km_tile": 4000000,
+      "estimated_raw_bytes_per_tile_float32": 16000000,
+      "estimated_raw_bytes_national_float32": 696000000000,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swisssurface3d_raster/{tile_id}/source.tif",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swisssurface3d_raster/{tile_id}/surface.tif",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "swisstlm3d",
+      "swisstopo_product": "swissTLM3D",
+      "role": "roads_hydrography_landcover_context_and_qa_masks",
+      "cache_class": "national_vector_context",
+      "tile_count_estimate": null,
+      "estimated_raw_bytes_national": null,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swisstlm3d/{version}/source.gpkg",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swisstlm3d/{version}/context.gpkg",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "geocover_or_geology_context",
+      "swisstopo_product": "GeoCover / Geological Atlas",
+      "role": "geology_and_material_screening_context",
+      "cache_class": "geology_vector_context",
+      "tile_count_estimate": null,
+      "estimated_raw_bytes_national": null,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/geology/{product}/{version}/source.gpkg",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/geology/{product}/{version}/context.gpkg",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    },
+    {
+      "product_id": "swissbuildings3d",
+      "swisstopo_product": "swissBUILDINGS3D",
+      "role": "building_obstacle_or_exposure_context_for_later_risk_workflows",
+      "cache_class": "building_vector_context",
+      "tile_count_estimate": null,
+      "estimated_raw_bytes_national": null,
+      "expected_raw_cache_path_template": "data/raw/swisstopo/swissbuildings3d/{version}/source.gpkg",
+      "expected_processed_cache_path_template": "data/processed/swisstopo/national/swissbuildings3d/{version}/buildings.gpkg",
+      "version_field": "source_product_version_or_delivery_date",
+      "checksum_fields": [
+        "raw_sha256",
+        "processed_sha256"
+      ],
+      "current_cache_status": "missing"
+    }
+  ],
+  "data_ready_breakdown": [
+    {
+      "class": "terrain_tiles",
+      "status": "missing_national_cache",
+      "minimum_required_product": "swissalti3d_2m",
+      "blocking_fields": [
+        "national tile manifest",
+        "raw_sha256",
+        "processed_sha256",
+        "version/date",
+        "local cache paths"
+      ]
+    },
+    {
+      "class": "visual_and_vector_context",
+      "status": "missing_national_cache",
+      "minimum_required_products": [
+        "swissimage_10cm_or_25cm",
+        "swisstlm3d"
+      ],
+      "blocking_fields": [
+        "product version/date",
+        "checksums",
+        "cache status",
+        "AOI coverage join"
+      ]
+    },
+    {
+      "class": "obstacle_and_geology_context",
+      "status": "missing_before_operational_interpretation",
+      "candidate_products": [
+        "swisssurface3d_raster_0_5m",
+        "geocover_or_geology_context",
+        "swissbuildings3d"
+      ],
+      "blocking_fields": [
+        "product selection",
+        "coverage inventory",
+        "checksums",
+        "interpretation policy"
+      ]
+    }
+  ],
+  "claim_boundary": "Inventory only; no download, no staged national cache, no Swiss-wide execution authorization, and no operational hazard or risk claim."
+}
