@@ -15,6 +15,34 @@ The long-term goal is straightforward: make scientifically traceable rockfall
 hazard modelling easier to run, easier to review, and easier to extend for real
 Swiss terrain.
 
+## Current Demonstration Snapshot
+
+The repository now has a working end-to-end research workflow: local smoke runs,
+AOI preparation, deterministic validation fixtures, GIS-oriented hazard outputs,
+and a Balfrin path for bounded scaling experiments.
+
+The strongest current performance evidence is diagnostic, not operational:
+
+- Balfrin `postproc` diagnostic reducer-pressure runs are measured through
+  `100` release zones. The largest run completed as job `4372447` with
+  `34.16 MB` maximum RSS, `0:01.26` `/usr/bin/time` elapsed time, `304` output
+  files, `121,172` output bytes, `61,119` manifest bytes, and `448,376`
+  run-root bytes.
+- A bounded Balfrin hazard-throughput support run completed as job `4372309`
+  with `7.04 s` workflow wall time, `357.8 MB` peak process memory, `57`
+  hazard output files, and `31.4 MB` of hazard output. This is the current
+  hazard-throughput anchor.
+- The scientific evidence base has improved: source-frequency design-review
+  evidence and a Chant Sura held-out runout-axis benchmark intake are staged.
+  The remaining physical-probability blockers are release-probability,
+  block-population, and calibration evidence.
+
+What this means: the code path is feasible for bounded Swiss-terrain
+experiments on Balfrin, and the output footprint is small enough to keep
+iterating. Swiss-wide execution, distributed execution, non-`postproc`
+execution, physical-probability products, and operational hazard maps still need
+separate evidence before they should be claimed.
+
 ## What This Project Provides
 
 - A Rust rockfall simulation engine with deterministic test cases and validation
@@ -76,8 +104,7 @@ PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 The main-branch performance workflow publishes the latest synthetic benchmark
 baseline and trend dashboard to
 [`ofuhrer.github.io/rust_rockfall/performance/`](https://ofuhrer.github.io/rust_rockfall/performance/).
-The page also includes a separate Balfrin diagnostic-performance section for
-the measured 24-zone `postproc` run and repeatability pair. CI timings and
+The page also includes Balfrin diagnostic-performance material. CI timings and
 Balfrin scheduler evidence are kept separate; neither is a scientific
 validation metric.
 
@@ -125,7 +152,9 @@ normally be reached through these commands or through a documented workflow.
 
 The first path through the repository is local. Balfrin/HPC work is an advanced
 scaling topic for already-prepared experiments. The public diagnostic path is
-one runner: inspect the plan, then run it on Balfrin.
+one runner: inspect the plan, then run it on Balfrin. Start small when changing
+the workflow; use the 100-zone result as an evidence ceiling, not a default
+development command.
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan \
@@ -146,12 +175,12 @@ PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run \
 This writes a single `run_record.json` under the selected `$SCRATCH` run root.
 The current reviewer-facing Balfrin evidence package is
 [`docs/balfrin_scale_demonstration_management_package.md`](docs/balfrin_scale_demonstration_management_package.md).
-It records the measured 24-zone diagnostic run, the same-size repeatability
-pair, reproduction commands, run roots, and boundaries. These are diagnostic
-performance results, not operational or physical-probability claims. The older
-Balfrin handoff, preflight, submit, and collect scripts remain compatibility
-and forensic helpers; routine diagnostic runs should use the single runner
-above.
+It records the measured diagnostic series, bounded hazard-throughput support
+point, reproduction commands, run roots, and boundaries. These are performance
+and feasibility results, not operational or physical-probability claims. The
+older Balfrin handoff, preflight, submit, and collect scripts remain
+compatibility and forensic helpers; routine diagnostic runs should use the
+single runner above.
 
 ## Development Workflow
 
@@ -187,6 +216,8 @@ modules must be classified deliberately.
   front door.
 - [`docs/project_overview.md`](docs/project_overview.md) - understand the model,
   workflow, and deeper documentation map.
+- [`docs/swiss_scale_feasibility_projection.md`](docs/swiss_scale_feasibility_projection.md) -
+  review the current Balfrin and Swiss-scale feasibility evidence.
 - [`docs/current_maturity_snapshot.md`](docs/current_maturity_snapshot.md) -
   read current capability and claim boundaries.
 - [`AGENTS.md`](AGENTS.md) - find the active backlog, orchestration strategy,

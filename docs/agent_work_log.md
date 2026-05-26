@@ -9721,3 +9721,24 @@ scan thousands of lines of completed history.
 - Metrics: observed runout/deposition intake status `ready`; observed deposition/runout category `present`; holdout and validation category `present`; physical-probability readiness still `partial_evidence_missing_critical_inputs`; remaining failing evidence classes `release_probability_model`, `block_population_evidence`, and `calibration_evidence`.
 - Boundaries: design-review runout-axis benchmark intake only; no deposition-footprint polygon, calibration result, physical-probability product, annual-frequency product, operational product, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-616`
+
+### TB-616: Produce A Balfrin Swiss-Scale Demonstration Summary From Measured Runs
+
+- Date: 2026-05-26
+- Commit: implementation commit to be recorded after commit
+- Objective: make the GitHub front door summarize the measured Balfrin diagnostic, hazard-throughput, scientific-evidence, and Swiss-scale feasibility state clearly.
+- Files changed: `README.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a current demonstration snapshot to the root README with the measured 100-zone Balfrin diagnostic ceiling, bounded hazard-throughput support point, staged scientific evidence, and remaining blockers.
+  - Updated the CI/performance and advanced-scaling sections so they no longer center the older 24-zone result as the current demonstration.
+  - Linked the Swiss-scale feasibility projection from the README start-here list and removed TB-616 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --release-zone-count 100 --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented
+- Metrics: README now names the 100-zone diagnostic job `4372447` (`34.16 MB` MaxRSS, `0:01.26` elapsed, `304` files, `121,172` output bytes, `448,376` run-root bytes) and the hazard-throughput support job `4372309` (`7.04 s`, `357.8 MB`, `57` hazard files, `31.4 MB` hazard output).
+- Boundaries: documentation synthesis only; no new run, no Swiss-wide execution, no distributed execution, no non-`postproc` execution, no physical-probability product, no operational product, no risk, exposure, or vulnerability claim.
+- Next task: backlog refill needed

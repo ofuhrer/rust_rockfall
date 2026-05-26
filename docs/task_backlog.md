@@ -30,30 +30,10 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-616: Produce A Balfrin Swiss-Scale Demonstration Summary From Measured Runs
+No active tasks.
 
-Goal: Summarize the measured Balfrin evidence into a concise demonstration of computational efficiency, performance, and feasibility boundaries.
-
-Capability gap reduced: Turns the measured run series into a clear feasibility demonstration without overstating scientific or operational claims.
-
-Why this outranks alternatives: Once the bounded runs and evidence promotion are complete, the repo needs a front-door summary of what was actually demonstrated.
-
-Inspect first:
-
-- `README.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Update the user-facing summary with measured Balfrin runtime, memory, output, diagnostic/hazard-throughput, distributed/restart, and Swiss-scale feasibility boundaries.
-
-Definition of done:
-
-- The README or linked front-door doc accurately communicates the measured demonstration, remaining blockers, and claim boundaries in approachable language.
-
+Next refill should favor concrete scientific evidence, hazard-throughput scaling,
+and simplification work over additional process surfaces.
 ## Backlog Protocol
 
 Task headings must always be exactly:
