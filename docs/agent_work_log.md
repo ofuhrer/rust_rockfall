@@ -8834,3 +8834,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: diagnostic single-node `postproc` batch ceiling only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-577`
+
+### TB-577: Add A Queue-Aware Diagnostic Run Planner
+
+- Date: 2026-05-26
+- Commit: `9bd298c`
+- Objective: make diagnostic Balfrin run decisions consume a compact `postproc` queue/capacity snapshot instead of relying on stale manual judgment.
+- Files changed: `scripts/check_balfrin_remote_access_preflight.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Extended the Balfrin access preflight scheduler query so future reports include a compact `postproc` node/job snapshot with capture time.
+  - Added queue snapshot parsing and diagnostic-run classification for `run_now`, `run_batch_now`, `run_soon`, `defer_due_to_capacity`, and `unknown`.
+  - Threaded stale-preflight, remote-head mismatch, expected wall time, and six-hour partition-fill checks into the decision-gate Balfrin access criteria.
+  - Removed TB-577 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate tests.test_balfrin_probe_driver -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: queue-aware planning only; no `sbatch`, no live queue claim without a fresh preflight, no operational claim, no physical-probability claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-578`
