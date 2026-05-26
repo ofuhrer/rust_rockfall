@@ -21,6 +21,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "risk_exposure_vulnerability_claims_allowed",
             "scale_up_authorized",
             "post_diagnostic_scale_context",
+            "source_frequency_intake",
             "evidence_gap_categories",
             "claim_boundary_matrix",
             "validation_leakage_guardrails",
@@ -47,6 +48,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             report["post_diagnostic_scale_context"]["claim_boundaries"]["scientific_validity_upgraded"]
         )
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
+        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "missing")
         self.assertTrue(report["validation_leakage_guardrails"]["interpretation_allowed"])
         self.assertEqual(report["validation_leakage_guardrails"]["failing_checks"], [])
         self.assertFalse(
@@ -207,6 +209,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
 
         self.assertIn("physical_probability_readiness_check:", text)
         self.assertIn("physical_probability_claims_allowed: false", text)
+        self.assertIn("source_frequency_intake: missing", text)
         self.assertIn("validation_leakage_guardrails:", text)
         self.assertIn("guardrail_status: passed", text)
         self.assertIn("failing_checks: none", text)
@@ -277,6 +280,21 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(check["readiness_status"], "ready_for_physical_probability_product")
         self.assertTrue(check["physical_probability_claims_allowed"])
         self.assertEqual(check["failing_evidence_classes"], [])
+
+    def test_accepted_source_frequency_fixture_moves_readiness_to_next_missing_class(self) -> None:
+        report = assessment.build_report(
+            assessment.ROOT / "tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml"
+        )
+
+        categories = {entry["category"]: entry for entry in report["evidence_gap_categories"]}
+        self.assertEqual(
+            categories["source_frequency_and_temporal_frequency_evidence"]["classification"],
+            "present",
+        )
+        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
+        readiness = report["physical_probability_readiness_check"]
+        self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "release_probability_model")
 
 
 if __name__ == "__main__":  # pragma: no cover

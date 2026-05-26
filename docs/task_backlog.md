@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-589: Build A Source-Frequency Evidence Intake Path
-
-Goal: Add a concrete local intake workflow for source-frequency and release-rate evidence needed by physical-probability and annual-frequency products.
-
-Capability gap reduced: Turns one of the largest physical-probability blockers from an abstract missing-data class into a testable data-ingestion contract.
-
-Why this outranks alternatives: Without source-frequency evidence, larger Balfrin runs can only remain conditional diagnostics.
-
-Inspect first:
-
-- `docs/validation_data_schema.md`
-- `docs/real_case_intensity_frequency_implementation_roadmap.md`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `tests/test_public_real_site_conditional_pilot_run.py`
-
-Deliverables:
-
-- Define the source-frequency intake schema and a fixture-backed acceptance/rejection path.
-- Add a small example fixture or contract stub that records provenance, temporal support, uncertainty, and explicit non-production status.
-- Make the scientific-gap report distinguish missing, partial, and accepted source-frequency evidence.
-
-Definition of done:
-
-- Focused intake/gap tests pass and accepted fixture evidence moves the physical-probability assessment to the next missing evidence class.
-
-
 ### TB-590: Add Calibration And Holdout Separation Checks
 
 Goal: Require explicit separation between calibration evidence and holdout validation evidence before stronger scientific conclusions can pass.

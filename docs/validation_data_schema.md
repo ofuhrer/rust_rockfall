@@ -231,6 +231,24 @@ would only say the physical-probability evidence classes are staged and
 internally checkable; operational acceptance and annual-frequency products
 remain separate decisions.
 
+Source-frequency records use `source_frequency_evidence_v1` and are validated
+with `scripts/validate_source_frequency_evidence.py`. The intake requires:
+
+- `record_status`: `no_accepted_frequency_evidence`,
+  `candidate_not_authorized`, or `accepted_for_design_review`.
+- `non_production_status`: `template_no_evidence`,
+  `candidate_not_authorized`, or `design_review_only`, matching the record
+  status.
+- `rate_observation_period`, `rate_time_window_years`, `rate_provenance`, and
+  `rate_uncertainty` when a candidate rate is present.
+- explicit false claim-boundary fields for annual frequency, physical
+  probability, return period, operational hazard maps, and risk/exposure.
+
+Accepted design-review source-frequency evidence can satisfy only the
+source-frequency row of `physical_probability_readiness_check`; release
+probability, block-population, calibration, and holdout evidence remain separate
+requirements.
+
 Cases can also opt into unweighted trajectory-level probability standard-error
 rasters:
 

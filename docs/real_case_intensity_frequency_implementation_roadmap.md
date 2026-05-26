@@ -279,7 +279,12 @@ met.
 The inactive source-frequency evidence contract in
 `docs/source_frequency_evidence_contract.md` closes the first schema blocker by
 defining source-rate evidence records and rejection checks, but the selected
-template still records `no_accepted_frequency_evidence`.
+template still records `no_accepted_frequency_evidence`. The local intake path
+now lets `scripts/assess_validation_calibration_evidence_gaps.py` consume a
+`source_frequency_evidence_v1` record directly: a valid
+`accepted_for_design_review` record satisfies the source-frequency row of the
+physical-probability readiness check, while keeping non-production and claim
+boundary fields false.
 The inactive block/release probability evidence contract in
 `docs/block_release_probability_evidence_contract.md` closes the next schema
 blocker by defining conditional block-scenario and release-cell probability

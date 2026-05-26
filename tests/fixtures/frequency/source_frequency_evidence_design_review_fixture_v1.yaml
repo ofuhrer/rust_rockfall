@@ -3,6 +3,7 @@ record_id: source_frequency_evidence_design_review_fixture_v1
 record_status: accepted_for_design_review
 prototype_authorized: false
 operational_status: research_diagnostic
+non_production_status: design_review_only
 frequency_model_id: synthetic_source_frequency_fixture_v1
 frequency_mode: source_event_rate_evidence_only
 source_zone_id: synthetic_source_zone_design_review_v1

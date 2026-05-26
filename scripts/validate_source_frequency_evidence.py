@@ -37,6 +37,11 @@ STATUSES = {
     "candidate_not_authorized",
     "accepted_for_design_review",
 }
+NON_PRODUCTION_STATUSES = {
+    "template_no_evidence",
+    "candidate_not_authorized",
+    "design_review_only",
+}
 EVIDENCE_TYPES = {
     "none_available",
     "inventory_count",
@@ -99,6 +104,17 @@ def validate_source_frequency_evidence(record_path: Path) -> dict[str, Any]:
     require(status in STATUSES, f"record_status must be one of {sorted(STATUSES)}")
     require(record.get("prototype_authorized") is False, "prototype_authorized must be false")
     require(record.get("operational_status") == "research_diagnostic", "operational_status must be research_diagnostic")
+    non_production_status = require_text(record.get("non_production_status"), "non_production_status")
+    require(
+        non_production_status in NON_PRODUCTION_STATUSES,
+        f"non_production_status must be one of {sorted(NON_PRODUCTION_STATUSES)}",
+    )
+    if status == "no_accepted_frequency_evidence":
+        require(non_production_status == "template_no_evidence", "template records must use non_production_status=template_no_evidence")
+    elif status == "candidate_not_authorized":
+        require(non_production_status == "candidate_not_authorized", "candidate records must use non_production_status=candidate_not_authorized")
+    else:
+        require(non_production_status == "design_review_only", "accepted design-review records must use non_production_status=design_review_only")
     require(record.get("frequency_mode") == FREQUENCY_MODE, f"frequency_mode must be {FREQUENCY_MODE}")
     require_text(record.get("source_zone_id"), "source_zone_id")
     require_text(record.get("source_geometry_version"), "source_geometry_version")
@@ -137,10 +153,26 @@ def validate_source_frequency_evidence(record_path: Path) -> dict[str, Any]:
         "schema_version": record["schema_version"],
         "record_id": record["record_id"],
         "record_status": status,
+        "non_production_status": non_production_status,
         "source_zone_id": record["source_zone_id"],
+        "frequency_model_id": record["frequency_model_id"],
         "source_event_rate_available": rate is not None,
+        "source_event_rate_per_year": rate,
+        "rate_time_window_years": record.get("rate_time_window_years"),
+        "rate_observation_period": record.get("rate_observation_period"),
+        "rate_uncertainty": record.get("rate_uncertainty"),
+        "rate_provenance": record.get("rate_provenance"),
+        "intake_classification": intake_classification(status),
         "prototype_authorized": False,
     }
+
+
+def intake_classification(status: str) -> str:
+    if status == "accepted_for_design_review":
+        return "accepted"
+    if status == "candidate_not_authorized":
+        return "partial"
+    return "missing"
 
 
 def validate_event_class(event_class: dict[str, Any]) -> None:

@@ -3,6 +3,7 @@ record_id: source_frequency_evidence_template_v1
 record_status: no_accepted_frequency_evidence
 prototype_authorized: false
 operational_status: research_diagnostic
+non_production_status: template_no_evidence
 frequency_model_id: not_defined
 frequency_mode: source_event_rate_evidence_only
 source_zone_id: tschamut_public_source_zone_v1

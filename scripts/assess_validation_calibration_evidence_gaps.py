@@ -39,6 +39,7 @@ import audit_chant_sura_holdout_split as holdout_split  # noqa: E402
 import audit_conditional_denominator_provenance as denominator_provenance  # noqa: E402
 import check_calibration_separation_preflight as calibration_separation  # noqa: E402
 import audit_trajectory_deposition_traceability as deposition_traceability  # noqa: E402
+import validate_source_frequency_evidence as source_frequency_evidence  # noqa: E402
 
 BLOCK_POPULATION_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
     {
@@ -87,6 +88,7 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
         "summary": "Overlap-adjusted reducers and uncertainty propagation must be accepted before annual or physical products are contemplated.",
     },
 )
+DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/templates/source_frequency_evidence_v1.yaml"
 
 PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
     {
@@ -220,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def build_report() -> dict[str, Any]:
+def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str, Any]:
     sources = source_documents()
     datasets = load_dataset_registry()
     tschamut_manifest = load_yaml(ROOT / "data/processed/swisstopo/tschamut_public_pilot_manifest.yaml")
@@ -240,7 +242,8 @@ def build_report() -> dict[str, Any]:
     observed_deposition = observed_deposition_gap(datasets, tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout)
     release_zone = release_zone_gap(datasets, tschamut_manifest, candidate_portability)
     block_population = block_population_gap(datasets, tschamut_gate, chant_model_selection)
-    source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection)
+    source_frequency_intake = load_source_frequency_intake(source_frequency_evidence_path)
+    source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection, source_frequency_intake)
     terrain_context = terrain_context_gap(tschamut_manifest, tschamut_gate, tschamut_target, candidate_portability)
     calibration = calibration_gap(tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout, chant_model_selection)
     holdout = holdout_gap(tschamut_gate, tschamut_target, chant_contact_heldout, chant_split, balfrin_readiness, balfrin_reproduction)
@@ -334,6 +337,7 @@ def build_report() -> dict[str, Any]:
         "candidate_site_name": candidate_portability["candidate_site"]["candidate_site_name"],
         "second_site_portability_status": candidate_portability["second_site_portability_status"],
         "post_diagnostic_scale_context": post_diagnostic_scale_context(),
+        "source_frequency_intake": source_frequency_intake,
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
         "physical_probability_claims_allowed": False,
         "physical_probability_readiness_check": build_physical_probability_readiness_check(
@@ -774,38 +778,61 @@ def source_frequency_gap(
     datasets: dict[str, dict[str, Any]],
     tschamut_gate: dict[str, Any],
     chant_model_selection: dict[str, Any],
+    source_frequency_intake: dict[str, Any],
 ) -> dict[str, Any]:
+    intake_classification = str(source_frequency_intake.get("intake_classification") or "missing")
+    classification = {
+        "accepted": "present",
+        "partial": "partial",
+        "missing": "missing",
+    }.get(intake_classification, "missing")
+    first_missing_input = "" if classification == "present" else "historical_rockfall_event_catalogue"
+    what_exists = [
+        "Conditional scenario rows exist, but they remain workflow outputs rather than occurrence catalogues",
+        "Current sampling weights are conditional design weights only and are not frequency evidence",
+    ]
+    if classification == "present":
+        what_exists.append(
+            "A source-frequency evidence record is accepted for design review with explicit non-production status."
+        )
+    elif classification == "partial":
+        what_exists.append("A candidate source-frequency evidence record exists, but it is not accepted.")
     return {
         "category": "source_frequency_and_temporal_frequency_evidence",
-        "classification": "missing",
-        "first_missing_input": "historical_rockfall_event_catalogue",
+        "classification": classification,
+        "first_missing_input": first_missing_input,
         "acquisition_blockers": [dict(item) for item in SOURCE_FREQUENCY_ACQUISITION_BLOCKERS],
         "future_gate_prerequisites": [dict(item) for item in SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES],
         "conditional_sampling_weights_are_not_frequency_evidence": True,
+        "intake_summary": source_frequency_intake,
         "current_evidence": [
             "Current scenario tables remain conditional and proxy-driven.",
             "Sampling weights are conditional design weights only and are not source-occurrence rates.",
+            source_frequency_intake,
             dataset_summary(datasets, "tschamut2014"),
             dataset_summary(datasets, "chant_sura_2020"),
             tschamut_gate.get("sampling_plan", {}),
             chant_model_selection.get("shape_source", {}),
         ],
-        "what_exists": [
-            "Conditional scenario rows exist, but they remain workflow outputs rather than occurrence catalogues",
-            "Current sampling weights are conditional design weights only and are not frequency evidence",
-        ],
+        "what_exists": what_exists,
         "what_is_missing": [
             "Historical rockfall event catalogue with provenance and observation windows",
             "Repeat source-zone observations with censoring rules and a temporal window",
             "A source-occurrence record that supports frequency semantics instead of conditional sampling",
+        ] if classification != "present" else [
+            "Real-site acceptance beyond the design-review fixture",
+            "Connection from accepted source-frequency evidence to release-probability and block-population evidence",
         ],
         "minimum_additional_evidence_needed": (
             "Observed source-occurrence evidence with explicit time windows, censoring rules, and provenance, kept "
             "separate from conditional sampling weights before any physical probability claim."
+        ) if classification != "present" else (
+            "The source-frequency class is satisfied for this assessment input; the next physical-probability blockers "
+            "are release-probability, block-population, calibration, and holdout evidence."
         ),
         "support_role": "conditional_scenario_only",
         "claim_boundary": "conditional_only",
-        "physical_probability_relevance": "missing",
+        "physical_probability_relevance": classification,
         "holdout_validation_relevance": "missing",
     }
 
@@ -1003,6 +1030,37 @@ def safe_deposition_traceability_audit() -> dict[str, Any]:
                 "balfrin_required": False,
             },
         }
+
+
+def load_source_frequency_intake(path: Path | None = None) -> dict[str, Any]:
+    record_path = path or DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH
+    try:
+        summary = source_frequency_evidence.validate_source_frequency_evidence(record_path)
+    except Exception as exc:
+        return {
+            "schema_version": "source_frequency_intake_summary_v1",
+            "record_path": str(record_path),
+            "record_status": "invalid_or_missing",
+            "intake_classification": "missing",
+            "source_event_rate_available": False,
+            "non_production_status": "invalid_or_missing",
+            "missing_or_invalid_reason": str(exc),
+            "claim_boundary": {
+                "annual_frequency_supported": False,
+                "physical_probability_supported": False,
+                "operational_hazard_map_supported": False,
+            },
+        }
+    return {
+        "schema_version": "source_frequency_intake_summary_v1",
+        "record_path": str(record_path),
+        **summary,
+        "claim_boundary": {
+            "annual_frequency_supported": False,
+            "physical_probability_supported": False,
+            "operational_hazard_map_supported": False,
+        },
+    }
 
 
 def build_physical_probability_readiness_check(
@@ -1421,6 +1479,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- passing_evidence_count: {report['physical_probability_readiness_check']['passing_evidence_count']}/{report['physical_probability_readiness_check']['required_evidence_count']}",
         f"- failing_evidence_classes: {', '.join(report['physical_probability_readiness_check']['failing_evidence_classes']) or 'none'}",
         f"- first_blocking_evidence_class: {report['physical_probability_readiness_check']['first_blocking_evidence_class'] or 'none'}",
+        f"- source_frequency_intake: {report['source_frequency_intake']['intake_classification']} ({report['source_frequency_intake']['record_status']})",
         "",
         "evidence_gap_categories:",
     ]

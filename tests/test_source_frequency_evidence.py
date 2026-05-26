@@ -24,6 +24,8 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["record_status"], "no_accepted_frequency_evidence")
+        self.assertEqual(summary["non_production_status"], "template_no_evidence")
+        self.assertEqual(summary["intake_classification"], "missing")
         self.assertFalse(summary["source_event_rate_available"])
 
     def test_accepts_complete_candidate_for_design_review_only(self) -> None:
@@ -33,6 +35,8 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
             summary = validator.validate_source_frequency_evidence(path)
 
             self.assertEqual(summary["record_status"], "candidate_not_authorized")
+            self.assertEqual(summary["non_production_status"], "candidate_not_authorized")
+            self.assertEqual(summary["intake_classification"], "partial")
             self.assertTrue(summary["source_event_rate_available"])
             self.assertFalse(summary["prototype_authorized"])
 
@@ -42,7 +46,12 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["non_production_status"], "design_review_only")
+        self.assertEqual(summary["intake_classification"], "accepted")
         self.assertTrue(summary["source_event_rate_available"])
+        self.assertEqual(summary["rate_time_window_years"], 50)
+        self.assertEqual(summary["rate_uncertainty"]["type"], "interval")
+        self.assertEqual(summary["rate_provenance"]["source"], "synthetic_schema_fixture")
         self.assertFalse(summary["prototype_authorized"])
 
     def test_rejects_candidate_missing_source_rate(self) -> None:
@@ -109,6 +118,15 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(validator.SourceFrequencyEvidenceError, "prototype_authorized"):
                 validator.validate_source_frequency_evidence(path)
 
+    def test_rejects_mismatched_non_production_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            record = self.candidate_record()
+            record["non_production_status"] = "design_review_only"
+            path = self.write_record(Path(tmp), record)
+
+            with self.assertRaisesRegex(validator.SourceFrequencyEvidenceError, "candidate_not_authorized"):
+                validator.validate_source_frequency_evidence(path)
+
     def write_record(self, work: Path, record: dict) -> Path:
         path = work / "source_frequency_evidence.yaml"
         path.write_text(yaml.safe_dump(record, sort_keys=False), encoding="utf-8")
@@ -121,6 +139,7 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
             "record_status": "candidate_not_authorized",
             "prototype_authorized": False,
             "operational_status": "research_diagnostic",
+            "non_production_status": "candidate_not_authorized",
             "frequency_model_id": "synthetic_frequency_model_v1",
             "frequency_mode": "source_event_rate_evidence_only",
             "source_zone_id": "synthetic_source_zone_a",
