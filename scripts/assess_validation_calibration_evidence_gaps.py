@@ -36,7 +36,9 @@ SCHEMA_VERSION = "validation_calibration_evidence_gaps_v1"
 ALLOWED_CLASSIFICATIONS = {"present", "partial", "missing", "out_of_scope", "not_inferred"}
 
 import audit_chant_sura_holdout_split as holdout_split  # noqa: E402
+import audit_conditional_denominator_provenance as denominator_provenance  # noqa: E402
 import check_calibration_separation_preflight as calibration_separation  # noqa: E402
+import audit_trajectory_deposition_traceability as deposition_traceability  # noqa: E402
 
 BLOCK_POPULATION_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
     {
@@ -83,6 +85,114 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
         "gate_id": "physical_frequency_reducer_preconditions",
         "prerequisite_id": "accepted_overlap_adjusted_reducer_and_uncertainty_propagation_contract",
         "summary": "Overlap-adjusted reducers and uncertainty propagation must be accepted before annual or physical products are contemplated.",
+    },
+)
+
+PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
+    {
+        "evidence_class": "source_frequency_evidence",
+        "source_category": "source_frequency_and_temporal_frequency_evidence",
+        "required_status": "present",
+        "pass_criteria": [
+            "historical or monitored source-occurrence catalogue is staged",
+            "time window, censoring rules, uncertainty, and provenance are explicit",
+            "conditional sampling weights are not reused as source frequency",
+        ],
+        "failure_modes": [
+            "missing historical_rockfall_event_catalogue",
+            "missing rate_time_window_and_censoring_rules",
+            "conditional sampling weights used as frequency evidence",
+        ],
+    },
+    {
+        "evidence_class": "release_probability_model",
+        "source_category": "release_zone_evidence",
+        "required_status": "present",
+        "pass_criteria": [
+            "site-specific release-zone geometry is field-supported or independently justified",
+            "release-probability semantics are documented separately from deterministic candidate generation",
+            "source-zone provenance can be checked against holdout evidence",
+        ],
+        "failure_modes": [
+            "missing site_specific_release_zone_geometry_package",
+            "release candidates remain workflow generated only",
+            "no release-probability semantics distinct from conditional scenario design",
+        ],
+    },
+    {
+        "evidence_class": "block_population_evidence",
+        "source_category": "block_size_and_block_population_evidence",
+        "required_status": "present",
+        "pass_criteria": [
+            "block-size or block-population survey/census is staged",
+            "survey frame, size classes, counts, uncertainty, and provenance are explicit",
+            "representative scenarios are separated from population semantics",
+        ],
+        "failure_modes": [
+            "missing block_size_survey_or_photogrammetry_census",
+            "missing block_count_or_size_class_record",
+            "representative block scenarios treated as population evidence",
+        ],
+    },
+    {
+        "evidence_class": "calibration_evidence",
+        "source_category": "calibration_evidence",
+        "required_status": "present",
+        "pass_criteria": [
+            "calibration dataset, objective function, parameter bounds, and fitted values are recorded",
+            "calibration data are not reused as holdout validation evidence",
+            "selected parameters are tied to a reproducible calibration record",
+        ],
+        "failure_modes": [
+            "missing calibration dataset and objective function",
+            "missing parameter bounds or fitted-value provenance",
+            "calibration and validation evidence overlap without a holdout label",
+        ],
+    },
+    {
+        "evidence_class": "independent_holdout_validation",
+        "source_category": "holdout_and_validation_evidence",
+        "required_status": "present",
+        "pass_criteria": [
+            "independent holdout deposition/runout or field benchmark is staged",
+            "split rules show the holdout was not used for model selection or calibration",
+            "scoring protocol is explicit before interpreting physical probability products",
+        ],
+        "failure_modes": [
+            "missing independent holdout benchmark",
+            "holdout data reused for selection, calibration, or diagnostics",
+            "missing scoring protocol for physical-probability interpretation",
+        ],
+    },
+    {
+        "evidence_class": "conditional_denominator_provenance",
+        "source_category": "conditional_denominator_audit",
+        "required_status": "complete",
+        "pass_criteria": [
+            "trajectory denominator, filters, conditional scope, and annualized=false fields are present",
+            "conditional layers do not infer source frequency",
+            "denominator provenance remains replayable from the hazard manifest",
+        ],
+        "failure_modes": [
+            "missing local hazard manifest",
+            "missing trajectory denominator or conditioning fields",
+            "annualized or physical-probability flags are not explicitly false",
+        ],
+    },
+    {
+        "evidence_class": "trajectory_deposition_traceability",
+        "source_category": "trajectory_deposition_traceability_audit",
+        "required_status": "traceable",
+        "pass_criteria": [
+            "deposition-density layer traces to validation deposition and trajectory outputs",
+            "validation row counts match hazard manifest input counts",
+            "missing output families fail closed before scientific interpretation",
+        ],
+        "failure_modes": [
+            "missing local validation or hazard manifest",
+            "missing deposition, trajectory, or hazard-layer output",
+            "validation/hazard row counts disagree",
+        ],
     },
 )
 
@@ -139,6 +249,8 @@ def build_report() -> dict[str, Any]:
         holdout_split.build_report(),
         calibration_separation.build_report(),
     )
+    denominator_audit = safe_denominator_audit()
+    traceability_audit = safe_deposition_traceability_audit()
 
     claim_boundary_matrix = [
         {
@@ -223,6 +335,12 @@ def build_report() -> dict[str, Any]:
         "second_site_portability_status": candidate_portability["second_site_portability_status"],
         "post_diagnostic_scale_context": post_diagnostic_scale_context(),
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
+        "physical_probability_claims_allowed": False,
+        "physical_probability_readiness_check": build_physical_probability_readiness_check(
+            evidence_gap_categories,
+            denominator_audit=denominator_audit,
+            traceability_audit=traceability_audit,
+        ),
         "calibration_status": "missing",
         "validation_status": "partial",
         "annual_frequency_claims_allowed": False,
@@ -850,6 +968,121 @@ def derive_physical_credibility_status(evidence_gap_categories: list[dict[str, A
     return "partial"
 
 
+def safe_denominator_audit() -> dict[str, Any]:
+    try:
+        return denominator_provenance.build_report()
+    except Exception as exc:  # pragma: no cover - depends on ignored local artifacts.
+        return {
+            "schema_version": denominator_provenance.SCHEMA_VERSION,
+            "audit_status": "blocked_missing_local_artifacts",
+            "missing_evidence": [str(exc)],
+            "claim_boundaries": {
+                "annual_frequency_claims_allowed": False,
+                "physical_probability_claims_allowed": False,
+                "operational_claims_allowed": False,
+                "risk_exposure_vulnerability_claims_allowed": False,
+                "source_frequency_inferred": False,
+                "balfrin_required": False,
+            },
+        }
+
+
+def safe_deposition_traceability_audit() -> dict[str, Any]:
+    try:
+        return deposition_traceability.build_report()
+    except Exception as exc:  # pragma: no cover - depends on ignored local artifacts.
+        return {
+            "schema_version": deposition_traceability.SCHEMA_VERSION,
+            "audit_status": "blocked_missing_local_artifacts",
+            "missing_or_failed_checks": [str(exc)],
+            "claim_boundaries": {
+                "field_validation_claim_added": False,
+                "calibration_claim_added": False,
+                "operational_map_claim_added": False,
+                "physical_probability_claim_added": False,
+                "balfrin_required": False,
+            },
+        }
+
+
+def build_physical_probability_readiness_check(
+    evidence_gap_categories: list[dict[str, Any]],
+    *,
+    denominator_audit: dict[str, Any] | None = None,
+    traceability_audit: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    category_status = {entry["category"]: entry["classification"] for entry in evidence_gap_categories}
+    category_first_missing = {
+        entry["category"]: entry.get("first_missing_input", "unspecified_missing_input")
+        for entry in evidence_gap_categories
+    }
+    denominator_status = (
+        str((denominator_audit or {}).get("audit_status") or "not_checked")
+    )
+    traceability_status = (
+        str((traceability_audit or {}).get("audit_status") or "not_checked")
+    )
+
+    evidence_checks = []
+    for requirement in PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS:
+        source_category = str(requirement["source_category"])
+        if source_category == "conditional_denominator_audit":
+            current_status = denominator_status
+            first_missing = "; ".join(str(item) for item in (denominator_audit or {}).get("missing_evidence", []))
+        elif source_category == "trajectory_deposition_traceability_audit":
+            current_status = traceability_status
+            first_missing = "; ".join(
+                str(item) for item in (traceability_audit or {}).get("missing_or_failed_checks", [])
+            )
+        else:
+            current_status = str(category_status.get(source_category, "missing"))
+            first_missing = str(category_first_missing.get(source_category, "unspecified_missing_input"))
+
+        required_status = str(requirement["required_status"])
+        passed = current_status == required_status
+        evidence_checks.append(
+            {
+                "evidence_class": requirement["evidence_class"],
+                "source_category": source_category,
+                "required_status": required_status,
+                "current_status": current_status,
+                "check_status": "pass" if passed else "fail",
+                "first_missing_input": "" if passed else first_missing,
+                "pass_criteria": list(requirement["pass_criteria"]),
+                "failure_modes": list(requirement["failure_modes"]),
+            }
+        )
+
+    failing = [item for item in evidence_checks if item["check_status"] != "pass"]
+    passed_count = len(evidence_checks) - len(failing)
+    if not failing:
+        readiness_status = "ready_for_physical_probability_product"
+    elif passed_count:
+        readiness_status = "partial_evidence_missing_critical_inputs"
+    else:
+        readiness_status = "blocked_missing_required_evidence"
+
+    return {
+        "schema_version": "physical_probability_readiness_check_v1",
+        "readiness_status": readiness_status,
+        "physical_probability_claims_allowed": not failing,
+        "annual_frequency_claims_allowed": False,
+        "required_evidence_count": len(evidence_checks),
+        "passing_evidence_count": passed_count,
+        "failing_evidence_classes": [item["evidence_class"] for item in failing],
+        "first_blocking_evidence_class": failing[0]["evidence_class"] if failing else "",
+        "evidence_checks": evidence_checks,
+        "supporting_audits": {
+            "conditional_denominator_provenance": denominator_status,
+            "trajectory_deposition_traceability": traceability_status,
+        },
+        "boundary_note": (
+            "This check is necessary but not sufficient for an operational or annual-frequency product. "
+            "It only says whether the physical-probability evidence classes are staged and internally checkable."
+        ),
+    }
+
+
 def site_reference_evidence(
     datasets: dict[str, dict[str, Any]],
     tschamut_manifest: dict[str, Any],
@@ -1171,6 +1404,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         f"schema_version: {report['schema_version']}",
         f"physical_credibility_status: {report['physical_credibility_status']}",
+        f"physical_probability_claims_allowed: {str(report['physical_probability_claims_allowed']).lower()}",
         f"calibration_status: {report['calibration_status']}",
         f"validation_status: {report['validation_status']}",
         f"annual_frequency_claims_allowed: {str(report['annual_frequency_claims_allowed']).lower()}",
@@ -1181,6 +1415,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         "post_diagnostic_scale_context:",
         f"- status: {report['post_diagnostic_scale_context']['status']}",
         f"- scientific_validity_upgraded: {str(report['post_diagnostic_scale_context']['claim_boundaries']['scientific_validity_upgraded']).lower()}",
+        "",
+        "physical_probability_readiness_check:",
+        f"- readiness_status: {report['physical_probability_readiness_check']['readiness_status']}",
+        f"- passing_evidence_count: {report['physical_probability_readiness_check']['passing_evidence_count']}/{report['physical_probability_readiness_check']['required_evidence_count']}",
+        f"- failing_evidence_classes: {', '.join(report['physical_probability_readiness_check']['failing_evidence_classes']) or 'none'}",
+        f"- first_blocking_evidence_class: {report['physical_probability_readiness_check']['first_blocking_evidence_class'] or 'none'}",
         "",
         "evidence_gap_categories:",
     ]
@@ -1241,6 +1481,7 @@ def validate_report_boundaries(report: dict[str, Any]) -> None:
         report,
         (
             "annual_frequency_claims_allowed",
+            "physical_probability_claims_allowed",
             "operational_claims_allowed",
             "risk_exposure_vulnerability_claims_allowed",
             "scale_up_authorized",

@@ -203,6 +203,34 @@ and is normalized by the filtered significant-impact event sampling-weight sum.
 These are conditional sampling-weighted diagnostics only; they are not
 annual-frequency, physical source-probability, exposure, or risk layers.
 
+## Physical-Probability Readiness Evidence
+
+Physical-probability products require evidence that is not implied by larger
+runs or conditional hazard layers. The local gap assessment now reports a
+machine-readable `physical_probability_readiness_check` with one row per
+required evidence class:
+
+- `source_frequency_evidence`: source-occurrence catalogue with time window,
+  censoring rules, uncertainty, and provenance.
+- `release_probability_model`: field-supported or independently justified
+  release-zone geometry and release-probability semantics, separate from
+  deterministic candidate generation.
+- `block_population_evidence`: block-size or block-population survey/census
+  with survey frame, counts or size classes, uncertainty, and provenance.
+- `calibration_evidence`: calibration dataset, objective function, parameter
+  bounds, fitted values, and separation from holdout validation.
+- `independent_holdout_validation`: deposition/runout or field benchmark kept
+  out of calibration and model selection, with scoring rules.
+- `conditional_denominator_provenance`: trajectory denominator, filters, and
+  conditional scope audited from the hazard manifest.
+- `trajectory_deposition_traceability`: deposition layer traced back to the
+  validation deposition and trajectory outputs with matching counts.
+
+The check passes only when every class is present or complete. A passing check
+would only say the physical-probability evidence classes are staged and
+internally checkable; operational acceptance and annual-frequency products
+remain separate decisions.
+
 Cases can also opt into unweighted trajectory-level probability standard-error
 rasters:
 

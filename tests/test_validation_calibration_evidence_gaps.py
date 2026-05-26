@@ -12,6 +12,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         expected_keys = {
             "schema_version",
             "physical_credibility_status",
+            "physical_probability_claims_allowed",
+            "physical_probability_readiness_check",
             "calibration_status",
             "validation_status",
             "annual_frequency_claims_allowed",
@@ -30,6 +32,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         }
         self.assertTrue(expected_keys.issubset(report.keys()))
         self.assertEqual(report["physical_credibility_status"], "not_established")
+        self.assertFalse(report["physical_probability_claims_allowed"])
         self.assertEqual(report["calibration_status"], "missing")
         self.assertEqual(report["validation_status"], "partial")
         self.assertFalse(report["annual_frequency_claims_allowed"])
@@ -49,6 +52,15 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertFalse(
             report["validation_leakage_guardrails"]["claim_boundaries"]["validation_acceptance_claimed"]
         )
+        readiness = report["physical_probability_readiness_check"]
+        self.assertEqual(readiness["schema_version"], "physical_probability_readiness_check_v1")
+        self.assertFalse(readiness["physical_probability_claims_allowed"])
+        self.assertIn(readiness["readiness_status"], {
+            "blocked_missing_required_evidence",
+            "partial_evidence_missing_critical_inputs",
+        })
+        self.assertIn("source_frequency_evidence", readiness["failing_evidence_classes"])
+        self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
         report = assessment.build_report()
@@ -193,6 +205,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
     def test_text_report_names_validation_leakage_guardrails(self) -> None:
         text = assessment.render_text_report(assessment.build_report())
 
+        self.assertIn("physical_probability_readiness_check:", text)
+        self.assertIn("physical_probability_claims_allowed: false", text)
         self.assertIn("validation_leakage_guardrails:", text)
         self.assertIn("guardrail_status: passed", text)
         self.assertIn("failing_checks: none", text)
@@ -208,6 +222,61 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(tasks[2]["task_id"], "stage_block_population_survey")
         self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
         self.assertIn("scientific evidence", tasks[0]["why_now"])
+
+    def test_physical_probability_readiness_fails_for_conditional_only_state(self) -> None:
+        check = assessment.build_physical_probability_readiness_check(
+            [
+                {"category": "source_frequency_and_temporal_frequency_evidence", "classification": "missing", "first_missing_input": "historical_rockfall_event_catalogue"},
+                {"category": "release_zone_evidence", "classification": "partial", "first_missing_input": "site_specific_release_zone_geometry_package"},
+                {"category": "block_size_and_block_population_evidence", "classification": "missing", "first_missing_input": "block_size_survey_or_photogrammetry_census"},
+                {"category": "calibration_evidence", "classification": "missing", "first_missing_input": "calibration_dataset"},
+                {"category": "holdout_and_validation_evidence", "classification": "partial", "first_missing_input": "independent_holdout_benchmark"},
+            ],
+            denominator_audit={"audit_status": "complete"},
+            traceability_audit={"audit_status": "traceable"},
+        )
+
+        self.assertEqual(check["readiness_status"], "partial_evidence_missing_critical_inputs")
+        self.assertFalse(check["physical_probability_claims_allowed"])
+        self.assertEqual(check["first_blocking_evidence_class"], "source_frequency_evidence")
+        self.assertIn("block_population_evidence", check["failing_evidence_classes"])
+
+    def test_physical_probability_readiness_distinguishes_partially_calibrated_state(self) -> None:
+        check = assessment.build_physical_probability_readiness_check(
+            [
+                {"category": "source_frequency_and_temporal_frequency_evidence", "classification": "missing", "first_missing_input": "historical_rockfall_event_catalogue"},
+                {"category": "release_zone_evidence", "classification": "present"},
+                {"category": "block_size_and_block_population_evidence", "classification": "partial", "first_missing_input": "block_count_or_size_class_record"},
+                {"category": "calibration_evidence", "classification": "present"},
+                {"category": "holdout_and_validation_evidence", "classification": "present"},
+            ],
+            denominator_audit={"audit_status": "complete"},
+            traceability_audit={"audit_status": "traceable"},
+        )
+
+        self.assertEqual(check["readiness_status"], "partial_evidence_missing_critical_inputs")
+        self.assertEqual(check["passing_evidence_count"], 5)
+        self.assertEqual(
+            check["failing_evidence_classes"],
+            ["source_frequency_evidence", "block_population_evidence"],
+        )
+
+    def test_physical_probability_readiness_can_pass_for_fully_evidence_ready_state(self) -> None:
+        check = assessment.build_physical_probability_readiness_check(
+            [
+                {"category": "source_frequency_and_temporal_frequency_evidence", "classification": "present"},
+                {"category": "release_zone_evidence", "classification": "present"},
+                {"category": "block_size_and_block_population_evidence", "classification": "present"},
+                {"category": "calibration_evidence", "classification": "present"},
+                {"category": "holdout_and_validation_evidence", "classification": "present"},
+            ],
+            denominator_audit={"audit_status": "complete"},
+            traceability_audit={"audit_status": "traceable"},
+        )
+
+        self.assertEqual(check["readiness_status"], "ready_for_physical_probability_product")
+        self.assertTrue(check["physical_probability_claims_allowed"])
+        self.assertEqual(check["failing_evidence_classes"], [])
 
 
 if __name__ == "__main__":  # pragma: no cover

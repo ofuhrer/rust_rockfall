@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-588: Define The Evidence Check For Physical-Probability Products
-
-Goal: Convert the physical-probability target into an explicit evidence check with data requirements, acceptance criteria, and failure modes.
-
-Capability gap reduced: Names the missing source-frequency, release-probability, block-population, calibration, and holdout evidence required before conditional outputs can become physical-probability products.
-
-Why this outranks alternatives: Performance progress cannot open physical-probability products unless the repo first defines a scientifically defensible check.
-
-Inspect first:
-
-- `docs/validation_data_schema.md`
-- `docs/real_case_intensity_frequency_implementation_roadmap.md`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/audit_conditional_denominator_provenance.py`
-- `scripts/audit_trajectory_deposition_traceability.py`
-
-Deliverables:
-
-- Add or update one machine-readable/reportable physical-probability readiness check that lists required evidence classes and exact pass/fail criteria.
-- Wire the check into the scientific-gap assessment so it reports missing evidence instead of relying on prose boundaries.
-- Add tests or fixture checks covering conditional-only, partially calibrated, and fully evidence-ready states.
-
-Definition of done:
-
-- Focused validation/calibration checks pass and the repo can explain what evidence is still needed for physical-probability products.
-
-
 ### TB-589: Build A Source-Frequency Evidence Intake Path
 
 Goal: Add a concrete local intake workflow for source-frequency and release-rate evidence needed by physical-probability and annual-frequency products.

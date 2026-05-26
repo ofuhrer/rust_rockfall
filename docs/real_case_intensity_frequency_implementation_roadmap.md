@@ -72,7 +72,12 @@ convergence, performance, and provenance evidence. It is not yet close to
 milestone 2 because source-zone occurrence frequency,
 block-population frequency, annualization, and validation semantics remain
 unsupported by `docs/hazard_map_semantics.md` and
-`docs/probabilistic_scenario_model_design.md`.
+`docs/probabilistic_scenario_model_design.md`. The local
+`physical_probability_readiness_check` makes this boundary reportable:
+source-frequency, release-probability, block-population, calibration,
+independent holdout, conditional-denominator provenance, and
+trajectory/deposition traceability must all pass before physical-probability
+semantics are evidence-ready.
 
 ## Current Baseline
 
