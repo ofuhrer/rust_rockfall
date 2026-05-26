@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-602: Build A Larger Bounded Hazard-Throughput Submission Package
-
-Goal: Prepare a real hazard-throughput package that is larger than the current measured smallest multi-zone branch while retaining scalable output controls.
-
-Capability gap reduced: Moves from reducer-pressure diagnostics toward measured hazard workflow feasibility.
-
-Why this outranks alternatives: Swiss-scale feasibility cannot rest on reducer diagnostics alone; a bounded hazard-throughput run is the next performance proof.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-
-Deliverables:
-
-- Produce a reviewed package for the smallest larger hazard-throughput run that uses `summary-only`, no full grid CSV, no plots, rebuildable/replay-critical outputs, and `$SCRATCH` run roots.
-
-Definition of done:
-
-- The package preflight is ready for submission or fails closed with one concrete blocker and a repair path.
-
-
 ### TB-603: Submit And Monitor The Larger Bounded Hazard-Throughput Probe
 
 Goal: Measure a larger bounded hazard-throughput run on Balfrin `postproc`.
