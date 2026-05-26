@@ -9124,3 +9124,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: source-frequency intake only; accepted fixture evidence remains design-review/non-production evidence and does not authorize annual, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claims.
 - Next task: `TB-590`
+
+### TB-590: Add Calibration And Holdout Separation Checks
+
+- Date: 2026-05-26
+- Commit: `deaae6b`
+- Objective: make calibration/holdout separation explicit before stronger scientific conclusions can pass.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/validation_data_schema.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `calibration_holdout_separation_check_v1` to the validation/calibration gap assessment.
+  - Built the default check from the Chant Sura split metadata and exposed the result in JSON and text reports.
+  - Added reusable classification for missing explicit holdout labels, overlapping calibration/validation evidence, and separated holdout evidence.
+  - Added tests for missing holdout, overlapping event/sample holdout evidence, and separated holdout evidence.
+  - Removed TB-590 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/assess_validation_calibration_evidence_gaps.py tests/test_validation_calibration_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb590_gap.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: separation classification only; it does not establish calibration quality, holdout adequacy, physical probability, operational readiness, annual frequency, Swiss-wide execution, distributed execution, or non-`postproc` readiness.
+- Next task: `TB-591`
