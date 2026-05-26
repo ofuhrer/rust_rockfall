@@ -9503,3 +9503,26 @@ scan thousands of lines of completed history.
 - Verification summary: the scale matrix reports `hazard_throughput_probe` in `measured_tiers` with job `4372309`, runtime `7.043564590974711 s`, memory `357.796875 MB`, `57` hazard files, `31,439,786` hazard bytes, and `729,600` conditional-curve rows. The Swiss envelope reports TB-603 under `hazard_throughput_support` while keeping Swiss-wide status `no_go_extrapolated_beyond_measured_evidence`.
 - Boundaries: measured bounded hazard-throughput evidence only; operational, physical-probability, Swiss-wide, distributed, risk, and non-`postproc` claims remain deferred.
 - Next task: `TB-605`
+
+### TB-605: Run A Balfrin Scheduler-Level Distributed Chunk Dry Run
+
+- Date: 2026-05-26
+- Commit: `ca315c6`
+- Objective: exercise scheduler-visible chunk splitting, `$SCRATCH` partial-state reuse, and final sorted merge semantics on Balfrin without attempting Swiss-wide execution.
+- Files changed: `docs/balfrin_distributed_chunk_dry_run_tb605.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to `15a4e63ee2f083bfd5be68a41f58ed0f8e8b51fd`.
+  - Verified the exact `scripts/build_hazard_layers.py` scheduler-index workflow locally with three reducer chunks and a final merge pass.
+  - Submitted three split `postproc` chunk jobs and one dependent merge job under `/scratch/mch/olifu/rust_rockfall/distributed_dry_runs/tb605_20260526`.
+  - Preserved the submitted SBATCH scripts, stdout/stderr logs, `/usr/bin/time -v` outputs, SLURM accounting, chunk manifests, partial states, execution plan, execution index, merge state, and a summary JSON in the run root.
+  - Recorded the measured dry-run evidence in `docs/balfrin_distributed_chunk_dry_run_tb605.md` and removed TB-605 from the active backlog.
+- Checks run:
+  - `git pull --ff-only origin main`
+  - Remote `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall`
+  - Local three-chunk scheduler-index rehearsal with `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py`
+  - Remote `sbatch` submissions for jobs `4372410`, `4372411`, `4372412`, and `4372413`
+  - Remote `squeue` polling and `sacct -P -j 4372410,4372411,4372412,4372413 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,MaxRSS,ReqCPUS,AllocCPUS`
+- Result/status: implemented_measured
+- Metrics: all four `postproc` jobs completed with exit code `0:0`; chunk jobs elapsed `00:00:09`, `00:00:05`, and `00:00:05`; merge job elapsed `00:00:05`; final plan status `completed`; completed chunks `3`; failed chunks `0`; merge state `ready`; merge order `sorted_chunk_id`; output footprint `49` files / `91,981,415` bytes; run-root footprint `68` files / `91,998,937` bytes.
+- Boundaries: bounded scheduler-observed chunk dry run only. The split jobs were chained to avoid current shared-plan write contention. This does not establish Swiss-wide readiness, operational hazard-map readiness, physical-probability semantics, non-`postproc` behavior, multi-node behavior, or concurrent shared-plan write safety.
+- Next task: `TB-606`
