@@ -162,6 +162,7 @@ REPLAY_CRITICAL_PACKAGE_HASHES = (
 SMALLEST_LIVE_BUDGET_PROFILE_ID = "smallest_live_two_zone_probe"
 NEXT_REVIEW_BUDGET_PROFILE_ID = "next_larger_four_zone_review_only_probe"
 DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID = "diagnostic_16_zone_single_node_postproc_measurement"
+DIAGNOSTIC_24_ZONE_BUDGET_PROFILE_ID = "diagnostic_24_zone_single_node_postproc_measurement"
 PRUNED_OUTPUT_FAMILIES = tuple(
     family for family in FULL_OUTPUT_FAMILY_MIX if family not in REPLAY_CRITICAL_OUTPUT_FAMILIES
 )
@@ -873,6 +874,7 @@ def build_report(
     report["measured_two_zone_evidence"] = build_measured_two_zone_evidence_gate(report)
     report["four_zone_hazard_execution_package"] = build_four_zone_hazard_execution_package(report)
     report["no_submit_handoff_contract"] = build_no_submit_handoff_contract(report)
+    report["diagnostic_measurement_handoff"] = build_diagnostic_measurement_handoff(report)
 
     write_package_files(report)
     return report
@@ -2211,6 +2213,33 @@ def build_output_budget_acceptance_thresholds() -> dict[str, Any]:
                     "reducer_merge_state": 1,
                 },
             },
+            DIAGNOSTIC_24_ZONE_BUDGET_PROFILE_ID: {
+                "scope": "diagnostic 24-zone compact reduced-output measurement input",
+                "authorization_scope": "diagnostic only; does not authorize scale-up, submission, or distributed execution",
+                "release_zone_count": 24,
+                "scenario_count": 24,
+                "required_projection_mode": "compact",
+                "max_manifest_size_bytes": 24_000,
+                "max_total_output_files": 80,
+                "max_sidecar_files": 4,
+                "max_reducer_manifest_files": 0,
+                "max_reducer_manifest_bytes": 0,
+                "max_estimated_storage_bytes": 40_000,
+                "max_reducer_chunks": 2,
+                "required_replay_critical_families": replay_critical,
+                "required_package_hashes": required_hashes,
+                "required_zero_metrics": [
+                    "reducer_manifest_file_count",
+                    "reducer_manifest_bytes",
+                ],
+                "per_family_file_count_max": {
+                    "trajectory_csv": 24,
+                    "deposition_csv": 24,
+                    "impact_events_csv": 24,
+                    "trajectory_merge_state": 1,
+                    "reducer_merge_state": 1,
+                },
+            },
         },
         "excess_classification": {
             "compressible": [
@@ -2247,7 +2276,9 @@ def budget_profile_for_projection(
     release_zone_count = int(projection.get("release_zone_count") or 0)
     projection_mode = str(projection.get("projection_mode") or "")
     profiles = dict(thresholds.get("profiles") or {})
-    if release_zone_count == 16 and projection_mode == "compact":
+    if release_zone_count == 24 and projection_mode == "compact":
+        profile_id = DIAGNOSTIC_24_ZONE_BUDGET_PROFILE_ID
+    elif release_zone_count == 16 and projection_mode == "compact":
         profile_id = DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID
     elif release_zone_count <= 2:
         profile_id = SMALLEST_LIVE_BUDGET_PROFILE_ID
@@ -2722,6 +2753,7 @@ def build_constraint_pressure_report(
     scenario_status = normalize_scenario_pressure_status(scenario_pressure_projection)
     if diagnostic_handoff_accepted:
         scenario_status = "acceptable"
+        projected_status = "acceptable"
     if pressure_report.get("status") == "blocked_missing_inputs" or not measured_constraints:
         return {
             "status": "blocked_missing_inputs",
@@ -2793,11 +2825,13 @@ def is_diagnostic_handoff_budget_accepted(
     requested_release_zone_batch_size: int,
 ) -> bool:
     budget_acceptance = dict(handoff_output_budget_projection.get("budget_acceptance_validation") or {})
-    return (
-        requested_release_zone_batch_size == 16
-        and budget_acceptance.get("status") == "accepted"
-        and budget_acceptance.get("threshold_profile_id") == DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID
-    )
+    expected_profiles = {
+        16: DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID,
+        24: DIAGNOSTIC_24_ZONE_BUDGET_PROFILE_ID,
+    }
+    return budget_acceptance.get("status") == "accepted" and budget_acceptance.get(
+        "threshold_profile_id"
+    ) == expected_profiles.get(requested_release_zone_batch_size)
 
 
 def constraint_check(*, label: str, requested: int, limit: int) -> dict[str, Any]:
@@ -3347,6 +3381,192 @@ def build_no_submit_handoff_contract(report: dict[str, Any]) -> dict[str, Any]:
             "live_submission_performed": False,
             "partition_scope": "postproc_only",
         },
+    }
+
+
+def diagnostic_runner_command(
+    *,
+    action: str,
+    release_zone_count: int,
+    reducer_chunk_count: int,
+    reducer_worker_count: int,
+    run_id: str,
+) -> str:
+    return command_string(
+        [
+            "PYENV_VERSION=system",
+            "uv",
+            "run",
+            "python",
+            rel(ROOT / "scripts" / "run_balfrin_diagnostic.py"),
+            action,
+            "--release-zones",
+            str(release_zone_count),
+            "--reducer-chunks",
+            str(reducer_chunk_count),
+            "--reducer-workers",
+            str(reducer_worker_count),
+            "--manifest-mode",
+            "compact",
+            "--run-id",
+            run_id,
+            "--partition",
+            "postproc",
+            "--time",
+            "00:30:00",
+        ]
+    )
+
+
+def build_diagnostic_measurement_handoff(report: dict[str, Any]) -> dict[str, Any]:
+    constraint = dict(report.get("constraint_pressure") or {})
+    output_budget = dict(report.get("handoff_output_budget_projection") or {})
+    budget_acceptance = dict(output_budget.get("budget_acceptance_validation") or {})
+    no_submit = dict(report.get("no_submit_handoff_contract") or {})
+    requested_release_zone_count = int(constraint.get("requested_release_zone_batch_size") or 0)
+    reducer_chunk_count = int(constraint.get("requested_reducer_chunk_count") or 0)
+    reducer_worker_count = int(constraint.get("requested_reducer_worker_count") or 0)
+    run_id = f"diagnostic_{requested_release_zone_count}_zone_simplified_next"
+    expected_profile = {
+        16: DIAGNOSTIC_16_ZONE_BUDGET_PROFILE_ID,
+        24: DIAGNOSTIC_24_ZONE_BUDGET_PROFILE_ID,
+    }.get(requested_release_zone_count)
+    profile_ready = budget_acceptance.get("status") == "accepted" and budget_acceptance.get(
+        "threshold_profile_id"
+    ) == expected_profile
+    constraint_ready = str(constraint.get("status")) in {"acceptable", "warning"}
+    no_submit_ready = no_submit.get("status") == "ready_for_review"
+    first_blocker = None
+    if requested_release_zone_count != 24:
+        first_blocker = {
+            "status": "not_24_zone_diagnostic_handoff",
+            "reason": "the active package is not the requested 24-zone diagnostic handoff",
+            "recovery_command": command_string(
+                [
+                    "PYENV_VERSION=system",
+                    "uv",
+                    "run",
+                    "python",
+                    rel(ROOT / "scripts" / "generate_balfrin_multi_release_zone_demo_handoff.py"),
+                    "--requested-release-zone-batch-size",
+                    "24",
+                    "--requested-reducer-chunk-count",
+                    "2",
+                    "--requested-reducer-worker-count",
+                    "2",
+                    "--format",
+                    "json",
+                ]
+            ),
+        }
+    elif not profile_ready:
+        first_blocker = {
+            "status": "diagnostic_output_budget_not_accepted",
+            "reason": budget_acceptance.get("summary") or "24-zone diagnostic output-budget acceptance did not pass",
+            "recovery_command": diagnostic_runner_command(
+                action="prepare",
+                release_zone_count=16,
+                reducer_chunk_count=2,
+                reducer_worker_count=2,
+                run_id="diagnostic_16_zone_simplified_recovery",
+            ),
+        }
+    elif not constraint_ready:
+        first_blocker = {
+            "status": "diagnostic_reducer_constraints_blocked",
+            "reason": constraint.get("summary") or "24-zone diagnostic reducer constraints are blocked",
+            "recovery_command": diagnostic_runner_command(
+                action="prepare",
+                release_zone_count=16,
+                reducer_chunk_count=2,
+                reducer_worker_count=2,
+                run_id="diagnostic_16_zone_simplified_recovery",
+            ),
+        }
+    elif not no_submit_ready:
+        first_blocker = no_submit.get("first_blocker") or {
+            "status": "no_submit_contract_blocked",
+            "reason": "no-submit handoff contract is not ready",
+            "recovery_command": no_submit.get("exact_review_command"),
+        }
+
+    status = "ready_for_pre_submit" if first_blocker is None else "blocked"
+    return {
+        "schema_version": "balfrin_diagnostic_measurement_handoff_v1",
+        "status": status,
+        "classification": "diagnostic_single_node_postproc",
+        "release_zone_count": requested_release_zone_count,
+        "reducer_chunk_count": reducer_chunk_count,
+        "reducer_worker_count": reducer_worker_count,
+        "manifest_mode": "compact",
+        "output_budget_profile_id": budget_acceptance.get("threshold_profile_id"),
+        "output_budget_status": budget_acceptance.get("status"),
+        "constraint_status": constraint.get("status"),
+        "first_blocker": first_blocker,
+        "checks": {
+            "access_preflight": {
+                "status": "requires_fresh_preflight",
+                "command": "PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json",
+            },
+            "authorization": {
+                "status": "standing_postproc_clearance_required",
+                "partition_scope": "postproc",
+            },
+            "output_budget": {
+                "status": budget_acceptance.get("status"),
+                "profile_id": budget_acceptance.get("threshold_profile_id"),
+            },
+            "diagnostic_profile": {
+                "status": "ready" if profile_ready else "blocked",
+                "release_zone_count": requested_release_zone_count,
+                "manifest_mode": "compact",
+            },
+            "submit_contract": {
+                "status": "ready" if no_submit_ready else "blocked",
+                "prepare_command": diagnostic_runner_command(
+                    action="prepare",
+                    release_zone_count=requested_release_zone_count,
+                    reducer_chunk_count=reducer_chunk_count,
+                    reducer_worker_count=reducer_worker_count,
+                    run_id=run_id,
+                ),
+                "later_submit_command": diagnostic_runner_command(
+                    action="run",
+                    release_zone_count=requested_release_zone_count,
+                    reducer_chunk_count=reducer_chunk_count,
+                    reducer_worker_count=reducer_worker_count,
+                    run_id=run_id,
+                ),
+            },
+            "remote_head": {
+                "status": "requires_fresh_preflight",
+                "reason": "compare Balfrin remote_head to the local reviewed commit immediately before submission",
+            },
+            "scratch_and_preservation": {
+                "status": "planned",
+                "run_root": f"/scratch/mch/olifu/rust_rockfall/diagnostics/{run_id}",
+                "run_record": f"/scratch/mch/olifu/rust_rockfall/diagnostics/{run_id}/run_record.json",
+            },
+        },
+        "exact_prepare_command": diagnostic_runner_command(
+            action="prepare",
+            release_zone_count=requested_release_zone_count,
+            reducer_chunk_count=reducer_chunk_count,
+            reducer_worker_count=reducer_worker_count,
+            run_id=run_id,
+        ),
+        "exact_later_submit_command": diagnostic_runner_command(
+            action="run",
+            release_zone_count=requested_release_zone_count,
+            reducer_chunk_count=reducer_chunk_count,
+            reducer_worker_count=reducer_worker_count,
+            run_id=run_id,
+        ),
+        "summary": (
+            "The 24-zone diagnostic handoff is ready for a fresh Balfrin pre-submit check."
+            if status == "ready_for_pre_submit"
+            else f"The 24-zone diagnostic handoff is blocked at {first_blocker['status']}."
+        ),
     }
 
 

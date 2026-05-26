@@ -470,6 +470,65 @@ class BalfrinMultiReleaseZoneDemoHandoffTests(unittest.TestCase):
         self.assertEqual(first["deterministic_scenarios"]["command_manifest"]["status"], "planned")
         self.assertEqual(first["deterministic_scenarios"]["template_only_command_ids"], ["target_area_handoff_bundle"])
 
+    def test_24_zone_diagnostic_handoff_uses_measured_16_zone_ceiling(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            run_record = tmp / "run_record.json"
+            run_record.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "terminal_state": "COMPLETED",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525",
+                        "job_id": "4367731",
+                        "diagnostic_shape": {"release_zone_count": 16},
+                        "collection": {
+                            "status": "complete",
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 16,
+                                "output_file_count": 52,
+                                "output_byte_count": 23661,
+                                "manifest_size_bytes": 15898,
+                                "root_file_count": 57,
+                                "reducer_wall_time_seconds": 3.07,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with patch.object(MODULE.MULTI_ZONE_PRESSURE, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD", run_record):
+                report = MODULE.build_report(
+                    artifact_dir=tmp / "balfrin_multi_release_zone_demo_v1",
+                    pressure_probe_root=tmp / "multi_zone_pressure_probe",
+                    requested_release_zone_batch_size=24,
+                    requested_reducer_chunk_count=2,
+                    requested_reducer_worker_count=2,
+                )
+
+        diagnostic = report["diagnostic_measurement_handoff"]
+        self.assertTrue(report["constraint_pressure"]["diagnostic_handoff_budget_accepted"])
+        self.assertEqual(report["constraint_pressure"]["status"], "warning")
+        self.assertEqual(report["output_budget_acceptance_validation"]["status"], "accepted")
+        self.assertEqual(
+            report["output_budget_acceptance_validation"]["threshold_profile_id"],
+            "diagnostic_24_zone_single_node_postproc_measurement",
+        )
+        self.assertEqual(diagnostic["status"], "ready_for_pre_submit")
+        self.assertIsNone(diagnostic["first_blocker"])
+        self.assertEqual(diagnostic["release_zone_count"], 24)
+        self.assertEqual(diagnostic["checks"]["diagnostic_profile"]["status"], "ready")
+        self.assertEqual(diagnostic["checks"]["access_preflight"]["status"], "requires_fresh_preflight")
+        self.assertIn("scripts/run_balfrin_diagnostic.py run", diagnostic["exact_later_submit_command"])
+        self.assertIn("--release-zones 24", diagnostic["exact_later_submit_command"])
+        self.assertIn(
+            "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next",
+            diagnostic["checks"]["scratch_and_preservation"]["run_root"],
+        )
+
     def test_four_zone_live_hazard_decision_falls_back_to_no_go_when_budgets_exceed(self) -> None:
         decision = MODULE.classify_four_zone_hazard_execution_decision(
             measured_two_zone_evidence={

@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-578: Build A 24-Zone Diagnostic Handoff From The Updated Ceiling
-
-Goal: Generate a no-submit 24-zone compact reduced-output diagnostic package after the 16-zone ceiling update.
-
-Capability gap reduced: Prepares the next single-node scale measurement while preserving the same readiness check discipline.
-
-Why this outranks alternatives: A 24-zone package is a tangible next step that can still fit within single-node `postproc` measurement rather than jumping to regional or Swiss-wide runs.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `tests/test_balfrin_multi_release_zone_demo_handoff.py`
-
-Deliverables:
-
-- Generate a 24-zone diagnostic handoff on a clean Balfrin-aligned checkout without submitting.
-- Run access, authorization, output-budget, diagnostic-profile, submit-contract, remote-head, and scratch/preservation checks.
-- Record exact ready/waiting status and later submit command.
-
-Definition of done:
-
-- The package is diagnostic-measurement ready or does not pass with one concrete blocker and a smaller recovery command.
-
-
 ### TB-579: Execute One 24-Zone Diagnostic Postproc Probe If Checks Pass
 
 Goal: Submit and monitor one 24-zone diagnostic reduced-output `postproc` job if TB-578 passes and the queue planner permits it.
