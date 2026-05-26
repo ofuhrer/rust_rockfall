@@ -9390,3 +9390,31 @@ scan thousands of lines of completed history.
 - Verification summary: Balfrin scale matrix reports `simultaneous_release_zone_batch_max=32`, `job_id=4372124`, next diagnostic release-zone count `40`, and latest diagnostic tier `diagnostic_32_zone_reducer_pressure`. The Swiss-wide envelope remains `blocked_missing_inputs` on the remote clone because same-scale hazard artifacts are absent there, but its `diagnostic_support` now reports measured 32-zone diagnostic support and the 24-zone repeatability pair.
 - Boundaries: diagnostic reducer-pressure evidence only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
 - Next task: `TB-601`
+
+### TB-601: Decide And Possibly Run The Next Larger Diagnostic Step
+
+- Date: 2026-05-26
+- Commit: `3dedb7f`
+- Objective: use the measured 32-zone result and current Balfrin queue state to decide and run the next bounded diagnostic step.
+- Files changed: `docs/balfrin_40_zone_diagnostic_run_tb601.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Checked live `postproc` queue state at `2026-05-26T21:08:19+02:00`; despite heavier occupancy, 11 nodes were idle and the candidate single-node diagnostic stayed far below the 6-hour full-partition boundary.
+  - Planned and submitted a 40-zone diagnostic with 4 reducer chunks, 4 reducer workers, compact manifest mode, and run root `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526`.
+  - Monitored SLURM job `4372257` to terminal `COMPLETED` state with exit code `0:0`.
+  - Preserved runtime, memory, output-byte, file-count, manifest-byte, scheduler, and run-root metadata in the `$SCRATCH` run root.
+  - Recorded the measured run in `docs/balfrin_40_zone_diagnostic_run_tb601.md` and removed TB-601 from the active backlog.
+- Checks run:
+  - Balfrin `squeue -u "$USER"`, `squeue -p postproc`, and `sinfo -p postproc`
+  - Remote `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 40 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526 --partition postproc --time 00:45:00 --format json`
+  - Remote `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 40 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526 --partition postproc --time 00:45:00 --poll-seconds 10 --format json`
+  - Remote `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py collect --release-zones 40 --reducer-chunks 4 --reducer-workers 4 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526 --partition postproc --time 00:45:00 --format json`
+  - Remote `find`, `/usr/bin/time -v` output, and `slurm_accounting.psv` inspection for the run root
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 40 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526 --partition postproc --time 00:45:00 --format json`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Metrics: job `4372257`, terminal `COMPLETED`; reducer wall time `6.35 s`; `/usr/bin/time -v` elapsed `0:01.40`; MaxRSS `33.902 MB`; diagnostic output files `124`; diagnostic output bytes `51,493`; manifest size `28,818 bytes`; run-root files `137`; run-root bytes `212,134`.
+- Boundaries: single-node `postproc` reducer-pressure diagnostic only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed. The default diagnostic ceiling remains 32 zones until a promotion task threads 40-zone evidence into the scale surfaces.
+- Next task: `TB-602`
