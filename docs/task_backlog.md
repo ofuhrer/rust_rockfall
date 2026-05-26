@@ -30,10 +30,373 @@ and compare the result.
 
 ## Active Tasks
 
-No active tasks.
+### TB-618: Build The Next Larger Hazard-Throughput Package
 
-Next refill should favor concrete scientific evidence, hazard-throughput scaling,
-and simplification work over additional process surfaces.
+Goal: Prepare a no-submit package for the largest bounded hazard-throughput run selected by TB-617.
+
+Capability gap reduced: The project needs measured hazard-throughput evidence beyond the TB-603 support point, not only diagnostic reducer-pressure evidence.
+
+Why this outranks alternatives: TB-603 is the current hazard-throughput anchor, while the 100-zone evidence is diagnostic-only; the missing bridge is a larger real hazard workflow package with scalable outputs.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/generate_balfrin_target_area_demo_handoff.py`
+- `scripts/check_hazard_output_profile.py`
+- `docs/hazard_output_profile_contract.md`
+- `docs/balfrin_hazard_throughput_package_tb602.md`
+
+Deliverables:
+
+- A regenerated Balfrin submission package under `$SCRATCH` for the selected larger hazard-throughput run, with command plan, output-profile check, estimated file/byte footprint, and no-submit review summary.
+
+Definition of done:
+
+- The package can be inspected on Balfrin, output controls are bounded, run roots stay on `$SCRATCH`, and the expected footprint is compared against TB-603 before submission.
+
+### TB-619: Run The Larger Hazard-Throughput Job On Balfrin
+
+Goal: Submit and monitor the reviewed larger hazard-throughput package if TB-617 and TB-618 show it is safe.
+
+Capability gap reduced: Measured efficiency and feasibility evidence for a larger hazard workflow on Balfrin `postproc`.
+
+Why this outranks alternatives: A successful larger hazard-throughput run would directly reduce the main scale gap more than another local diagnostic or documentation pass.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
+- `docs/balfrin_failure_recovery_playbook.md`
+- generated scratch: TB-618 submission package on Balfrin `$SCRATCH`
+
+Deliverables:
+
+- A completed or explicitly failed-closed Balfrin job, monitored to terminal state, with job id, run root, elapsed time, memory, output bytes, file counts, and conditional-curve export mode.
+
+Definition of done:
+
+- The job reaches a terminal scheduler state, metrics are collected or the failure is diagnosed, and any cleanup keeps persistent evidence under `$SCRATCH` or the repo clone rather than `/tmp`.
+
+### TB-620: Compare Large Hazard Metrics Against Existing Scale Evidence
+
+Goal: Integrate the larger hazard-throughput result into the current scale-readiness surfaces and identify the next measured bottleneck.
+
+Capability gap reduced: Evidence interpretation for efficiency, output pressure, and feasibility across TB-603, regional split, diagnostic 100-zone, and the new larger hazard run.
+
+Why this outranks alternatives: Raw Balfrin results only move the project if they are compared against the existing measured support points and converted into the next concrete bottleneck.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- `docs/balfrin_hazard_throughput_run_tb603.md`
+
+Deliverables:
+
+- Updated scale summaries or work-log evidence that classify the new run, compare runtime/memory/output growth, and state whether reducer pressure, hazard runtime, scratch I/O, or scientific evidence is now the first limiter.
+
+Definition of done:
+
+- The new run is visible in the scale-readiness path, focused checks pass, and the interpretation does not overstate Swiss-wide, distributed, operational, or physical-probability claims.
+
+### TB-621: Reduce Replay Metadata Growth In Hazard Outputs
+
+Goal: Shrink replay-critical metadata growth for larger hazard batches while preserving enough information to rebuild and compare outputs.
+
+Capability gap reduced: Reducer and replay pressure that currently limits larger hazard-output batches and regional/Swiss-scale planning.
+
+Why this outranks alternatives: The scale matrix already ranks reducer/replay metadata growth as the next scale blocker after measured regional split and TB-603 support.
+
+Inspect first:
+
+- `scripts/summarize_multi_zone_reducer_pressure.py`
+- `scripts/hazard_output_manifests.py`
+- `scripts/hazard_output_writers.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/hazard_output_profile_contract.md`
+- `docs/multi_zone_reducer_pressure_probe.md`
+
+Deliverables:
+
+- A code change or measured output-profile adjustment that reduces replay-critical metadata bytes or file fanout for a representative larger hazard package without losing rebuildability.
+
+Definition of done:
+
+- Before/after file counts and bytes are measured, rebuildability remains explicit, and focused reducer/output-profile tests or checks pass.
+
+### TB-622: Add A Partial-Rerun Smoke For Larger Hazard Batches
+
+Goal: Prove that a failed or interrupted larger hazard batch can resume from preserved partial state without rerunning everything.
+
+Capability gap reduced: Feasibility of long-running Balfrin jobs where restart cost and rerun explosion would otherwise block larger runs.
+
+Why this outranks alternatives: Larger jobs become practical only if failures can be recovered cheaply from `$SCRATCH` run roots.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_restartability_recovery.py`
+- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `docs/balfrin_restartability_recovery_report.md`
+- `docs/balfrin_failure_recovery_playbook.md`
+
+Deliverables:
+
+- A local or Balfrin scratch smoke that creates partial outputs, resumes or replays only the missing pieces, and reports rerun fraction, elapsed time, and preserved artifacts.
+
+Definition of done:
+
+- Restart behavior is measured on a representative larger package and any remaining non-resumable stage is named as the next implementation bottleneck.
+
+### TB-623: Tighten The One-Command Balfrin Run Path
+
+Goal: Make the common Balfrin path for preparing, submitting, monitoring, and collecting a bounded hazard run easier to invoke without navigating many helper scripts.
+
+Capability gap reduced: User-facing execution simplicity for repeatable Balfrin scale demonstrations.
+
+Why this outranks alternatives: The repo has many useful helpers, but a clean run interface is needed to turn them into a practical demonstration workflow.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
+- `docs/balfrin_tschamut_pilot_runbook.md`
+- `docs/aoi_user_manual.md`
+
+Deliverables:
+
+- A simplified command path, wrapper mode, or concise runbook reduction that executes the selected hazard-throughput workflow with fewer manual decisions while keeping existing low-level helpers reusable.
+
+Definition of done:
+
+- A fresh operator can identify one primary command sequence for the next Balfrin hazard run, and focused checks confirm the existing helpers still work.
+
+### TB-624: Stage Real Release-Probability Evidence
+
+Goal: Replace the current design-review-only release-probability state with a real candidate evidence record for the active public pilot source zone.
+
+Capability gap reduced: Missing release-probability evidence, one of the remaining blockers for physical-probability credibility.
+
+Why this outranks alternatives: The validation gap helper now reports release probability as a critical missing input after source frequency and holdout runout evidence were staged.
+
+Inspect first:
+
+- `scripts/validate_block_release_probability_evidence.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `docs/block_release_probability_evidence_contract.md`
+- `validation/templates/block_release_probability_evidence_v1.yaml`
+- `validation/data/processed/tschamut/release_points.csv`
+- `validation/data/processed/chant_sura_2020/release_points_contact.csv`
+
+Deliverables:
+
+- A real candidate release-probability evidence YAML for the pilot source zone, or a narrowly documented reason why current public inputs are insufficient and exactly which field input is missing.
+
+Definition of done:
+
+- The validator accepts the record shape, the evidence-gap report changes accordingly if accepted, and sampling weights are not mislabeled as physical probability.
+
+### TB-625: Stage Block-Population Evidence For The Pilot Zone
+
+Goal: Add a first real block-population or block-size distribution candidate for the pilot source zone from available processed inputs.
+
+Capability gap reduced: Missing block-population evidence for physical probability and scenario credibility.
+
+Why this outranks alternatives: Without a block-population basis, larger simulations remain conditional intensity demonstrations rather than physically interpretable probability evidence.
+
+Inspect first:
+
+- `scripts/validate_block_release_probability_evidence.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `validation/templates/block_release_probability_evidence_v1.yaml`
+- `validation/data/processed/tschamut/block_metadata.csv`
+- `validation/data/processed/chant_sura_2020/block_metadata.csv`
+- `docs/source_zone_block_scenario_policy_v1.md`
+
+Deliverables:
+
+- A candidate block-population distribution tied to current pilot data, with uncertainty bounds and clear separation from validation evidence.
+
+Definition of done:
+
+- The candidate validates or fails for a concrete missing-data reason, and the evidence-gap helper reports the new state without weakening calibration/validation separation.
+
+### TB-626: Define A Minimal Calibration Objective Using Existing Data
+
+Goal: Turn the current calibration gap into an executable objective that uses available public/processed evidence while keeping holdout validation separate.
+
+Capability gap reduced: Missing calibration evidence and unclear parameter-fitting target for scientific credibility.
+
+Why this outranks alternatives: Calibration is now one of the few named scientific blockers left after source-frequency and holdout runout intake work.
+
+Inspect first:
+
+- `scripts/run_tschamut_calibration.py`
+- `scripts/check_calibration_separation_preflight.py`
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `docs/tschamut_calibration.md`
+- `docs/scarring_real_data_calibration.md`
+- `validation/data/processed/observed_runout_deposition_benchmark/manifest.json`
+
+Deliverables:
+
+- An executable calibration objective or dry-run case that names parameters, metrics, training data, excluded holdout data, and expected output artifacts.
+
+Definition of done:
+
+- The separation preflight passes, the calibration command can run in dry-run or smoke mode, and the objective is specific enough for a later fit.
+
+### TB-627: Run A Calibration Smoke And Report Parameter Sensitivity
+
+Goal: Execute the minimal calibration objective on a small bounded case and measure whether parameter changes affect runout/deposition metrics in the expected direction.
+
+Capability gap reduced: Empirical calibration feasibility and scientific sensitivity evidence.
+
+Why this outranks alternatives: A calibration design only becomes useful when the workflow can actually run and produce interpretable metric deltas.
+
+Inspect first:
+
+- `scripts/run_tschamut_calibration.py`
+- `scripts/check_calibration_separation_preflight.py`
+- `scripts/summarize_observed_runout_deposition_intake_contract.py`
+- `docs/tschamut_calibration.md`
+- `docs/holdout_runout_deposition_evidence_tb615.md`
+
+Deliverables:
+
+- A bounded calibration smoke result with parameter settings, metrics, excluded holdout identifiers, and a short sensitivity interpretation.
+
+Definition of done:
+
+- The smoke run completes locally or on Balfrin scratch, results are reproducible from the recorded command, and no holdout data are used for fitting.
+
+### TB-628: Stage Second-Site Public Inputs For Transfer Testing
+
+Goal: Prepare the next public second-site input bundle needed to test whether the workflow generalizes beyond the Tschamut pilot.
+
+Capability gap reduced: Single-site scientific credibility and portability limitations.
+
+Why this outranks alternatives: Scientific confidence improves materially when the same workflow can be staged for a second public site without bespoke manual repair.
+
+Inspect first:
+
+- `scripts/inventory_second_site_local_blockers.py`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/plan_aoi_terrain_preprocessing.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/chant_sura_fluelapass_management_aoi_acquisition_manifest.yaml`
+
+Deliverables:
+
+- A staged second-site input bundle or acquisition command plan with explicit missing public inputs and a selected next AOI.
+
+Definition of done:
+
+- The second-site blocker inventory improves from its current state or reports one concrete external data blocker that cannot be solved locally.
+
+### TB-629: Run A Second-Site AOI Workflow Smoke
+
+Goal: Execute the smallest useful AOI candidate or hazard-workflow smoke on the staged second site.
+
+Capability gap reduced: Evidence that the pipeline is not overfit to the Tschamut pilot.
+
+Why this outranks alternatives: A second-site smoke is a stronger credibility step than additional single-site summaries.
+
+Inspect first:
+
+- `scripts/bootstrap_aoi_manifest.py`
+- `scripts/plan_terrain_release_zone_candidates.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/package_aoi_hazard_map.py`
+- `docs/aoi_user_manual.md`
+- generated scratch: TB-628 second-site input bundle
+
+Deliverables:
+
+- A completed second-site AOI smoke with candidate count, scenario count, runtime, output bytes, and any failed data assumptions.
+
+Definition of done:
+
+- The workflow either produces a small second-site output package or fails with a concrete missing input that is not hidden behind generic setup language.
+
+### TB-630: Add A Spatial Holdout Metric For Runout Evidence
+
+Goal: Strengthen holdout validation by adding a spatial metric beyond simple presence/intake of observed runout/deposition evidence.
+
+Capability gap reduced: Scientific credibility of validation, especially whether simulated outputs are spatially meaningful against held-out evidence.
+
+Why this outranks alternatives: Holdout evidence is now staged, but credibility needs a quantitative spatial comparison rather than only intake status.
+
+Inspect first:
+
+- `scripts/summarize_observed_runout_deposition_intake_contract.py`
+- `scripts/compare_hazard_map_convergence.py`
+- `scripts/generate_aoi_map_qa_review.py`
+- `validation/data/processed/observed_runout_deposition_benchmark/observed_runout_deposition.geojson`
+- `docs/holdout_runout_deposition_evidence_tb615.md`
+
+Deliverables:
+
+- A small spatial-overlap, distance, or coverage metric computed for held-out runout/deposition evidence and wired into the validation summary path.
+
+Definition of done:
+
+- The metric runs on existing data, distinguishes holdout from calibration inputs, and reports a numeric result or a concrete geometry/data blocker.
+
+### TB-631: Measure GIS/COG Output Packaging At Larger Hazard Size
+
+Goal: Verify that the larger hazard output remains practical to package for GIS review without ballooning file count or conversion time.
+
+Capability gap reduced: Feasibility of user-facing map review after larger Balfrin hazard runs.
+
+Why this outranks alternatives: Runtime evidence is incomplete if the resulting map package cannot be reviewed efficiently.
+
+Inspect first:
+
+- `scripts/convert_same_scale_package_to_cog.py`
+- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
+- `scripts/package_aoi_hazard_map.py`
+- `docs/large_aoi_gis_cog_stress_tb609.md`
+- `docs/hazard_layers.md`
+
+Deliverables:
+
+- A measured GIS/COG packaging result for the largest available hazard output root, including conversion time, raster count, byte count, and parity status.
+
+Definition of done:
+
+- Packaging completes or fails with a concrete output-family blocker, and the result is tied to the scale-readiness interpretation.
+
+### TB-632: Simplify Obsolete Balfrin Evidence Surfaces
+
+Goal: Remove or consolidate old Balfrin documents that are superseded by current scale summaries while preserving measured run facts.
+
+Capability gap reduced: Repository clarity and user-facing navigability after many task-specific Balfrin reports.
+
+Why this outranks alternatives: The repo has grown many narrow reports, and simplifying them makes the actual execution path and current evidence easier to find.
+
+Inspect first:
+
+- `docs/README.md`
+- `docs/agent_work_log.md`
+- `docs/swiss_scale_feasibility_projection.md`
+- `docs/balfrin_scale_demonstration_management_package.md`
+- `docs/balfrin_diagnostic_series_tb613.md`
+- `scripts/check_repo_consistency.py`
+
+Deliverables:
+
+- A safe documentation prune or consolidation that removes superseded Balfrin report files from the docs index and keeps durable measured facts in summary surfaces.
+
+Definition of done:
+
+- Repo consistency checks pass, no active references point to deleted docs, and the docs front door is shorter or clearer than before.
 ## Backlog Protocol
 
 Task headings must always be exactly:

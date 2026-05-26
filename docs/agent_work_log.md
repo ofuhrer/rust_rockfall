@@ -9738,3 +9738,25 @@ completed history.
 - Metrics: README now names the 100-zone diagnostic job `4372447` (`34.16 MB` MaxRSS, `0:01.26` elapsed, `304` files, `121,172` output bytes, `448,376` run-root bytes) and the hazard-throughput support job `4372309` (`7.04 s`, `357.8 MB`, `57` hazard files, `31.4 MB` hazard output).
 - Boundaries: documentation synthesis only; no new run, no Swiss-wide execution, no distributed execution, no non-`postproc` execution, no physical-probability product, no operational product, no risk, exposure, or vulnerability claim.
 - Next task: backlog refill needed
+
+### TB-617: Recheck Balfrin Capacity For A Larger Hazard Run
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: verify the live Balfrin `postproc` and `$SCRATCH` state before preparing a larger hazard-throughput run.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Checked Balfrin over SSH from `balfrin-ln003` at `2026-05-27T01:06:12+02:00`.
+  - Confirmed `postproc` is up with `14` nodes, `3584` total CPUs, `1` reserved node, `2` mixed nodes, and `11` idle nodes; the partition limit remains `1-00:00:00`.
+  - Confirmed many `postproc` jobs were running on `nid001225`/`nid001226`, including one `olifu` job `4371509` that had already run for about `7:04`.
+  - Confirmed `$SCRATCH=/scratch/mch/olifu`; `/scratch/mch` was `800T` total, `756T` used, `45T` available, `95%` full; the project scratch root was about `1.6G`.
+  - Selected a conservative next package target for TB-618/TB-619: a single-node bounded hazard-throughput run larger than TB-603, retaining summary-only conditional curves, no full grid CSV, no plots, compact manifests, and `$SCRATCH` run roots.
+  - Removed TB-617 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-617 --format json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'sinfo ...; squeue ...; df -h ...; du -sh ...'`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'sinfo -p postproc ...; scontrol show partition postproc ...; sacct -u olifu ...'`
+- Result/status: implemented_waiting_report
+- Metrics: `postproc` had 11 idle nodes despite many running jobs; scratch had `45T` free but remained `95%` used, so the next run should remain bounded and avoid bulky outputs.
+- Boundaries: capacity decision only; no Balfrin job submitted, no new hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, physical-probability, operational, risk, exposure, or vulnerability claim.
+- Next task: `TB-618`
