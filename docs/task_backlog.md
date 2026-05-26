@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-596: Quantify Swiss-Wide Data And Execution Inputs Needed For A Phase Change
-
-Goal: Replace the Swiss-wide target with a quantified input, compute, storage, validation, and review readiness matrix.
-
-Capability gap reduced: Makes Swiss-wide feasibility depend on explicit measured requirements rather than a broad “out of reach” label.
-
-Why this outranks alternatives: Swiss-wide work requires both scale evidence and national data readiness; this task defines the actual gap.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/public_real_site_geodata_preparation.md`
-- `tests/test_large_scale_execution_probe.py`
-
-Deliverables:
-
-- Extend the feasibility projection with national DEM/context data volume, tiling, chunk count, output footprint, validation evidence, and review checks.
-- Distinguish compute-feasible, data-ready, validation-ready, and operational-ready classes.
-- Add tests proving Swiss-wide remains currently deferred unless all classes are satisfied.
-
-Definition of done:
-
-- Focused projection tests pass and the Swiss-wide blocker is decomposed into measurable next steps.
-
-
 ### TB-597: Create A Readiness Roadmap And Decision Check
 
 Goal: Combine operational, physical-probability, Swiss-wide, non-postproc, and distributed readiness into one phase-change decision check.

@@ -19,6 +19,17 @@ sys.modules[MODULE_NAME] = estimator
 assert SPEC.loader is not None
 SPEC.loader.exec_module(estimator)
 
+SWISS_WIDE_SCRIPT_PATH = ROOT / "scripts" / "estimate_swiss_wide_execution_envelope.py"
+SWISS_WIDE_SPEC = importlib.util.spec_from_file_location(
+    "estimate_swiss_wide_execution_envelope_for_test",
+    SWISS_WIDE_SCRIPT_PATH,
+)
+assert SWISS_WIDE_SPEC is not None
+swiss_wide = importlib.util.module_from_spec(SWISS_WIDE_SPEC)
+sys.modules["estimate_swiss_wide_execution_envelope_for_test"] = swiss_wide
+assert SWISS_WIDE_SPEC.loader is not None
+SWISS_WIDE_SPEC.loader.exec_module(swiss_wide)
+
 
 class EstimateLargeScaleExecutionProbeTests(unittest.TestCase):
     def _make_input(self, **kwargs):
@@ -155,6 +166,77 @@ class EstimateLargeScaleExecutionProbeTests(unittest.TestCase):
         self.assertEqual(provenance_reference.total_output_file_count, 50)
         self.assertLess(abs(scalable_reference.output_bytes - 15_579_398), 100_000)
         self.assertGreater(provenance_reference.output_bytes, scalable_reference.output_bytes)
+
+    def test_swiss_wide_phase_change_matrix_decomposes_current_deferred_state(self) -> None:
+        requirements = swiss_wide.build_swiss_wide_national_requirements(
+            projected_storage_bytes={"nominal": 1_000_000, "high": 2_000_000},
+            projected_file_count={"nominal": 100, "high": 200},
+            projected_job_count=26,
+            projected_jobs_per_aoi=1,
+        )
+        readiness = swiss_wide.build_swiss_wide_phase_change_readiness(
+            projection_status="no_go_extrapolated_beyond_measured_evidence",
+            no_go_labels=["aoi_count_exceeds_measured_support"],
+            distributed_execution_authorized=False,
+            national_requirements=requirements,
+        )
+
+        self.assertEqual(readiness["schema_version"], "swiss_wide_phase_change_readiness_v1")
+        self.assertEqual(readiness["phase_change_status"], "deferred")
+        self.assertEqual(
+            readiness["blocked_classes"],
+            ["compute_feasible", "data_ready", "validation_ready", "operational_ready"],
+        )
+        self.assertEqual(readiness["first_blocker_class"], "compute_feasible")
+        self.assertEqual(
+            requirements["input_data_requirements"]["estimated_total_input_bytes"],
+            requirements["input_data_requirements"]["estimated_dem_bytes"]
+            + requirements["input_data_requirements"]["estimated_context_bytes"],
+        )
+        self.assertGreater(requirements["tiling_requirements"]["estimated_tile_count"], 1)
+        self.assertTrue(requirements["execution_requirements"]["requires_distributed_orchestration"])
+
+    def test_swiss_wide_phase_change_matrix_requires_all_classes_ready(self) -> None:
+        requirements = swiss_wide.build_swiss_wide_national_requirements(
+            projected_storage_bytes={"nominal": 1_000_000, "high": 2_000_000},
+            projected_file_count={"nominal": 100, "high": 200},
+            projected_job_count=1,
+            projected_jobs_per_aoi=1,
+            assumptions={
+                "country_area_km2": 1,
+                "target_cells_per_tile": 1_000_000,
+                "default_aoi_count": 1,
+                "release_zones_per_aoi": 1,
+                "trajectories_per_release_zone": 1,
+            },
+        )
+        almost_ready = swiss_wide.build_swiss_wide_phase_change_readiness(
+            projection_status="measured_within_support",
+            no_go_labels=[],
+            distributed_execution_authorized=True,
+            national_requirements=requirements,
+            class_overrides={
+                "data_ready": {"status": "ready", "first_missing_input": None},
+                "validation_ready": {"status": "ready", "first_missing_input": None},
+            },
+        )
+        ready = swiss_wide.build_swiss_wide_phase_change_readiness(
+            projection_status="measured_within_support",
+            no_go_labels=[],
+            distributed_execution_authorized=True,
+            national_requirements=requirements,
+            class_overrides={
+                "data_ready": {"status": "ready", "first_missing_input": None},
+                "validation_ready": {"status": "ready", "first_missing_input": None},
+                "operational_ready": {"status": "ready", "first_missing_input": None},
+            },
+        )
+
+        self.assertEqual(almost_ready["phase_change_status"], "deferred")
+        self.assertEqual(almost_ready["blocked_classes"], ["operational_ready"])
+        self.assertEqual(ready["phase_change_status"], "ready_for_phase_change_review")
+        self.assertEqual(ready["blocked_classes"], [])
+        self.assertIsNone(ready["first_blocker_class"])
 
 
 if __name__ == "__main__":

@@ -44,6 +44,24 @@ to leave `postproc`; the deferred blockers are partition policy and unsupported
 execution model. The assessment does not request access or authorize a phase
 change.
 
+`scripts/estimate_swiss_wide_execution_envelope.py` now also emits
+`swiss_wide_phase_change_readiness_v1`. That matrix keeps the Swiss-wide
+blocker decomposed into four independent classes:
+
+- `compute_feasible`: measured national tiling/chunk runtime, memory, I/O,
+  restart cost, and any required distributed execution authorization.
+- `data_ready`: complete national swissALTI3D plus context-product inventory,
+  cache, versions, checksums, and share-safe tiling manifest.
+- `validation_ready`: source-frequency evidence, release-probability model,
+  independent holdout validation, and calibration/validation separation.
+- `operational_ready`: national GIS/COG review, monitoring, reproducibility,
+  versioning, and support criteria.
+
+The same report quantifies the planning input footprint with national DEM cell
+count, DEM/context byte estimates, tile count, release-zone and trajectory
+counts, projected output bytes, and projected file counts. The current status
+remains `deferred`; the matrix is a phase-change checklist, not authorization.
+
 ## Bottleneck Ranking
 
 The adjacent-candidate branch moved the first blocker away from source-zone

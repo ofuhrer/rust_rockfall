@@ -172,6 +172,12 @@ source-frequency evidence, and explicit holdout labels. The first executable
 second-site task should come from that plan rather than from a generic
 "second site missing" note.
 
+For a future national run, the Swiss-wide envelope helper reports the
+`data_ready` class in `swiss_wide_phase_change_readiness_v1`. That class
+requires a complete national swissALTI3D and context-product inventory, local
+cache status, versions, checksums, and a share-safe tiling manifest before any
+Swiss-wide execution phase change can be reviewed.
+
 ## Canonical AOI Quickstart
 
 This is the single command-level AOI walkthrough for the repository. It keeps

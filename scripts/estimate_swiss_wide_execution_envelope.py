@@ -29,6 +29,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "swiss_wide_execution_envelope_v1"
+SWISS_WIDE_PHASE_CHANGE_SCHEMA_VERSION = "swiss_wide_phase_change_readiness_v1"
 MEASURED_BALFRIN_DEMO_RUN_ROOT = (
     "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/"
     "tschamut_public_balfrin_single_release_zone_v3"
@@ -43,6 +44,17 @@ GENERATED_SCENARIO_TABLE_TEMPLATE_IDS = (
     "policy_block_family_v1",
 )
 GENERATED_SCENARIO_TABLE_OUTPUT_ROOT = Path("/tmp/rust_rockfall_tb185_generated_scenario_table")
+SWISS_WIDE_PLANNING_ASSUMPTIONS = {
+    "country_area_km2": 41_285,
+    "dem_cell_size_m": 2.0,
+    "dem_bytes_per_cell": 4,
+    "context_product_count": 5,
+    "context_bytes_per_dem_byte": 3,
+    "target_cells_per_tile": 50_000_000,
+    "default_aoi_count": 26,
+    "release_zones_per_aoi": 10,
+    "trajectories_per_release_zone": 6,
+}
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
@@ -953,6 +965,138 @@ def summarize_planning_cases(case_specs: tuple[PlanningCaseSpec, ...]) -> dict[s
     }
 
 
+def build_swiss_wide_national_requirements(
+    *,
+    projected_storage_bytes: dict[str, Any],
+    projected_file_count: dict[str, Any],
+    projected_job_count: int,
+    projected_jobs_per_aoi: int,
+    assumptions: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    values = dict(SWISS_WIDE_PLANNING_ASSUMPTIONS)
+    if assumptions:
+        values.update(assumptions)
+    area_m2 = float(values["country_area_km2"]) * 1_000_000.0
+    cell_size = float(values["dem_cell_size_m"])
+    dem_cell_count = math.ceil(area_m2 / (cell_size * cell_size))
+    dem_bytes = dem_cell_count * int(values["dem_bytes_per_cell"])
+    context_bytes = dem_bytes * int(values["context_bytes_per_dem_byte"])
+    tile_count = math.ceil(dem_cell_count / int(values["target_cells_per_tile"]))
+    release_zone_count = int(values["default_aoi_count"]) * int(values["release_zones_per_aoi"])
+    trajectory_count = release_zone_count * int(values["trajectories_per_release_zone"])
+    return {
+        "schema_version": "swiss_wide_national_requirements_v1",
+        "assumption_class": "planning_default_not_measured_national_inventory",
+        "input_data_requirements": {
+            "country_area_km2": int(values["country_area_km2"]),
+            "dem_cell_size_m": cell_size,
+            "estimated_dem_cell_count": dem_cell_count,
+            "estimated_dem_bytes": dem_bytes,
+            "estimated_context_bytes": context_bytes,
+            "estimated_total_input_bytes": dem_bytes + context_bytes,
+            "required_context_products": [
+                "swissALTI3D",
+                "SWISSIMAGE",
+                "swissTLM3D",
+                "swissSURFACE3D",
+                "swissBUILDINGS3D",
+            ],
+        },
+        "tiling_requirements": {
+            "target_cells_per_tile": int(values["target_cells_per_tile"]),
+            "estimated_tile_count": tile_count,
+            "chunk_key_policy": "stable_national_tile_id_plus_release_zone_batch",
+            "merge_order": "sorted_tile_id_then_sorted_chunk_id",
+        },
+        "execution_requirements": {
+            "aoi_count": int(values["default_aoi_count"]),
+            "release_zone_count": release_zone_count,
+            "trajectory_count": trajectory_count,
+            "projected_job_count": projected_job_count,
+            "projected_jobs_per_aoi": projected_jobs_per_aoi,
+            "requires_distributed_orchestration": projected_job_count > 1 or tile_count > 1,
+        },
+        "output_footprint_requirements": {
+            "projected_storage_bytes": projected_storage_bytes.get("nominal"),
+            "projected_storage_bytes_high": projected_storage_bytes.get("high"),
+            "projected_file_count": projected_file_count.get("nominal"),
+            "projected_file_count_high": projected_file_count.get("high"),
+            "requires_cog_package_plan": True,
+            "requires_replay_budget": True,
+        },
+    }
+
+
+def build_swiss_wide_phase_change_readiness(
+    *,
+    projection_status: str,
+    no_go_labels: list[str],
+    distributed_execution_authorized: bool,
+    national_requirements: dict[str, Any],
+    class_overrides: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    classes = {
+        "compute_feasible": {
+            "status": "ready"
+            if projection_status == "measured_within_support" and distributed_execution_authorized
+            else "deferred",
+            "first_missing_input": "measured_distributed_or_single_job_swiss_wide_execution"
+            if projection_status != "measured_within_support"
+            else "distributed_execution_authorization",
+            "evidence_needed": [
+                "measured national tiling/chunk-count runtime",
+                "measured walltime, memory, I/O, and restart cost",
+                "distributed execution authorization when job_count or tile_count exceeds one",
+            ],
+        },
+        "data_ready": {
+            "status": "deferred",
+            "first_missing_input": "national_public_geodata_inventory",
+            "evidence_needed": [
+                "complete swissALTI3D national tile inventory",
+                "ready local cache for required context products",
+                "share-safe national tiling manifest with checksums and versions",
+            ],
+        },
+        "validation_ready": {
+            "status": "deferred",
+            "first_missing_input": "multi_site_holdout_validation_and_physical_probability_evidence",
+            "evidence_needed": [
+                "source-frequency evidence",
+                "release-probability model",
+                "independent holdout validation beyond Tschamut",
+                "calibration/validation separation",
+            ],
+        },
+        "operational_ready": {
+            "status": "deferred",
+            "first_missing_input": "operational_gis_review_monitoring_and_support",
+            "evidence_needed": [
+                "national GIS/COG package QA",
+                "monitoring and reproducibility record",
+                "versioned release and support criteria",
+            ],
+        },
+    }
+    for class_name, override in (class_overrides or {}).items():
+        if class_name in classes:
+            classes[class_name] = {**classes[class_name], **override}
+    blocked_classes = [name for name, row in classes.items() if row.get("status") != "ready"]
+    first_blocker = blocked_classes[0] if blocked_classes else None
+    return {
+        "schema_version": SWISS_WIDE_PHASE_CHANGE_SCHEMA_VERSION,
+        "phase_change_status": "ready_for_phase_change_review" if not blocked_classes else "deferred",
+        "swiss_wide_execution_authorized": False,
+        "class_statuses": classes,
+        "blocked_classes": blocked_classes,
+        "first_blocker_class": first_blocker,
+        "first_missing_input": classes[first_blocker]["first_missing_input"] if first_blocker else None,
+        "no_go_labels": list(no_go_labels),
+        "national_requirements": national_requirements,
+        "claim_boundary": "readiness decomposition only; no Swiss-wide execution, operational, annual, physical-probability, or risk claim",
+    }
+
+
 def build_multi_zone_scaling_frontier(canonical_bundle_report: dict[str, Any]) -> dict[str, Any]:
     evidence = EVIDENCE_BUNDLE.build_multi_zone_balfrin_evidence(
         canonical_bundle_report.get("multi_zone_balfrin_evidence")
@@ -1040,6 +1184,18 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
         coefficients.memory_peak_mb_high,
         precision=3,
     )
+    national_requirements = build_swiss_wide_national_requirements(
+        projected_storage_bytes=storage_bytes,
+        projected_file_count=file_counts,
+        projected_job_count=job_count,
+        projected_jobs_per_aoi=jobs_per_aoi,
+    )
+    swiss_wide_phase_change_readiness = build_swiss_wide_phase_change_readiness(
+        projection_status=projection_status,
+        no_go_labels=no_go_labels,
+        distributed_execution_authorized=False,
+        national_requirements=national_requirements,
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -1082,6 +1238,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
         "storage_bytes": storage_bytes,
         "file_count": file_counts,
         "memory_peak_mb": memory_peak_mb,
+        "swiss_wide_phase_change_readiness": swiss_wide_phase_change_readiness,
         "rebuildability_cost": build_rebuildability_cost(
             projected_storage_bytes=storage_bytes,
             projected_file_count=file_counts,
@@ -1210,6 +1367,12 @@ def build_report_from_available_evidence(inputs: ProjectionInputs) -> dict[str, 
 def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> dict[str, Any]:
     total_units = inputs.aoi_count * inputs.release_zone_count * inputs.trajectory_count
     empty_band = {"low": None, "nominal": None, "high": None}
+    national_requirements = build_swiss_wide_national_requirements(
+        projected_storage_bytes=empty_band,
+        projected_file_count=empty_band,
+        projected_job_count=0,
+        projected_jobs_per_aoi=0,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "measurement_status": "blocked_missing_inputs",
@@ -1245,6 +1408,12 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
         "storage_bytes": empty_band,
         "file_count": empty_band,
         "memory_peak_mb": empty_band,
+        "swiss_wide_phase_change_readiness": build_swiss_wide_phase_change_readiness(
+            projection_status="blocked_missing_inputs",
+            no_go_labels=["blocked_missing_inputs"],
+            distributed_execution_authorized=False,
+            national_requirements=national_requirements,
+        ),
         "rebuildability_cost": {
             "projected_storage_bytes": None,
             "projected_file_count": None,
@@ -1503,6 +1672,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     bottleneck_labels = report.get("bottleneck_labels", {})
     multi_zone_frontier = report.get("multi_zone_scaling_frontier", {})
     diagnostic_support = report.get("diagnostic_support", {})
+    swiss_wide_readiness = report.get("swiss_wide_phase_change_readiness", {})
+    national_requirements = swiss_wide_readiness.get("national_requirements", {})
+    input_requirements = national_requirements.get("input_data_requirements", {})
+    tiling_requirements = national_requirements.get("tiling_requirements", {})
+    execution_requirements = national_requirements.get("execution_requirements", {})
+    output_requirements = national_requirements.get("output_footprint_requirements", {})
     lines = [
         "Swiss-wide execution envelope",
         f"measurement_status: {report['measurement_status']}",
@@ -1526,6 +1701,16 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  repeatability_status: {diagnostic_support.get('repeatability_status')}",
         f"  runtime_seconds_per_zone: {diagnostic_support.get('runtime_seconds_per_zone')}",
         f"  output_bytes_per_zone: {diagnostic_support.get('output_bytes_per_zone')}",
+        "swiss_wide_phase_change_readiness:",
+        f"  status: {swiss_wide_readiness.get('phase_change_status')}",
+        f"  first_blocker_class: {swiss_wide_readiness.get('first_blocker_class')}",
+        f"  first_missing_input: {swiss_wide_readiness.get('first_missing_input')}",
+        f"  estimated_total_input_bytes: {input_requirements.get('estimated_total_input_bytes')}",
+        f"  estimated_tile_count: {tiling_requirements.get('estimated_tile_count')}",
+        f"  required_release_zone_count: {execution_requirements.get('release_zone_count')}",
+        f"  required_trajectory_count: {execution_requirements.get('trajectory_count')}",
+        f"  projected_output_bytes: {output_requirements.get('projected_storage_bytes')}",
+        f"  projected_output_file_count: {output_requirements.get('projected_file_count')}",
         f"aoi_count: {report['input']['aoi_count']}",
         f"release_zone_count: {report['input']['release_zone_count']}",
         f"trajectory_count: {report['input']['trajectory_count']}",
@@ -1577,6 +1762,8 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  generated_scenario_table_output_root: {report['measurement_basis'].get('generated_scenario_table_output_root')}",
         f"  canonical_bundle_status: {report['measurement_basis'].get('canonical_bundle_status')}",
     ]
+    for class_name, row in (swiss_wide_readiness.get("class_statuses") or {}).items():
+        lines.append(f"  readiness_class.{class_name}: {row.get('status')} ({row.get('first_missing_input')})")
     for label, command in report["measurement_basis"]["source_commands"].items():
         lines.append(f"  {label}: {command}")
     for note in report["measurement_basis"]["measurement_notes"]:
