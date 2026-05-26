@@ -9055,3 +9055,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: scientific-gap assessment only; no calibration, validation acceptance, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-587`
+
+### TB-587: Simplify The Large-Run Interface Around One Command Path
+
+- Date: 2026-05-26
+- Commit: `6bc4a67`
+- Objective: make the measured Balfrin diagnostic workflow approachable through one public command path.
+- Files changed: `scripts/run_balfrin_diagnostic.py`, `tests/test_run_balfrin_diagnostic.py`, `README.md`, `docs/project_overview.md`, `docs/script_inventory.md`, `docs/balfrin_probe_slurm_driver.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a `plan` action to `scripts/run_balfrin_diagnostic.py` that exposes the exact public `plan`/`run` command sequence without writing artifacts.
+  - Added `public_interface.required_materialized_files` to the run record so the single path names the run record, sbatch script, logs, `/usr/bin/time` output, pressure reports, and scheduler accounting it expects.
+  - Updated README/project overview to present `run_balfrin_diagnostic.py plan` then `run` as the front-door Balfrin diagnostic workflow.
+  - Demoted older handoff, authorization-preflight, submit, and collect helpers to compatibility/forensic status in the docs while preserving them for reproduction records.
+  - Removed TB-587 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_balfrin_diagnostic.py tests/test_run_balfrin_diagnostic.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_balfrin_diagnostic -v`
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 24 --manifest-mode compact --scratch-root /tmp/rust_rockfall_tb587_scratch --run-id tb587_plan_smoke --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: command-path simplification only; no new Balfrin run, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-588`
