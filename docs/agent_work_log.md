@@ -9216,3 +9216,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: assessment only; no non-`postproc` request, scheduler-policy change, operational, physical-probability, Swiss-wide, or distributed-execution claim.
 - Next task: `TB-594`
+
+### TB-594: Design A Distributed Execution Contract Without Running It
+
+- Date: 2026-05-26
+- Commit: `18ac969`
+- Objective: define the split, merge, retry, restart, and provenance contract needed before distributed execution.
+- Files changed: `scripts/generate_pilot_command_plan.py`, `tests/test_pilot_command_plan.py`, `docs/tschamut_public_scalable_conditional_execution.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `distributed_execution_contract_v1` to the portable command plan.
+  - Defined split-task manifest fields, stable chunk-key templates, sorted merge semantics, retry/restart rules, idempotency rules, and provenance requirements.
+  - Added deterministic fixture chunk records for hazard-reduction split/merge ordering.
+  - Identified the smallest future distributed dry-run implementation task in the contract itself.
+  - Removed TB-594 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_pilot_command_plan.py tests/test_pilot_command_plan.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json --json-output /tmp/tb594_command_plan.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: contract only; no distributed job, multi-node execution, scheduler phase change, Swiss-wide, operational, or physical-probability claim.
+- Next task: `TB-595`
