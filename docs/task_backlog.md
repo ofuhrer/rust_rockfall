@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-615: Stage Independent Holdout Runout Or Deposition Evidence
-
-Goal: Acquire or stage holdout runout/deposition evidence that is independent of calibration and model selection.
-
-Capability gap reduced: Reduces the validation-ready blocker for both physical probability and future operational claims.
-
-Why this outranks alternatives: A scale demonstration is scientifically weak unless at least one independent holdout path is concrete.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/audit_chant_sura_holdout_split.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- Stage or validate a holdout evidence record with dataset/event/sample identifiers, split labels, provenance, and explicit calibration-separation status.
-
-Definition of done:
-
-- The validation/calibration evidence gap report identifies the next blocker after holdout evidence, or records the concrete missing field evidence.
-
-
 ### TB-616: Produce A Balfrin Swiss-Scale Demonstration Summary From Measured Runs
 
 Goal: Summarize the measured Balfrin evidence into a concise demonstration of computational efficiency, performance, and feasibility boundaries.

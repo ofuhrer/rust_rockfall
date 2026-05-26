@@ -1,0 +1,53 @@
+{
+  "type": "FeatureCollection",
+  "name": "chant_sura_2020_holdout_runout_axis_design_review_v1",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "EPSG:2056"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "geometry_id": "chant_sura_2020_holdout_runout_axis_v1",
+        "geometry_role": "runout_axis_line",
+        "dataset_id": "chant_sura_2020_holdout_runout_axis_design_review_v1",
+        "split_label": "held_out_evaluation_subset",
+        "trajectory_ids": "RF16W200r2,RF16W800r2,RF18W200r4,RF18W800r1,RF20e200r2,RF20e200r5",
+        "source_geometry_reference": "validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv",
+        "claim_boundary": "runout-axis proxy only; no deposition polygon or operational map claim"
+      },
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [2793260.85, 1180275.93, 2381.11579072],
+            [2793263.164, 1180271.863, 2374.58979072]
+          ],
+          [
+            [2793260.85, 1180275.93, 2381.26162168],
+            [2793264.083, 1180271.669, 2374.68962168]
+          ],
+          [
+            [2793260.85, 1180275.93, 2381.11579072],
+            [2793264.053, 1180269.554, 2373.52133672]
+          ],
+          [
+            [2793260.85, 1180275.93, 2381.26162168],
+            [2793263.78, 1180271.209, 2374.21962168]
+          ],
+          [
+            [2793260.85, 1180275.93, 2381.13534059],
+            [2793263.07, 1180271.55, 2374.06161959]
+          ],
+          [
+            [2793260.85, 1180275.93, 2381.13533559],
+            [2793262.932, 1180271.719, 2374.19916159]
+          ]
+        ]
+      }
+    }
+  ]
+}

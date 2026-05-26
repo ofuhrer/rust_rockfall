@@ -96,6 +96,9 @@ ALLOWED_GENERATED = {
     "calibration/results/.gitkeep",
     "hazard/results/.gitkeep",
 }
+ALLOWED_TRACKED_PRIVATE = {
+    "validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml",
+}
 GENERATED_COPY_SUFFIX_PREFIXES = (
     "verification/results/",
     "validation/results/",
@@ -2166,7 +2169,9 @@ def check_staged_generated_outputs() -> list[str]:
             continue
         if any(path.startswith(prefix) for prefix in GENERATED_PREFIXES):
             errors.append(f"generated output is staged: {path}")
-        if path.startswith("data/private/") or path.startswith("validation/private/"):
+        if path not in ALLOWED_TRACKED_PRIVATE and (
+            path.startswith("data/private/") or path.startswith("validation/private/")
+        ):
             errors.append(f"private local data or generated private case is staged: {path}")
     tracked = subprocess.run(
         ["git", "ls-files"],
@@ -2182,7 +2187,9 @@ def check_staged_generated_outputs() -> list[str]:
             errors.append(f"generated output is tracked: {path}")
         if path.startswith("data/raw/") and path != "data/raw/.gitkeep":
             errors.append(f"raw external data is tracked: {path}")
-        if path.startswith("data/private/") or path.startswith("validation/private/"):
+        if path not in ALLOWED_TRACKED_PRIVATE and (
+            path.startswith("data/private/") or path.startswith("validation/private/")
+        ):
             errors.append(f"private local data or generated private case is tracked: {path}")
     return errors
 

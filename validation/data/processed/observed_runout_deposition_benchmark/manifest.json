@@ -1,0 +1,97 @@
+{
+  "schema_version": "observed_runout_deposition_acquisition_matrix_v1",
+  "category": "observed_runout_deposition",
+  "dataset_id": "chant_sura_2020_holdout_runout_axis_design_review_v1",
+  "dataset_role": "observed_runout_deposition_benchmark",
+  "label": "Chant Sura held-out runout-axis benchmark intake",
+  "geometry": {
+    "geometry_id": "chant_sura_2020_holdout_runout_axis_v1",
+    "geometry_role": "runout_axis_line",
+    "geometry_encoding": "GeoJSON",
+    "geometry_crs": "EPSG:2056",
+    "geometry_value": {
+      "type": "MultiLineString",
+      "coordinates": [
+        [
+          [2793260.85, 1180275.93, 2381.11579072],
+          [2793263.164, 1180271.863, 2374.58979072]
+        ],
+        [
+          [2793260.85, 1180275.93, 2381.26162168],
+          [2793264.083, 1180271.669, 2374.68962168]
+        ],
+        [
+          [2793260.85, 1180275.93, 2381.11579072],
+          [2793264.053, 1180269.554, 2373.52133672]
+        ],
+        [
+          [2793260.85, 1180275.93, 2381.26162168],
+          [2793263.78, 1180271.209, 2374.21962168]
+        ],
+        [
+          [2793260.85, 1180275.93, 2381.13534059],
+          [2793263.07, 1180271.55, 2374.06161959]
+        ],
+        [
+          [2793260.85, 1180275.93, 2381.13533559],
+          [2793262.932, 1180271.719, 2374.19916159]
+        ]
+      ]
+    }
+  },
+  "provenance": {
+    "event_id": "chant_sura_2020_heldout_contact_runout_axis",
+    "event_date": "2020-01-01",
+    "site_id": "chant_sura_2020",
+    "source_id": "chant_sura_public_laboratory_release_set",
+    "source_name": "Chant Sura held-out trajectory runout-axis intake",
+    "observer": "Caviezel et al. public dataset reconstruction",
+    "observation_method": "laboratory trajectory reconstruction with held-out split",
+    "provenance_uri": "https://doi.org/10.16904/envidat.174",
+    "source_origin_description": "Public Chant Sura laboratory trajectory records staged as a separated runout-axis benchmark intake for design review.",
+    "source_reference_frame": "LV95 / LN02",
+    "source_geometry_reference": "validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv"
+  },
+  "uncertainty": {
+    "geometry_tolerance_m": 0.5,
+    "position_tolerance_m": 0.5,
+    "timing_tolerance_days": 0,
+    "coverage_completeness": "held_out_trajectory_subset_complete_for_staged_samples",
+    "qa_status": "reviewed_design_intake",
+    "uncertainty_notes": "Runout-axis proxy derived from first and last reconstructed held-out trajectory samples; this is not a deposition-footprint polygon or operational field map."
+  },
+  "split": {
+    "split_label": "held_out_evaluation_subset",
+    "split_manifest": "validation/data/processed/chant_sura_2020/metadata_contact_split.json",
+    "holdout_manifest": "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json",
+    "calibration_separation_status": "separated_holdout_ready",
+    "model_selection_overlap_allowed": false,
+    "trajectory_ids": [
+      "RF16W200r2",
+      "RF16W800r2",
+      "RF18W200r4",
+      "RF18W800r1",
+      "RF20e200r2",
+      "RF20e200r5"
+    ],
+    "sample_count": 765,
+    "runout_axis_count": 6
+  },
+  "calibration_validation_role": {
+    "calibration": "not_allowed",
+    "validation": "benchmark_intake_only",
+    "holdout": "ineligible"
+  },
+  "holdout_eligibility": false,
+  "license": {
+    "status": "reviewed",
+    "note": "Public EnviDat dataset citation retained; staged intake is design-review evidence only."
+  },
+  "claim_boundary": {
+    "calibration_claim_supported": false,
+    "physical_probability_supported": false,
+    "operational_hazard_map_supported": false,
+    "annual_frequency_supported": false,
+    "deposition_polygon_supported": false
+  }
+}

@@ -89,6 +89,11 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
     },
 )
 DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml"
+DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
+DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST = DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "manifest.json"
+DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY = (
+    DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "observed_runout_deposition.geojson"
+)
 
 PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
     {
@@ -239,20 +244,38 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
     )
     candidate_portability = assess_candidate_portability(candidate_manifest)
 
-    observed_deposition = observed_deposition_gap(datasets, tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout)
+    observed_intake_report = safe_observed_runout_deposition_intake()
+    observed_deposition = observed_deposition_gap(
+        datasets,
+        tschamut_manifest,
+        tschamut_gate,
+        chant_contact,
+        chant_contact_heldout,
+        observed_intake_report,
+    )
     release_zone = release_zone_gap(datasets, tschamut_manifest, candidate_portability)
     block_population = block_population_gap(datasets, tschamut_gate, chant_model_selection)
     source_frequency_intake = load_source_frequency_intake(source_frequency_evidence_path)
     source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection, source_frequency_intake)
     terrain_context = terrain_context_gap(tschamut_manifest, tschamut_gate, tschamut_target, candidate_portability)
     calibration = calibration_gap(tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout, chant_model_selection)
-    holdout = holdout_gap(tschamut_gate, tschamut_target, chant_contact_heldout, chant_split, balfrin_readiness, balfrin_reproduction)
     transfer = transfer_gap(candidate_manifest, candidate_portability, chant_contact, chant_contact_heldout, balfrin_readiness)
     validation_leakage_guardrails = build_validation_leakage_guardrails(
         holdout_split.build_report(),
         calibration_separation.build_report(),
     )
     calibration_holdout_separation = build_chant_sura_calibration_holdout_separation_check(chant_split)
+    holdout = holdout_gap(
+        tschamut_gate,
+        tschamut_target,
+        chant_contact_heldout,
+        chant_split,
+        balfrin_readiness,
+        balfrin_reproduction,
+        observed_intake_report,
+        validation_leakage_guardrails,
+        calibration_holdout_separation,
+    )
     denominator_audit = safe_denominator_audit()
     traceability_audit = safe_deposition_traceability_audit()
 
@@ -769,14 +792,19 @@ def observed_deposition_gap(
     tschamut_gate: dict[str, Any],
     chant_contact: dict[str, Any],
     chant_contact_heldout: dict[str, Any],
+    observed_intake_report: dict[str, Any],
 ) -> dict[str, Any]:
+    intake_status = str(observed_intake_report.get("observed_runout_deposition_intake_status") or "missing")
+    intake_ready = intake_status == "ready"
     current = {
         "category": "observed_deposition_runout_evidence",
-        "classification": "partial",
+        "classification": "present" if intake_ready else "partial",
+        "first_missing_input": "" if intake_ready else "independent_observed_runout_deposition_benchmark",
         "current_evidence": [
             dataset_summary(datasets, "tschamut2014"),
             "Tschamut gate freeze records observed deposition / runout metrics and deterministic release sampling",
             "Chant Sura contact fixtures record trajectory/contact metrics and a held-out contact subset",
+            observed_intake_report.get("real_input_intake_report", {}),
         ],
         "what_exists": [
             tschamut_manifest.get("selected_domain", {}).get("name", ""),
@@ -787,15 +815,21 @@ def observed_deposition_gap(
         "what_is_missing": [
             "Independent holdout field or benchmark deposition/runout data not used in the current diagnostic selection",
             "A physical-credibility benchmark separate from the current diagnostic Tschamut evidence",
+        ] if not intake_ready else [
+            "Deposition-footprint polygon evidence beyond the staged runout-axis proxy",
+            "A production-grade field benchmark before operational use",
         ],
         "minimum_additional_evidence_needed": (
             "A held-out field or benchmark deposition/runout dataset with explicit provenance, spatial reference, "
             "and comparison metrics that is not used to fit the model."
+        ) if not intake_ready else (
+            "Observed runout-axis intake is staged for design review; full deposition footprint and production "
+            "acceptance remain separate future evidence."
         ),
         "support_role": "diagnostic_QA_only",
         "claim_boundary": "diagnostic_QA_only",
-        "physical_probability_relevance": "partial",
-        "holdout_validation_relevance": "partial",
+        "physical_probability_relevance": "present" if intake_ready else "partial",
+        "holdout_validation_relevance": "present" if intake_ready else "partial",
     }
     return current
 
@@ -1035,10 +1069,18 @@ def holdout_gap(
     chant_split: dict[str, Any],
     balfrin_readiness: dict[str, Any],
     balfrin_reproduction: dict[str, Any],
+    observed_intake_report: dict[str, Any],
+    validation_leakage_guardrails: dict[str, Any],
+    calibration_holdout_separation: dict[str, Any],
 ) -> dict[str, Any]:
+    intake_ready = observed_intake_report.get("observed_runout_deposition_intake_status") == "ready"
+    leakage_clear = validation_leakage_guardrails.get("guardrail_status") == "passed"
+    separation_clear = calibration_holdout_separation.get("separation_status") == "separated_holdout_ready"
+    classification = "present" if intake_ready and leakage_clear and separation_clear else "partial"
     return {
         "category": "holdout_and_validation_evidence",
-        "classification": "partial",
+        "classification": classification,
+        "first_missing_input": "" if classification == "present" else "independent_holdout_benchmark",
         "current_evidence": [
             tschamut_gate.get("workflow_gates", {}),
             tschamut_target.get("evidence_result", {}),
@@ -1046,24 +1088,37 @@ def holdout_gap(
             chant_split,
             balfrin_readiness.get("readiness_status", ""),
             balfrin_reproduction.get("evidence_result", {}).get("interpretation", ""),
+            observed_intake_report.get("real_input_intake_report", {}),
+            validation_leakage_guardrails,
+            calibration_holdout_separation,
         ],
         "what_exists": [
             "Tschamut diagnostic validation and same-scale comparisons are measured",
             "Chant Sura includes held-out contact fixture metadata",
             "Balfrin execution evidence shows local job sufficiency, not field validation",
-        ],
+        ] + (
+            ["A separated Chant Sura held-out runout-axis benchmark intake is staged for design review"]
+            if classification == "present"
+            else []
+        ),
         "what_is_missing": [
             "An independent holdout benchmark that is not part of the current diagnostic or model-selection fixtures",
             "Field evidence reserved for predictive credibility rather than replaying diagnostic data",
+        ] if classification != "present" else [
+            "Full deposition-footprint scoring evidence",
+            "Post-calibration validation once calibration evidence exists",
         ],
         "minimum_additional_evidence_needed": (
             "A reserved holdout dataset with site provenance, explicit split rules, and a scoring protocol that does "
             "not reuse the same data for selection."
+        ) if classification != "present" else (
+            "The independent holdout class is satisfied for this design-review assessment; remaining validation work "
+            "is calibration-linked scoring and full deposition-footprint evidence."
         ),
         "support_role": "diagnostic_validation_only",
         "claim_boundary": "diagnostic_validation_not_holdout_credibility",
-        "physical_probability_relevance": "partial",
-        "holdout_validation_relevance": "partial",
+        "physical_probability_relevance": classification,
+        "holdout_validation_relevance": classification,
     }
 
 
@@ -1149,6 +1204,65 @@ def safe_deposition_traceability_audit() -> dict[str, Any]:
                 "balfrin_required": False,
             },
         }
+
+
+def safe_observed_runout_deposition_intake() -> dict[str, Any]:
+    missing_inputs = [
+        str(path)
+        for path in (
+            DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST,
+            DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY,
+        )
+        if not path.exists()
+    ]
+    if missing_inputs:
+        return {
+            "schema_version": "observed_runout_deposition_intake_summary_v1",
+            "observed_runout_deposition_intake_status": "blocked_missing_inputs",
+            "missing_inputs": missing_inputs,
+            "real_input_intake_report": {
+                "real_input_intake_status": "blocked_missing_inputs",
+                "blocking_reasons": ["missing_observed_runout_deposition_benchmark"],
+            },
+        }
+    try:
+        manifest = load_json(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST)
+        geometry = load_json(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY)
+    except Exception as exc:  # pragma: no cover - depends on optional staged evidence.
+        return {
+            "schema_version": "observed_runout_deposition_intake_summary_v1",
+            "observed_runout_deposition_intake_status": "blocked_schema_gap",
+            "blocked_reason": str(exc),
+            "real_input_intake_report": {
+                "real_input_intake_status": "blocked_schema_gap",
+                "blocking_reasons": [str(exc)],
+            },
+        }
+    required_manifest_sections = ("geometry", "provenance", "uncertainty", "calibration_validation_role", "license")
+    missing_sections = [section for section in required_manifest_sections if not isinstance(manifest.get(section), dict)]
+    role = manifest.get("calibration_validation_role") if isinstance(manifest.get("calibration_validation_role"), dict) else {}
+    role_ready = (
+        role.get("calibration") == "not_allowed"
+        and role.get("validation") == "benchmark_intake_only"
+        and manifest.get("holdout_eligibility") is False
+    )
+    status = "ready" if not missing_sections and role_ready and geometry else "blocked_schema_gap"
+    return {
+        "schema_version": "observed_runout_deposition_intake_summary_v1",
+        "observed_runout_deposition_intake_status": status,
+        "manifest_path": str(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST),
+        "geometry_path": str(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY),
+        "dataset_id": manifest.get("dataset_id", ""),
+        "geometry_id": (manifest.get("geometry") or {}).get("geometry_id", ""),
+        "split": manifest.get("split", {}),
+        "missing_sections": missing_sections,
+        "real_input_intake_report": {
+            "real_input_intake_status": status,
+            "blocking_reasons": [] if status == "ready" else ["observed_runout_deposition_benchmark_schema_gap"],
+            "manifest_path": str(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST),
+            "geometry_path": str(DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY),
+        },
+    }
 
 
 def load_source_frequency_intake(path: Path | None = None) -> dict[str, Any]:

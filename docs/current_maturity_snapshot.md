@@ -102,6 +102,14 @@ physical-probability blocker from source-frequency intake to
 release-probability evidence, while keeping physical and operational products
 deferred.
 
+It also has a staged Chant Sura held-out runout-axis benchmark intake. The
+validation/calibration evidence-gap report now treats observed runout/deposition
+intake and independent holdout evidence as present when the staged benchmark,
+holdout split audit, and calibration-separation preflight pass. The remaining
+physical-probability blockers are release-probability, block-population, and
+calibration evidence; full deposition-footprint and operational acceptance
+remain future work.
+
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
 core inputs are ready; and physical-evidence intake separates observed

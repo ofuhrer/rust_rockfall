@@ -45,6 +45,8 @@ starting context for implementation unless a task explicitly asks for them.
 - `source_frequency_evidence_tb614.md`: TB-614 non-production
   source-frequency design-review evidence and updated physical-probability
   blocker.
+- `holdout_runout_deposition_evidence_tb615.md`: TB-615 staged Chant Sura
+  held-out runout-axis benchmark intake and the remaining scientific blockers.
 - `verification_plan.md`: verification scope and current checked-in
   verification workflow.
 - `dataset_strategy.md`: calibration, validation, pilot, and operational-input

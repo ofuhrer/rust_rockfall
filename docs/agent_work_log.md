@@ -9700,3 +9700,24 @@ scan thousands of lines of completed history.
 - Metrics: source-frequency intake classification `accepted`; source-frequency gap category `present`; physical-probability readiness remains `partial_evidence_missing_critical_inputs`; first blocking evidence class is now `release_probability_model`; failing evidence classes are `release_probability_model`, `block_population_evidence`, `calibration_evidence`, and `independent_holdout_validation`.
 - Boundaries: design-review source-frequency evidence only; no physical-probability product, annual-frequency product, operational product, runtime map change, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-615`
+
+### TB-615: Stage Independent Holdout Runout Or Deposition Evidence
+
+- Date: 2026-05-26
+- Commit: implementation commit to be recorded after commit
+- Objective: stage a calibration-separated held-out runout/deposition benchmark intake so the evidence-gap report can move to the next scientific blocker.
+- Files changed: `validation/data/processed/observed_runout_deposition_benchmark/manifest.json`, `validation/data/processed/observed_runout_deposition_benchmark/observed_runout_deposition.geojson`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/holdout_runout_deposition_evidence_tb615.md`, `docs/current_maturity_snapshot.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Staged a Chant Sura held-out runout-axis benchmark intake from six held-out trajectories with event/sample IDs, split labels, provenance, uncertainty notes, and explicit calibration-separation status.
+  - Made the validation/calibration evidence-gap assessment treat observed runout/deposition and holdout evidence as present when the staged benchmark, holdout split audit, and calibration-separation preflight are all ready.
+  - Updated tests and documentation, then removed TB-615 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/audit_chant_sura_holdout_split.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract tests.test_validation_calibration_evidence_gaps -v`
+- Result/status: implemented_measured
+- Metrics: observed runout/deposition intake status `ready`; observed deposition/runout category `present`; holdout and validation category `present`; physical-probability readiness still `partial_evidence_missing_critical_inputs`; remaining failing evidence classes `release_probability_model`, `block_population_evidence`, and `calibration_evidence`.
+- Boundaries: design-review runout-axis benchmark intake only; no deposition-footprint polygon, calibration result, physical-probability product, annual-frequency product, operational product, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-616`

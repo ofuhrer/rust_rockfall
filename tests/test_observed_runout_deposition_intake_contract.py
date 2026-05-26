@@ -85,7 +85,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         }
         self.assertTrue(expected_keys.issubset(report.keys()))
         self.assertEqual(report["schema_version"], helper.SCHEMA_VERSION)
-        self.assertEqual(report["observed_runout_deposition_intake_status"], "blocked_missing_inputs")
+        self.assertEqual(report["observed_runout_deposition_intake_status"], "ready")
 
         contract = report["benchmark_intake_contract"]
         self.assertEqual(contract["geometry"]["required_crs"], "EPSG:2056")
@@ -98,18 +98,17 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("runout_endpoint_error_m", contract["objective_function_placeholders"]["required_fields"])
         self.assertEqual(contract["objective_function_placeholders"]["objective_status"], "placeholder_only")
         self.assertEqual(report["physical_credibility_gap_update"]["current_physical_credibility_status"], "not_established")
-        self.assertEqual(report["acquisition_review_report"]["review_status"], "rejected")
+        self.assertEqual(report["acquisition_review_report"]["review_status"], "accepted")
         self.assertEqual(report["acquisition_review_report"]["blocked_reason"], report["real_input_intake_report"]["blocked_reason"])
-        self.assertEqual(report["acquisition_review_report"]["geometry"]["status"], "blocked_missing_inputs")
-        self.assertEqual(report["acquisition_review_report"]["provenance"]["status"], "blocked_missing_inputs")
-        self.assertEqual(report["acquisition_review_report"]["uncertainty"]["status"], "blocked_missing_inputs")
-        self.assertEqual(report["acquisition_review_report"]["role"]["status"], "blocked_missing_inputs")
-        self.assertEqual(report["acquisition_review_report"]["license"]["status_classification"], "blocked_missing_inputs")
+        self.assertEqual(report["acquisition_review_report"]["geometry"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["provenance"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["uncertainty"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["role"]["status"], "ready")
+        self.assertEqual(report["acquisition_review_report"]["license"]["status_classification"], "reviewable")
         self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["calibration_claims_allowed"])
         self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["physical_probability_claims_allowed"])
-        self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "blocked_missing_inputs")
-        self.assertIn("missing_manifest", report["real_input_intake_report"]["blocking_reasons"])
-        self.assertIn("missing_geometry", report["real_input_intake_report"]["blocking_reasons"])
+        self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "ready")
+        self.assertEqual(report["real_input_intake_report"]["blocking_reasons"], [])
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_status"], "fixture_backed")
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
         self.assertEqual(
@@ -196,7 +195,20 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         )
 
     def test_blocked_current_state_and_boundaries_are_explicit(self) -> None:
-        report = helper.build_report()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            benchmark_root = tmp_path / "validation/data/processed/observed_runout_deposition_benchmark"
+            manifest_path = benchmark_root / "manifest.json"
+            geometry_path = benchmark_root / "observed_runout_deposition.geojson"
+            calibration_root = tmp_path / "validation/data/processed/observed_runout_deposition_calibration"
+            with patch.object(helper, "EXPECTED_BENCHMARK_ROOT", benchmark_root), patch.object(
+                helper, "EXPECTED_BENCHMARK_MANIFEST", manifest_path
+            ), patch.object(
+                helper, "EXPECTED_BENCHMARK_GEOMETRY", geometry_path
+            ), patch.object(
+                helper, "EXPECTED_BENCHMARK_INPUTS", (manifest_path, geometry_path)
+            ), patch.object(helper, "EXPECTED_CALIBRATION_ROOT", calibration_root):
+                report = helper.build_report()
 
         current_state = report["current_repo_state"]
         self.assertEqual(current_state["benchmark_intake_readiness_status"], "blocked_missing_inputs")
@@ -209,9 +221,9 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertEqual(report["dataset_role_classification"][3]["status"], "missing")
         self.assertEqual(report["dataset_role_classification"][4]["status"], "present")
         self.assertEqual(report["dataset_role_classification"][5]["status"], "present")
-        self.assertIn(str(helper.EXPECTED_BENCHMARK_MANIFEST), current_state["missing_inputs"])
-        self.assertIn(str(helper.EXPECTED_BENCHMARK_GEOMETRY), current_state["missing_inputs"])
-        self.assertIn(str(helper.EXPECTED_CALIBRATION_ROOT), current_state["calibration_missing_inputs"])
+        self.assertIn(str(manifest_path), current_state["missing_inputs"])
+        self.assertIn(str(geometry_path), current_state["missing_inputs"])
+        self.assertIn(str(calibration_root), current_state["calibration_missing_inputs"])
         self.assertTrue(
             any(
                 item["classification"] == "diagnostic_only" and item["status"] == "present"
@@ -258,8 +270,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "diagnostic_only_candidate_not_independent_benchmark_intake",
             candidate_report["licensing_provenance_blockers"],
         )
-        self.assertIn("missing_staged_benchmark_manifest", candidate_report["licensing_provenance_blockers"])
-        self.assertIn("missing_staged_benchmark_geometry", candidate_report["licensing_provenance_blockers"])
+        self.assertNotIn("missing_staged_benchmark_manifest", candidate_report["licensing_provenance_blockers"])
+        self.assertNotIn("missing_staged_benchmark_geometry", candidate_report["licensing_provenance_blockers"])
 
     def test_benchmark_ready_without_calibration_is_reported_as_ready(self) -> None:
         package = self._make_real_input_package()
@@ -394,12 +406,12 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
     def test_text_output_mentions_placeholder_and_split_readiness(self) -> None:
         text = helper.render_text_report(helper.build_report())
 
-        self.assertIn("observed_runout_deposition_intake_status: blocked_missing_inputs", text)
+        self.assertIn("observed_runout_deposition_intake_status: ready", text)
         self.assertIn("benchmark_intake_manifest:", text)
         self.assertIn("real_input_intake_report:", text)
-        self.assertIn("real_input_intake_status: blocked_missing_inputs", text)
+        self.assertIn("real_input_intake_status: ready", text)
         self.assertIn("acquisition_review_report:", text)
-        self.assertIn("review_status: rejected", text)
+        self.assertIn("review_status: accepted", text)
         self.assertIn("fixture_acceptance_smoke:", text)
         self.assertIn("intake_acceptance_smoke_summary:", text)
         self.assertIn("accepted_evidence_package.status: ready", text)
@@ -411,9 +423,9 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("dataset_role_classification:", text)
         self.assertIn("geometry.geometry_role=runout_axis_line -> observed_runout_deposition", text)
         self.assertIn("objective_function_placeholders.runout_endpoint_error_m -> calibration_data_and_objective_functions", text)
-        self.assertIn("benchmark_intake_readiness_status: blocked_missing_inputs", text)
+        self.assertIn("benchmark_intake_readiness_status: ready", text)
         self.assertIn("calibration_readiness_status: blocked_missing_inputs", text)
-        self.assertIn("benchmark_intake_dataset_status: absent", text)
+        self.assertIn("benchmark_intake_dataset_status: present", text)
         self.assertIn("physical_evidence_status: not_established", text)
         self.assertIn("validation_evidence_gap: Fixture-backed acceptance smoke is not validation evidence", text)
         self.assertIn("recommendation: blocked_license_or_provenance", text)
@@ -575,8 +587,8 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
                     "holdout_data",
                 ],
             )
-            self.assertEqual(dataset_inventory["dataset_roles"][0]["status"], "missing")
-            self.assertEqual(dataset_inventory["dataset_roles"][1]["status"], "missing")
+            self.assertEqual(dataset_inventory["dataset_roles"][0]["status"], "present")
+            self.assertEqual(dataset_inventory["dataset_roles"][1]["status"], "present")
             self.assertEqual(dataset_inventory["dataset_roles"][2]["status"], "missing")
             self.assertEqual(dataset_inventory["dataset_roles"][3]["status"], "missing")
             self.assertEqual(dataset_inventory["dataset_roles"][4]["status"], "present")

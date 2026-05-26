@@ -140,13 +140,13 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
     def test_diagnostic_vs_calibration_and_holdout_distinction(self) -> None:
         report = assessment.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_gap_categories"]}
-        self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "partial")
+        self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "present")
         self.assertEqual(
             categories["release_zone_evidence"]["first_missing_input"],
             "site_specific_release_zone_geometry_package",
         )
         self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
-        self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "partial")
+        self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
         self.assertEqual(
             categories["block_size_and_block_population_evidence"]["first_missing_input"],
             "block_size_survey_or_photogrammetry_census",
@@ -163,12 +163,12 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         )
         self.assertTrue(
             any(
-                "independent holdout benchmark" in item.lower()
+                "deposition-footprint" in item.lower()
                 for item in categories["holdout_and_validation_evidence"]["what_is_missing"]
             )
         )
         self.assertIn(
-            "not used to fit the model",
+            "runout-axis intake is staged",
             categories["observed_deposition_runout_evidence"]["minimum_additional_evidence_needed"].lower(),
         )
 
@@ -299,9 +299,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         tasks = report["next_concrete_scientific_tasks"]
 
-        self.assertEqual(tasks[0]["task_id"], "stage_independent_holdout_deposition_runout_evidence")
-        self.assertEqual(tasks[1]["task_id"], "stage_block_population_survey")
-        self.assertEqual(tasks[2]["task_id"], "define_calibration_dataset_and_objective")
+        self.assertEqual(tasks[0]["task_id"], "stage_block_population_survey")
+        self.assertEqual(tasks[1]["task_id"], "define_calibration_dataset_and_objective")
+        self.assertEqual(tasks[2]["task_id"], "stage_second_site_public_geodata_inputs")
+        self.assertNotIn("stage_independent_holdout_deposition_runout_evidence", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
         self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
         self.assertIn("scientific evidence", tasks[0]["why_now"])
