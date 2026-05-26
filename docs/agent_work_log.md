@@ -9680,3 +9680,23 @@ scan thousands of lines of completed history.
 - Metrics: measured diagnostic series now spans 16, 24, repeated 24, 32, 40, and 100 zones. The 100-zone ceiling is job `4372447` with reducer wall time `13.55` s, `/usr/bin/time` MaxRSS `34.16 MB`, `304` output files, `121,172` output bytes, `61,119` manifest bytes, and `448,376` run-root bytes.
 - Boundaries: diagnostic reducer-pressure series only; no hazard-throughput at 100 zones, Swiss-wide execution, distributed execution, non-`postproc` behavior, operational claim, annual-frequency claim, physical-probability claim, risk, exposure, or vulnerability claim.
 - Next task: `TB-614`
+
+### TB-614: Stage Source-Frequency Evidence For The Physical-Probability Blocker
+
+- Date: 2026-05-26
+- Commit: `a57d3b6`
+- Objective: stage source-frequency evidence for the first physical-probability blocker without promoting runtime products or physical claims.
+- Files changed: `validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/source_frequency_evidence_tb614.md`, `docs/current_maturity_snapshot.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a Tschamut source-frequency record with explicit `accepted_for_design_review`, `design_review_only`, `prototype_authorized: false`, a 50-year planning window, broad uncertainty, source-zone geometry hash, provenance, and claim boundaries.
+  - Made the validation/calibration evidence-gap report consume this record by default and skip already-present source-frequency staging in the next scientific-task list.
+  - Updated tests and documented the changed first physical-probability blocker.
+  - Removed TB-614 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/validate_source_frequency_evidence.py validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps tests.test_source_frequency_evidence -v`
+- Result/status: implemented_measured
+- Metrics: source-frequency intake classification `accepted`; source-frequency gap category `present`; physical-probability readiness remains `partial_evidence_missing_critical_inputs`; first blocking evidence class is now `release_probability_model`; failing evidence classes are `release_probability_model`, `block_population_evidence`, `calibration_evidence`, and `independent_holdout_validation`.
+- Boundaries: design-review source-frequency evidence only; no physical-probability product, annual-frequency product, operational product, runtime map change, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-615`
