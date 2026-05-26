@@ -249,6 +249,21 @@ source-frequency row of `physical_probability_readiness_check`; release
 probability, block-population, calibration, and holdout evidence remain separate
 requirements.
 
+Calibration and holdout evidence must also pass an explicit separation check
+before stronger scientific conclusions can be considered. The
+`calibration_holdout_separation_check` reports:
+
+- `blocked_missing_holdout_or_calibration_record` when calibration, validation,
+  or an explicit `holdout_validation` role is absent.
+- `blocked_calibration_validation_overlap` when calibration and validation
+  evidence share the same dataset, event, or sample identifier; site-only reuse
+  is allowed only for explicitly labelled holdout-validation records.
+- `separated_holdout_ready` only when calibration records and explicitly
+  labelled holdout-validation records are present and disjoint.
+
+This is a boundary check only. It does not prove calibration quality, field
+validity, physical probability, or operational readiness.
+
 Cases can also opt into unweighted trajectory-level probability standard-error
 rasters:
 

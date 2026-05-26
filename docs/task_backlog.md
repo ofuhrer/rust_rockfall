@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-590: Add Calibration And Holdout Separation Checks
-
-Goal: Require explicit separation between calibration evidence and holdout validation evidence before stronger scientific conclusions can pass.
-
-Capability gap reduced: Prevents overfitting and makes validation maturity auditable rather than narrative.
-
-Why this outranks alternatives: Physical-probability and operational products need independent validation evidence, not just tuned parameters or successful runs.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/validation_data_schema.md`
-- `docs/current_maturity_snapshot.md`
-- `tests/test_public_real_site_conditional_pilot_run.py`
-
-Deliverables:
-
-- Add a check that rejects stronger scientific conclusions when calibration and validation evidence share the same event/site/sample without an explicit holdout label.
-- Add tests for missing holdout, overlapping holdout, and separated holdout evidence.
-- Report the next required acquisition step when holdout evidence is absent.
-
-Definition of done:
-
-- Focused tests pass and the scientific-gap assessment can classify calibration/holdout status without manual interpretation.
-
-
 ### TB-591: Define Operational Readiness Acceptance Criteria
 
 Goal: Convert the operational-readiness target into a concrete readiness checklist and readiness check.

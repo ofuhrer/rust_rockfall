@@ -74,6 +74,11 @@ execution, or Balfrin authorization. After the 24-zone diagnostic scale push,
 explicit and ranks the next concrete scientific work as independent holdout
 deposition/runout evidence, source-frequency evidence, block-population
 evidence, calibration-design evidence, and second-site public-geodata staging.
+It also reports source-frequency intake status and an explicit
+calibration/holdout separation check, so stronger scientific conclusions fail
+closed when holdout labels are missing or calibration and validation evidence
+share a dataset, event, or sample identifier. Site-only reuse is allowed only
+for explicitly labelled holdout-validation records.
 
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real

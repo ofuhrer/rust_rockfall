@@ -252,6 +252,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         holdout_split.build_report(),
         calibration_separation.build_report(),
     )
+    calibration_holdout_separation = build_chant_sura_calibration_holdout_separation_check(chant_split)
     denominator_audit = safe_denominator_audit()
     traceability_audit = safe_deposition_traceability_audit()
 
@@ -354,6 +355,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         "evidence_gap_categories": evidence_gap_categories,
         "claim_boundary_matrix": claim_boundary_matrix,
         "validation_leakage_guardrails": validation_leakage_guardrails,
+        "calibration_holdout_separation_check": calibration_holdout_separation,
         "next_concrete_scientific_tasks": next_concrete_scientific_tasks(evidence_gap_categories),
         "product_layer_claim_boundaries": product_layer_claim_boundaries(),
         "site_reference_evidence": site_reference_evidence(
@@ -521,6 +523,121 @@ def build_validation_leakage_guardrails(
             "physical_probability_claims_allowed": False,
         },
     }
+
+
+def build_chant_sura_calibration_holdout_separation_check(chant_split: dict[str, Any]) -> dict[str, Any]:
+    model_selection = dict(chant_split.get("model_selection_subset") or {})
+    heldout = dict(chant_split.get("held_out_evaluation_subset") or {})
+    records = []
+    for trajectory_id in model_selection.get("trajectory_ids") or []:
+        records.append(
+            {
+                "dataset_id": str(trajectory_id),
+                "site_id": "chant_sura",
+                "event_id": str(trajectory_id).split("_seg", 1)[0],
+                "sample_id": str(trajectory_id),
+                "role": "calibration_candidate",
+            }
+        )
+    for trajectory_id in heldout.get("trajectory_ids") or []:
+        records.append(
+            {
+                "dataset_id": str(trajectory_id),
+                "site_id": "chant_sura",
+                "event_id": str(trajectory_id).split("_seg", 1)[0],
+                "sample_id": str(trajectory_id),
+                "role": "holdout_validation",
+            }
+        )
+    return build_calibration_holdout_separation_check(records)
+
+
+def build_calibration_holdout_separation_check(records: list[dict[str, Any]]) -> dict[str, Any]:
+    calibration_records = [
+        record for record in records if str(record.get("role")) in {"calibration", "calibration_candidate"}
+    ]
+    validation_records = [
+        record for record in records if str(record.get("role")) in {"validation", "holdout_validation"}
+    ]
+    holdout_records = [record for record in validation_records if str(record.get("role")) == "holdout_validation"]
+
+    missing_reasons: list[str] = []
+    if not calibration_records:
+        missing_reasons.append("missing_calibration_dataset_record")
+    if not validation_records:
+        missing_reasons.append("missing_validation_dataset_record")
+    if not holdout_records:
+        missing_reasons.append("missing_explicit_holdout_validation_label")
+
+    overlaps = find_calibration_validation_overlaps(calibration_records, validation_records)
+    if overlaps:
+        status = "blocked_calibration_validation_overlap"
+    elif missing_reasons:
+        status = "blocked_missing_holdout_or_calibration_record"
+    else:
+        status = "separated_holdout_ready"
+
+    return {
+        "schema_version": "calibration_holdout_separation_check_v1",
+        "separation_status": status,
+        "stronger_scientific_conclusions_allowed": status == "separated_holdout_ready",
+        "calibration_record_count": len(calibration_records),
+        "validation_record_count": len(validation_records),
+        "holdout_record_count": len(holdout_records),
+        "missing_reasons": missing_reasons,
+        "overlap_count": len(overlaps),
+        "overlaps": overlaps,
+        "next_required_acquisition_step": calibration_holdout_next_step(status, missing_reasons, overlaps),
+        "claim_boundary": (
+            "This check only verifies separation. It does not prove calibration quality, holdout adequacy, "
+            "physical probability, operational readiness, or annual frequency."
+        ),
+    }
+
+
+def find_calibration_validation_overlaps(
+    calibration_records: list[dict[str, Any]],
+    validation_records: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    overlaps: list[dict[str, str]] = []
+    for calibration_record in calibration_records:
+        for validation_record in validation_records:
+            overlap_keys = ("dataset_id", "event_id", "sample_id")
+            if str(validation_record.get("role")) != "holdout_validation":
+                overlap_keys = ("dataset_id", "site_id", "event_id", "sample_id")
+            shared_keys = [
+                key
+                for key in overlap_keys
+                if calibration_record.get(key) and calibration_record.get(key) == validation_record.get(key)
+            ]
+            if shared_keys:
+                overlaps.append(
+                    {
+                        "calibration_dataset_id": str(calibration_record.get("dataset_id") or ""),
+                        "validation_dataset_id": str(validation_record.get("dataset_id") or ""),
+                        "shared_keys": ",".join(shared_keys),
+                        "validation_role": str(validation_record.get("role") or ""),
+                    }
+                )
+    return overlaps
+
+
+def calibration_holdout_next_step(
+    status: str,
+    missing_reasons: list[str],
+    overlaps: list[dict[str, str]],
+) -> str:
+    if status == "separated_holdout_ready":
+        return "Use the separated holdout labels as a boundary check, then acquire stronger field/runout evidence if scientific conclusions need to increase."
+    if overlaps:
+        first = overlaps[0]
+        return (
+            "Replace or relabel validation evidence so it does not share "
+            f"{first['shared_keys']} with calibration evidence before making stronger conclusions."
+        )
+    if "missing_explicit_holdout_validation_label" in missing_reasons:
+        return "Stage an explicit holdout_validation evidence record before treating validation evidence as independent."
+    return "Stage calibration and validation evidence records with explicit roles and no shared event/site/sample identifiers."
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -1506,6 +1623,12 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"  - {item['guardrail']}: {item['status']} ({item['dataset_or_parameter_source']})")
     else:
         lines.append("- failing_checks: none")
+    lines.append("")
+    separation = report["calibration_holdout_separation_check"]
+    lines.append("calibration_holdout_separation_check:")
+    lines.append(f"- separation_status: {separation['separation_status']}")
+    lines.append(f"- overlap_count: {separation['overlap_count']}")
+    lines.append(f"- next_required_acquisition_step: {separation['next_required_acquisition_step']}")
     lines.append("")
     lines.append("next_concrete_scientific_tasks:")
     for item in report.get("next_concrete_scientific_tasks", []):

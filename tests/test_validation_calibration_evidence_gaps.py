@@ -25,6 +25,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "evidence_gap_categories",
             "claim_boundary_matrix",
             "validation_leakage_guardrails",
+            "calibration_holdout_separation_check",
             "next_concrete_scientific_tasks",
             "product_layer_claim_boundaries",
             "site_reference_evidence",
@@ -49,6 +50,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         )
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
         self.assertEqual(report["source_frequency_intake"]["intake_classification"], "missing")
+        self.assertEqual(
+            report["calibration_holdout_separation_check"]["separation_status"],
+            "separated_holdout_ready",
+        )
         self.assertTrue(report["validation_leakage_guardrails"]["interpretation_allowed"])
         self.assertEqual(report["validation_leakage_guardrails"]["failing_checks"], [])
         self.assertFalse(
@@ -196,6 +201,80 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         )
         self.assertIn("audit_chant_sura_holdout_split.py", guardrails["next_local_recovery_command"])
 
+    def test_calibration_holdout_check_reports_missing_holdout(self) -> None:
+        check = assessment.build_calibration_holdout_separation_check(
+            [
+                {
+                    "dataset_id": "calibration_a",
+                    "site_id": "site_a",
+                    "event_id": "event_a",
+                    "sample_id": "sample_a",
+                    "role": "calibration",
+                },
+                {
+                    "dataset_id": "validation_a",
+                    "site_id": "site_b",
+                    "event_id": "event_b",
+                    "sample_id": "sample_b",
+                    "role": "validation",
+                },
+            ]
+        )
+
+        self.assertEqual(check["separation_status"], "blocked_missing_holdout_or_calibration_record")
+        self.assertIn("missing_explicit_holdout_validation_label", check["missing_reasons"])
+        self.assertIn("holdout_validation", check["next_required_acquisition_step"])
+
+    def test_calibration_holdout_check_rejects_overlapping_holdout(self) -> None:
+        check = assessment.build_calibration_holdout_separation_check(
+            [
+                {
+                    "dataset_id": "shared_dataset",
+                    "site_id": "site_a",
+                    "event_id": "event_a",
+                    "sample_id": "sample_a",
+                    "role": "calibration",
+                },
+                {
+                    "dataset_id": "holdout_a",
+                    "site_id": "site_a",
+                    "event_id": "event_a",
+                    "sample_id": "sample_a",
+                    "role": "holdout_validation",
+                },
+            ]
+        )
+
+        self.assertEqual(check["separation_status"], "blocked_calibration_validation_overlap")
+        self.assertEqual(check["overlap_count"], 1)
+        self.assertIn("event_id", check["overlaps"][0]["shared_keys"])
+        self.assertIn("sample_id", check["overlaps"][0]["shared_keys"])
+        self.assertFalse(check["stronger_scientific_conclusions_allowed"])
+
+    def test_calibration_holdout_check_accepts_separated_holdout(self) -> None:
+        check = assessment.build_calibration_holdout_separation_check(
+            [
+                {
+                    "dataset_id": "calibration_a",
+                    "site_id": "site_a",
+                    "event_id": "event_a",
+                    "sample_id": "sample_a",
+                    "role": "calibration",
+                },
+                {
+                    "dataset_id": "holdout_b",
+                    "site_id": "site_b",
+                    "event_id": "event_b",
+                    "sample_id": "sample_b",
+                    "role": "holdout_validation",
+                },
+            ]
+        )
+
+        self.assertEqual(check["separation_status"], "separated_holdout_ready")
+        self.assertEqual(check["overlap_count"], 0)
+        self.assertTrue(check["stronger_scientific_conclusions_allowed"])
+
     def test_missing_evidence_is_not_inferred_as_present(self) -> None:
         report = assessment.build_report()
         site_map = {entry["site"]: entry for entry in report["site_reference_evidence"]}
@@ -211,6 +290,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertIn("physical_probability_claims_allowed: false", text)
         self.assertIn("source_frequency_intake: missing", text)
         self.assertIn("validation_leakage_guardrails:", text)
+        self.assertIn("calibration_holdout_separation_check:", text)
         self.assertIn("guardrail_status: passed", text)
         self.assertIn("failing_checks: none", text)
         self.assertIn("post_diagnostic_scale_context:", text)
