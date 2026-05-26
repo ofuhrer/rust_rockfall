@@ -368,8 +368,8 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
 
         self.assertEqual(report["planning_case_summary"]["case_count"], 7)
         self.assertEqual(report["planning_case_summary"]["next_probe"], ["10_zone"])
-        self.assertEqual(report["planning_case_summary"]["measured_diagnostic"], ["16_zone", "24_zone", "32_zone"])
-        self.assertEqual(report["planning_case_summary"]["defer"], ["100_zone"])
+        self.assertEqual(report["planning_case_summary"]["measured_diagnostic"], ["16_zone", "24_zone", "32_zone", "100_zone"])
+        self.assertEqual(report["planning_case_summary"]["defer"], [])
         self.assertEqual(report["planning_case_summary"]["no_go"], ["regional", "swiss_wide"])
         self.assertEqual(
             [case["case_id"] for case in report["planning_cases"]],
@@ -391,8 +391,9 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(twenty_four_zone_case["blocker_category"], "queue_policy")
         self.assertEqual(thirty_two_zone_case["planning_decision"], "measured_diagnostic")
         self.assertEqual(thirty_two_zone_case["evidence_class"], "measured_diagnostic_postproc")
-        self.assertEqual(hundred_zone_case["planning_decision"], "defer")
-        self.assertEqual(hundred_zone_case["planning_labels"]["defer"], "defer_scale_up_authorized_false")
+        self.assertEqual(hundred_zone_case["planning_decision"], "measured_diagnostic")
+        self.assertEqual(hundred_zone_case["evidence_class"], "measured_diagnostic_postproc")
+        self.assertEqual(hundred_zone_case["blocker_category"], "scientific_validation_and_hazard_throughput")
         self.assertEqual(regional_case["planning_decision"], "no_go")
         self.assertEqual(regional_case["planning_labels"]["no_go"], "no_go_extrapolated_beyond_measured_evidence")
         self.assertEqual(swiss_wide_case["planning_decision"], "no_go")
@@ -404,7 +405,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("planning_cases:", text)
         self.assertIn("case_id: 10_zone", text)
         self.assertIn("planning_decision: next_probe", text)
-        self.assertIn("measured_diagnostic: ['16_zone', '24_zone', '32_zone']", text)
+        self.assertIn("measured_diagnostic: ['16_zone', '24_zone', '32_zone', '100_zone']", text)
         self.assertIn("scheduler_practicality_bottleneck: scheduler_practicality_requires_authorization", text)
 
     def test_24_zone_diagnostic_support_is_separate_from_hazard_projection(self) -> None:

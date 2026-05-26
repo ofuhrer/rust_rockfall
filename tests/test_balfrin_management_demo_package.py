@@ -54,7 +54,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["claim_boundary_section"]["status"], "guarded")
         self.assertEqual(report["scaling_section"]["status"], "measured")
         self.assertEqual(report["diagnostic_performance_section"]["status"], "measured")
-        self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["job_id"], "4368588")
+        self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["job_id"], "4372447")
+        self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["release_zone_count"], 100)
         self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["status"], "measured_repeatability_pair")
         self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["bounds"]["reducer_wall_time_seconds"]["spread"], 0.0)
         self.assertEqual(report["physical_credibility_section"]["status"], "measured_diagnostic_only")
@@ -79,9 +80,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             report["swiss_scale_feasibility_projection_section"]["top_blockers"],
             [
                 "scientific_evidence",
-                "queue_policy",
-                "reducer_pressure",
                 "hazard_throughput",
+                "reducer_pressure",
                 "output_bytes",
             ],
         )
@@ -97,7 +97,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
         self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
         self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
-        self.assertIn("24-zone is measured as repeated diagnostic postproc evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("100-zone is measured diagnostic postproc reducer-pressure evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
         self.assertIn("scientific evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
         self.assertIn("adjacent-candidate review bundle", report["failed_closed_section"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
@@ -186,7 +186,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         diagnostic_row = next(row for row in matrix["rows"] if row["gate"] == "diagnostic_performance_repeatability")
         self.assertEqual(diagnostic_row["status"], "measured")
         self.assertEqual(diagnostic_row["gate_status"], "measured_repeatability_pair")
-        self.assertEqual(diagnostic_row["current_evidence"]["latest_diagnostic"]["job_id"], "4368588")
+        self.assertEqual(diagnostic_row["current_evidence"]["latest_diagnostic"]["job_id"], "4372447")
         self.assertEqual(
             diagnostic_row["current_evidence"]["repeatability_pair"]["bounds"]["output_bytes"]["spread"],
             0,

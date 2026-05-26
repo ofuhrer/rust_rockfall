@@ -1124,12 +1124,16 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
     release_zone_count = evidence.get("release_zone_count")
-    next_diagnostic_release_zone_count = release_zone_count + 8 if isinstance(release_zone_count, int) else None
+    next_diagnostic_release_zone_count = (
+        release_zone_count + 8
+        if isinstance(release_zone_count, int) and release_zone_count < 100
+        else None
+    )
     next_reason = (
         f"The simplified Balfrin diagnostic runner produced measured {release_zone_count}-zone reducer-pressure evidence; "
         f"the next step is a {next_diagnostic_release_zone_count}-zone diagnostic run with fixed reducer fan-out before treating this as anything beyond diagnostic postproc evidence."
         if next_diagnostic_release_zone_count
-        else "The simplified Balfrin diagnostic runner produced measured reducer-pressure evidence; collect the latest run record before planning another diagnostic step."
+        else "The simplified Balfrin diagnostic runner produced measured reducer-pressure evidence through the current 100-zone planning case; the next blocker is hazard-throughput/scientific validation rather than another diagnostic size by default."
     )
     return {
         "tier_id": f"diagnostic_{release_zone_count}_zone_reducer_pressure",
@@ -1159,9 +1163,13 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
         "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
         "next_recommended_action": f"run_balfrin_diagnostic_{next_diagnostic_release_zone_count}_zone"
         if next_diagnostic_release_zone_count
-        else "collect_latest_diagnostic_run_record",
+        else "promote_diagnostic_series_then_measure_hazard_throughput_or_scientific_validation",
         "next_recommended_action_reason": next_reason,
-        "next_blocker_category": "next_diagnostic_size_not_measured",
+        "next_blocker_category": (
+            "next_diagnostic_size_not_measured"
+            if next_diagnostic_release_zone_count
+            else "scientific_validation_and_hazard_throughput"
+        ),
         "blocker": None,
         "current_blocker": None,
         "summary": evidence.get("summary"),
@@ -1615,12 +1623,17 @@ def build_report() -> dict[str, Any]:
             else "10-zone single-AOI planning class under the current single-node/postproc evidence boundary"
         ),
         "first_bottleneck": (
-            "scientific_evidence_then_queue_policy_for_larger_diagnostics"
+            "scientific_evidence_and_hazard_throughput_after_measured_100_zone_diagnostic"
+            if diagnostic_ceiling.get("simultaneous_release_zone_batch_max") == 100
+            else "scientific_evidence_then_queue_policy_for_larger_diagnostics"
             if diagnostic_ceiling.get("simultaneous_release_zone_batch_max")
             else "reducer_pressure_and_replay_metadata_growth"
         ),
         "planning_precondition": "scenario_cardinality_and_manifest_size_must_stay_within_compact_batch_caps",
         "next_measurable_step": (
+            "promote the measured diagnostic series and measure either hazard-throughput scaling or scientific validation evidence; keep regional, Swiss-wide, distributed, operational, and physical-probability claims separate"
+            if diagnostic_ceiling.get("simultaneous_release_zone_batch_max") == 100
+            else
             f"run a {diagnostic_ceiling.get('next_diagnostic_release_zone_count')}-zone diagnostic on postproc if queue policy remains favorable; "
             "keep regional, Swiss-wide, distributed, operational, and physical-probability claims separate"
             if diagnostic_ceiling.get("next_diagnostic_release_zone_count")
@@ -1649,15 +1662,40 @@ def build_report() -> dict[str, Any]:
                 "evidence": "completed diagnostic run record",
                 "next_blocker": "queue_policy",
             },
+            "40_zone": {
+                "class": (
+                    "measured_diagnostic_postproc"
+                    if (diagnostic_ceiling.get("simultaneous_release_zone_batch_max") or 0) >= 40
+                    else "waiting_for_diagnostic_run_record"
+                ),
+                "evidence": (
+                    "completed diagnostic run record"
+                    if (diagnostic_ceiling.get("simultaneous_release_zone_batch_max") or 0) >= 40
+                    else "not in current run-record series"
+                ),
+                "next_blocker": "queue_policy",
+            },
             "hazard_throughput": {
                 "class": "measured_hazard_throughput_postproc",
                 "evidence": "completed bounded hazard-throughput run record",
                 "next_blocker": "scientific_validation_and_distributed_semantics",
             },
             "100_zone": {
-                "class": "projection_only_deferred",
-                "evidence": "extrapolated from diagnostic and older output-pressure evidence",
-                "next_blocker": "reducer_pressure",
+                "class": (
+                    "measured_diagnostic_postproc"
+                    if (diagnostic_ceiling.get("simultaneous_release_zone_batch_max") or 0) >= 100
+                    else "projection_only_deferred"
+                ),
+                "evidence": (
+                    "completed diagnostic run record"
+                    if (diagnostic_ceiling.get("simultaneous_release_zone_batch_max") or 0) >= 100
+                    else "extrapolated from diagnostic and older output-pressure evidence"
+                ),
+                "next_blocker": (
+                    "scientific_validation_and_hazard_throughput"
+                    if (diagnostic_ceiling.get("simultaneous_release_zone_batch_max") or 0) >= 100
+                    else "reducer_pressure"
+                ),
             },
             "regional": {
                 "class": "deferred_multi_aoi",

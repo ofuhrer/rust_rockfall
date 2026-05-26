@@ -508,6 +508,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             record_16 = tmp / "run_record_16.json"
             record_24 = tmp / "run_record_24.json"
             record_32 = tmp / "run_record_32.json"
+            record_40 = tmp / "run_record_40.json"
+            record_100 = tmp / "run_record_100.json"
             record_16.write_text(
                 json.dumps(
                     {
@@ -592,29 +594,89 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            record_40.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "run_id": "diagnostic_40_zone_tb601_20260526",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_40_zone_tb601_20260526",
+                        "git_head": "9800260",
+                        "job_id": "4372257",
+                        "terminal_state": "COMPLETED",
+                        "diagnostic_shape": {"release_zone_count": 40},
+                        "collection": {
+                            "status": "complete",
+                            "time_verbose": {"elapsed": "0:01.40", "max_rss_mb": 33.902},
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 40,
+                                "output_file_count": 124,
+                                "output_byte_count": 51493,
+                                "manifest_size_bytes": 28818,
+                                "root_file_count": 129,
+                                "reducer_wall_time_seconds": 6.35,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            record_100.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "run_id": "diagnostic_100_zone_tb611_20260526",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526",
+                        "git_head": "4b335c0",
+                        "job_id": "4372447",
+                        "terminal_state": "COMPLETED",
+                        "diagnostic_shape": {"release_zone_count": 100},
+                        "collection": {
+                            "status": "complete",
+                            "time_verbose": {"elapsed": "0:01.26", "max_rss_mb": 34.16},
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 100,
+                                "output_file_count": 304,
+                                "output_byte_count": 121172,
+                                "manifest_size_bytes": 61119,
+                                "root_file_count": 309,
+                                "reducer_wall_time_seconds": 13.55,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             with (
-                mock.patch.object(MODULE.evidence_bundle, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD", record_32),
+                mock.patch.object(MODULE.evidence_bundle, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD", record_100),
                 mock.patch.object(
                     MODULE.evidence_bundle,
                     "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS",
-                    (record_32, record_24, record_16),
+                    (record_100, record_40, record_32, record_24, record_16),
                 ),
             ):
                 report = MODULE.build_report()
 
-        row = next(row for row in report["tiers"] if row["tier_id"] == "diagnostic_32_zone_reducer_pressure")
+        row = next(row for row in report["tiers"] if row["tier_id"] == "diagnostic_100_zone_reducer_pressure")
         comparison = report["diagnostic_performance_comparison"]
 
-        self.assertIn("diagnostic_32_zone_reducer_pressure", report["measured_tiers"])
-        self.assertEqual(row["job_id"], "4372124")
-        self.assertEqual(row["release_zone_count"], 32)
-        self.assertEqual(row["diagnostic_output_file_count"], 100)
-        self.assertEqual(row["diagnostic_output_bytes"], 42221)
-        self.assertEqual(row["next_diagnostic_release_zone_count"], 40)
-        self.assertEqual(row["next_recommended_action"], "run_balfrin_diagnostic_40_zone")
-        self.assertEqual(report["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"], 32)
-        self.assertIn("32-zone diagnostic", report["swiss_scale_feasibility_projection"]["current_practical_ceiling"])
+        self.assertIn("diagnostic_100_zone_reducer_pressure", report["measured_tiers"])
+        self.assertEqual(row["job_id"], "4372447")
+        self.assertEqual(row["release_zone_count"], 100)
+        self.assertEqual(row["diagnostic_output_file_count"], 304)
+        self.assertEqual(row["diagnostic_output_bytes"], 121172)
+        self.assertIsNone(row["next_diagnostic_release_zone_count"])
+        self.assertEqual(
+            row["next_recommended_action"],
+            "promote_diagnostic_series_then_measure_hazard_throughput_or_scientific_validation",
+        )
+        self.assertEqual(row["next_blocker_category"], "scientific_validation_and_hazard_throughput")
+        self.assertEqual(report["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"], 100)
+        self.assertIn("100-zone diagnostic", report["swiss_scale_feasibility_projection"]["current_practical_ceiling"])
         self.assertEqual(
             report["swiss_scale_feasibility_projection"]["feasibility_classes"]["24_zone"]["class"],
             "measured_repeatable_diagnostic_postproc",
@@ -624,17 +686,27 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             "measured_diagnostic_postproc",
         )
         self.assertEqual(
+            report["swiss_scale_feasibility_projection"]["feasibility_classes"]["40_zone"]["class"],
+            "measured_diagnostic_postproc",
+        )
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection"]["feasibility_classes"]["100_zone"]["class"],
+            "measured_diagnostic_postproc",
+        )
+        self.assertEqual(
             report["swiss_scale_feasibility_projection"]["feasibility_classes"]["100_zone"]["next_blocker"],
-            "reducer_pressure",
+            "scientific_validation_and_hazard_throughput",
         )
         self.assertEqual(comparison["status"], "measured")
-        self.assertEqual(comparison["latest_diagnostic_release_zone_count"], 32)
+        self.assertEqual(comparison["latest_diagnostic_release_zone_count"], 100)
         self.assertEqual(
             [item["tier_id"] for item in comparison["diagnostic_rows"]],
             [
                 "diagnostic_16_zone_reducer_pressure",
                 "diagnostic_24_zone_reducer_pressure",
                 "diagnostic_32_zone_reducer_pressure",
+                "diagnostic_40_zone_reducer_pressure",
+                "diagnostic_100_zone_reducer_pressure",
             ],
         )
         self.assertIn("regional_split_probe", [item["tier_id"] for item in comparison["comparison_rows"]])

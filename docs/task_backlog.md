@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-613: Promote The Largest Diagnostic Series Into Swiss-Scale Feasibility
-
-Goal: Update the Swiss-scale projection with the full measured diagnostic series through the largest safe run.
-
-Capability gap reduced: Replaces extrapolated reducer-pressure bands with a measured curve.
-
-Why this outranks alternatives: The final feasibility argument needs a measured series, not isolated diagnostics.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- generated scratch: collected diagnostic run records from TB-599 through TB-612
-
-Deliverables:
-
-- Integrate the measured diagnostic series into runtime, memory, I/O, output, file-count, manifest, and next-blocker surfaces.
-
-Definition of done:
-
-- The Swiss-scale feasibility projection reports the measured series and a concrete remaining blocker instead of a single diagnostic ceiling.
-
-
 ### TB-614: Stage Source-Frequency Evidence For The Physical-Probability Blocker
 
 Goal: Start closing the first scientific blocker by staging source-frequency evidence or a clearly labeled accepted-design placeholder.

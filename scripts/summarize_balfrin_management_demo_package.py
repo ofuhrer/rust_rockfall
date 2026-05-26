@@ -1067,22 +1067,22 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
         "status": "measured",
         "evidence_type": "measured",
         "summary": (
-            "Balfrin now has measured 24-zone single-node postproc diagnostic evidence plus a same-size repeatability pair. "
+            "Balfrin now has measured single-node postproc diagnostic evidence through 100 zones plus a 24-zone same-size repeatability pair. "
             "The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
         ),
         "latest_diagnostic": {
-            "task_id": "TB-579",
-            "run_id": "diagnostic_24_zone_simplified_next",
-            "job_id": "4368588",
-            "git_head": "d6863e299a590f97d93cc16ba0018745b2bf6506",
-            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next",
-            "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next/run_record.json",
-            "release_zone_count": 24,
-            "reducer_wall_time_seconds": 4.03,
-            "max_rss_mb": 33.711,
-            "output_file_count": 76,
-            "output_bytes": 32904,
-            "manifest_bytes": 20170,
+            "task_id": "TB-612",
+            "run_id": "diagnostic_100_zone_tb611_20260526",
+            "job_id": "4372447",
+            "git_head": "4b335c0",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526",
+            "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526/run_record.json",
+            "release_zone_count": 100,
+            "reducer_wall_time_seconds": 13.55,
+            "max_rss_mb": 34.16,
+            "output_file_count": 304,
+            "output_bytes": 121172,
+            "manifest_bytes": 61119,
         },
         "repeatability_pair": {
             "task_id": "TB-581",
@@ -1123,7 +1123,7 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             },
         },
         "reproduction_commands": [
-            "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_simplified_next --partition postproc --time 00:30:00",
+            "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 100 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526 --partition postproc --time 00:30:00",
             "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_repeatability_a_tb581 --partition postproc --time 00:30:00",
             "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_repeatability_b_tb581 --partition postproc --time 00:30:00",
         ],
@@ -1131,6 +1131,8 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             "diagnostic reducer-pressure performance only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim"
         ),
         "source_paths": [
+            "docs/balfrin_100_zone_diagnostic_run_tb612.md",
+            "docs/balfrin_diagnostic_series_tb613.md",
             "docs/balfrin_24_zone_diagnostic_run_tb579.md",
             "docs/balfrin_24_zone_diagnostic_metrics_tb580.md",
             "docs/balfrin_24_zone_repeatability_runs_tb581.md",
@@ -1234,15 +1236,17 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "status": "projection_only",
         "evidence_type": "projection_only",
         "summary": (
-            "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 24-zone is measured as repeated diagnostic postproc evidence, "
-            "100-zone is deferred projection, and broader regional plus Swiss-wide workflows remain phase changes. "
-            "The next blockers are scientific evidence for physical use, queue policy for larger diagnostics, and reducer/output pressure before larger hazard-throughput claims."
+            "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 100-zone is measured diagnostic postproc reducer-pressure evidence, "
+            "and broader regional plus Swiss-wide workflows remain phase changes. "
+            "The next blockers are scientific evidence for physical use and hazard-throughput scaling before larger claims."
         ),
         "projection_classification": {
             "10_zone": "hazard_planning_boundary",
             "16_zone": "measured_diagnostic_postproc",
             "24_zone": "measured_repeatable_diagnostic_postproc",
-            "100_zone": "projection_only_deferred",
+            "32_zone": "measured_diagnostic_postproc",
+            "40_zone": "measured_diagnostic_postproc",
+            "100_zone": "measured_diagnostic_postproc",
             "regional_split_probe": "measured",
             "regional": "deferred_phase_change",
             "swiss_wide": "deferred_phase_change",
@@ -1254,9 +1258,8 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         ],
         "top_blockers": [
             "scientific_evidence",
-            "queue_policy",
-            "reducer_pressure",
             "hazard_throughput",
+            "reducer_pressure",
             "output_bytes",
         ],
         "measured_basis": {
@@ -1265,12 +1268,12 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "trajectory_count": 6,
             "single_node_postproc_boundary": True,
             "adjacent_candidate_review_path": True,
-            "diagnostic_release_zone_count": 24,
-            "diagnostic_latest_job_id": "4368588",
+            "diagnostic_release_zone_count": 100,
+            "diagnostic_latest_job_id": "4372447",
             "diagnostic_repeatability_job_ids": ["4368592", "4368593"],
-            "diagnostic_reducer_wall_time_seconds": 4.03,
-            "diagnostic_output_file_count": 76,
-            "diagnostic_output_bytes": 32904,
+            "diagnostic_reducer_wall_time_seconds": 13.55,
+            "diagnostic_output_file_count": 304,
+            "diagnostic_output_bytes": 121172,
             "diagnostic_memory_peak_mb_bounds": {"min": 33.711, "max": 39.879},
             "regional_split_job_id": "4367244",
             "regional_split_validation_output_file_count": 130,
