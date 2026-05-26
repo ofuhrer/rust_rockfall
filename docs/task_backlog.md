@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-601: Decide And Possibly Run The Next Larger Diagnostic Step
-
-Goal: Use the measured 32-zone outcome to decide whether a 40-zone or 48-zone diagnostic is safe and useful.
-
-Capability gap reduced: Builds a measured reducer-pressure curve instead of stopping at one additional point.
-
-Why this outranks alternatives: If Balfrin remains lightly used and 32 zones is cheap, the next point gives much stronger scaling evidence.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/orchestration_strategy.md`
-- external: current Balfrin `postproc` queue and 32-zone run evidence
-
-Deliverables:
-
-- Either submit and monitor the next bounded diagnostic size on `postproc`, or record a measured no-go reason such as queue occupancy, walltime, memory, output budget, or prior-run failure.
-
-Definition of done:
-
-- A larger diagnostic measurement or explicit no-go decision is captured, with no run plan exceeding the 6-hour full-`postproc` standing-clearance boundary.
-
-
 ### TB-602: Build A Larger Bounded Hazard-Throughput Submission Package
 
 Goal: Prepare a real hazard-throughput package that is larger than the current measured smallest multi-zone branch while retaining scalable output controls.

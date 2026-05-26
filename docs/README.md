@@ -155,6 +155,8 @@ starting context for implementation unless a task explicitly asks for them.
   capacity snapshot and next 32-zone diagnostic submission size.
 - `balfrin_32_zone_diagnostic_run_tb599.md`: TB-599 measured 32-zone
   diagnostic `postproc` run record and metrics.
+- `balfrin_40_zone_diagnostic_run_tb601.md`: TB-601 measured 40-zone
+  diagnostic `postproc` run record and metrics.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
