@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-575: Collect And Promote 16-Zone Diagnostic Metrics
-
-Goal: Preserve and promote the TB-574 run-root evidence into the Balfrin evidence and scale-readiness surfaces.
-
-Capability gap reduced: Turns the larger diagnostic scheduler run into measured scale evidence with explicit runtime, memory, output, preservation, and evidence status.
-
-Why this outranks alternatives: A Balfrin run is not useful unless its outputs are collected, compared, and bounded immediately while the run root is fresh.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Collect metrics, run preservation and output-budget audits, and write a share-safe 16-zone diagnostic run report.
-- Promote the 16-zone diagnostic evidence into the evidence bundle and scale matrix with tests.
-- Keep older measured runs available as historical comparisons instead of replacing them.
-
-Definition of done:
-
-- Metrics are complete enough to compare the run, preservation status is clear, and focused tests pass.
-
-
 ### TB-576: Update The Measured Batch Ceiling From Diagnostic Evidence
 
 Goal: If TB-575 measured evidence is complete, update the measured single-node batch ceiling and next-step recommendation from the 16-zone diagnostic run.
