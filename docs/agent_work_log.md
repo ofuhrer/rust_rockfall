@@ -9101,3 +9101,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: readiness check only; current report remains blocked for physical-probability products, with no operational, annual-frequency, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-589`
+
+### TB-589: Build A Source-Frequency Evidence Intake Path
+
+- Date: 2026-05-26
+- Commit: `9b0afbd`
+- Objective: make source-frequency evidence a testable intake input to the scientific-gap assessment.
+- Files changed: `scripts/validate_source_frequency_evidence.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_source_frequency_evidence.py`, `tests/test_validation_calibration_evidence_gaps.py`, `validation/templates/source_frequency_evidence_v1.yaml`, `tests/fixtures/frequency/source_frequency_evidence_design_review_fixture_v1.yaml`, `docs/validation_data_schema.md`, `docs/real_case_intensity_frequency_implementation_roadmap.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added explicit `non_production_status` validation to `source_frequency_evidence_v1`.
+  - Extended source-frequency validation summaries with temporal support, uncertainty, provenance, intake classification, and non-production status.
+  - Wired validated source-frequency records into `assess_validation_calibration_evidence_gaps.py`.
+  - Made accepted design-review fixture evidence satisfy the source-frequency row of the physical-probability readiness check while moving the first blocker to release-probability evidence.
+  - Removed TB-589 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/validate_source_frequency_evidence.py scripts/assess_validation_calibration_evidence_gaps.py tests/test_source_frequency_evidence.py tests/test_validation_calibration_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_source_frequency_evidence tests.test_validation_calibration_evidence_gaps -v`
+  - accepted-fixture gap smoke proving `first_blocking_evidence_class == release_probability_model`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: source-frequency intake only; accepted fixture evidence remains design-review/non-production evidence and does not authorize annual, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claims.
+- Next task: `TB-590`
