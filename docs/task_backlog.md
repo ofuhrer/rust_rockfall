@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-619: Run The Larger Hazard-Throughput Job On Balfrin
-
-Goal: Submit and monitor the reviewed larger hazard-throughput package if TB-617 and TB-618 show it is safe.
-
-Capability gap reduced: Measured efficiency and feasibility evidence for a larger hazard workflow on Balfrin `postproc`.
-
-Why this outranks alternatives: A successful larger hazard-throughput run would directly reduce the main scale gap more than another local diagnostic or documentation pass.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
-- `docs/balfrin_failure_recovery_playbook.md`
-- generated scratch: TB-618 submission package on Balfrin `$SCRATCH`
-
-Deliverables:
-
-- A completed or explicitly failed-closed Balfrin job, monitored to terminal state, with job id, run root, elapsed time, memory, output bytes, file counts, and conditional-curve export mode.
-
-Definition of done:
-
-- The job reaches a terminal scheduler state, metrics are collected or the failure is diagnosed, and any cleanup keeps persistent evidence under `$SCRATCH` or the repo clone rather than `/tmp`.
-
 ### TB-620: Compare Large Hazard Metrics Against Existing Scale Evidence
 
 Goal: Integrate the larger hazard-throughput result into the current scale-readiness surfaces and identify the next measured bottleneck.

@@ -9784,3 +9784,28 @@ completed history.
 - Metrics: package status `mixed_provenance`; package constraint status `warning`; requested release-zone batch size `4`; output-budget status `accepted`; profile `next_larger_four_zone_review_only_probe`; `23` output files; `19,247` output bytes; `18,271` manifest bytes; package footprint `199K`.
 - Boundaries: no-submit package only; no Balfrin job submitted, no new hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-619`
+
+### TB-619: Run The Larger Hazard-Throughput Job On Balfrin
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: submit and monitor the TB-618 four-zone hazard-throughput package on Balfrin `postproc`.
+- Files changed: `docs/balfrin_four_zone_hazard_run_tb619.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the fresh TB-619 run root did not exist before submission.
+  - Rechecked the TB-618 reviewed package and authorization record with the Balfrin authorization preflight.
+  - Submitted the bounded one-node `postproc` job with `scripts/submit_balfrin_probe.py --authorized-submit`.
+  - Monitored SLURM job `4372656` to terminal state `COMPLETED` with exit code `0:0`.
+  - Collected metrics from the preserved run root and recorded the result in `docs/balfrin_four_zone_hazard_run_tb619.md`.
+  - Removed TB-619 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-619 --format json`
+  - Balfrin pre-submit authorization preflight for the TB-618 package
+  - Balfrin `sbatch` submission through `scripts/submit_balfrin_probe.py --authorized-submit`
+  - Balfrin `squeue`/`sacct` monitoring for job `4372656`
+  - `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py --collect --run-root ...`
+  - `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root ...`
+- Result/status: implemented_measured
+- Metrics: job `4372656`; SLURM elapsed `00:00:30`; process wall time `6.930015419959091 s`; process peak memory `379.14453125 MB`; hazard output `57` files / `31,439,445` bytes; validation output `130` files / `34,565,323` bytes; conditional-curve rows `729,600`; run root `68` files / `31,528,478` bytes; metrics contract `complete`.
+- Boundaries: measured four-zone `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-620`
