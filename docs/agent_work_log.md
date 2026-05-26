@@ -8942,3 +8942,24 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: repeatability diagnostics for single-node 24-zone `postproc` reducer pressure only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-582`
+
+### TB-582: Collect Repeatability Metrics And Variance Bounds
+
+- Date: 2026-05-26
+- Commit: `6ecc0aa`
+- Objective: promote the TB-581 repeatability pair into bounded runtime, memory, and output-footprint summaries.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_24_zone_repeatability_metrics_tb582.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added the two TB-581 24-zone repeatability run records as first-class diagnostic inputs.
+  - Added `diagnostic_repeatability_summary` to the scale matrix with per-run rows and min/median/max/spread bounds.
+  - Verified on Balfrin that the summary reads jobs `4368592` and `4368593`, reports `measured_repeatability_pair`, runtime spread `0.0` seconds, MaxRSS spread `5.637` MB, and stable output counts/bytes.
+  - Removed TB-582 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `ssh balfrin '... summarize_balfrin_scale_readiness_matrix.build_report()[\"diagnostic_repeatability_summary\"] ...'`
+- Result/status: implemented_measured
+- Boundaries: repeatability summary for single-node 24-zone `postproc` reducer-pressure diagnostics only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-583`
