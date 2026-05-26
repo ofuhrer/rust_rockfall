@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-576: Update The Measured Batch Ceiling From Diagnostic Evidence
-
-Goal: If TB-575 measured evidence is complete, update the measured single-node batch ceiling and next-step recommendation from the 16-zone diagnostic run.
-
-Capability gap reduced: Prevents the repo from continuing to block at the stale `simultaneous_release_zone_batch_max=8` ceiling after a larger run has been measured.
-
-Why this outranks alternatives: Without this update, follow-on packages will keep failing currently deferred against obsolete local scratch constraints.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_multi_zone_reducer_pressure.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Thread the measured 16-zone ceiling into reducer-pressure constraints and next-run decision surfaces.
-- Keep a separate `diagnostic_single_node_postproc` provenance label so the ceiling is not mistaken for operational scale capability.
-- Add tests showing 16-zone is measured, the next proposed diagnostic step is explicit, and evidence labels stay diagnostic.
-
-Definition of done:
-
-- Focused reducer/scale/decision tests pass and the next blocker is no longer the stale 8-zone ceiling when 16-zone evidence is present.
-
-
 ### TB-577: Add A Queue-Aware Diagnostic Run Planner
 
 Goal: Make diagnostic Balfrin run decisions aware of live `postproc` capacity, package freshness, expected wall time, and the six-hour partition-fill limit.

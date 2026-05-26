@@ -1022,6 +1022,7 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
     release_zone_count = evidence.get("release_zone_count")
+    next_diagnostic_release_zone_count = 24 if release_zone_count == 16 else None
     return {
         "tier_id": f"diagnostic_{release_zone_count}_zone_reducer_pressure",
         "tier_label": f"{release_zone_count}-zone diagnostic reducer-pressure run",
@@ -1044,13 +1045,16 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
         "run_root_preservation_status": evidence.get("preservation_gate_status"),
         "replayability_status": evidence.get("required_run_root_entries_status"),
         "authorization_status": "standing_postproc_clearance_used",
-        "next_evidence_field": "promote_diagnostic_run_record_ceiling",
-        "next_recommended_action": "update_measured_batch_ceiling_from_diagnostic_run_record",
+        "simultaneous_release_zone_batch_max": release_zone_count,
+        "simultaneous_release_zone_batch_max_source": "diagnostic_single_node_postproc",
+        "next_diagnostic_release_zone_count": next_diagnostic_release_zone_count,
+        "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
+        "next_recommended_action": "run_balfrin_diagnostic_24_zone",
         "next_recommended_action_reason": (
             "The simplified Balfrin diagnostic runner produced measured 16-zone reducer-pressure evidence; "
-            "the next step is to let reducer-pressure constraints consume this run record directly."
+            "the next step is a 24-zone diagnostic run with fixed reducer fan-out before treating this as anything beyond diagnostic postproc evidence."
         ),
-        "next_blocker_category": "stale_reducer_constraint_projection",
+        "next_blocker_category": "next_diagnostic_size_not_measured",
         "blocker": None,
         "current_blocker": None,
         "summary": evidence.get("summary"),
@@ -1070,6 +1074,26 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
         "output_family_status": evidence.get("output_family_status"),
         "source_report": first_source_path(evidence, "run_record.json"),
         "claim_boundary": evidence.get("claim_boundary"),
+    }
+
+
+def _diagnostic_single_node_postproc_ceiling(diagnostic_row: dict[str, Any] | None) -> dict[str, Any]:
+    if diagnostic_row is None:
+        return {
+            "status": "missing",
+            "provenance_label": "diagnostic_single_node_postproc",
+            "simultaneous_release_zone_batch_max": None,
+            "next_diagnostic_release_zone_count": None,
+        }
+    return {
+        "status": "measured",
+        "provenance_label": "diagnostic_single_node_postproc",
+        "simultaneous_release_zone_batch_max": diagnostic_row["simultaneous_release_zone_batch_max"],
+        "release_zone_count": diagnostic_row["release_zone_count"],
+        "next_diagnostic_release_zone_count": diagnostic_row["next_diagnostic_release_zone_count"],
+        "job_id": diagnostic_row["job_id"],
+        "run_root": diagnostic_row["run_root"],
+        "claim_boundary": diagnostic_row["claim_boundary"],
     }
 
 
@@ -1207,6 +1231,7 @@ def build_report() -> dict[str, Any]:
     regional_split_projection_delta_summary = _regional_split_projection_delta_summary()
     latest_multi_zone_evidence = evidence_bundle.build_latest_multi_zone_balfrin_evidence()
     diagnostic_row = _diagnostic_run_record_row(latest_multi_zone_evidence)
+    diagnostic_ceiling = _diagnostic_single_node_postproc_ceiling(diagnostic_row)
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
@@ -1330,6 +1355,7 @@ def build_report() -> dict[str, Any]:
             "hazard_execution_promoted": False,
             "source_document": "docs/balfrin_postproc_microbenchmark_tb305.md",
         },
+        "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
         "live_run_authorization_status": {
             "live_submission_authorized": False,
             "standing_postproc_clearance_active": True,

@@ -30,6 +30,9 @@ REGIONAL_SPLIT_PLAN_SCHEMA_VERSION = "regional_split_execution_plan_v1"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
 DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_manifest_pressure_ladder_v1")
+DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json"
+)
 MEASURED_REGIONAL_SPLIT_RUN_ROOT = "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 MEASURED_REGIONAL_SPLIT_SOURCE_REPORT = REPO_ROOT / "docs" / "balfrin_regional_split_run_root_metrics_tb448.md"
 MEASURED_REGIONAL_SPLIT_VALIDATION_MANIFEST = (
@@ -1843,14 +1846,82 @@ def classify_bottlenecks(
     }
 
 
+def completed_diagnostic_batch_ceiling(
+    run_record_path: Path | None = None,
+) -> dict[str, Any]:
+    run_record_path = run_record_path or DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD
+    if not run_record_path.exists():
+        return {
+            "status": "missing",
+            "provenance_label": "scratch_local_constraint",
+            "run_record_path": str(run_record_path),
+        }
+    try:
+        record = load_json(run_record_path)
+    except (OSError, json.JSONDecodeError, MultiZoneReducerPressureError):
+        return {
+            "status": "unreadable",
+            "provenance_label": "scratch_local_constraint",
+            "run_record_path": str(run_record_path),
+        }
+    collection = dict(record.get("collection") or {})
+    pressure = dict(collection.get("pressure_report") or {})
+    release_count = pressure.get("release_zone_count") or dict(record.get("diagnostic_shape") or {}).get("release_zone_count")
+    measured = (
+        record.get("schema_version") == "balfrin_diagnostic_run_record_v1"
+        and record.get("status") == "completed"
+        and record.get("terminal_state") == "COMPLETED"
+        and collection.get("status") == "complete"
+        and pressure.get("status") == "measured_scratch_root"
+        and isinstance(release_count, int)
+        and release_count > 0
+    )
+    if not measured:
+        return {
+            "status": "incomplete",
+            "provenance_label": "scratch_local_constraint",
+            "run_record_path": str(run_record_path),
+        }
+    return {
+        "status": "measured",
+        "provenance_label": "diagnostic_single_node_postproc",
+        "run_record_path": str(run_record_path),
+        "run_root": record.get("run_root"),
+        "job_id": record.get("job_id"),
+        "release_zone_count": release_count,
+        "simultaneous_release_zone_batch_max": release_count,
+        "next_diagnostic_release_zone_count": max(24, release_count + 8),
+        "output_mode": "diagnostic_reducer_pressure",
+        "claim_boundary": "single-node postproc diagnostic ceiling only",
+    }
+
+
 def recommended_constraints(*, release_zone_count: int, reducer_chunk_count: int, reducer_worker_count: int) -> dict[str, Any]:
+    base_batch_max = max(4, min(release_zone_count, 8))
+    diagnostic_ceiling = completed_diagnostic_batch_ceiling()
+    diagnostic_batch_max = diagnostic_ceiling.get("simultaneous_release_zone_batch_max")
+    if diagnostic_ceiling.get("status") == "measured" and isinstance(diagnostic_batch_max, int):
+        batch_max = max(base_batch_max, diagnostic_batch_max)
+        batch_source = "diagnostic_single_node_postproc"
+        recommendation = (
+            f"use the measured {diagnostic_batch_max}-zone diagnostic single-node postproc ceiling for diagnostic "
+            f"planning; the next diagnostic step is {diagnostic_ceiling['next_diagnostic_release_zone_count']} zones "
+            "with fixed reducer fan-out"
+        )
+    else:
+        batch_max = base_batch_max
+        batch_source = "scratch_local_constraint"
+        recommendation = "keep reducer fan-out fixed until a larger scratch probe shows manifest and file pressure remain bounded"
     return {
         "merge_order": "sorted_chunk_id",
         "merge_order_independent": True,
         "reducer_worker_count_max": max(1, reducer_worker_count),
         "reducer_chunk_count_max": max(1, min(reducer_chunk_count, 4)),
-        "simultaneous_release_zone_batch_max": max(4, min(release_zone_count, 8)),
-        "recommendation": "keep reducer fan-out fixed until a larger scratch probe shows manifest and file pressure remain bounded",
+        "simultaneous_release_zone_batch_max": batch_max,
+        "simultaneous_release_zone_batch_max_source": batch_source,
+        "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
+        "next_diagnostic_release_zone_count": diagnostic_ceiling.get("next_diagnostic_release_zone_count"),
+        "recommendation": recommendation,
     }
 
 
@@ -1883,6 +1954,9 @@ def measured_reducer_constraints(
             "output_family_mix": list(output_family_mix),
         },
         "simultaneous_release_zone_batch_max": recommended_constraints["simultaneous_release_zone_batch_max"],
+        "simultaneous_release_zone_batch_max_source": recommended_constraints["simultaneous_release_zone_batch_max_source"],
+        "diagnostic_single_node_postproc_ceiling": recommended_constraints["diagnostic_single_node_postproc_ceiling"],
+        "next_diagnostic_release_zone_count": recommended_constraints["next_diagnostic_release_zone_count"],
         "reducer_chunk_count_max": recommended_constraints["reducer_chunk_count_max"],
         "reducer_worker_count_max": recommended_constraints["reducer_worker_count_max"],
         "manifest_size_bytes_max": manifest_size_bytes,

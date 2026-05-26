@@ -441,6 +441,16 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(row["diagnostic_output_bytes"], 23661)
         self.assertEqual(row["runtime_seconds"], 3.07)
         self.assertEqual(row["memory_peak_mb"], 34.066)
+        self.assertEqual(row["simultaneous_release_zone_batch_max"], 16)
+        self.assertEqual(row["simultaneous_release_zone_batch_max_source"], "diagnostic_single_node_postproc")
+        self.assertEqual(row["next_diagnostic_release_zone_count"], 24)
+        self.assertEqual(row["next_recommended_action"], "run_balfrin_diagnostic_24_zone")
+        self.assertEqual(row["next_blocker_category"], "next_diagnostic_size_not_measured")
+        self.assertEqual(report["diagnostic_single_node_postproc_ceiling"]["status"], "measured")
+        self.assertEqual(
+            report["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"],
+            16,
+        )
 
     def test_cli_emits_json_and_text_reports(self) -> None:
         buffer = io.StringIO()

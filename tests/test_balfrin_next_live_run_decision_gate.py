@@ -285,6 +285,47 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
             "blocked_missing_replay_artifacts",
         )
 
+    def test_diagnostic_run_record_moves_frontier_to_single_node_postproc_ceiling(self) -> None:
+        bundle = self.load_fixture("defer_bundle.json")
+        bundle["multi_zone_balfrin_evidence"] = {
+            "schema_version": "balfrin_diagnostic_run_record_v1",
+            "status": "completed",
+            "terminal_state": "COMPLETED",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525",
+            "job_id": "4367731",
+            "diagnostic_shape": {"release_zone_count": 16},
+            "collection": {
+                "status": "complete",
+                "pressure_report": {
+                    "status": "measured_scratch_root",
+                    "release_zone_count": 16,
+                    "output_file_count": 52,
+                    "output_byte_count": 23661,
+                    "manifest_size_bytes": 15898,
+                    "root_file_count": 57,
+                    "reducer_wall_time_seconds": 3.07,
+                },
+            },
+        }
+        bundle["balfrin_access"]["live_submission_authorized"] = False
+
+        report = MODULE.build_report(bundle)
+        criteria = report["criteria"]["multi_zone_balfrin_evidence"]
+        multi_zone = report["option_assessments"]["smallest_bounded_multi_zone_probe"]
+
+        self.assertEqual(criteria["status"], "measured")
+        self.assertEqual(criteria["output_mode"], "diagnostic_reducer_pressure")
+        self.assertEqual(criteria["scaling_frontier_branch"], "diagnostic_single_node_postproc_boundary")
+        self.assertEqual(
+            criteria["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"],
+            16,
+        )
+        self.assertEqual(criteria["diagnostic_single_node_postproc_ceiling"]["next_diagnostic_release_zone_count"], 24)
+        self.assertIn("24-zone diagnostic", criteria["next_safe_expansion"])
+        self.assertIn("scripts/run_balfrin_diagnostic.py", criteria["next_safe_expansion"])
+        self.assertEqual(multi_zone["scaling_frontier_branch"], "diagnostic_single_node_postproc_boundary")
+        self.assertIn("diagnostic single-node postproc evidence", multi_zone["next_safe_expansion"])
+
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_dir = Path(tmpdir) / "validation/private/tschamut_public_pilot/balfrin_next_live_run_decision_gate_v1"

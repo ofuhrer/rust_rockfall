@@ -8,6 +8,7 @@ import unittest
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -157,8 +158,57 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 first_report["measured_reducer_constraints"]["simultaneous_release_zone_batch_max"],
                 8,
             )
+            self.assertEqual(
+                first_report["measured_reducer_constraints"]["simultaneous_release_zone_batch_max_source"],
+                "scratch_local_constraint",
+            )
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_chunk_count_max"], 2)
             self.assertEqual(first_report["measured_reducer_constraints"]["reducer_worker_count_max"], 2)
+
+    def test_completed_diagnostic_run_record_updates_single_node_postproc_batch_ceiling(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            run_record = Path(tmpdir) / "run_record.json"
+            run_record.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "terminal_state": "COMPLETED",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525",
+                        "job_id": "4367731",
+                        "diagnostic_shape": {"release_zone_count": 16},
+                        "collection": {
+                            "status": "complete",
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 16,
+                                "output_file_count": 52,
+                                "output_byte_count": 23661,
+                                "manifest_size_bytes": 15898,
+                                "root_file_count": 57,
+                                "reducer_wall_time_seconds": 3.07,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(MODULE, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD", run_record):
+                constraints = MODULE.recommended_constraints(
+                    release_zone_count=12,
+                    reducer_chunk_count=2,
+                    reducer_worker_count=2,
+                )
+
+        self.assertEqual(constraints["simultaneous_release_zone_batch_max"], 16)
+        self.assertEqual(constraints["simultaneous_release_zone_batch_max_source"], "diagnostic_single_node_postproc")
+        self.assertEqual(constraints["next_diagnostic_release_zone_count"], 24)
+        self.assertEqual(
+            constraints["diagnostic_single_node_postproc_ceiling"]["provenance_label"],
+            "diagnostic_single_node_postproc",
+        )
+        self.assertEqual(constraints["diagnostic_single_node_postproc_ceiling"]["job_id"], "4367731")
 
     def test_measured_regional_split_root_report_exposes_compact_manifest_and_replay_budgets(self) -> None:
         report = MODULE.build_measured_regional_split_root_report()

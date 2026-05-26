@@ -662,6 +662,17 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
     first_bottleneck = _status(evidence.get("first_bottleneck_label"), "manifest_size_bytes")
     release_zone_count = evidence.get("release_zone_count")
     measured = status == "measured" and evidence_type == "measured"
+    diagnostic = measured and evidence.get("output_mode") == "diagnostic_reducer_pressure"
+    next_diagnostic_release_zone_count = 24 if diagnostic and release_zone_count == 16 else None
+    diagnostic_ceiling = {
+        "status": "measured" if diagnostic else "missing",
+        "provenance_label": "diagnostic_single_node_postproc",
+        "simultaneous_release_zone_batch_max": release_zone_count if diagnostic else None,
+        "release_zone_count": release_zone_count if diagnostic else None,
+        "next_diagnostic_release_zone_count": next_diagnostic_release_zone_count,
+        "job_id": evidence.get("slurm_job_id") if diagnostic else None,
+        "run_root": evidence.get("run_root") if diagnostic else None,
+    }
     failed_closed = status == "failed_closed"
     blocked = status.startswith("blocked")
     return {
@@ -670,7 +681,11 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "evidence_type": evidence_type,
         "task_id": evidence.get("task_id"),
         "root_class": _status(evidence.get("root_class"), "blocked_pre_authorization"),
+        "output_mode": evidence.get("output_mode"),
         "release_zone_count": release_zone_count,
+        "diagnostic_output_file_count": evidence.get("diagnostic_output_file_count"),
+        "diagnostic_output_bytes": evidence.get("diagnostic_output_bytes"),
+        "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
         "first_bottleneck_label": first_bottleneck,
         "preflight_status": _status(evidence.get("preflight_status"), "not_supplied"),
         "authorization_record_status": _status(evidence.get("authorization_record_status"), "not_supplied"),
@@ -684,7 +699,9 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
         "post_run_collector_promoted": bool(evidence.get("post_run_collector_promoted")),
         "next_blocker": str(evidence.get("next_blocker") or f"blocked_reducer_budget:{first_bottleneck}"),
         "scaling_frontier_branch": (
-            "measured_two_zone_boundary"
+            "diagnostic_single_node_postproc_boundary"
+            if diagnostic
+            else "measured_two_zone_boundary"
             if measured and release_zone_count == 2
             else "measured_regional_split_boundary"
             if measured and isinstance(release_zone_count, int) and release_zone_count > 2
@@ -695,7 +712,9 @@ def build_multi_zone_balfrin_evidence_criteria(evidence: dict[str, Any]) -> dict
             else "not_measured_balfrin_root"
         ),
         "next_safe_expansion": (
-            "prepare reviewed next-larger package only after explicit authorization; this helper does not authorize it"
+            f"run a {next_diagnostic_release_zone_count}-zone diagnostic with scripts/run_balfrin_diagnostic.py after queue and scratch-capacity checks; keep it diagnostic single-node postproc evidence only"
+            if diagnostic
+            else "prepare reviewed next-larger package only after explicit authorization; this helper does not authorize it"
             if measured and release_zone_count == 2
             else "thread measured regional split replay/output-budget blockers into the next package before any larger live recommendation"
             if measured and isinstance(release_zone_count, int) and release_zone_count > 2
@@ -847,6 +866,13 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
     if candidate_result["status"] != "ready":
         reducer_blockers.append(f"candidate_stability:{candidate_result['status']}")
     reducer_ready = metrics_complete and reducer["probe_status"] == "measured_scratch_root" and not reducer_blockers
+    diagnostic_ceiling = _copy_mapping(multi_zone_evidence.get("diagnostic_single_node_postproc_ceiling"))
+    diagnostic_batch_max = diagnostic_ceiling.get("simultaneous_release_zone_batch_max")
+    reducer_summary_batch_clause = (
+        f"diagnostic single-node postproc batching is measured to {diagnostic_batch_max} release zones"
+        if isinstance(diagnostic_batch_max, int)
+        else "scenario batching is capped at 8 candidates"
+    )
 
     assessments = {
         OPTION_METRICS: {
@@ -877,7 +903,8 @@ def build_option_assessments(criteria: dict[str, Any]) -> dict[str, Any]:
             "path_state": "scratch_local" if reducer_ready else "blocked",
             "follow_up_task": "TB-462",
             "summary": (
-                "Reducer-pressure optimization is the next ranked executable action: metrics are complete, live scale remains unauthorized, scenario batching is capped at 8 candidates, replay smoke stays fixture-backed, and the selected candidate is stable for bounded engineering follow-up."
+                "Reducer-pressure optimization is the next ranked executable action: metrics are complete, live scale remains unauthorized, "
+                f"{reducer_summary_batch_clause}, replay smoke stays fixture-backed, and the selected candidate is stable for bounded engineering follow-up."
                 if reducer_ready
                 else "Reducer-pressure optimization cannot be ranked first until the metrics gap is closed and refreshed reducer evidence is present."
             ),
