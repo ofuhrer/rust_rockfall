@@ -9078,3 +9078,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: command-path simplification only; no new Balfrin run, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-588`
+
+### TB-588: Define The Evidence Check For Physical-Probability Products
+
+- Date: 2026-05-26
+- Commit: `cd764ab`
+- Objective: replace prose-only physical-probability boundaries with a machine-readable readiness check.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/validation_data_schema.md`, `docs/real_case_intensity_frequency_implementation_roadmap.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `physical_probability_readiness_check_v1` to the validation/calibration gap assessment.
+  - Defined required evidence classes for source-frequency evidence, release-probability model, block-population evidence, calibration evidence, independent holdout validation, conditional-denominator provenance, and trajectory/deposition traceability.
+  - Wired the existing conditional-denominator and trajectory/deposition audits into the readiness check with fail-closed fallback when local generated artifacts are absent.
+  - Added tests for conditional-only, partially calibrated, and fully evidence-ready synthetic states.
+  - Documented the evidence classes in the validation schema and roadmap, and removed TB-588 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/assess_validation_calibration_evidence_gaps.py tests/test_validation_calibration_evidence_gaps.py scripts/audit_conditional_denominator_provenance.py scripts/audit_trajectory_deposition_traceability.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb588_physical_probability_readiness.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: readiness check only; current report remains blocked for physical-probability products, with no operational, annual-frequency, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-589`
