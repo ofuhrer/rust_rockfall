@@ -164,6 +164,14 @@ keeps the run read-only, `--mode local-copy --apply` copies staged local
 inputs into the cache, and `--mode download --download` is the only path that
 authorizes network fetches.
 
+The multisite audit also reports a
+`second_site_validation_acquisition_plan`. It separates public-geodata blockers
+such as terrain/context staging from field or observational blockers such as
+release-zone provenance, observed runout/deposition evidence,
+source-frequency evidence, and explicit holdout labels. The first executable
+second-site task should come from that plan rather than from a generic
+"second site missing" note.
+
 ## Canonical AOI Quickstart
 
 This is the single command-level AOI walkthrough for the repository. It keeps

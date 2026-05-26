@@ -54,6 +54,13 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
 
         self.assertTrue(report["validation_or_field_evidence_boundary"]["not_validation_evidence_by_itself"])
         self.assertIn("annual_frequency", report["probability_semantics_boundary"]["unsupported_claims"])
+        plan = report["second_site_validation_acquisition_plan"]
+        self.assertEqual(plan["schema_version"], "second_site_validation_acquisition_plan_v1")
+        self.assertEqual(plan["plan_status"], "blocked_missing_second_site_evidence")
+        self.assertTrue(plan["public_geodata_blockers"])
+        self.assertTrue(plan["field_observational_blockers"])
+        self.assertEqual(plan["first_executable_task"]["task_type"], "local_public_geodata_staging")
+        self.assertEqual(plan["first_executable_task"]["category"], "terrain_crop")
 
     def test_portability_semantics_summary_separates_portable_from_site_specific(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -87,6 +94,7 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "field_classifications",
             "semantic_portability_matrix",
             "portability_semantics_summary",
+            "second_site_validation_acquisition_plan",
             "synthetic_contract_fixture_status",
             "tschamut_available_fields",
             "second_site_available_fields",
@@ -107,6 +115,23 @@ class MultisiteSourceScenarioContractTests(unittest.TestCase):
             "operational_claims_allowed",
         }
         self.assertTrue(expected_keys.issubset(report.keys()))
+
+    def test_second_site_validation_acquisition_plan_splits_public_and_field_blockers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate_config = self._write_candidate_config(Path(tmp))
+            report = audit.build_report(candidate_config)
+
+        plan = report["second_site_validation_acquisition_plan"]
+        public_categories = {item["category"] for item in plan["public_geodata_blockers"]}
+        field_categories = {item["category"] for item in plan["field_observational_blockers"]}
+
+        self.assertIn("terrain_crop", public_categories)
+        self.assertIn("swissimage_context", public_categories)
+        self.assertIn("source_zone_metadata", field_categories)
+        self.assertIn("source_frequency_evidence", field_categories)
+        self.assertIn("holdout_validation_labels", field_categories)
+        self.assertIn("observed_runout_deposition", field_categories)
+        self.assertIn("check_second_site_public_geodata_preflight.py", plan["first_executable_task"]["command"])
 
     def test_semantic_matrix_tracks_site_specific_and_deferred_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -130,6 +130,11 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
         missing_second_site_fields=missing_second_site_fields,
         next_required_artifact_records=next_required_artifacts(candidate_missing, required_path_patterns_or_manifest_keys),
     )
+    second_site_validation_acquisition_plan = build_second_site_validation_acquisition_plan(
+        candidate=candidate,
+        candidate_missing=candidate_missing,
+        required_path_patterns_or_manifest_keys=required_path_patterns_or_manifest_keys,
+    )
     blocked_reason = candidate.get("blocked_reason", "none")
     source_scenario_contract_audit_status = "ready" if not candidate_missing and candidate.get("portability_preflight_status") == "ready" else "measured"
 
@@ -151,6 +156,7 @@ def build_report(candidate_site_config: Path) -> dict[str, Any]:
             + classifications["tschamut_specific_heuristics"]
         ),
         "portability_semantics_summary": portability_semantics_summary,
+        "second_site_validation_acquisition_plan": second_site_validation_acquisition_plan,
         "synthetic_contract_fixture_status": {
             "chant_sura_candidate_manifest": "synthetic_contract_fixture",
             "chant_sura_source_scenario_policy": "synthetic_contract_fixture",
@@ -220,6 +226,151 @@ def load_csv(path: Path, default: list[dict[str, str]] | None = None) -> list[di
         return default or []
     with path.open("r", encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh))
+
+
+PUBLIC_GEODATA_ACQUISITION_CATEGORIES = {
+    "terrain_crop",
+    "terrain_metadata",
+    "aoi_tile_catalog",
+    "swissimage_context",
+    "swisstlm3d_context",
+    "swisstlm3d_metadata",
+    "swisssurface3d_context",
+    "swisssurface3d_raster_context",
+    "swissbuildings3d_context",
+    "barrier_inventory",
+}
+FIELD_OBSERVATIONAL_ACQUISITION_CATEGORIES = {
+    "source_zone_metadata",
+    "scenario_table",
+    "source_scenario_policy",
+    "release_observation_evidence",
+    "observed_runout_deposition",
+    "source_frequency_evidence",
+    "holdout_validation_labels",
+}
+
+
+def build_second_site_validation_acquisition_plan(
+    *,
+    candidate: dict[str, Any],
+    candidate_missing: list[str],
+    required_path_patterns_or_manifest_keys: dict[str, Any],
+) -> dict[str, Any]:
+    checklist = [
+        {
+            "category": "terrain",
+            "required_evidence": ["terrain_crop", "terrain_metadata", "aoi_tile_catalog"],
+            "claim_role": "public_geodata_foundation",
+        },
+        {
+            "category": "context",
+            "required_evidence": [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+            "claim_role": "interpretation_context",
+        },
+        {
+            "category": "release_zone_provenance",
+            "required_evidence": ["source_zone_metadata", "source_scenario_policy"],
+            "claim_role": "site_specific_source_definition",
+        },
+        {
+            "category": "observed_runout_deposition",
+            "required_evidence": ["release_observation_evidence", "observed_runout_deposition"],
+            "claim_role": "holdout_or_validation_candidate",
+        },
+        {
+            "category": "source_frequency",
+            "required_evidence": ["source_frequency_evidence"],
+            "claim_role": "physical_probability_prerequisite",
+        },
+        {
+            "category": "holdout_labels",
+            "required_evidence": ["holdout_validation_labels"],
+            "claim_role": "calibration_validation_separation",
+        },
+    ]
+    public_geodata_blockers = [
+        {
+            "category": category,
+            "expected_path_or_manifest_key": required_path_patterns_or_manifest_keys.get(category, ""),
+        }
+        for category in candidate_missing
+        if category in PUBLIC_GEODATA_ACQUISITION_CATEGORIES
+    ]
+    for category in (
+        "swissimage_context",
+        "swisstlm3d_context",
+        "swisssurface3d_context",
+        "swisssurface3d_raster_context",
+        "swissbuildings3d_context",
+    ):
+        if category not in candidate_missing:
+            public_geodata_blockers.append(
+                {
+                    "category": category,
+                    "expected_path_or_manifest_key": f"data/processed/swisstopo/{candidate.get('candidate_site_id', 'second_site')}/context/{category.replace('_context', '')}",
+                }
+            )
+    field_observational_blockers = [
+        {
+            "category": category,
+            "expected_path_or_manifest_key": required_path_patterns_or_manifest_keys.get(category, ""),
+        }
+        for category in candidate_missing
+        if category in FIELD_OBSERVATIONAL_ACQUISITION_CATEGORIES
+    ]
+    for category in ("observed_runout_deposition", "source_frequency_evidence", "holdout_validation_labels"):
+        if category not in candidate_missing:
+            field_observational_blockers.append(
+                {
+                    "category": category,
+                    "expected_path_or_manifest_key": f"validation/second_sites/{candidate.get('candidate_site_id', 'second_site')}/{category}.yaml",
+                }
+            )
+
+    first_public = public_geodata_blockers[0] if public_geodata_blockers else None
+    first_field = field_observational_blockers[0] if field_observational_blockers else None
+    if first_public:
+        first_task = {
+            "task_type": "local_public_geodata_staging",
+            "category": first_public["category"],
+            "command": (
+                "PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py "
+                f"--site-config {DEFAULT_CANDIDATE_SITE_CONFIG.relative_to(ROOT)} --format json"
+            ),
+        }
+    elif first_field:
+        first_task = {
+            "task_type": "external_or_manual_evidence_acquisition",
+            "category": first_field["category"],
+            "command": "stage field/observational evidence record before rerunning the multisite audit",
+        }
+    else:
+        first_task = {
+            "task_type": "ready_for_second_site_conditional_pilot_planning",
+            "category": "none",
+            "command": "build second-site pilot command plan",
+        }
+
+    return {
+        "schema_version": "second_site_validation_acquisition_plan_v1",
+        "candidate_site_id": candidate.get("candidate_site_id"),
+        "candidate_site_name": candidate.get("candidate_site_name"),
+        "plan_status": "blocked_missing_second_site_evidence" if public_geodata_blockers or field_observational_blockers else "ready",
+        "checklist": checklist,
+        "public_geodata_blockers": public_geodata_blockers,
+        "field_observational_blockers": field_observational_blockers,
+        "first_executable_task": first_task,
+        "claim_boundary": (
+            "Acquisition planning only; no second-site validation, physical probability, operational, or scale claim."
+        ),
+    }
 
 
 def text_value(value: Any) -> str:

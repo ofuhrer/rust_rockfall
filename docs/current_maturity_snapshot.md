@@ -79,6 +79,9 @@ calibration/holdout separation check, so stronger scientific conclusions fail
 closed when holdout labels are missing or calibration and validation evidence
 share a dataset, event, or sample identifier. Site-only reuse is allowed only
 for explicitly labelled holdout-validation records.
+The multisite source/scenario audit now turns the second-site gap into a
+validation-acquisition plan, splitting public-geodata blockers from
+field/observational blockers and naming the first executable staging task.
 
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real

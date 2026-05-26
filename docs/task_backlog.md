@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-592: Build A Second-Site Validation Acquisition Plan
-
-Goal: Create an executable acquisition and validation plan for a second real site that can support portability and holdout evidence.
-
-Capability gap reduced: Moves beyond single-AOI demonstration toward the multi-site evidence needed for operational and physical-probability confidence.
-
-Why this outranks alternatives: A Swiss workflow cannot be credible from one Tschamut/Balfrin site alone.
-
-Inspect first:
-
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/validation_data_schema.md`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Define the second-site acquisition checklist for terrain, context, release-zone provenance, observed runout/deposition, source-frequency, and holdout labels.
-- Add a machine-readable blocker report that distinguishes public-geodata blockers from field/observational evidence blockers.
-- Identify the first executable local or external data task needed for the second site.
-
-Definition of done:
-
-- Focused multisite/scientific checks pass and the backlog can route from generic “second site missing” to a concrete acquisition task.
-
-
 ### TB-593: Assess Non-Postproc Partition Requirements And Risks
 
 Goal: Determine what evidence and safeguards are needed before any non-`postproc` Balfrin partition could be responsibly requested.
