@@ -9809,3 +9809,29 @@ completed history.
 - Metrics: job `4372656`; SLURM elapsed `00:00:30`; process wall time `6.930015419959091 s`; process peak memory `379.14453125 MB`; hazard output `57` files / `31,439,445` bytes; validation output `130` files / `34,565,323` bytes; conditional-curve rows `729,600`; run root `68` files / `31,528,478` bytes; metrics contract `complete`.
 - Boundaries: measured four-zone `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-620`
+
+### TB-620: Compare Large Hazard Metrics Against Existing Scale Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: integrate TB-619 into the scale-readiness, evidence-bundle, Swiss-envelope, and management-package surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_evidence_bundle.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added TB-619 as the latest hazard-throughput evidence in the canonical evidence bundle, with TB-603 preserved as `comparison_baseline`.
+  - Updated the scale-readiness matrix so `hazard_throughput_status` reports job `4372656`, the TB-619 run root, runtime/memory/output metrics, and the TB-603 comparison fields.
+  - Updated the Swiss-wide envelope helper to expose the TB-619 hazard-throughput support point and the TB-603 baseline identifiers.
+  - Updated the management demo package measured basis to include the latest and previous hazard-throughput job/task IDs and metrics.
+  - Updated the Swiss-scale feasibility projection text and table so TB-619 supersedes TB-603 as the latest bounded hazard-throughput support point.
+  - Removed TB-620 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py scripts/summarize_balfrin_evidence_bundle.py scripts/estimate_swiss_wide_execution_envelope.py scripts/summarize_balfrin_management_demo_package.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --release-zone-count 100 --format json` produced the expected no-go JSON and non-zero no-go exit status.
+- Result/status: implemented_measured
+- Metrics: scale matrix `hazard_throughput_status.job_id=4372656`, runtime `6.930015419959091 s`, memory `379.14453125 MB`, hazard output `31,439,445` bytes, baseline `TB-603`/job `4372309`; matrix remains `blocked_reducer_budget`; next recommended scale action remains `summarize_multi_zone_reducer_pressure`.
+- Boundaries: interpretation and helper integration only; TB-619 remains bounded `postproc` hazard-throughput evidence, not Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability evidence.
+- Next task: `TB-621`

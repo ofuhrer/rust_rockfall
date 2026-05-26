@@ -209,7 +209,7 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("ancillary_unavailable_metrics:", bundle.render_text_report(report))
         self.assertIn("metrics_remediation:", bundle.render_text_report(report))
         latest_gate = report["latest_bounded_probe_interpretation_gate_report"]
-        self.assertEqual(latest_gate["run_id"], "tschamut_public_balfrin_multi_release_zone_tb603_20260526")
+        self.assertEqual(latest_gate["run_id"], "tschamut_public_balfrin_four_zone_hazard_tb619_20260527")
         self.assertEqual(latest_gate["interpretation_status"], "inconclusive_conditional_diagnostic")
         self.assertEqual(latest_gate["output_check"]["status"], "inconclusive")
         self.assertEqual(latest_gate["output_check"]["evidence_status"], "bounded_hazard_throughput_reduced_output")
@@ -218,11 +218,13 @@ class BalfrinEvidenceBundleTests(unittest.TestCase):
         self.assertIn("latest_bounded_probe_interpretation_gate_report:", bundle.render_text_report(report))
         hazard = report["hazard_throughput_evidence"]
         self.assertEqual(hazard["status"], "measured")
-        self.assertEqual(hazard["task_id"], "TB-603")
-        self.assertEqual(hazard["slurm_job_id"], "4372309")
-        self.assertEqual(hazard["release_zone_count"], 10)
-        self.assertEqual(hazard["hazard_output_bytes"], 31439786)
+        self.assertEqual(hazard["task_id"], "TB-619")
+        self.assertEqual(hazard["slurm_job_id"], "4372656")
+        self.assertEqual(hazard["release_zone_count"], 4)
+        self.assertEqual(hazard["hazard_output_bytes"], 31439445)
         self.assertEqual(hazard["conditional_curve_row_count"], 729600)
+        self.assertEqual(hazard["comparison_baseline"]["task_id"], "TB-603")
+        self.assertEqual(hazard["comparison_baseline"]["slurm_job_id"], "4372309")
 
     def test_current_multi_zone_evidence_records_latest_regional_split_branch(self) -> None:
         report = bundle.build_current_report()

@@ -1238,7 +1238,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 100-zone is measured diagnostic postproc reducer-pressure evidence, "
             "and broader regional plus Swiss-wide workflows remain phase changes. "
-            "The next blockers are scientific evidence for physical use and hazard-throughput scaling before larger claims."
+            "TB-619 now adds a measured four-zone hazard-throughput support point; the next blockers are scientific evidence for physical use and reducer/replay pressure before larger claims."
         ),
         "projection_classification": {
             "10_zone": "hazard_planning_boundary",
@@ -1275,6 +1275,15 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "diagnostic_output_file_count": 304,
             "diagnostic_output_bytes": 121172,
             "diagnostic_memory_peak_mb_bounds": {"min": 33.711, "max": 39.879},
+            "hazard_throughput_latest_job_id": "4372656",
+            "hazard_throughput_latest_task_id": "TB-619",
+            "hazard_throughput_latest_wall_seconds": 6.930015419959091,
+            "hazard_throughput_latest_memory_peak_mb": 379.14453125,
+            "hazard_throughput_latest_hazard_output_file_count": 57,
+            "hazard_throughput_latest_hazard_output_bytes": 31439445,
+            "hazard_throughput_latest_conditional_curve_rows": 729600,
+            "hazard_throughput_previous_job_id": "4372309",
+            "hazard_throughput_previous_task_id": "TB-603",
             "regional_split_job_id": "4367244",
             "regional_split_validation_output_file_count": 130,
             "regional_split_hazard_output_file_count": 57,

@@ -318,6 +318,50 @@ TB603_HAZARD_THROUGHPUT_PROBE = {
         "TB-603 completed one bounded hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, and a fresh preserved $SCRATCH run root."
     ),
 }
+TB619_HAZARD_THROUGHPUT_PROBE = {
+    "task_id": "TB-619",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_hazard_throughput_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527",
+    "run_id": "tschamut_public_balfrin_four_zone_hazard_tb619_20260527",
+    "source_paths": ["docs/balfrin_four_zone_hazard_run_tb619.md"],
+    "git_commit": "4b335c0",
+    "slurm_job_id": "4372656",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:30",
+    "alloc_cpus": 16,
+    "batch_max_rss": "5636K",
+    "memory_peak_mb": 379.14453125,
+    "total_wall_seconds": 6.930015419959091,
+    "release_zone_count": 4,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_323,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 31_439_445,
+    "conditional_curve_row_count": 729_600,
+    "run_root_file_count": 68,
+    "run_root_bytes": 31_528_478,
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "metrics_contract_status": "complete",
+    "authorization_status": "standing_postproc_clearance_used",
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "previous_hazard_throughput_task_id": "TB-603",
+    "previous_hazard_throughput_job_id": "4372309",
+    "previous_hazard_throughput_runtime_seconds": 7.043564590974711,
+    "previous_hazard_throughput_hazard_output_bytes": 31_439_786,
+    "claim_boundary": "measured bounded hazard-throughput runtime/output/reducer evidence only; no operational, physical-probability, distributed, Swiss-wide, risk, or non-postproc claim",
+    "summary": (
+        "TB-619 completed the next bounded four-zone hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, and a fresh preserved $SCRATCH run root."
+    ),
+}
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -394,7 +438,9 @@ def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
 
 
 def build_latest_hazard_throughput_evidence() -> dict[str, Any]:
-    return dict(TB603_HAZARD_THROUGHPUT_PROBE)
+    evidence = dict(TB619_HAZARD_THROUGHPUT_PROBE)
+    evidence["comparison_baseline"] = dict(TB603_HAZARD_THROUGHPUT_PROBE)
+    return evidence
 
 
 def _metrics_completion_source(single_job_summary: dict[str, Any], probe_metrics_status: str) -> str:
@@ -947,7 +993,7 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
         )
     first_bottleneck = str(evidence.get("first_bottleneck_label") or evidence.get("first_bottleneck") or "none")
     release_zone_count = evidence.get("release_zone_count")
-    return {
+    classified = {
         "status": status,
         "evidence_type": evidence_type,
         "task_id": evidence.get("task_id"),
@@ -1006,6 +1052,9 @@ def classify_multi_zone_balfrin_root(evidence: dict[str, Any]) -> dict[str, Any]
             else "Multi-zone evidence is not measured Balfrin evidence and cannot move the scaling frontier by itself."
         ),
     }
+    if isinstance(evidence.get("comparison_baseline"), dict):
+        classified["comparison_baseline"] = dict(evidence["comparison_baseline"])
+    return classified
 
 
 def blocked_report(

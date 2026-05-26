@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-620: Compare Large Hazard Metrics Against Existing Scale Evidence
-
-Goal: Integrate the larger hazard-throughput result into the current scale-readiness surfaces and identify the next measured bottleneck.
-
-Capability gap reduced: Evidence interpretation for efficiency, output pressure, and feasibility across TB-603, regional split, diagnostic 100-zone, and the new larger hazard run.
-
-Why this outranks alternatives: Raw Balfrin results only move the project if they are compared against the existing measured support points and converted into the next concrete bottleneck.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_hazard_throughput_run_tb603.md`
-
-Deliverables:
-
-- Updated scale summaries or work-log evidence that classify the new run, compare runtime/memory/output growth, and state whether reducer pressure, hazard runtime, scratch I/O, or scientific evidence is now the first limiter.
-
-Definition of done:
-
-- The new run is visible in the scale-readiness path, focused checks pass, and the interpretation does not overstate Swiss-wide, distributed, operational, or physical-probability claims.
-
 ### TB-621: Reduce Replay Metadata Growth In Hazard Outputs
 
 Goal: Shrink replay-critical metadata growth for larger hazard batches while preserving enough information to rebuild and compare outputs.

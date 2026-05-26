@@ -1181,6 +1181,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
     feasibility_report = FEASIBILITY.build_report()
     canonical_bundle_report = load_canonical_bundle_report()
     hazard_throughput_evidence = load_latest_hazard_throughput_evidence()
+    hazard_throughput_baseline = dict(hazard_throughput_evidence.get("comparison_baseline") or {})
     multi_zone_scaling_frontier = build_multi_zone_scaling_frontier(canonical_bundle_report)
     target_area_probe_report = load_target_area_probe_report()
     generated_scenario_table_report = load_generated_scenario_table_evidence()
@@ -1268,6 +1269,9 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "hazard_output_file_count": hazard_throughput_evidence.get("hazard_output_file_count"),
             "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
             "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
+            "comparison_baseline_task_id": hazard_throughput_baseline.get("task_id"),
+            "comparison_baseline_job_id": hazard_throughput_baseline.get("slurm_job_id"),
+            "comparison_baseline_runtime_seconds": hazard_throughput_baseline.get("total_wall_seconds"),
             "claim_boundary": hazard_throughput_evidence.get("claim_boundary"),
         },
         "job_count": job_count,
@@ -1331,6 +1335,8 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
                 "memory_peak_mb": hazard_throughput_evidence.get("memory_peak_mb"),
                 "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
                 "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
+                "comparison_baseline_task_id": hazard_throughput_baseline.get("task_id"),
+                "comparison_baseline_job_id": hazard_throughput_baseline.get("slurm_job_id"),
                 "claim_boundary": hazard_throughput_evidence.get("claim_boundary"),
             },
             "canonical_bundle_status": canonical_bundle_report.get("bundle_status"),

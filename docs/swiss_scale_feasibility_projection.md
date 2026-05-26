@@ -28,11 +28,14 @@ risk, exposure, or vulnerability semantics.
 - 40-zone: measured as Balfrin diagnostic reducer-pressure evidence.
 - 100-zone: measured as Balfrin diagnostic reducer-pressure evidence; this is
   the current diagnostic performance ceiling.
-- Hazard-throughput probe: TB-603 measured the bounded hazard workflow on
+- Hazard-throughput probe: TB-619 measured the next bounded four-zone hazard
+  workflow on Balfrin `postproc` with complete mandatory runtime, memory,
+  output, and conditional-curve metrics. TB-603 remains the previous comparison
+  anchor. This is the current hazard-throughput support point, not a
+  Swiss-wide, operational, distributed, or physical-probability claim.
+- Prior hazard-throughput probe: TB-603 measured the bounded hazard workflow on
   Balfrin `postproc` with complete mandatory runtime, memory, output, and
-  conditional-curve metrics. This is the current hazard-throughput support
-  point, not a Swiss-wide, operational, distributed, or physical-probability
-  claim.
+  conditional-curve metrics and remains the baseline for TB-619 comparison.
 - 100-zone: measured diagnostic reducer-pressure evidence. Reducer pressure is
   no longer projection-only for this diagnostic shape, but live
   hazard-throughput interpretation remains unmeasured at this size.
@@ -78,12 +81,12 @@ The adjacent-candidate branch moved the first blocker away from source-zone
 automation and onto the remaining planning bottlenecks:
 
 1. Missing scientific evidence for physical probability and operational use.
-1. Hazard-throughput scaling beyond the bounded TB-603 support point.
+1. Hazard-throughput scaling beyond the bounded TB-619 support point.
 1. Reducer pressure and replay/metadata growth for larger hazard-output
    batches.
 1. Output-byte and file-count growth when moving beyond diagnostic postproc.
-1. Scaling beyond the measured TB-603 hazard-throughput run, because the
-   32-zone evidence is diagnostic and TB-603 remains a bounded single-node
+1. Scaling beyond the measured TB-619 hazard-throughput run, because the
+   100-zone evidence is diagnostic and TB-619 remains a bounded single-node
    hazard-throughput support point.
 1. Distributed and non-`postproc` execution, which remain explicit phase
    changes.
@@ -104,7 +107,7 @@ branches into measured capability:
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
     four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
-    TB-407 smallest multi-zone probe, TB-603 bounded hazard-throughput run, and
+    TB-407 smallest multi-zone probe, TB-619 bounded hazard-throughput run, and
     the current claim boundaries.
 - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
   restartability, GIS scope, uncertainty, and claim boundaries in the measured
@@ -141,6 +144,15 @@ branches into measured capability:
   `357.796875` MB, `57` hazard output files, `31,439,786` hazard output bytes,
   `130` validation-output files, `34,565,316` validation-output bytes, and
   `729,600` conditional-curve rows represented in summary-only mode.
+- TB-619 measured the next bounded four-zone hazard-throughput run on Balfrin:
+  job `4372656`, run root
+  `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527`,
+  hazard workflow wall time `6.930015419959091` s, process peak memory
+  `379.14453125` MB, `57` hazard output files, `31,439,445` hazard output
+  bytes, `130` validation-output files, `34,565,323` validation-output bytes,
+  and `729,600` conditional-curve rows represented in summary-only mode. This
+  supersedes TB-603 as the latest hazard-throughput support point while keeping
+  TB-603 as the comparison baseline.
 - TB-611 prepared the no-submit 100-zone diagnostic package at
   `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526`
   and measured the same reducer-pressure shape locally: `100` release zones,
@@ -259,7 +271,7 @@ treated as projection bounds, not new measurements.
 | 24-zone | measured repeatable diagnostic postproc | 4.03 reducer wall seconds | 32,904-32,922 output bytes | 76 output files | Queue policy and scientific evidence block broader claims | measured repeatability pair | use as repeatability evidence below the current ceiling |
 | 32-zone | measured diagnostic postproc | 5.39 reducer wall seconds | 42,221 output bytes | 100 output files | Scientific evidence blocks broader claims | measured diagnostic | use as diagnostic performance evidence |
 | 40-zone | measured diagnostic postproc | 6.35 reducer wall seconds | 51,493 output bytes | 124 output files | Scientific evidence blocks broader claims | measured diagnostic | use as diagnostic performance evidence |
-| hazard-throughput probe | measured on Balfrin | 7.044 hazard workflow seconds | 31,439,786 hazard output bytes | 57 hazard output files | Scientific validation and distributed semantics block broader claims | summary-only reduced output measured | use as bounded hazard-throughput support |
+| hazard-throughput probe | measured on Balfrin | 6.930 hazard workflow seconds | 31,439,445 hazard output bytes | 57 hazard output files | Scientific validation and reducer/replay pressure block broader claims | summary-only reduced output measured | use TB-619 as the current bounded hazard-throughput support |
 | 100-zone | measured diagnostic postproc | 13.55 reducer wall seconds | 121,172 output bytes | 304 output files | Hazard-throughput and scientific evidence block broader claims | measured diagnostic | promote series, then measure hazard throughput or validation evidence |
 | regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,330 / 34,565,330 / 34,565,330 | 130 / 130 / 130 | Measured regional split run-root evidence is available, but it remains bounded comparison evidence | ready_for_demonstration_evidence | keep as comparison evidence |
 | regional workflows | deferred | projection-only | projection-only | projection-only | Multi-AOI support and queue policy are not yet measured as scale capability | deferred | no promotion without a phase change |

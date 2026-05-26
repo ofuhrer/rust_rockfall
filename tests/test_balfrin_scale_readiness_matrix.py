@@ -50,7 +50,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-565 and TB-566 now provide current measured regional split evidence", report["summary"])
-        self.assertIn("TB-603 adds measured bounded hazard-throughput evidence", report["summary"])
+        self.assertIn("TB-619 is now the latest measured bounded hazard-throughput evidence", report["summary"])
         self.assertIn("TB-450 now threads the measured regional split", report["summary"])
         self.assertIn("ranked next probe ladder now places reducer-pressure optimization first", report["summary"])
         self.assertEqual(
@@ -138,21 +138,25 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertEqual(report["hazard_throughput_status"]["evidence_label"], "measured_on_balfrin")
         self.assertEqual(report["hazard_throughput_status"]["measurement_status"], "measured_hazard_throughput_postproc")
-        self.assertEqual(report["hazard_throughput_status"]["job_id"], "4372309")
+        self.assertEqual(report["hazard_throughput_status"]["job_id"], "4372656")
         self.assertEqual(
             report["hazard_throughput_status"]["run_root"],
-            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526",
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527",
         )
-        self.assertEqual(report["hazard_throughput_status"]["runtime_seconds"], 7.043564590974711)
-        self.assertEqual(report["hazard_throughput_status"]["memory_peak_mb"], 357.796875)
+        self.assertEqual(report["hazard_throughput_status"]["runtime_seconds"], 6.930015419959091)
+        self.assertEqual(report["hazard_throughput_status"]["memory_peak_mb"], 379.14453125)
         self.assertEqual(report["hazard_throughput_status"]["validation_output_file_count"], 130)
-        self.assertEqual(report["hazard_throughput_status"]["validation_output_bytes"], 34565316)
+        self.assertEqual(report["hazard_throughput_status"]["validation_output_bytes"], 34565323)
         self.assertEqual(report["hazard_throughput_status"]["hazard_output_file_count"], 57)
-        self.assertEqual(report["hazard_throughput_status"]["hazard_output_bytes"], 31439786)
+        self.assertEqual(report["hazard_throughput_status"]["hazard_output_bytes"], 31439445)
         self.assertEqual(report["hazard_throughput_status"]["conditional_curve_rows"], 729600)
         self.assertEqual(report["hazard_throughput_status"]["metrics_contract_status"], "complete")
         self.assertEqual(report["hazard_throughput_status"]["preservation_status"], "ready_for_demonstration_evidence")
-        self.assertEqual(report["hazard_throughput_status"]["source_report"], "docs/balfrin_hazard_throughput_run_tb603.md")
+        self.assertEqual(report["hazard_throughput_status"]["source_report"], "docs/balfrin_four_zone_hazard_run_tb619.md")
+        self.assertEqual(report["hazard_throughput_status"]["previous_support_source_report"], "docs/balfrin_hazard_throughput_run_tb603.md")
+        self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_task_id"], "TB-603")
+        self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_job_id"], "4372309")
+        self.assertTrue(report["hazard_throughput_status"]["comparison_baseline"]["same_conditional_curve_rows"])
         delta_summary = report["regional_split_projection_delta_summary"]
         self.assertFalse(delta_summary["within_expected_pressure_bands"])
         self.assertEqual(delta_summary["next_probe_class"], "summarize_multi_zone_reducer_pressure")
