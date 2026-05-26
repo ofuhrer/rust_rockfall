@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-583: Recompute Swiss-Scale Feasibility From The New Diagnostic Evidence
-
-Goal: Recompute the Swiss-scale feasibility projection using the latest 16/24-zone and repeatability evidence when available.
-
-Capability gap reduced: Replaces stale projection coefficients with current measured Balfrin runtime, memory, reducer, and output-footprint data.
-
-Why this outranks alternatives: The project needs an honest feasibility statement before considering regional, multi-node, or Swiss-wide phase changes.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_large_scale_execution_probe.py`
-
-Deliverables:
-
-- Update projection inputs and outputs from the latest measured diagnostic evidence.
-- Distinguish 10-zone, 16-zone, 24-zone, 100-zone, regional, and Swiss-wide feasibility classes.
-- Name the next blocker as runtime, memory, output bytes, reducer pressure, queue policy, or missing scientific evidence.
-
-Definition of done:
-
-- Focused projection tests pass and the projection clearly separates measured evidence, extrapolation, and deferred classes.
-
-
 ### TB-584: Build A Reviewer-Facing Balfrin Diagnostic Evidence Package
 
 Goal: Package the latest measured Balfrin efficiency, performance, output, preservation, repeatability, and feasibility evidence into one reviewer-facing demonstration surface.

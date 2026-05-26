@@ -123,6 +123,16 @@ class MeasuredCoefficients:
     measurement_notes: tuple[str, ...]
     bounded_probe_recommendation_status: str | None
     multi_zone_manifest_pressure_ladder: dict[str, Any] | None = None
+    diagnostic_release_zone_count: int | None = None
+    diagnostic_runtime_seconds_per_zone: float | None = None
+    diagnostic_output_bytes_per_zone: float | None = None
+    diagnostic_file_count_per_zone: float | None = None
+    diagnostic_manifest_bytes_per_zone: float | None = None
+    diagnostic_memory_peak_mb: float | None = None
+    diagnostic_repeatability_status: str | None = None
+    diagnostic_repeatability_bounds: dict[str, Any] | None = None
+    diagnostic_run_root: str | None = None
+    diagnostic_job_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -134,6 +144,8 @@ class PlanningCaseSpec:
     trajectory_count: int
     decision: str
     decision_reason: str
+    evidence_class: str
+    blocker_category: str
 
 
 CANONICAL_PLANNING_CASES = (
@@ -145,6 +157,30 @@ CANONICAL_PLANNING_CASES = (
         trajectory_count=6,
         decision="next_probe",
         decision_reason="Matches the measured Balfrin release-zone cardinality and remains the authorized next-probe boundary.",
+        evidence_class="measured_hazard_boundary",
+        blocker_category="reducer_pressure",
+    ),
+    PlanningCaseSpec(
+        case_id="16_zone",
+        scale_label="16 release zones",
+        aoi_count=1,
+        release_zone_count=16,
+        trajectory_count=6,
+        decision="measured_diagnostic",
+        decision_reason="Measured as a single-node/postproc diagnostic reducer-pressure run; not a hazard-throughput or physical-probability result.",
+        evidence_class="measured_diagnostic_postproc",
+        blocker_category="scientific_evidence",
+    ),
+    PlanningCaseSpec(
+        case_id="24_zone",
+        scale_label="24 release zones",
+        aoi_count=1,
+        release_zone_count=24,
+        trajectory_count=6,
+        decision="measured_diagnostic",
+        decision_reason="Measured and repeated as a single-node/postproc diagnostic reducer-pressure run; this is the current diagnostic ceiling.",
+        evidence_class="measured_repeatable_diagnostic_postproc",
+        blocker_category="queue_policy",
     ),
     PlanningCaseSpec(
         case_id="100_zone",
@@ -154,6 +190,8 @@ CANONICAL_PLANNING_CASES = (
         trajectory_count=6,
         decision="defer",
         decision_reason="Single-AOI output pressure and manifest growth rise sharply, so this is a deferred extrapolation rather than a next probe.",
+        evidence_class="projection_only",
+        blocker_category="reducer_pressure",
     ),
     PlanningCaseSpec(
         case_id="regional",
@@ -163,6 +201,8 @@ CANONICAL_PLANNING_CASES = (
         trajectory_count=6,
         decision="no_go",
         decision_reason="Multi-AOI scheduling and reducer fan-out exceed the current single-job evidence boundary.",
+        evidence_class="deferred_multi_aoi_projection",
+        blocker_category="queue_policy",
     ),
     PlanningCaseSpec(
         case_id="swiss_wide",
@@ -172,6 +212,8 @@ CANONICAL_PLANNING_CASES = (
         trajectory_count=6,
         decision="no_go",
         decision_reason="Switzerland-wide AOI multiplicity remains beyond measured support and requires explicit authorization before any larger run.",
+        evidence_class="deferred_swiss_wide_projection",
+        blocker_category="missing_scientific_evidence",
     ),
 )
 
@@ -248,12 +290,36 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         memory_evidence.get("reproduction_hazard_memory_peak_bytes_on_darwin"),
         "single_job_summary.memory_evidence.reproduction_hazard_memory_peak_bytes_on_darwin",
     ) / 1_000_000.0
+    diagnostic_evidence = load_latest_diagnostic_evidence()
+    repeatability = load_diagnostic_repeatability_summary()
+    diagnostic_release_zone_count = diagnostic_evidence.get("release_zone_count")
+    diagnostic_runtime_seconds_per_zone = build_ratio(
+        diagnostic_evidence.get("reducer_wall_time_seconds"),
+        diagnostic_release_zone_count,
+        precision=6,
+    )
+    diagnostic_output_bytes_per_zone = build_ratio(
+        diagnostic_evidence.get("diagnostic_output_bytes"),
+        diagnostic_release_zone_count,
+        precision=6,
+    )
+    diagnostic_file_count_per_zone = build_ratio(
+        diagnostic_evidence.get("diagnostic_output_file_count"),
+        diagnostic_release_zone_count,
+        precision=6,
+    )
+    diagnostic_manifest_bytes_per_zone = build_ratio(
+        diagnostic_evidence.get("diagnostic_manifest_size_bytes"),
+        diagnostic_release_zone_count,
+        precision=6,
+    )
     measurement_notes = (
         "runtime coefficients are anchored to the measured same-scale reduced-output and Balfrin single-job summaries",
         "storage coefficients are anchored to the measured reduced-output, summary-only, and current-gap output summaries",
         "memory frontier is anchored to the measured Balfrin current-gap peak and reproduction validation / hazard memory sidecars",
         "job-count capacity is anchored to the measured 10-release-zone by 6-trajectory pilot footprint",
         "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
+        "diagnostic reducer-pressure coefficients are anchored to the latest measured Balfrin diagnostic run record and kept separate from hazard-throughput projections",
     )
 
     return MeasuredCoefficients(
@@ -320,7 +386,95 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         measurement_notes=measurement_notes,
         bounded_probe_recommendation_status=feasibility_report.get("bounded_probe_recommendation_status"),
         multi_zone_manifest_pressure_ladder=manifest_pressure_ladder,
+        diagnostic_release_zone_count=diagnostic_release_zone_count
+        if isinstance(diagnostic_release_zone_count, int)
+        else None,
+        diagnostic_runtime_seconds_per_zone=diagnostic_runtime_seconds_per_zone,
+        diagnostic_output_bytes_per_zone=diagnostic_output_bytes_per_zone,
+        diagnostic_file_count_per_zone=diagnostic_file_count_per_zone,
+        diagnostic_manifest_bytes_per_zone=diagnostic_manifest_bytes_per_zone,
+        diagnostic_memory_peak_mb=diagnostic_evidence.get("memory_peak_mb")
+        if isinstance(diagnostic_evidence.get("memory_peak_mb"), (int, float))
+        else None,
+        diagnostic_repeatability_status=repeatability.get("status"),
+        diagnostic_repeatability_bounds=repeatability.get("bounds"),
+        diagnostic_run_root=diagnostic_evidence.get("run_root")
+        if isinstance(diagnostic_evidence.get("run_root"), str)
+        else None,
+        diagnostic_job_id=diagnostic_evidence.get("slurm_job_id")
+        if isinstance(diagnostic_evidence.get("slurm_job_id"), str)
+        else None,
     )
+
+
+def load_latest_diagnostic_evidence() -> dict[str, Any]:
+    paths = tuple(
+        dict.fromkeys(
+            (
+                EVIDENCE_BUNDLE.DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD,
+                *EVIDENCE_BUNDLE.DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS,
+            )
+        )
+    )
+    rows: list[dict[str, Any]] = []
+    for path in paths:
+        record = EVIDENCE_BUNDLE.load_json_object(path)
+        if record is None:
+            continue
+        evidence = EVIDENCE_BUNDLE.build_multi_zone_balfrin_evidence(record)
+        if evidence.get("status") == "measured" and evidence.get("output_mode") == "diagnostic_reducer_pressure":
+            rows.append(evidence)
+    rows.sort(key=lambda row: int(row.get("release_zone_count") or 0))
+    return rows[-1] if rows else {}
+
+
+def load_diagnostic_repeatability_summary() -> dict[str, Any]:
+    rows = []
+    for path in EVIDENCE_BUNDLE.DEFAULT_BALFRIN_24_ZONE_REPEATABILITY_RUN_RECORDS:
+        record = EVIDENCE_BUNDLE.load_json_object(path)
+        if record is None:
+            continue
+        evidence = EVIDENCE_BUNDLE.build_multi_zone_balfrin_evidence(record)
+        if evidence.get("status") == "measured" and evidence.get("output_mode") == "diagnostic_reducer_pressure":
+            rows.append(
+                {
+                    "runtime_seconds": evidence.get("reducer_wall_time_seconds"),
+                    "memory_peak_mb": evidence.get("memory_peak_mb"),
+                    "output_file_count": evidence.get("diagnostic_output_file_count"),
+                    "output_bytes": evidence.get("diagnostic_output_bytes"),
+                    "manifest_bytes": evidence.get("diagnostic_manifest_size_bytes"),
+                    "release_zone_count": evidence.get("release_zone_count"),
+                }
+            )
+    release_zone_counts = {row.get("release_zone_count") for row in rows}
+    same_size = len(release_zone_counts) == 1
+    return {
+        "status": "measured_repeatability_pair" if len(rows) >= 2 and same_size else "waiting_for_repeatability_pair",
+        "run_count": len(rows),
+        "release_zone_count": next(iter(release_zone_counts)) if same_size and release_zone_counts else None,
+        "bounds": {
+            "runtime_seconds": build_numeric_bounds(rows, "runtime_seconds"),
+            "memory_peak_mb": build_numeric_bounds(rows, "memory_peak_mb"),
+            "output_file_count": build_numeric_bounds(rows, "output_file_count"),
+            "output_bytes": build_numeric_bounds(rows, "output_bytes"),
+            "manifest_bytes": build_numeric_bounds(rows, "manifest_bytes"),
+        },
+    }
+
+
+def build_numeric_bounds(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    values = [float(row[key]) for row in rows if isinstance(row.get(key), (int, float))]
+    if not values:
+        return {"min": None, "median": None, "max": None, "spread": None}
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    median = ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+    return {
+        "min": min(values),
+        "median": round(median, 6),
+        "max": max(values),
+        "spread": round(max(values) - min(values), 6),
+    }
 
 
 @lru_cache(maxsize=1)
@@ -638,12 +792,61 @@ def build_case_projection(
             if spec.decision == "next_probe"
             else "allowed_next_probe_not_triggered"
         ),
+        "measured_diagnostic": (
+            "measured_diagnostic_single_node_postproc"
+            if spec.decision == "measured_diagnostic"
+            and isinstance(coefficients.diagnostic_release_zone_count, int)
+            and spec.release_zone_count <= coefficients.diagnostic_release_zone_count
+            else "measured_diagnostic_not_triggered"
+        ),
     }
+    diagnostic_support_available = (
+        isinstance(coefficients.diagnostic_release_zone_count, int)
+        and spec.release_zone_count <= coefficients.diagnostic_release_zone_count
+    )
+    diagnostic_projection = None
+    if spec.decision == "measured_diagnostic" and diagnostic_support_available:
+        diagnostic_projection = {
+            "release_zone_count": spec.release_zone_count,
+            "diagnostic_ceiling_release_zone_count": coefficients.diagnostic_release_zone_count,
+            "runtime_seconds_per_zone": coefficients.diagnostic_runtime_seconds_per_zone,
+            "output_bytes_per_zone": coefficients.diagnostic_output_bytes_per_zone,
+            "file_count_per_zone": coefficients.diagnostic_file_count_per_zone,
+            "manifest_bytes_per_zone": coefficients.diagnostic_manifest_bytes_per_zone,
+            "runtime_seconds_nominal": round(
+                spec.release_zone_count * coefficients.diagnostic_runtime_seconds_per_zone,
+                3,
+            )
+            if coefficients.diagnostic_runtime_seconds_per_zone is not None
+            else None,
+            "output_bytes_nominal": math.ceil(
+                spec.release_zone_count * coefficients.diagnostic_output_bytes_per_zone
+            )
+            if coefficients.diagnostic_output_bytes_per_zone is not None
+            else None,
+            "file_count_nominal": math.ceil(
+                spec.release_zone_count * coefficients.diagnostic_file_count_per_zone
+            )
+            if coefficients.diagnostic_file_count_per_zone is not None
+            else None,
+            "manifest_bytes_nominal": math.ceil(
+                spec.release_zone_count * coefficients.diagnostic_manifest_bytes_per_zone
+            )
+            if coefficients.diagnostic_manifest_bytes_per_zone is not None
+            else None,
+            "memory_peak_mb": coefficients.diagnostic_memory_peak_mb,
+            "repeatability_status": coefficients.diagnostic_repeatability_status,
+            "run_root": coefficients.diagnostic_run_root,
+            "job_id": coefficients.diagnostic_job_id,
+            "claim_boundary": "diagnostic reducer-pressure evidence only; not hazard throughput, physical probability, operational, distributed, or Swiss-wide evidence",
+        }
     return {
         "case_id": spec.case_id,
         "scale_label": spec.scale_label,
         "planning_decision": spec.decision,
         "decision_reason": spec.decision_reason,
+        "evidence_class": spec.evidence_class,
+        "blocker_category": spec.blocker_category,
         "read_only": True,
         "scale_up_authorized": False,
         "distributed_execution_authorized": False,
@@ -661,12 +864,27 @@ def build_case_projection(
             "units_per_job": coefficients.measured_units_per_job,
             "measured_job_count": coefficients.measured_aoi_count,
         },
+        "diagnostic_support": {
+            "status": "measured" if coefficients.diagnostic_release_zone_count else "missing",
+            "release_zone_count": coefficients.diagnostic_release_zone_count,
+            "runtime_seconds_per_zone": coefficients.diagnostic_runtime_seconds_per_zone,
+            "output_bytes_per_zone": coefficients.diagnostic_output_bytes_per_zone,
+            "file_count_per_zone": coefficients.diagnostic_file_count_per_zone,
+            "manifest_bytes_per_zone": coefficients.diagnostic_manifest_bytes_per_zone,
+            "memory_peak_mb": coefficients.diagnostic_memory_peak_mb,
+            "repeatability_status": coefficients.diagnostic_repeatability_status,
+            "repeatability_bounds": coefficients.diagnostic_repeatability_bounds,
+            "run_root": coefficients.diagnostic_run_root,
+            "job_id": coefficients.diagnostic_job_id,
+            "claim_boundary": "diagnostic reducer-pressure support only; hazard, physical-probability, operational, distributed, and Swiss-wide claims remain separate",
+        },
         "job_count": job_count,
         "jobs_per_aoi": jobs_per_aoi,
         "runtime_seconds": runtime_seconds,
         "storage_bytes": storage_bytes,
         "file_count": file_count,
         "memory_peak_mb": memory_peak_mb,
+        "diagnostic_projection": diagnostic_projection,
         "planning_labels": planning_labels,
         "rebuildability_cost": build_rebuildability_cost(
             projected_storage_bytes=storage_bytes,
@@ -722,12 +940,13 @@ def build_case_projection(
 
 
 def summarize_planning_cases(case_specs: tuple[PlanningCaseSpec, ...]) -> dict[str, Any]:
-    summary = {"next_probe": [], "defer": [], "no_go": []}
+    summary = {"next_probe": [], "measured_diagnostic": [], "defer": [], "no_go": []}
     for spec in case_specs:
         summary.setdefault(spec.decision, []).append(spec.case_id)
     return {
         "status": "measured_existing_artifacts",
         "next_probe": summary["next_probe"],
+        "measured_diagnostic": summary["measured_diagnostic"],
         "defer": summary["defer"],
         "no_go": summary["no_go"],
         "case_count": len(case_specs),
@@ -843,6 +1062,20 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "units_per_job": coefficients.measured_units_per_job,
             "measured_job_count": coefficients.measured_aoi_count,
         },
+        "diagnostic_support": {
+            "status": "measured" if coefficients.diagnostic_release_zone_count else "missing",
+            "release_zone_count": coefficients.diagnostic_release_zone_count,
+            "runtime_seconds_per_zone": coefficients.diagnostic_runtime_seconds_per_zone,
+            "output_bytes_per_zone": coefficients.diagnostic_output_bytes_per_zone,
+            "file_count_per_zone": coefficients.diagnostic_file_count_per_zone,
+            "manifest_bytes_per_zone": coefficients.diagnostic_manifest_bytes_per_zone,
+            "memory_peak_mb": coefficients.diagnostic_memory_peak_mb,
+            "repeatability_status": coefficients.diagnostic_repeatability_status,
+            "repeatability_bounds": coefficients.diagnostic_repeatability_bounds,
+            "run_root": coefficients.diagnostic_run_root,
+            "job_id": coefficients.diagnostic_job_id,
+            "claim_boundary": "diagnostic reducer-pressure support only; hazard, physical-probability, operational, distributed, and Swiss-wide claims remain separate",
+        },
         "job_count": job_count,
         "jobs_per_aoi": jobs_per_aoi,
         "runtime_seconds": runtime_seconds,
@@ -883,6 +1116,18 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "measurement_notes": list(coefficients.measurement_notes),
             "bounded_probe_recommendation_status": coefficients.bounded_probe_recommendation_status,
             "multi_zone_manifest_pressure_ladder": coefficients.multi_zone_manifest_pressure_ladder,
+            "diagnostic_support": {
+                "release_zone_count": coefficients.diagnostic_release_zone_count,
+                "runtime_seconds_per_zone": coefficients.diagnostic_runtime_seconds_per_zone,
+                "output_bytes_per_zone": coefficients.diagnostic_output_bytes_per_zone,
+                "file_count_per_zone": coefficients.diagnostic_file_count_per_zone,
+                "manifest_bytes_per_zone": coefficients.diagnostic_manifest_bytes_per_zone,
+                "memory_peak_mb": coefficients.diagnostic_memory_peak_mb,
+                "repeatability_status": coefficients.diagnostic_repeatability_status,
+                "repeatability_bounds": coefficients.diagnostic_repeatability_bounds,
+                "run_root": coefficients.diagnostic_run_root,
+                "job_id": coefficients.diagnostic_job_id,
+            },
             "canonical_bundle_status": canonical_bundle_report.get("bundle_status"),
             "canonical_bundle_summary": canonical_bundle_report.get("bundle_summary", {}),
             "multi_zone_scaling_frontier": multi_zone_scaling_frontier,
@@ -980,6 +1225,20 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             "total_units": total_units,
         },
         "measured_support": None,
+        "diagnostic_support": {
+            "status": "blocked_missing_inputs",
+            "release_zone_count": None,
+            "runtime_seconds_per_zone": None,
+            "output_bytes_per_zone": None,
+            "file_count_per_zone": None,
+            "manifest_bytes_per_zone": None,
+            "memory_peak_mb": None,
+            "repeatability_status": None,
+            "repeatability_bounds": None,
+            "run_root": None,
+            "job_id": None,
+            "claim_boundary": "diagnostic support unavailable because measured evidence is missing",
+        },
         "job_count": None,
         "jobs_per_aoi": None,
         "runtime_seconds": empty_band,
@@ -1034,6 +1293,18 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             ],
             "bounded_probe_recommendation_status": None,
             "multi_zone_manifest_pressure_ladder": None,
+            "diagnostic_support": {
+                "release_zone_count": None,
+                "runtime_seconds_per_zone": None,
+                "output_bytes_per_zone": None,
+                "file_count_per_zone": None,
+                "manifest_bytes_per_zone": None,
+                "memory_peak_mb": None,
+                "repeatability_status": None,
+                "repeatability_bounds": None,
+                "run_root": None,
+                "job_id": None,
+            },
             "canonical_bundle_status": "blocked_missing_inputs",
             "canonical_bundle_summary": {},
             "multi_zone_scaling_frontier": {
@@ -1067,6 +1338,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
         "planning_case_summary": {
             "status": "blocked_missing_inputs",
             "next_probe": [],
+            "measured_diagnostic": [],
             "defer": [],
             "no_go": [],
             "case_count": 0,
@@ -1230,6 +1502,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     rebuildability_cost = report.get("rebuildability_cost", {})
     bottleneck_labels = report.get("bottleneck_labels", {})
     multi_zone_frontier = report.get("multi_zone_scaling_frontier", {})
+    diagnostic_support = report.get("diagnostic_support", {})
     lines = [
         "Swiss-wide execution envelope",
         f"measurement_status: {report['measurement_status']}",
@@ -1247,6 +1520,12 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  next_blocker: {multi_zone_frontier.get('next_blocker', 'unknown')}",
         f"  first_bottleneck_label: {multi_zone_frontier.get('first_bottleneck_label', 'unknown')}",
         f"  larger_run_authorized: {multi_zone_frontier.get('larger_run_authorized', False)}",
+        "diagnostic_support:",
+        f"  status: {diagnostic_support.get('status', 'unknown')}",
+        f"  release_zone_count: {diagnostic_support.get('release_zone_count')}",
+        f"  repeatability_status: {diagnostic_support.get('repeatability_status')}",
+        f"  runtime_seconds_per_zone: {diagnostic_support.get('runtime_seconds_per_zone')}",
+        f"  output_bytes_per_zone: {diagnostic_support.get('output_bytes_per_zone')}",
         f"aoi_count: {report['input']['aoi_count']}",
         f"release_zone_count: {report['input']['release_zone_count']}",
         f"trajectory_count: {report['input']['trajectory_count']}",
@@ -1289,6 +1568,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "planning_case_summary:",
         f"  status: {report.get('planning_case_summary', {}).get('status', 'unknown')}",
         f"  next_probe: {report.get('planning_case_summary', {}).get('next_probe', [])}",
+        f"  measured_diagnostic: {report.get('planning_case_summary', {}).get('measured_diagnostic', [])}",
         f"  defer: {report.get('planning_case_summary', {}).get('defer', [])}",
         f"  no_go: {report.get('planning_case_summary', {}).get('no_go', [])}",
         "measurement_basis:",
@@ -1335,6 +1615,8 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"  - case_id: {case.get('case_id')}")
             lines.append(f"    scale_label: {case.get('scale_label')}")
             lines.append(f"    planning_decision: {case.get('planning_decision')}")
+            lines.append(f"    evidence_class: {case.get('evidence_class')}")
+            lines.append(f"    blocker_category: {case.get('blocker_category')}")
             lines.append(f"    decision_reason: {case.get('decision_reason')}")
             lines.append(f"    job_count: {case.get('job_count')}")
             lines.append(f"    jobs_per_aoi: {case.get('jobs_per_aoi')}")
@@ -1342,6 +1624,8 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"    storage_bytes: {case.get('storage_bytes', {})}")
             lines.append(f"    file_count: {case.get('file_count', {})}")
             lines.append(f"    memory_peak_mb: {case.get('memory_peak_mb', {})}")
+            if case.get("diagnostic_projection"):
+                lines.append(f"    diagnostic_projection: {case.get('diagnostic_projection')}")
             lines.append(f"    planning_labels: {case.get('planning_labels', {})}")
             lines.append(
                 f"    manifest_count_bottleneck: "

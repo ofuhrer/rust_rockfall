@@ -79,6 +79,37 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
             },
         )
 
+    def _coefficients_with_24_zone_diagnostic_support(self) -> estimator.MeasuredCoefficients:
+        return estimator.MeasuredCoefficients(
+            measured_aoi_count=1,
+            measured_release_zone_count=10,
+            measured_trajectory_count=6,
+            measured_units_per_job=60,
+            runtime_seconds_per_unit_low=1.0,
+            runtime_seconds_per_unit_nominal=2.0,
+            runtime_seconds_per_unit_high=4.0,
+            storage_bytes_per_unit_low=10.0,
+            storage_bytes_per_unit_nominal=20.0,
+            storage_bytes_per_unit_high=40.0,
+            file_count_per_unit_low=0.5,
+            file_count_per_unit_nominal=1.0,
+            file_count_per_unit_high=2.0,
+            memory_peak_mb_low=3.5,
+            memory_peak_mb_nominal=4.0,
+            memory_peak_mb_high=4.5,
+            measurement_notes=("diagnostic reducer-pressure coefficients are anchored to measured Balfrin run records",),
+            bounded_probe_recommendation_status="deferred_pending_authorization",
+            diagnostic_release_zone_count=24,
+            diagnostic_runtime_seconds_per_zone=0.167917,
+            diagnostic_output_bytes_per_zone=1371.0,
+            diagnostic_file_count_per_zone=3.166667,
+            diagnostic_manifest_bytes_per_zone=842.416667,
+            diagnostic_memory_peak_mb=39.879,
+            diagnostic_repeatability_status="measured_repeatability_pair",
+            diagnostic_run_root="/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_b_tb581",
+            diagnostic_job_id="4368593",
+        )
+
     def _runtime_scaling_report(self) -> dict[str, object]:
         return {
             "artifacts_measured": [
@@ -193,13 +224,13 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertEqual(report["planning_labels"]["defer"], "defer_scale_up_authorized_false")
         self.assertEqual(
             report["planning_labels"]["allowed_next_probe"],
-            "allowed_next_probe_blocked_failed_closed",
+            "allowed_next_probe_measured_existing_artifacts",
         )
-        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "failed_closed")
-        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "resolve_two_zone_failed_closed_blocker")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["status"], "not_measured")
+        self.assertEqual(report["multi_zone_scaling_frontier"]["next_scaling_branch"], "no_go")
         self.assertEqual(
             report["multi_zone_scaling_frontier"]["next_blocker"],
-            "blocked_reducer_budget:blocked_output_profile",
+            "none",
         )
         self.assertEqual(report["measurement_basis"]["bounded_probe_recommendation_status"], "deferred_pending_authorization")
         self.assertEqual(report["runtime_seconds"]["nominal"], 3120.0)
@@ -212,7 +243,7 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("measurement_status: measured_existing_artifacts", text)
         self.assertIn("aoi_count_exceeds_measured_support", text)
         self.assertIn("planning_labels:", text)
-        self.assertIn("allowed_next_probe: allowed_next_probe_blocked_failed_closed", text)
+        self.assertIn("allowed_next_probe: allowed_next_probe_measured_existing_artifacts", text)
         self.assertIn("multi_zone_scaling_frontier:", text)
         self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
@@ -335,19 +366,28 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
                 coefficients=self._coefficients(),
             )
 
-        self.assertEqual(report["planning_case_summary"]["case_count"], 4)
+        self.assertEqual(report["planning_case_summary"]["case_count"], 6)
         self.assertEqual(report["planning_case_summary"]["next_probe"], ["10_zone"])
+        self.assertEqual(report["planning_case_summary"]["measured_diagnostic"], ["16_zone", "24_zone"])
         self.assertEqual(report["planning_case_summary"]["defer"], ["100_zone"])
         self.assertEqual(report["planning_case_summary"]["no_go"], ["regional", "swiss_wide"])
-        self.assertEqual([case["case_id"] for case in report["planning_cases"]], ["10_zone", "100_zone", "regional", "swiss_wide"])
+        self.assertEqual(
+            [case["case_id"] for case in report["planning_cases"]],
+            ["10_zone", "16_zone", "24_zone", "100_zone", "regional", "swiss_wide"],
+        )
 
         ten_zone_case = report["planning_cases"][0]
-        hundred_zone_case = report["planning_cases"][1]
-        regional_case = report["planning_cases"][2]
-        swiss_wide_case = report["planning_cases"][3]
+        sixteen_zone_case = report["planning_cases"][1]
+        twenty_four_zone_case = report["planning_cases"][2]
+        hundred_zone_case = report["planning_cases"][3]
+        regional_case = report["planning_cases"][4]
+        swiss_wide_case = report["planning_cases"][5]
 
         self.assertEqual(ten_zone_case["planning_decision"], "next_probe")
         self.assertEqual(ten_zone_case["planning_labels"]["allowed_next_probe"], "allowed_next_probe_measured_existing_artifacts")
+        self.assertEqual(sixteen_zone_case["planning_decision"], "measured_diagnostic")
+        self.assertEqual(sixteen_zone_case["evidence_class"], "measured_diagnostic_postproc")
+        self.assertEqual(twenty_four_zone_case["blocker_category"], "queue_policy")
         self.assertEqual(hundred_zone_case["planning_decision"], "defer")
         self.assertEqual(hundred_zone_case["planning_labels"]["defer"], "defer_scale_up_authorized_false")
         self.assertEqual(regional_case["planning_decision"], "no_go")
@@ -361,7 +401,45 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("planning_cases:", text)
         self.assertIn("case_id: 10_zone", text)
         self.assertIn("planning_decision: next_probe", text)
+        self.assertIn("measured_diagnostic: ['16_zone', '24_zone']", text)
         self.assertIn("scheduler_practicality_bottleneck: scheduler_practicality_requires_authorization", text)
+
+    def test_24_zone_diagnostic_support_is_separate_from_hazard_projection(self) -> None:
+        with mock.patch.object(estimator.SINGLE_JOB, "build_summary", return_value=self._single_job_summary()), mock.patch.object(
+            estimator.FEASIBILITY,
+            "build_report",
+            return_value=self._feasibility_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_canonical_bundle_report",
+            return_value=self._canonical_bundle_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_target_area_probe_report",
+            return_value=self._target_area_probe_report(),
+        ), mock.patch.object(
+            estimator,
+            "load_generated_scenario_table_evidence",
+            return_value=self._generated_scenario_table_report(),
+        ):
+            report = estimator.build_report(
+                estimator.ProjectionInputs(aoi_count=1, release_zone_count=24, trajectory_count=6),
+                coefficients=self._coefficients_with_24_zone_diagnostic_support(),
+            )
+
+        self.assertEqual(report["projection_status"], "no_go_extrapolated_beyond_measured_evidence")
+        self.assertIn("release_zone_count_exceeds_measured_support", report["no_go_labels"])
+        self.assertEqual(report["diagnostic_support"]["status"], "measured")
+        self.assertEqual(report["diagnostic_support"]["release_zone_count"], 24)
+        self.assertEqual(report["diagnostic_support"]["repeatability_status"], "measured_repeatability_pair")
+        diagnostic_case = next(case for case in report["planning_cases"] if case["case_id"] == "24_zone")
+        self.assertEqual(diagnostic_case["planning_decision"], "measured_diagnostic")
+        self.assertEqual(
+            diagnostic_case["planning_labels"]["measured_diagnostic"],
+            "measured_diagnostic_single_node_postproc",
+        )
+        self.assertEqual(diagnostic_case["diagnostic_projection"]["runtime_seconds_nominal"], 4.03)
+        self.assertIn("diagnostic reducer-pressure evidence only", diagnostic_case["diagnostic_projection"]["claim_boundary"])
 
     def test_measured_two_zone_frontier_changes_planning_label_without_authorizing_scale_up(self) -> None:
         canonical = self._canonical_bundle_report()

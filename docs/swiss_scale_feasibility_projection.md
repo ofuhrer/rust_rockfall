@@ -6,53 +6,49 @@ risk, exposure, or vulnerability semantics.
 
 ## Recommendation
 
-- Current practical ceiling: a 10-zone single-AOI planning class remains the
-  highest plausible local/managed target under the current single-node and
-  `postproc` evidence boundary. The bounded regional split is measured as a
-  diagnostic post-processing probe, not as broader regional capability.
-- First bottleneck: reducer pressure and replay/metadata growth are now the
-  first measured follow-up bottleneck after the regional split comparison and
-  scenario/output-tier projection surfaces were threaded. Scenario cardinality
-  and manifest size remain the compact-batch precondition for any later live
-  recommendation.
-- Next measurable step: regenerate the deterministic reducer-pressure scratch
-  roots with `scripts/validate_multi_zone_reducer_pressure_gate.py
-  --materialize-root /tmp/<scratch-root> --format json`, confirm the emitted
-  manifest paths and byte/file counts, then use that result before any larger
-  live recommendation.
-- 10-zone: feasible as a projection-supported planning class on the current
-  single-node/postproc boundary. The adjacent-candidate path means source-zone
-  automation is no longer the first blocker; the next evidence should support a
-  larger bounded probe only if scenario cardinality stays manageable.
-- 100-zone: conditionally feasible and deferred. The next step is reducer and
-  replay-pressure reduction, not a live run, because the current projection is
-  still dominated by manifest and metadata growth rather than measured
-  multi-zone hazard throughput.
+- Current practical ceiling: 24 release zones have been measured on Balfrin as
+  a repeated single-node `postproc` diagnostic reducer-pressure workload. This
+  is the current diagnostic ceiling, not a hazard-throughput, operational, or
+  physical-probability ceiling. The older 10-zone single-AOI boundary remains
+  the current hazard-planning boundary.
+- First bottleneck: scientific evidence remains first for physical or
+  operational claims. For further scale diagnostics, the next practical
+  blocker is queue policy and whether another bounded `postproc` diagnostic
+  step, such as 32 zones, still fits comfortably.
+- Next measurable step: run the next bounded diagnostic size only while keeping
+  the run root on `$SCRATCH`, then promote runtime, memory, output-byte,
+  file-count, and manifest-byte evidence back into the projection surfaces.
+- 10-zone: feasible as a hazard-planning class on the current single-node and
+  `postproc` boundary, with reducer pressure still the next implementation
+  bottleneck.
+- 16-zone: measured as Balfrin diagnostic reducer-pressure evidence.
+- 24-zone: measured and repeated as Balfrin diagnostic reducer-pressure
+  evidence; this is the current diagnostic performance anchor.
+- 100-zone: deferred projection. Reducer pressure and replay metadata still
+  dominate before any live hazard-throughput interpretation.
 - Regional split probe branch: TB-447 executed one bounded regional split
   `postproc` job and TB-448 preserved the run-root metrics. TB-432 remains
   historical failed-closed/no-submit evidence, but it is no longer the latest
   regional split state. The next step is reducer-pressure optimization, then
   scenario batching, before any further live recommendation.
-- Regional workflows: still out of reach as scale capability under current
-  single-node/postproc constraints; the measured split probe is an anchor for
-  comparison, not a promotion to broader regional capability.
-- Swiss-wide: out of reach under the current authorization boundary. The next
-  step is continued deferral until Balfrin access, authorization, and multi-AOI
-  evidence gaps close.
+- Regional workflows: still deferred as scale capability; the measured split
+  probe is a comparison anchor, not a promotion to broader regional capability.
+- Swiss-wide: still deferred as a phase change because there is no measured
+  Swiss-wide execution and the physical/scientific evidence basis is not ready.
 
 ## Bottleneck Ranking
 
 The adjacent-candidate branch moved the first blocker away from source-zone
 automation and onto the remaining planning bottlenecks:
 
-1. Scenario cardinality and manifest size.
-1. GIS/research-full output growth after the measured scenario table remains
-   compact.
-1. Reducer pressure and replay/metadata growth.
-1. Hazard throughput, because no larger measured multi-zone hazard execution
-   exists yet.
-1. GIS packaging and manifest metadata completeness.
-1. Balfrin access and authorization boundaries for larger planning cases.
+1. Missing scientific evidence for physical probability and operational use.
+1. Queue policy for the next bounded `postproc` diagnostic step.
+1. Reducer pressure and replay/metadata growth for larger single-AOI batches.
+1. Output-byte and file-count growth when moving beyond diagnostic postproc.
+1. Hazard throughput, because the 24-zone evidence is diagnostic rather than a
+   larger measured hazard execution.
+1. Distributed and non-`postproc` execution, which remain explicit phase
+   changes.
 
 ## Evidence Basis
 
@@ -61,8 +57,11 @@ branches into measured capability:
 
 - Measured evidence:
   - `scripts/estimate_large_scale_execution.py` anchors the 10-zone and
-    100-zone planning rows to the measured conditional-output profile and the
-    current Balfrin gate coefficients.
+    100-zone hazard-planning rows to the measured conditional-output profile
+    and the current Balfrin gate coefficients.
+  - `scripts/estimate_swiss_wide_execution_envelope.py` now exposes 16-zone
+    and 24-zone diagnostic classes separately from hazard support, using the
+    latest Balfrin diagnostic run records when those records are present.
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
     four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
@@ -76,12 +75,21 @@ branches into measured capability:
   - TB-407 measured the smallest multi-zone Balfrin probe on `postproc`, with
     `130` validation files, `53` hazard files, `729600` conditional-curve
     rows, and preservation-ready run-root evidence.
-- TB-447 and TB-448 measured the latest regional split probe: one bounded
-  Balfrin `postproc` job completed as job `4350232`, the preserved run root
-  recorded `130` validation files, `53` hazard files, `729600`
+- TB-579 measured the 24-zone diagnostic reducer-pressure run on Balfrin:
+  job `4368588`, run root
+  `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next`,
+  reducer wall time `4.03` s, maximum RSS `33.711` MB, `76` output files,
+  `32,904` output bytes, and `20,170` manifest bytes.
+- TB-581 repeated the same 24-zone diagnostic shape twice:
+  jobs `4368592` and `4368593`, both completed, both recorded reducer wall time
+  `4.03` s, both produced `76` output files and `32,922` output bytes, with
+  maximum RSS between `34.242` and `39.879` MB.
+- TB-565 and TB-566 measured the current regional split probe: one bounded
+  Balfrin `postproc` job completed as job `4367244`, the preserved run root
+  recorded `130` validation files, `57` hazard files, `729600`
   conditional-curve rows, `ready_for_demonstration_evidence` preservation
-  status, and the run-root metrics that supersede TB-432 as the latest
-  regional split state.
+  status, and run-root metrics that supersede TB-432 as the latest regional
+  split state.
   - TB-450 threads that measured regional split evidence through the
     scenario-cardinality, output-tier, and reducer-pressure projection
     surfaces. The measured run root stays within the projected larger-AOI
@@ -102,8 +110,11 @@ branches into measured capability:
     candidate-generation only and does not upgrade Swiss-wide scale or
     operational claim boundaries.
 - Extrapolated assumptions:
-  - Runtime, storage, file count, and job-count estimates scale from the current
-    measured coefficient set.
+- Runtime, storage, file count, and job-count estimates for hazard workflows
+    still scale from the measured hazard/output coefficient set.
+  - Diagnostic runtime, memory, output-byte, file-count, and manifest-byte
+    coefficients are tracked separately from the 24-zone diagnostic run and
+    repeatability pair.
   - Operator effort follows the job-count shape; this is a planning inference,
     not a measured time study.
   - Memory remains within the measured single-job band because there is no
@@ -165,11 +176,13 @@ treated as projection bounds, not new measurements.
 
 | Case | Evidence class | Runtime s (low / nominal / high) | Storage bytes (low / nominal / high) | File count (low / nominal / high) | Bottleneck summary | GIS/COG status | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 10-zone | projected from measured single-job support | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Scenario cardinality remains the first bottleneck; source-zone automation is no longer first after the adjacent-candidate path | blocked_missing_inputs | next probe candidate if the scenario table stays compact |
-| 100-zone | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | blocked_missing_inputs | optimization task before any live step |
-| regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,323 / 34,565,323 / 34,565,323 | 130 / 130 / 130 | Measured regional split run-root evidence is now available; reducer pressure now outranks another comparison pass | ready_for_demonstration_evidence | reducer-pressure optimization first, then scenario batching, then local evidence |
-| regional workflows | projection-only | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Hazard throughput and multi-AOI support are still absent, so the broader class remains a projection-only planning class | blocked_missing_inputs | no scale-capability promotion until reducer-pressure and scenario-batching follow-up measurements are refreshed |
-| Swiss-wide | projection-only | 347.825 / 463.84 / 1,437.203 | 33,441,382 / 102,793,652 / 6,955,705,120 | 156 / 442 / 4,966 | Balfrin access, authorization, and scheduler practicality remain the final boundary | blocked_missing_inputs | continued deferral until access and multi-AOI gaps close |
+| 10-zone | measured hazard-planning boundary | 13.378 / 17.84 / 55.277 | 1,286,207 / 3,953,602 / 267,527,120 | 6 / 17 / 191 | Reducer pressure and replay metadata remain the next hazard-planning bottleneck | bounded | keep as the current hazard-planning anchor |
+| 16-zone | measured diagnostic postproc | diagnostic reducer run | diagnostic output footprint | diagnostic file footprint | Scientific evidence prevents promotion beyond diagnostic performance | measured diagnostic | use only as diagnostic performance evidence |
+| 24-zone | measured repeatable diagnostic postproc | 4.03 reducer wall seconds | 32,904-32,922 output bytes | 76 output files | Queue policy and scientific evidence block broader claims | measured repeatability pair | next diagnostic size only if queue use remains reasonable |
+| 100-zone | projection-only deferred | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | deferred | optimize/re-measure reducer pressure before a live step |
+| regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,330 / 34,565,330 / 34,565,330 | 130 / 130 / 130 | Measured regional split run-root evidence is available, but it remains bounded comparison evidence | ready_for_demonstration_evidence | keep as comparison evidence |
+| regional workflows | deferred | projection-only | projection-only | projection-only | Multi-AOI support and queue policy are not yet measured as scale capability | deferred | no promotion without a phase change |
+| Swiss-wide | deferred phase change | projection-only | projection-only | projection-only | Missing scientific evidence and no measured Swiss-wide execution dominate | deferred | continue deferral until science and execution evidence are ready |
 
 ## Measured Versus Extrapolated
 
@@ -234,16 +247,10 @@ Extrapolated:
 
 ## Bottom Line
 
-The current evidence supports a feasible 10-zone planning class, a deferred and
-conditional 100-zone planning class, and no promoted broader regional or
-Swiss-wide scale capability under the current single-node/postproc boundary.
-The regional split branch is measured at the bounded probe level, and the
-regional GIS/COG package pressure is now measured as blocked at the standard
-root while the converted proof root is ready. The next decisive gap is reducer
-and replay metadata pressure first, with scenario batching next and local
-candidate evidence after that, rather than another regional split retry; the
-exact unblock action for the GIS/COG branch is the conversion helper on the
-standard root. The repository has measured single-job, four-zone
-postproc, smallest multi-zone probe, bounded regional split, and regional
-GIS/COG pressure evidence, but not measured larger multi-zone hazard
-execution.
+The current evidence supports a 10-zone hazard-planning boundary and a
+24-zone repeated Balfrin diagnostic reducer-pressure boundary. It does not yet
+support 100-zone, regional-workflow, Swiss-wide, operational,
+physical-probability, distributed, or non-`postproc` claims. The next useful
+scale action is another bounded diagnostic step only if queue policy allows it;
+the next useful scientific action is to close calibration, holdout,
+source-frequency, and physical-probability evidence gaps.

@@ -1424,10 +1424,58 @@ def build_report() -> dict[str, Any]:
     ]
     projection_summary = {
         "status": "projection_only",
-        "current_practical_ceiling": "10-zone single-AOI planning class under the current single-node/postproc evidence boundary",
-        "first_bottleneck": "reducer_pressure_and_replay_metadata_growth",
+        "current_practical_ceiling": (
+            f"{diagnostic_ceiling.get('simultaneous_release_zone_batch_max')}-zone diagnostic single-node/postproc reducer-pressure ceiling; "
+            "10-zone single-AOI remains the hazard-planning boundary"
+            if diagnostic_ceiling.get("simultaneous_release_zone_batch_max")
+            else "10-zone single-AOI planning class under the current single-node/postproc evidence boundary"
+        ),
+        "first_bottleneck": (
+            "scientific_evidence_then_queue_policy_for_larger_diagnostics"
+            if diagnostic_ceiling.get("simultaneous_release_zone_batch_max")
+            else "reducer_pressure_and_replay_metadata_growth"
+        ),
         "planning_precondition": "scenario_cardinality_and_manifest_size_must_stay_within_compact_batch_caps",
-        "next_measurable_step": "regenerate deterministic local reducer-pressure scratch roots and rerun the reducer-pressure gate before any larger live recommendation",
+        "next_measurable_step": (
+            f"run a {diagnostic_ceiling.get('next_diagnostic_release_zone_count')}-zone diagnostic on postproc if queue policy remains favorable; "
+            "keep regional, Swiss-wide, distributed, operational, and physical-probability claims separate"
+            if diagnostic_ceiling.get("next_diagnostic_release_zone_count")
+            else "regenerate deterministic local reducer-pressure scratch roots and rerun the reducer-pressure gate before any larger live recommendation"
+        ),
+        "diagnostic_ceiling": diagnostic_ceiling,
+        "diagnostic_repeatability_status": diagnostic_repeatability_summary.get("status"),
+        "feasibility_classes": {
+            "10_zone": {
+                "class": "hazard_planning_boundary",
+                "evidence": "measured_single_job_and_small_multi_zone_context",
+                "next_blocker": "reducer_pressure",
+            },
+            "16_zone": {
+                "class": "measured_diagnostic_postproc",
+                "evidence": "completed diagnostic run record",
+                "next_blocker": "scientific_evidence",
+            },
+            "24_zone": {
+                "class": "measured_repeatable_diagnostic_postproc",
+                "evidence": "completed diagnostic run record plus repeatability pair",
+                "next_blocker": "queue_policy",
+            },
+            "100_zone": {
+                "class": "projection_only_deferred",
+                "evidence": "extrapolated from diagnostic and older output-pressure evidence",
+                "next_blocker": "reducer_pressure",
+            },
+            "regional": {
+                "class": "deferred_multi_aoi",
+                "evidence": "bounded regional split comparison only",
+                "next_blocker": "queue_policy",
+            },
+            "swiss_wide": {
+                "class": "deferred_phase_change",
+                "evidence": "no measured Swiss-wide execution",
+                "next_blocker": "missing_scientific_evidence",
+            },
+        },
         "evidence_class_separation": {
             "measured": measured,
             "projection_only": projected,

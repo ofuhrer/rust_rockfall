@@ -531,6 +531,15 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(row["next_diagnostic_release_zone_count"], 32)
         self.assertEqual(row["next_recommended_action"], "run_balfrin_diagnostic_32_zone")
         self.assertEqual(report["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"], 24)
+        self.assertIn("24-zone diagnostic", report["swiss_scale_feasibility_projection"]["current_practical_ceiling"])
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection"]["feasibility_classes"]["24_zone"]["class"],
+            "measured_repeatable_diagnostic_postproc",
+        )
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection"]["feasibility_classes"]["100_zone"]["next_blocker"],
+            "reducer_pressure",
+        )
         self.assertEqual(comparison["status"], "measured")
         self.assertEqual(comparison["latest_diagnostic_release_zone_count"], 24)
         self.assertEqual(
