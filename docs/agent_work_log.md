@@ -9477,3 +9477,29 @@ scan thousands of lines of completed history.
 - Metrics: job `4372309`, terminal `COMPLETED`; SLURM elapsed `00:00:23`; hazard workflow wall time `7.043564590974711 s`; full batch measured time `22.3286811549915 s`; hazard-stage measured time `7.8358131679706275 s`; process peak memory `357.796875 MB`; hazard output `57` files / `31,439,786` bytes; validation output footprint `130` files / `34,565,316` bytes; conditional-curve rows `729,600`; trajectory chunk decisions `{"executed": 2}`; reducer chunk decisions `{"executed": 2}`.
 - Boundaries: bounded single-node `postproc` hazard-throughput evidence only. No operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
 - Next task: `TB-604`
+
+### TB-604: Promote Hazard-Throughput Evidence Into The Readiness Matrix
+
+- Date: 2026-05-26
+- Commit: `df01929`
+- Objective: make the measured TB-603 hazard-throughput run visible in the scale-readiness, evidence-bundle, and Swiss-feasibility surfaces without changing broader claim boundaries.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_evidence_bundle.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added TB-603 as a measured `hazard_throughput_probe` tier in the scale-readiness matrix.
+  - Added `hazard_throughput_evidence` to the canonical Balfrin evidence bundle and pointed the latest bounded-probe interpretation gate at TB-603 instead of diagnostic evidence.
+  - Added `hazard_throughput_support` to the Swiss-wide execution envelope while preserving the no-go Swiss-wide projection and diagnostic-support separation.
+  - Updated the Swiss-scale projection document to treat TB-603 as the current bounded hazard-throughput support point.
+  - Removed TB-604 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_evidence_bundle.py scripts/summarize_balfrin_scale_readiness_matrix.py scripts/estimate_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json --json-output /tmp/tb604_scale.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_evidence_bundle.py --format json --json-output /tmp/tb604_bundle.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --aoi-count 26 --release-zone-count 10 --trajectory-count 6 --format json --json-output /tmp/tb604_swiss.json` (expected no-go exit `2`)
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_evidence_bundle tests.test_swiss_wide_execution_envelope -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Verification summary: the scale matrix reports `hazard_throughput_probe` in `measured_tiers` with job `4372309`, runtime `7.043564590974711 s`, memory `357.796875 MB`, `57` hazard files, `31,439,786` hazard bytes, and `729,600` conditional-curve rows. The Swiss envelope reports TB-603 under `hazard_throughput_support` while keeping Swiss-wide status `no_go_extrapolated_beyond_measured_evidence`.
+- Boundaries: measured bounded hazard-throughput evidence only; operational, physical-probability, Swiss-wide, distributed, risk, and non-`postproc` claims remain deferred.
+- Next task: `TB-605`
