@@ -9704,7 +9704,7 @@ scan thousands of lines of completed history.
 ### TB-615: Stage Independent Holdout Runout Or Deposition Evidence
 
 - Date: 2026-05-26
-- Commit: implementation commit to be recorded after commit
+- Commit: `c290e13`
 - Objective: stage a calibration-separated held-out runout/deposition benchmark intake so the evidence-gap report can move to the next scientific blocker.
 - Files changed: `validation/data/processed/observed_runout_deposition_benchmark/manifest.json`, `validation/data/processed/observed_runout_deposition_benchmark/observed_runout_deposition.geojson`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/holdout_runout_deposition_evidence_tb615.md`, `docs/current_maturity_snapshot.md`, `docs/README.md`, `docs/task_backlog.md`
 - Implementation summary:
