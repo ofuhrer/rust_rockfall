@@ -9031,3 +9031,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: Pages publication for measured Balfrin diagnostic `postproc` performance only; no CI/Balfrin normalization, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-586`
+
+### TB-586: Reassess Scientific Validation Gaps After The Diagnostic Scale Push
+
+- Date: 2026-05-26
+- Commit: `fa17280`
+- Objective: refresh the scientific-gap assessment so recent Balfrin diagnostic performance progress is not mistaken for physical validation progress.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/current_maturity_snapshot.md`, `docs/validation_data_schema.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a `post_diagnostic_scale_context` section that records the 24-zone diagnostic/repeatability evidence as performance progress only.
+  - Added `next_concrete_scientific_tasks`, ranked toward independent holdout deposition/runout evidence, source-frequency evidence, block-population evidence, calibration design, and second-site geodata staging.
+  - Updated text rendering and tests so the report names the next concrete validation-data acquisition or calibration task.
+  - Refreshed maturity/schema docs to keep performance feasibility and scientific validity explicitly separated.
+  - Removed TB-586 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/audit_conditional_denominator_provenance.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/audit_trajectory_deposition_traceability.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: scientific-gap assessment only; no calibration, validation acceptance, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-587`
