@@ -452,6 +452,94 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             16,
         )
 
+    def test_24_zone_diagnostic_run_record_becomes_latest_diagnostic_tier(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            record_16 = tmp / "run_record_16.json"
+            record_24 = tmp / "run_record_24.json"
+            record_16.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "run_id": "diagnostic_16_zone_simplified_20260525",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525",
+                        "git_head": "665971e",
+                        "job_id": "4367731",
+                        "terminal_state": "COMPLETED",
+                        "diagnostic_shape": {"release_zone_count": 16},
+                        "collection": {
+                            "status": "complete",
+                            "time_verbose": {"elapsed": "0:01.24", "max_rss_mb": 34.066},
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 16,
+                                "output_file_count": 52,
+                                "output_byte_count": 23661,
+                                "manifest_size_bytes": 15898,
+                                "root_file_count": 57,
+                                "reducer_wall_time_seconds": 3.07,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            record_24.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "balfrin_diagnostic_run_record_v1",
+                        "status": "completed",
+                        "run_id": "diagnostic_24_zone_simplified_next",
+                        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next",
+                        "git_head": "d6863e2",
+                        "job_id": "4368588",
+                        "terminal_state": "COMPLETED",
+                        "diagnostic_shape": {"release_zone_count": 24},
+                        "collection": {
+                            "status": "complete",
+                            "time_verbose": {"elapsed": "0:01.55", "max_rss_mb": 33.711},
+                            "pressure_report": {
+                                "status": "measured_scratch_root",
+                                "release_zone_count": 24,
+                                "output_file_count": 76,
+                                "output_byte_count": 32904,
+                                "manifest_size_bytes": 20170,
+                                "root_file_count": 81,
+                                "reducer_wall_time_seconds": 4.03,
+                            },
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.object(MODULE.evidence_bundle, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD", record_24),
+                mock.patch.object(MODULE.evidence_bundle, "DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS", (record_24, record_16)),
+            ):
+                report = MODULE.build_report()
+
+        row = next(row for row in report["tiers"] if row["tier_id"] == "diagnostic_24_zone_reducer_pressure")
+        comparison = report["diagnostic_performance_comparison"]
+
+        self.assertIn("diagnostic_24_zone_reducer_pressure", report["measured_tiers"])
+        self.assertEqual(row["job_id"], "4368588")
+        self.assertEqual(row["release_zone_count"], 24)
+        self.assertEqual(row["diagnostic_output_file_count"], 76)
+        self.assertEqual(row["diagnostic_output_bytes"], 32904)
+        self.assertEqual(row["next_diagnostic_release_zone_count"], 32)
+        self.assertEqual(row["next_recommended_action"], "run_balfrin_diagnostic_32_zone")
+        self.assertEqual(report["diagnostic_single_node_postproc_ceiling"]["simultaneous_release_zone_batch_max"], 24)
+        self.assertEqual(comparison["status"], "measured")
+        self.assertEqual(comparison["latest_diagnostic_release_zone_count"], 24)
+        self.assertEqual(
+            [item["tier_id"] for item in comparison["diagnostic_rows"]],
+            ["diagnostic_16_zone_reducer_pressure", "diagnostic_24_zone_reducer_pressure"],
+        )
+        self.assertIn("regional_split_probe", [item["tier_id"] for item in comparison["comparison_rows"]])
+        self.assertIn("historical_regional_split_probe", [item["tier_id"] for item in comparison["comparison_rows"]])
+
     def test_cli_emits_json_and_text_reports(self) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):

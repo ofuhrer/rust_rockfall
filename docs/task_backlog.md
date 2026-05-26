@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-580: Collect And Promote 24-Zone Diagnostic Metrics
-
-Goal: Preserve and promote TB-579 run-root evidence into scale, performance, preservation, and feasibility surfaces.
-
-Capability gap reduced: Converts the 24-zone diagnostic run into durable measured evidence and comparison data.
-
-Why this outranks alternatives: Larger runs only help the project if their evidence is immediately captured and bounded.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_balfrin_evidence_bundle.py`
-
-Deliverables:
-
-- Collect metrics and preservation status from the 24-zone run root.
-- Promote the evidence into the evidence bundle, scale matrix, and performance comparison surfaces.
-- Compare 16-zone, 24-zone, regional split, and historical runs with clear evidence labels.
-
-Definition of done:
-
-- Metrics contract is complete or explicitly waiting with recovery, focused tests pass, and the evidence is visible in current scale surfaces.
-
-
 ### TB-581: Execute A Small Repeatability Pair At The Best Measured Diagnostic Size
 
 Goal: Run two additional diagnostic `postproc` jobs at the largest size that has passed checks to measure runtime/output variability.

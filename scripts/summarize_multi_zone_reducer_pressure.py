@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROBE_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_probe_v1")
 DEFAULT_MANIFEST_PRESSURE_LADDER_ROOT = Path("/tmp/rust_rockfall/multi_zone_reducer_pressure_manifest_pressure_ladder_v1")
 DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
-    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json"
+    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next/run_record.json"
 )
 MEASURED_REGIONAL_SPLIT_RUN_ROOT = "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1"
 MEASURED_REGIONAL_SPLIT_SOURCE_REPORT = REPO_ROOT / "docs" / "balfrin_regional_split_run_root_metrics_tb448.md"

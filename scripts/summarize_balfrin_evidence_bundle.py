@@ -31,8 +31,15 @@ SCHEMA_VERSION = "balfrin_evidence_bundle_v1"
 GIS_COG_PARITY_SCHEMA_VERSION = "balfrin_gis_cog_parity_report_v1"
 GIS_COG_SCOPE_SCHEMA_VERSION = "balfrin_gis_cog_scope_report_v1"
 CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_evidence_bundle_v1"
-DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+DEFAULT_BALFRIN_16_ZONE_DIAGNOSTIC_RUN_RECORD = Path(
     "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json"
+)
+DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next/run_record.json"
+)
+DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS = (
+    DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD,
+    DEFAULT_BALFRIN_16_ZONE_DIAGNOSTIC_RUN_RECORD,
 )
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
@@ -314,9 +321,13 @@ def load_json_object(path: Path) -> dict[str, Any] | None:
 
 
 def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
-    record = load_json_object(DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD)
-    if record is not None:
-        return build_multi_zone_balfrin_evidence(record)
+    candidate_paths = tuple(dict.fromkeys((DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD, *DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS)))
+    for path in candidate_paths:
+        record = load_json_object(path)
+        if record is not None:
+            evidence = build_multi_zone_balfrin_evidence(record)
+            evidence["source_paths"] = [str(path)]
+            return evidence
     return dict(TB565_REGIONAL_SPLIT_PROBE)
 
 
@@ -739,7 +750,7 @@ def convert_diagnostic_run_record_to_evidence(record: dict[str, Any]) -> dict[st
         "output_mode": "diagnostic_reducer_pressure",
         "claim_boundary": "measured reducer-pressure diagnostic evidence only; no operational or physical-probability claim",
         "summary": (
-            "The simplified Balfrin diagnostic runner completed one 16-zone postproc reducer-pressure measurement and stored one run record."
+            f"The simplified Balfrin diagnostic runner completed one {pressure.get('release_zone_count') or dict(record.get('diagnostic_shape') or {}).get('release_zone_count')}-zone postproc reducer-pressure measurement and stored one run record."
             if measured
             else "The simplified Balfrin diagnostic run record is present but incomplete."
         ),

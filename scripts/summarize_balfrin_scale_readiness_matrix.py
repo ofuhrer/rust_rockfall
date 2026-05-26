@@ -1022,7 +1022,13 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
     release_zone_count = evidence.get("release_zone_count")
-    next_diagnostic_release_zone_count = 24 if release_zone_count == 16 else None
+    next_diagnostic_release_zone_count = release_zone_count + 8 if isinstance(release_zone_count, int) else None
+    next_reason = (
+        f"The simplified Balfrin diagnostic runner produced measured {release_zone_count}-zone reducer-pressure evidence; "
+        f"the next step is a {next_diagnostic_release_zone_count}-zone diagnostic run with fixed reducer fan-out before treating this as anything beyond diagnostic postproc evidence."
+        if next_diagnostic_release_zone_count
+        else "The simplified Balfrin diagnostic runner produced measured reducer-pressure evidence; collect the latest run record before planning another diagnostic step."
+    )
     return {
         "tier_id": f"diagnostic_{release_zone_count}_zone_reducer_pressure",
         "tier_label": f"{release_zone_count}-zone diagnostic reducer-pressure run",
@@ -1049,11 +1055,10 @@ def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | Non
         "simultaneous_release_zone_batch_max_source": "diagnostic_single_node_postproc",
         "next_diagnostic_release_zone_count": next_diagnostic_release_zone_count,
         "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
-        "next_recommended_action": "run_balfrin_diagnostic_24_zone",
-        "next_recommended_action_reason": (
-            "The simplified Balfrin diagnostic runner produced measured 16-zone reducer-pressure evidence; "
-            "the next step is a 24-zone diagnostic run with fixed reducer fan-out before treating this as anything beyond diagnostic postproc evidence."
-        ),
+        "next_recommended_action": f"run_balfrin_diagnostic_{next_diagnostic_release_zone_count}_zone"
+        if next_diagnostic_release_zone_count
+        else "collect_latest_diagnostic_run_record",
+        "next_recommended_action_reason": next_reason,
         "next_blocker_category": "next_diagnostic_size_not_measured",
         "blocker": None,
         "current_blocker": None,
@@ -1094,6 +1099,90 @@ def _diagnostic_single_node_postproc_ceiling(diagnostic_row: dict[str, Any] | No
         "job_id": diagnostic_row["job_id"],
         "run_root": diagnostic_row["run_root"],
         "claim_boundary": diagnostic_row["claim_boundary"],
+    }
+
+
+def _diagnostic_record_performance_row(path: Path) -> dict[str, Any] | None:
+    record = evidence_bundle.load_json_object(path)
+    if record is None:
+        return None
+    evidence = evidence_bundle.build_multi_zone_balfrin_evidence(record)
+    if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
+        return None
+    return {
+        "tier_id": f"diagnostic_{evidence.get('release_zone_count')}_zone_reducer_pressure",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_diagnostic_reducer_pressure",
+        "release_zone_count": evidence.get("release_zone_count"),
+        "job_id": evidence.get("slurm_job_id"),
+        "run_root": evidence.get("run_root"),
+        "runtime_seconds": evidence.get("reducer_wall_time_seconds"),
+        "memory_peak_mb": evidence.get("memory_peak_mb"),
+        "output_file_count": evidence.get("diagnostic_output_file_count"),
+        "output_bytes": evidence.get("diagnostic_output_bytes"),
+        "manifest_bytes": evidence.get("diagnostic_manifest_size_bytes"),
+        "source_path": str(path),
+        "claim_boundary": evidence.get("claim_boundary"),
+    }
+
+
+def build_diagnostic_performance_comparison() -> dict[str, Any]:
+    diagnostic_paths = tuple(
+        dict.fromkeys(
+            (
+                evidence_bundle.DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD,
+                *evidence_bundle.DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS,
+            )
+        )
+    )
+    diagnostic_rows = [
+        row
+        for row in (_diagnostic_record_performance_row(path) for path in diagnostic_paths)
+        if row is not None
+    ]
+    diagnostic_rows.sort(key=lambda row: int(row.get("release_zone_count") or 0))
+    comparison_rows = [
+        {
+            "tier_id": "regional_split_probe",
+            "evidence_label": "measured_on_balfrin",
+            "measurement_status": "measured_regional_split_postproc",
+            "release_zone_count": 12,
+            "job_id": TB566_REGIONAL_SPLIT_METRICS["job_id"],
+            "run_root": TB566_REGIONAL_SPLIT_METRICS["run_root"],
+            "runtime_seconds": 24.0,
+            "memory_peak_mb": TB566_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
+            "output_file_count": TB566_REGIONAL_SPLIT_METRICS["hazard_output_file_count"],
+            "output_bytes": TB566_REGIONAL_SPLIT_METRICS["hazard_output_bytes"],
+            "manifest_bytes": TB566_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES,
+            "source_path": TB566_REGIONAL_SPLIT_METRICS["source_report"],
+            "claim_boundary": "measured regional split postproc evidence; not operational or physical-probability evidence",
+        },
+        {
+            "tier_id": "historical_regional_split_probe",
+            "evidence_label": "measured_on_balfrin",
+            "measurement_status": "superseded_measured_regional_split_postproc",
+            "release_zone_count": 12,
+            "job_id": TB448_REGIONAL_SPLIT_METRICS["job_id"],
+            "run_root": TB448_REGIONAL_SPLIT_METRICS["run_root"],
+            "runtime_seconds": 24.0,
+            "memory_peak_mb": TB448_REGIONAL_SPLIT_METRICS["collector_peak_memory_mb"],
+            "output_file_count": TB448_REGIONAL_SPLIT_METRICS["hazard_output_file_count"],
+            "output_bytes": TB448_REGIONAL_SPLIT_METRICS["hazard_output_bytes"],
+            "manifest_bytes": TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES,
+            "source_path": TB448_REGIONAL_SPLIT_METRICS["source_report"],
+            "claim_boundary": "historical measured comparison evidence; superseded by current regional split and diagnostics",
+        },
+        *diagnostic_rows,
+    ]
+    latest_diagnostic = diagnostic_rows[-1] if diagnostic_rows else None
+    return {
+        "schema_version": "balfrin_diagnostic_performance_comparison_v1",
+        "status": "measured" if latest_diagnostic else "waiting_for_diagnostic_run_records",
+        "comparison_rows": comparison_rows,
+        "diagnostic_rows": diagnostic_rows,
+        "latest_diagnostic_release_zone_count": latest_diagnostic.get("release_zone_count") if latest_diagnostic else None,
+        "latest_diagnostic_tier_id": latest_diagnostic.get("tier_id") if latest_diagnostic else None,
+        "claim_boundary": "performance comparison only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim",
     }
 
 
@@ -1232,6 +1321,7 @@ def build_report() -> dict[str, Any]:
     latest_multi_zone_evidence = evidence_bundle.build_latest_multi_zone_balfrin_evidence()
     diagnostic_row = _diagnostic_run_record_row(latest_multi_zone_evidence)
     diagnostic_ceiling = _diagnostic_single_node_postproc_ceiling(diagnostic_row)
+    diagnostic_performance_comparison = build_diagnostic_performance_comparison()
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
@@ -1356,6 +1446,7 @@ def build_report() -> dict[str, Any]:
             "source_document": "docs/balfrin_postproc_microbenchmark_tb305.md",
         },
         "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
+        "diagnostic_performance_comparison": diagnostic_performance_comparison,
         "live_run_authorization_status": {
             "live_submission_authorized": False,
             "standing_postproc_clearance_active": True,
