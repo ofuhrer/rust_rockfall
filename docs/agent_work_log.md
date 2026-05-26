@@ -9526,3 +9526,26 @@ scan thousands of lines of completed history.
 - Metrics: all four `postproc` jobs completed with exit code `0:0`; chunk jobs elapsed `00:00:09`, `00:00:05`, and `00:00:05`; merge job elapsed `00:00:05`; final plan status `completed`; completed chunks `3`; failed chunks `0`; merge state `ready`; merge order `sorted_chunk_id`; output footprint `49` files / `91,981,415` bytes; run-root footprint `68` files / `91,998,937` bytes.
 - Boundaries: bounded scheduler-observed chunk dry run only. The split jobs were chained to avoid current shared-plan write contention. This does not establish Swiss-wide readiness, operational hazard-map readiness, physical-probability semantics, non-`postproc` behavior, multi-node behavior, or concurrent shared-plan write safety.
 - Next task: `TB-606`
+
+### TB-606: Measure Balfrin Restart And Resume Behavior For Chunked Runs
+
+- Date: 2026-05-26
+- Commit: `acef377`
+- Objective: verify that a Balfrin chunked run can recover from a missing reducer partial state and still produce a hash-stable final merge.
+- Files changed: `docs/balfrin_restartability_recovery_tb606.md`, `docs/balfrin_restartability_recovery_report.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Copied the TB-605 distributed chunk dry-run output into `/scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2`.
+  - Rewrote preserved absolute manifest paths from the TB-605 source root to the copied TB-606 root before intervention.
+  - Removed `tb605_scheduler_dry_run__chunk_0001_state.json`, submitted one `postproc` recovery job for scheduler index `1`, and submitted a dependent merge job.
+  - Preserved SLURM accounting, SBATCH scripts, logs, timing files, after-recovery execution plan/index, final execution plan/index/merge state, checksum manifests, recovery evidence JSON, and rendered recovery report in the run root.
+  - Recorded the measured recovery evidence in `docs/balfrin_restartability_recovery_tb606.md`, updated the canonical restartability report, and removed TB-606 from the active backlog.
+- Checks run:
+  - `git pull --ff-only origin main`
+  - Remote `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall`
+  - Remote `sbatch` submissions for jobs `4372418` and `4372419`
+  - Remote `squeue` polling and `sacct -P -j 4372418,4372419 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,MaxRSS,ReqCPUS,AllocCPUS`
+  - Remote `PYENV_VERSION=system uv run python scripts/summarize_balfrin_restartability_recovery.py --evidence-json /scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2/tb606_restartability_evidence.json --format json --json-output /scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2/tb606_restartability_report.json --text-output /scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2/tb606_restartability_report.md`
+- Result/status: implemented_measured
+- Metrics: recovery job `4372418` completed in `00:00:06`; merge job `4372419` completed in `00:01:01`; target chunk decision `completed_state_reset_for_rerun`; target chunk attempt count `2`; final plan `completed`; completed chunks `3`; failed chunks `0`; reducer merge state `ready`; stable hazard-product hash comparison `37` baseline files / `37` recovered files / `0` changed artifacts; output footprint `49` files / `91,981,158` bytes.
+- Boundaries: one copied TB-605 run root and one removed reducer partial state only. No Swiss-wide readiness, operational hazard-map readiness, physical-probability semantics, non-`postproc` behavior, multi-node behavior, or concurrent shared-plan write safety is established.
+- Next task: `TB-607`
