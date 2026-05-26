@@ -105,6 +105,54 @@ BALFRIN_PROJECTION_REFERENCE = {
     "classification": "projection_only_not_measured",
 }
 
+BALFRIN_DIAGNOSTIC_RUNS: tuple[dict[str, Any], ...] = (
+    {
+        "task_id": "TB-579",
+        "label": "24-zone diagnostic",
+        "job_id": "4368588",
+        "run_id": "diagnostic_24_zone_simplified_next",
+        "release_zone_count": 24,
+        "source": "docs/balfrin_24_zone_diagnostic_run_tb579.md",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next",
+        "git_head": "d6863e299a590f97d93cc16ba0018745b2bf6506",
+        "reducer_wall_time_seconds": 4.03,
+        "memory_peak_mb": 33.711,
+        "output_file_count": 76,
+        "output_bytes": 32_904,
+        "manifest_bytes": 20_170,
+    },
+    {
+        "task_id": "TB-581",
+        "label": "24-zone repeatability A",
+        "job_id": "4368592",
+        "run_id": "diagnostic_24_zone_repeatability_a_tb581",
+        "release_zone_count": 24,
+        "source": "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_a_tb581",
+        "git_head": "5f9c93790cfa89855fdbbb3d30be81a31298bb50",
+        "reducer_wall_time_seconds": 4.03,
+        "memory_peak_mb": 34.242,
+        "output_file_count": 76,
+        "output_bytes": 32_922,
+        "manifest_bytes": 20_218,
+    },
+    {
+        "task_id": "TB-581",
+        "label": "24-zone repeatability B",
+        "job_id": "4368593",
+        "run_id": "diagnostic_24_zone_repeatability_b_tb581",
+        "release_zone_count": 24,
+        "source": "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_b_tb581",
+        "git_head": "5f9c93790cfa89855fdbbb3d30be81a31298bb50",
+        "reducer_wall_time_seconds": 4.03,
+        "memory_peak_mb": 39.879,
+        "output_file_count": 76,
+        "output_bytes": 32_922,
+        "manifest_bytes": 20_218,
+    },
+)
+
 
 @dataclass(frozen=True)
 class AggregateMetrics:
@@ -346,7 +394,12 @@ def record_main(args: argparse.Namespace) -> int:
     args.chart_out.parent.mkdir(parents=True, exist_ok=True)
     args.chart_out.write_text(build_history_svg(history_rows), encoding="utf-8")
     args.index_out.parent.mkdir(parents=True, exist_ok=True)
-    args.index_out.write_text(render_index_html(entry), encoding="utf-8")
+    balfrin_diagnostic = build_balfrin_diagnostic_report()
+    balfrin_json_out = args.index_out.parent / "balfrin_diagnostic.json"
+    balfrin_svg_out = args.index_out.parent / "balfrin_diagnostic.svg"
+    balfrin_json_out.write_text(json.dumps(balfrin_diagnostic, indent=2, sort_keys=True), encoding="utf-8")
+    balfrin_svg_out.write_text(build_balfrin_diagnostic_svg(balfrin_diagnostic), encoding="utf-8")
+    args.index_out.write_text(render_index_html(entry, balfrin_diagnostic=balfrin_diagnostic), encoding="utf-8")
     site_index_out = getattr(args, "site_index_out", None)
     if site_index_out is not None:
         site_index_out.parent.mkdir(parents=True, exist_ok=True)
@@ -427,11 +480,12 @@ def render_pr_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def render_index_html(latest: dict[str, Any]) -> str:
+def render_index_html(latest: dict[str, Any], *, balfrin_diagnostic: dict[str, Any] | None = None) -> str:
     metrics = latest.get("metrics") or {}
     rows = "\n".join(
         f"<tr><th>{METRIC_LABELS[key]}</th><td>{float(metrics.get(key, 0.0)):.3f}</td></tr>" for key in METRICS
     )
+    balfrin_section = render_balfrin_diagnostic_html_section(balfrin_diagnostic or build_balfrin_diagnostic_report())
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -452,6 +506,7 @@ def render_index_html(latest: dict[str, Any]) -> str:
   <img src="main_performance.svg" alt="Main branch benchmark trend chart">
   <h2>Latest component timings (seconds)</h2>
   <table>{rows}</table>
+  {balfrin_section}
 </body>
 </html>
 """
@@ -596,6 +651,131 @@ def build_history_svg(history_rows: list[dict[str, Any]]) -> str:
             "</svg>",
         ]
     )
+
+
+def build_balfrin_diagnostic_report() -> dict[str, Any]:
+    rows = [dict(row) for row in BALFRIN_DIAGNOSTIC_RUNS]
+    runtime_values = [float(row["reducer_wall_time_seconds"]) for row in rows]
+    memory_values = [float(row["memory_peak_mb"]) for row in rows]
+    output_values = [int(row["output_bytes"]) for row in rows]
+    manifest_values = [int(row["manifest_bytes"]) for row in rows]
+    return {
+        "schema_version": "balfrin_diagnostic_performance_pages_v1",
+        "status": "measured_diagnostic_repeatability",
+        "section_type": "balfrin_diagnostic_postproc",
+        "summary": (
+            "Measured Balfrin single-node postproc diagnostic evidence. Kept separate from GitHub Actions CI timing trends."
+        ),
+        "latest_release_zone_count": 24,
+        "runs": rows,
+        "bounds": {
+            "reducer_wall_time_seconds": bounds(runtime_values),
+            "memory_peak_mb": bounds(memory_values),
+            "output_bytes": bounds(output_values),
+            "manifest_bytes": bounds(manifest_values),
+        },
+        "pages_artifacts": {
+            "json": "balfrin_diagnostic.json",
+            "svg": "balfrin_diagnostic.svg",
+        },
+        "claim_boundaries": {
+            "ci_timing_context": "separate",
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "swiss_wide_claims_allowed": False,
+            "distributed_execution_claims_allowed": False,
+            "non_postproc_claims_allowed": False,
+        },
+    }
+
+
+def bounds(values: list[float] | list[int]) -> dict[str, float | int]:
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    median = ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+    spread = ordered[-1] - ordered[0]
+    return {"min": ordered[0], "median": median, "max": ordered[-1], "spread": round(float(spread), 6)}
+
+
+def build_balfrin_diagnostic_svg(report: dict[str, Any]) -> str:
+    rows = list(report.get("runs") or [])
+    width = 760
+    height = 280
+    left = 70
+    right = 24
+    top = 34
+    bottom = 58
+    chart_w = width - left - right
+    chart_h = height - top - bottom
+    max_runtime = max([float(row.get("reducer_wall_time_seconds") or 0.0) for row in rows] + [1.0])
+    max_memory = max([float(row.get("memory_peak_mb") or 0.0) for row in rows] + [1.0])
+
+    def x_at(index: int) -> float:
+        return left + chart_w / 2.0 if len(rows) == 1 else left + chart_w * (index / (len(rows) - 1))
+
+    def y_runtime(value: float) -> float:
+        return top + chart_h * (1.0 - value / max_runtime)
+
+    def y_memory(value: float) -> float:
+        return top + chart_h * (1.0 - value / max_memory)
+
+    runtime_points = []
+    memory_points = []
+    markers = []
+    for index, row in enumerate(rows):
+        x = x_at(index)
+        runtime = float(row.get("reducer_wall_time_seconds") or 0.0)
+        memory = float(row.get("memory_peak_mb") or 0.0)
+        runtime_points.append(f"{x:.2f},{y_runtime(runtime):.2f}")
+        memory_points.append(f"{x:.2f},{y_memory(memory):.2f}")
+        markers.append(
+            f"<circle cx='{x:.2f}' cy='{y_runtime(runtime):.2f}' r='3' fill='#2563eb'><title>{row.get('job_id')} runtime {runtime:.2f}s</title></circle>"
+        )
+        markers.append(
+            f"<circle cx='{x:.2f}' cy='{y_memory(memory):.2f}' r='3' fill='#16a34a'><title>{row.get('job_id')} memory {memory:.3f}MB</title></circle>"
+        )
+        markers.append(
+            f"<text x='{x:.2f}' y='{height - 24}' text-anchor='middle' font-size='10' fill='#57606a'>{row.get('job_id')}</text>"
+        )
+    return "\n".join(
+        [
+            f"<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' role='img' aria-label='Balfrin diagnostic performance'>",
+            "<rect width='100%' height='100%' fill='white'/>",
+            f"<text x='{left}' y='20' font-size='16' font-weight='600' fill='#24292f'>Balfrin 24-zone diagnostic performance</text>",
+            f"<line x1='{left}' y1='{top + chart_h}' x2='{left + chart_w}' y2='{top + chart_h}' stroke='#8c959f'/>",
+            f"<line x1='{left}' y1='{top}' x2='{left}' y2='{top + chart_h}' stroke='#8c959f'/>",
+            f"<polyline fill='none' stroke='#2563eb' stroke-width='2.4' points='{' '.join(runtime_points)}'/>",
+            f"<polyline fill='none' stroke='#16a34a' stroke-width='2.4' points='{' '.join(memory_points)}'/>",
+            *markers,
+            f"<text x='{left}' y='{height - 8}' font-size='11' fill='#2563eb'>runtime seconds</text>",
+            f"<text x='{left + 140}' y='{height - 8}' font-size='11' fill='#16a34a'>memory MB (separate scale)</text>",
+            "</svg>",
+        ]
+    )
+
+
+def render_balfrin_diagnostic_html_section(report: dict[str, Any]) -> str:
+    rows = "\n".join(
+        "<tr>"
+        f"<td>{row.get('job_id')}</td>"
+        f"<td>{row.get('release_zone_count')}</td>"
+        f"<td>{float(row.get('reducer_wall_time_seconds') or 0.0):.2f}</td>"
+        f"<td>{float(row.get('memory_peak_mb') or 0.0):.3f}</td>"
+        f"<td>{int(row.get('output_file_count') or 0)}</td>"
+        f"<td>{int(row.get('output_bytes') or 0)}</td>"
+        "</tr>"
+        for row in report.get("runs", [])
+    )
+    return f"""
+  <h2>Balfrin diagnostic performance</h2>
+  <p>{report.get("summary", "")} These measurements do not modify the CI trend above.</p>
+  <img src="balfrin_diagnostic.svg" alt="Balfrin diagnostic runtime and memory chart">
+  <table>
+    <tr><th>Job</th><th>Zones</th><th>Reducer s</th><th>Memory MB</th><th>Files</th><th>Bytes</th></tr>
+    {rows}
+  </table>
+  <p><a href="balfrin_diagnostic.json">Download Balfrin diagnostic JSON</a>.</p>
+"""
 
 
 def render_balfrin_efficiency_markdown(report: dict[str, Any]) -> str:

@@ -180,11 +180,33 @@ class PerformanceCiTrackingTests(unittest.TestCase):
 
             self.assertEqual(ret, 0)
             self.assertTrue((site_root / "performance" / "latest.json").exists())
+            self.assertTrue((site_root / "performance" / "balfrin_diagnostic.json").exists())
+            self.assertTrue((site_root / "performance" / "balfrin_diagnostic.svg").exists())
             self.assertTrue((site_root / "performance" / "index.html").exists())
+            performance_index = (site_root / "performance" / "index.html").read_text(encoding="utf-8")
+            self.assertIn("Balfrin diagnostic performance", performance_index)
+            self.assertIn("balfrin_diagnostic.svg", performance_index)
+            self.assertIn("balfrin_diagnostic.json", performance_index)
             root_index = (site_root / "index.html").read_text(encoding="utf-8")
             self.assertIn("rust_rockfall CI performance", root_index)
             self.assertIn("url=performance/", root_index)
             self.assertIn("Open the performance dashboard", root_index)
+
+    def test_balfrin_diagnostic_pages_artifacts_keep_claims_separate(self) -> None:
+        report = perf_ci.build_balfrin_diagnostic_report()
+        svg = perf_ci.build_balfrin_diagnostic_svg(report)
+        html = perf_ci.render_balfrin_diagnostic_html_section(report)
+
+        self.assertEqual(report["schema_version"], "balfrin_diagnostic_performance_pages_v1")
+        self.assertEqual(report["status"], "measured_diagnostic_repeatability")
+        self.assertEqual(report["latest_release_zone_count"], 24)
+        self.assertEqual([row["job_id"] for row in report["runs"]], ["4368588", "4368592", "4368593"])
+        self.assertEqual(report["bounds"]["reducer_wall_time_seconds"]["spread"], 0.0)
+        self.assertFalse(report["claim_boundaries"]["physical_probability_claims_allowed"])
+        self.assertEqual(report["claim_boundaries"]["ci_timing_context"], "separate")
+        self.assertIn("<svg", svg)
+        self.assertIn("Balfrin 24-zone diagnostic performance", svg)
+        self.assertIn("balfrin_diagnostic.json", html)
 
     def test_balfrin_efficiency_report_keeps_ci_context_separate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

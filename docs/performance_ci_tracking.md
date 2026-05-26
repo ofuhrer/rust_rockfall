@@ -55,6 +55,8 @@ Workflow: `.github/workflows/performance_main.yml`
    - `history.json`,
    - `latest.json`,
    - `main_performance.svg`,
+   - `balfrin_diagnostic.json`,
+   - `balfrin_diagnostic.svg`,
    - `performance/index.html`,
    - root `index.html` redirecting to the performance dashboard.
 5. Deploys these files to GitHub Pages.
@@ -71,6 +73,16 @@ SVG line chart with multi-series component overlays:
 - Hazard write.
 
 The README embeds `main_performance.svg` directly from Pages.
+
+The same dashboard now includes a separate Balfrin diagnostic section sourced
+from promoted measured run evidence. It writes:
+
+- `/performance/balfrin_diagnostic.json`
+- `/performance/balfrin_diagnostic.svg`
+
+These files cover the measured 24-zone single-node `postproc` diagnostic run
+and the same-size repeatability pair. They are not CI runner timings and are
+not normalized into the main trend chart.
 
 ## Operational Notes
 
@@ -92,10 +104,12 @@ PYENV_VERSION=system uv run python scripts/performance_ci_tracking.py balfrin-ef
 ```
 
 The report compares the current TB-566 regional split run against TB-557,
-TB-448, and the scale-matrix projection. It reports scheduler elapsed time,
-collector wall time, MaxRSS, memory peak, output bytes, file counts, and
-conditional-row counts. Trajectory counts are explicit: CI benchmark summaries
-record them, while the preserved Balfrin metrics currently do not.
+TB-448, and the scale-matrix projection. The Pages dashboard additionally
+publishes the promoted 24-zone diagnostic/repeatability evidence. These reports
+record scheduler or reducer elapsed time, MaxRSS/memory, output bytes, file
+counts, manifest bytes where available, and evidence boundaries. Trajectory
+counts are explicit: CI benchmark summaries record them, while the preserved
+Balfrin regional metrics currently do not.
 
 CI data stays in its own `ci_standard_profile` section. It is useful context
 for local/runtime drift, but it is not normalized into Balfrin scheduler

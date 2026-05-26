@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-585: Publish Current Balfrin Diagnostic Performance On GitHub Pages
-
-Goal: Extend the public performance dashboard with a clearly separated Balfrin diagnostic-performance section.
-
-Capability gap reduced: Makes Balfrin efficiency evidence visible outside raw docs and work logs while keeping CI diagnostics separate.
-
-Why this outranks alternatives: The project front door should show both CI performance trend and measured Balfrin feasibility when large-run evidence exists.
-
-Inspect first:
-
-- `scripts/performance_ci_tracking.py`
-- `.github/workflows/performance_main.yml`
-- `README.md`
-- `docs/performance_ci_tracking.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Add a generated Balfrin evidence JSON/SVG/table section to the Pages artifact using promoted measured run data.
-- Keep CI runner timings and Balfrin scheduler timings visually and semantically separate.
-- Link the new section from README only with bounded diagnostic-evidence language.
-
-Definition of done:
-
-- Focused performance tracking tests pass, local site generation includes the Balfrin section, and Pages paths remain stable for `/performance/latest.json` and `/performance/main_performance.svg`.
-
-
 ### TB-586: Reassess Scientific Validation Gaps After The Diagnostic Scale Push
 
 Goal: Identify which scientific-validation gaps remain after the larger Balfrin diagnostic evidence is collected.

@@ -76,8 +76,10 @@ PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
 The main-branch performance workflow publishes the latest synthetic benchmark
 baseline and trend dashboard to
 [`ofuhrer.github.io/rust_rockfall/performance/`](https://ofuhrer.github.io/rust_rockfall/performance/).
-These timings are CI diagnostics for engineering regressions, not scientific
-validation metrics.
+The page also includes a separate Balfrin diagnostic-performance section for
+the measured 24-zone `postproc` run and repeatability pair. CI timings and
+Balfrin scheduler evidence are kept separate; neither is a scientific
+validation metric.
 
 For focused debugging, run individual checks directly:
 
