@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-582: Collect Repeatability Metrics And Variance Bounds
-
-Goal: Collect the TB-581 run roots and compute simple variance bounds for elapsed time, MaxRSS, output bytes, and file counts.
-
-Capability gap reduced: Turns opportunistic repeated Balfrin runs into quantified performance stability evidence.
-
-Why this outranks alternatives: Variance bounds make the feasibility assessment more useful than a single best-run comparison.
-
-Inspect first:
-
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/performance_ci_tracking.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_performance_ci_tracking.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Add a compact repeatability comparison surface for same-size diagnostic runs.
-- Report min/median/max or equivalent bounded summaries for runtime, memory, and output footprint.
-- Promote measurement stability only.
-
-Definition of done:
-
-- Focused tests pass and the repeatability evidence is visible in performance/scale reports.
-
-
 ### TB-583: Recompute Swiss-Scale Feasibility From The New Diagnostic Evidence
 
 Goal: Recompute the Swiss-scale feasibility projection using the latest 16/24-zone and repeatability evidence when available.

@@ -540,6 +540,87 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("regional_split_probe", [item["tier_id"] for item in comparison["comparison_rows"]])
         self.assertIn("historical_regional_split_probe", [item["tier_id"] for item in comparison["comparison_rows"]])
 
+    def test_repeatability_summary_reports_bounds_for_same_size_diagnostics(self) -> None:
+        def record(
+            *,
+            run_id: str,
+            job_id: str,
+            max_rss_mb: float,
+            output_bytes: int,
+            manifest_size_bytes: int,
+        ) -> dict[str, object]:
+            return {
+                "schema_version": "balfrin_diagnostic_run_record_v1",
+                "status": "completed",
+                "run_id": run_id,
+                "run_root": f"/scratch/mch/olifu/rust_rockfall/diagnostics/{run_id}",
+                "git_head": "5f9c937",
+                "job_id": job_id,
+                "terminal_state": "COMPLETED",
+                "diagnostic_shape": {"release_zone_count": 24},
+                "collection": {
+                    "status": "complete",
+                    "time_verbose": {"elapsed": "0:00.34", "max_rss_mb": max_rss_mb},
+                    "pressure_report": {
+                        "status": "measured_scratch_root",
+                        "release_zone_count": 24,
+                        "output_file_count": 76,
+                        "output_byte_count": output_bytes,
+                        "manifest_size_bytes": manifest_size_bytes,
+                        "root_file_count": 81,
+                        "reducer_wall_time_seconds": 4.03,
+                    },
+                },
+            }
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            tmp = Path(tmpdir)
+            record_a = tmp / "repeatability_a.json"
+            record_b = tmp / "repeatability_b.json"
+            record_a.write_text(
+                json.dumps(
+                    record(
+                        run_id="diagnostic_24_zone_repeatability_a_tb581",
+                        job_id="4368592",
+                        max_rss_mb=34.242,
+                        output_bytes=32922,
+                        manifest_size_bytes=20218,
+                    )
+                ),
+                encoding="utf-8",
+            )
+            record_b.write_text(
+                json.dumps(
+                    record(
+                        run_id="diagnostic_24_zone_repeatability_b_tb581",
+                        job_id="4368593",
+                        max_rss_mb=39.879,
+                        output_bytes=32922,
+                        manifest_size_bytes=20218,
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                MODULE.evidence_bundle,
+                "DEFAULT_BALFRIN_24_ZONE_REPEATABILITY_RUN_RECORDS",
+                (record_a, record_b),
+            ):
+                report = MODULE.build_report()
+
+        repeatability = report["diagnostic_repeatability_summary"]
+        self.assertEqual(repeatability["status"], "measured_repeatability_pair")
+        self.assertEqual(repeatability["release_zone_count"], 24)
+        self.assertEqual(repeatability["run_count"], 2)
+        self.assertEqual([row["job_id"] for row in repeatability["rows"]], ["4368592", "4368593"])
+        self.assertEqual(repeatability["bounds"]["reducer_wall_time_seconds"]["min"], 4.03)
+        self.assertEqual(repeatability["bounds"]["reducer_wall_time_seconds"]["max"], 4.03)
+        self.assertEqual(repeatability["bounds"]["memory_peak_mb"]["min"], 34.242)
+        self.assertEqual(repeatability["bounds"]["memory_peak_mb"]["max"], 39.879)
+        self.assertEqual(repeatability["bounds"]["output_file_count"]["spread"], 0.0)
+        self.assertEqual(repeatability["bounds"]["output_bytes"]["median"], 32922.0)
+
     def test_cli_emits_json_and_text_reports(self) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):

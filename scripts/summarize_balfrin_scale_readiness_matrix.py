@@ -1186,6 +1186,59 @@ def build_diagnostic_performance_comparison() -> dict[str, Any]:
     }
 
 
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return round((ordered[middle - 1] + ordered[middle]) / 2, 6)
+
+
+def _bounds(rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    values = [float(row[key]) for row in rows if isinstance(row.get(key), (int, float))]
+    if not values:
+        return {"min": None, "median": None, "max": None, "spread": None}
+    return {
+        "min": min(values),
+        "median": _median(values),
+        "max": max(values),
+        "spread": round(max(values) - min(values), 6),
+    }
+
+
+def build_diagnostic_repeatability_summary() -> dict[str, Any]:
+    rows = [
+        row
+        for row in (
+            _diagnostic_record_performance_row(path)
+            for path in evidence_bundle.DEFAULT_BALFRIN_24_ZONE_REPEATABILITY_RUN_RECORDS
+        )
+        if row is not None
+    ]
+    rows.sort(key=lambda row: str(row.get("job_id") or ""))
+    release_zone_counts = sorted({row.get("release_zone_count") for row in rows})
+    same_size = len(release_zone_counts) == 1
+    status = "measured_repeatability_pair" if len(rows) >= 2 and same_size else "waiting_for_repeatability_pair"
+    return {
+        "schema_version": "balfrin_diagnostic_repeatability_summary_v1",
+        "status": status,
+        "evidence_label": "measured_on_balfrin" if status == "measured_repeatability_pair" else "partial",
+        "release_zone_count": release_zone_counts[0] if same_size and release_zone_counts else None,
+        "run_count": len(rows),
+        "rows": rows,
+        "bounds": {
+            "reducer_wall_time_seconds": _bounds(rows, "runtime_seconds"),
+            "memory_peak_mb": _bounds(rows, "memory_peak_mb"),
+            "output_file_count": _bounds(rows, "output_file_count"),
+            "output_bytes": _bounds(rows, "output_bytes"),
+            "manifest_bytes": _bounds(rows, "manifest_bytes"),
+        },
+        "claim_boundary": "repeatability summary only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim",
+    }
+
+
 def first_source_path(evidence: dict[str, Any], default: str) -> str:
     source_paths = evidence.get("source_paths")
     if isinstance(source_paths, list):
@@ -1322,6 +1375,7 @@ def build_report() -> dict[str, Any]:
     diagnostic_row = _diagnostic_run_record_row(latest_multi_zone_evidence)
     diagnostic_ceiling = _diagnostic_single_node_postproc_ceiling(diagnostic_row)
     diagnostic_performance_comparison = build_diagnostic_performance_comparison()
+    diagnostic_repeatability_summary = build_diagnostic_repeatability_summary()
     rows = [
         _single_zone_row(single_job_summary),
         _target_area_row(),
@@ -1447,6 +1501,7 @@ def build_report() -> dict[str, Any]:
         },
         "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
         "diagnostic_performance_comparison": diagnostic_performance_comparison,
+        "diagnostic_repeatability_summary": diagnostic_repeatability_summary,
         "live_run_authorization_status": {
             "live_submission_authorized": False,
             "standing_postproc_clearance_active": True,

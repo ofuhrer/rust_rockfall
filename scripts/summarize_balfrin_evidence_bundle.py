@@ -41,6 +41,10 @@ DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS = (
     DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD,
     DEFAULT_BALFRIN_16_ZONE_DIAGNOSTIC_RUN_RECORD,
 )
+DEFAULT_BALFRIN_24_ZONE_REPEATABILITY_RUN_RECORDS = (
+    Path("/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_a_tb581/run_record.json"),
+    Path("/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_b_tb581/run_record.json"),
+)
 DEFAULT_PILOT_ID = "tschamut_public_pilot"
 DEFAULT_RUN_ID = "tschamut_public_balfrin_single_release_zone_v1"
 FIXTURE_PATH_MARKERS = (("tests", "fixtures"),)
