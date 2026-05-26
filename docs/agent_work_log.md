@@ -9263,3 +9263,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: local in-memory fixture plus existing local reducer tests only; no distributed job, Balfrin scheduler exercise, shared-filesystem lease measurement, Swiss-wide, operational, or physical-probability claim.
 - Next task: `TB-596`
+
+### TB-596: Quantify Swiss-Wide Data And Execution Inputs Needed For A Phase Change
+
+- Date: 2026-05-26
+- Commit: `33d392e`
+- Objective: decompose Swiss-wide feasibility into quantified input, execution, validation, and operational readiness classes.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_large_scale_execution_probe.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/public_real_site_geodata_preparation.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `swiss_wide_phase_change_readiness_v1` to the Swiss-wide execution envelope.
+  - Quantified national DEM/context input bytes, tile count, release-zone count, trajectory count, projected output bytes, and projected file counts.
+  - Split readiness into `compute_feasible`, `data_ready`, `validation_ready`, and `operational_ready` classes.
+  - Added tests proving the current Swiss-wide state remains deferred and that phase-change review requires every class to be ready.
+  - Removed TB-596 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py tests/test_large_scale_execution_probe.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_large_scale_execution_probe -v`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --aoi-count 26 --release-zone-count 10 --trajectory-count 6 --format json --json-output /tmp/tb596_swiss.json` (expected no-go exit `2`)
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: readiness decomposition only; no Swiss-wide execution, phase-change authorization, operational, annual, physical-probability, distributed, or risk claim.
+- Next task: `TB-597`
