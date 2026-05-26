@@ -8854,3 +8854,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: queue-aware planning only; no `sbatch`, no live queue claim without a fresh preflight, no operational claim, no physical-probability claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-578`
+
+### TB-578: Build A 24-Zone Diagnostic Handoff From The Updated Ceiling
+
+- Date: 2026-05-26
+- Commit: `4accd60`
+- Objective: generate a no-submit 24-zone compact diagnostic handoff from the measured 16-zone single-node postproc ceiling.
+- Files changed: `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`, `tests/test_balfrin_multi_release_zone_demo_handoff.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a `diagnostic_24_zone_single_node_postproc_measurement` compact output-budget profile and allowed the 24-zone handoff only when the diagnostic budget is accepted.
+  - Added a `diagnostic_measurement_handoff` section with fresh-access, authorization, output-budget, diagnostic-profile, submit-contract, remote-head, scratch, and preservation checks.
+  - Generated the no-submit handoff on Balfrin after syncing the remote checkout to `4accd60789df2cde1a9b6f4365397efe022ca958`; access preflight was `ready_for_read_only_collection`, the handoff was `ready_for_pre_submit`, output budget was `accepted`, and the first blocker was `null`.
+  - Recorded the later submit command as `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_simplified_next --partition postproc --time 00:30:00`.
+  - Removed TB-578 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_multi_release_zone_demo_handoff -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `ssh balfrin '... check_balfrin_remote_access_preflight.py ... generate_balfrin_multi_release_zone_demo_handoff.py --requested-release-zone-batch-size 24 ...'`
+- Result/status: implemented_waiting_report
+- Boundaries: no `sbatch`, no Balfrin job id, no 24-zone runtime/MaxRSS measurement yet, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-579`
