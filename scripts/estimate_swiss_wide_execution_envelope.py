@@ -1381,6 +1381,53 @@ def build_report_from_available_evidence(inputs: ProjectionInputs) -> dict[str, 
 def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> dict[str, Any]:
     total_units = inputs.aoi_count * inputs.release_zone_count * inputs.trajectory_count
     empty_band = {"low": None, "nominal": None, "high": None}
+    try:
+        diagnostic_evidence = load_latest_diagnostic_evidence()
+        diagnostic_repeatability = load_diagnostic_repeatability_summary()
+    except Exception:
+        diagnostic_evidence = {}
+        diagnostic_repeatability = {}
+    diagnostic_release_zone_count = diagnostic_evidence.get("release_zone_count")
+    diagnostic_support = {
+        "status": "measured" if isinstance(diagnostic_release_zone_count, int) else "blocked_missing_inputs",
+        "release_zone_count": diagnostic_release_zone_count if isinstance(diagnostic_release_zone_count, int) else None,
+        "runtime_seconds_per_zone": build_ratio(
+            diagnostic_evidence.get("reducer_wall_time_seconds"),
+            diagnostic_release_zone_count,
+            precision=6,
+        ),
+        "output_bytes_per_zone": build_ratio(
+            diagnostic_evidence.get("diagnostic_output_bytes"),
+            diagnostic_release_zone_count,
+            precision=6,
+        ),
+        "file_count_per_zone": build_ratio(
+            diagnostic_evidence.get("diagnostic_output_file_count"),
+            diagnostic_release_zone_count,
+            precision=6,
+        ),
+        "manifest_bytes_per_zone": build_ratio(
+            diagnostic_evidence.get("diagnostic_manifest_size_bytes"),
+            diagnostic_release_zone_count,
+            precision=6,
+        ),
+        "memory_peak_mb": diagnostic_evidence.get("memory_peak_mb")
+        if isinstance(diagnostic_evidence.get("memory_peak_mb"), (int, float))
+        else None,
+        "repeatability_status": diagnostic_repeatability.get("status"),
+        "repeatability_bounds": diagnostic_repeatability.get("bounds"),
+        "run_root": diagnostic_evidence.get("run_root")
+        if isinstance(diagnostic_evidence.get("run_root"), str)
+        else None,
+        "job_id": diagnostic_evidence.get("slurm_job_id")
+        if isinstance(diagnostic_evidence.get("slurm_job_id"), str)
+        else None,
+        "claim_boundary": (
+            "diagnostic reducer-pressure support only; hazard projection coefficients are unavailable"
+            if isinstance(diagnostic_release_zone_count, int)
+            else "diagnostic support unavailable because measured evidence is missing"
+        ),
+    }
     national_requirements = build_swiss_wide_national_requirements(
         projected_storage_bytes=empty_band,
         projected_file_count=empty_band,
@@ -1402,20 +1449,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             "total_units": total_units,
         },
         "measured_support": None,
-        "diagnostic_support": {
-            "status": "blocked_missing_inputs",
-            "release_zone_count": None,
-            "runtime_seconds_per_zone": None,
-            "output_bytes_per_zone": None,
-            "file_count_per_zone": None,
-            "manifest_bytes_per_zone": None,
-            "memory_peak_mb": None,
-            "repeatability_status": None,
-            "repeatability_bounds": None,
-            "run_root": None,
-            "job_id": None,
-            "claim_boundary": "diagnostic support unavailable because measured evidence is missing",
-        },
+        "diagnostic_support": diagnostic_support,
         "job_count": None,
         "jobs_per_aoi": None,
         "runtime_seconds": empty_band,
@@ -1476,18 +1510,7 @@ def build_blocked_report(inputs: ProjectionInputs, *, blocked_reason: str) -> di
             ],
             "bounded_probe_recommendation_status": None,
             "multi_zone_manifest_pressure_ladder": None,
-            "diagnostic_support": {
-                "release_zone_count": None,
-                "runtime_seconds_per_zone": None,
-                "output_bytes_per_zone": None,
-                "file_count_per_zone": None,
-                "manifest_bytes_per_zone": None,
-                "memory_peak_mb": None,
-                "repeatability_status": None,
-                "repeatability_bounds": None,
-                "run_root": None,
-                "job_id": None,
-            },
+            "diagnostic_support": diagnostic_support,
             "canonical_bundle_status": "blocked_missing_inputs",
             "canonical_bundle_summary": {},
             "multi_zone_scaling_frontier": {
