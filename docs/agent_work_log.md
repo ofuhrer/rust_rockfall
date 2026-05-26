@@ -9309,3 +9309,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: roadmap/decision surface only; no operational, physical-probability, Swiss-wide, distributed, non-`postproc`, annual-frequency, or risk claim is authorized.
 - Next task: backlog refill needed.
+
+### TB-598: Snapshot Current Balfrin Postproc Capacity And Running Jobs
+
+- Date: 2026-05-26
+- Commit: `b42316a`
+- Objective: record live Balfrin `postproc` capacity before the next bounded diagnostic submission.
+- Files changed: `docs/balfrin_postproc_capacity_snapshot_20260526.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Captured read-only Balfrin access and scheduler state from `balfrin-ln003`.
+  - Recorded 14 `postproc` nodes: 12 idle, 1 mixed, and 1 reserved, with three running jobs and no pending jobs.
+  - Identified the only running `olifu` `postproc` job as `tp-analysis-report` under `/users/olifu/work/cra5_vs_era5`, not a `rust_rockfall` run root.
+  - Named the next executable submission as the 32-zone single-node `postproc` diagnostic using `$SCRATCH` run roots, 4 reducer chunks, 4 reducer workers, compact manifest mode, and a 45-minute walltime request.
+  - Removed TB-598 from the active backlog and indexed the snapshot in the documentation index.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --time 00:45:00 --format json`
+  - Balfrin `sinfo -p postproc`, `squeue -u "$USER"`, `squeue -p postproc`, `scontrol show job 4371509 -o`, and `sacct -j 4371509`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: read-only scheduler/capacity snapshot only; no Balfrin job was submitted, no performance measurement was made, and no operational, physical-probability, Swiss-wide, distributed, or non-`postproc` claim changed.
+- Next task: `TB-599`
