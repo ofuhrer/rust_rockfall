@@ -1543,6 +1543,11 @@ def build_report() -> dict[str, Any]:
                 "evidence": "completed diagnostic run record plus repeatability pair",
                 "next_blocker": "queue_policy",
             },
+            "32_zone": {
+                "class": "measured_diagnostic_postproc",
+                "evidence": "completed diagnostic run record",
+                "next_blocker": "queue_policy",
+            },
             "100_zone": {
                 "class": "projection_only_deferred",
                 "evidence": "extrapolated from diagnostic and older output-pressure evidence",

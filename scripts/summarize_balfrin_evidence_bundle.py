@@ -34,11 +34,15 @@ CANONICAL_BUNDLE_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_
 DEFAULT_BALFRIN_16_ZONE_DIAGNOSTIC_RUN_RECORD = Path(
     "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json"
 )
-DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+DEFAULT_BALFRIN_24_ZONE_DIAGNOSTIC_RUN_RECORD = Path(
     "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next/run_record.json"
+)
+DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD = Path(
+    "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526/run_record.json"
 )
 DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORDS = (
     DEFAULT_BALFRIN_DIAGNOSTIC_RUN_RECORD,
+    DEFAULT_BALFRIN_24_ZONE_DIAGNOSTIC_RUN_RECORD,
     DEFAULT_BALFRIN_16_ZONE_DIAGNOSTIC_RUN_RECORD,
 )
 DEFAULT_BALFRIN_24_ZONE_REPEATABILITY_RUN_RECORDS = (

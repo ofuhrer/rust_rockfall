@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-600: Promote The 32-Zone Diagnostic Evidence Into Scale Surfaces
-
-Goal: Thread the measured 32-zone diagnostic result through the scale evidence dashboard and Swiss-wide projection.
-
-Capability gap reduced: Keeps the diagnostic ceiling, projection table, and phase-change readiness aligned with the latest Balfrin evidence.
-
-Why this outranks alternatives: A successful run is only useful if the repo’s decision surfaces consume it as measured evidence rather than prose.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- generated scratch: 32-zone Balfrin diagnostic run root on `$SCRATCH`
-
-Deliverables:
-
-- Add the 32-zone diagnostic record to the measured evidence path, update tests and docs that name the diagnostic ceiling, and keep hazard-throughput and physical-probability claims separate.
-
-Definition of done:
-
-- Focused scale/projection tests pass and the latest diagnostic ceiling is read from measured evidence.
-
-
 ### TB-601: Decide And Possibly Run The Next Larger Diagnostic Step
 
 Goal: Use the measured 32-zone outcome to decide whether a 40-zone or 48-zone diagnostic is safe and useful.
