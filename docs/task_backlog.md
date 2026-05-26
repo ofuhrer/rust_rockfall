@@ -30,6 +30,479 @@ and compare the result.
 
 ## Active Tasks
 
+### TB-598: Snapshot Current Balfrin Postproc Capacity And Running Jobs
+
+Goal: Establish the current Balfrin `postproc` queue state before submitting larger measurements.
+
+Capability gap reduced: Prevents large-run planning from relying on stale assumptions about available capacity.
+
+Why this outranks alternatives: Balfrin access is currently healthy, but live `postproc` occupancy has running jobs and must shape safe submission order.
+
+Inspect first:
+
+- `docs/balfrin_skills.md`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/run_balfrin_diagnostic.py`
+- external: Balfrin `squeue`, `sinfo`, and any currently running `olifu` jobs
+
+Deliverables:
+
+- Record the current `postproc` node/job availability, identify any running `olifu` job roots that should be collected before new submissions, and name the largest bounded diagnostic submission that can run without filling `postproc` for more than 6 hours.
+
+Definition of done:
+
+- A dated queue/capacity snapshot exists in the work log or a small evidence artifact, and the next executable submission size is explicit.
+
+
+### TB-599: Submit And Monitor The Next Bounded 32-Zone Diagnostic On Balfrin
+
+Goal: Measure the next diagnostic reducer-pressure size beyond the repeated 24-zone ceiling.
+
+Capability gap reduced: Converts the 32-zone step from projection into measured Balfrin `postproc` evidence.
+
+Why this outranks alternatives: The current Swiss-scale projection names the next bounded diagnostic size as the practical scale step if queue policy allows it.
+
+Inspect first:
+
+- `scripts/run_balfrin_diagnostic.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- external: Balfrin `$SCRATCH` and `postproc` scheduler state
+
+Deliverables:
+
+- Submit the 32-zone diagnostic to Balfrin `postproc`, monitor it to terminal state, keep the run root on `$SCRATCH`, and preserve runtime, memory, output-byte, file-count, manifest-byte, and job metadata.
+
+Definition of done:
+
+- The job reaches terminal state or a persistent blocker is documented, and the measured run root is ready for collection without using `/tmp` for large outputs.
+
+
+### TB-600: Promote The 32-Zone Diagnostic Evidence Into Scale Surfaces
+
+Goal: Thread the measured 32-zone diagnostic result through the scale evidence dashboard and Swiss-wide projection.
+
+Capability gap reduced: Keeps the diagnostic ceiling, projection table, and phase-change readiness aligned with the latest Balfrin evidence.
+
+Why this outranks alternatives: A successful run is only useful if the repo’s decision surfaces consume it as measured evidence rather than prose.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- generated scratch: 32-zone Balfrin diagnostic run root on `$SCRATCH`
+
+Deliverables:
+
+- Add the 32-zone diagnostic record to the measured evidence path, update tests and docs that name the diagnostic ceiling, and keep hazard-throughput and physical-probability claims separate.
+
+Definition of done:
+
+- Focused scale/projection tests pass and the latest diagnostic ceiling is read from measured evidence.
+
+
+### TB-601: Decide And Possibly Run The Next Larger Diagnostic Step
+
+Goal: Use the measured 32-zone outcome to decide whether a 40-zone or 48-zone diagnostic is safe and useful.
+
+Capability gap reduced: Builds a measured reducer-pressure curve instead of stopping at one additional point.
+
+Why this outranks alternatives: If Balfrin remains lightly used and 32 zones is cheap, the next point gives much stronger scaling evidence.
+
+Inspect first:
+
+- `scripts/run_balfrin_diagnostic.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `docs/orchestration_strategy.md`
+- external: current Balfrin `postproc` queue and 32-zone run evidence
+
+Deliverables:
+
+- Either submit and monitor the next bounded diagnostic size on `postproc`, or record a measured no-go reason such as queue occupancy, walltime, memory, output budget, or prior-run failure.
+
+Definition of done:
+
+- A larger diagnostic measurement or explicit no-go decision is captured, with no run plan exceeding the 6-hour full-`postproc` standing-clearance boundary.
+
+
+### TB-602: Build A Larger Bounded Hazard-Throughput Submission Package
+
+Goal: Prepare a real hazard-throughput package that is larger than the current measured smallest multi-zone branch while retaining scalable output controls.
+
+Capability gap reduced: Moves from reducer-pressure diagnostics toward measured hazard workflow feasibility.
+
+Why this outranks alternatives: Swiss-scale feasibility cannot rest on reducer diagnostics alone; a bounded hazard-throughput run is the next performance proof.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `scripts/build_hazard_layers.py`
+- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+
+Deliverables:
+
+- Produce a reviewed package for the smallest larger hazard-throughput run that uses `summary-only`, no full grid CSV, no plots, rebuildable/replay-critical outputs, and `$SCRATCH` run roots.
+
+Definition of done:
+
+- The package preflight is ready for submission or fails closed with one concrete blocker and a repair path.
+
+
+### TB-603: Submit And Monitor The Larger Bounded Hazard-Throughput Probe
+
+Goal: Measure a larger bounded hazard-throughput run on Balfrin `postproc`.
+
+Capability gap reduced: Provides direct evidence for runtime, memory, output, and preservation behavior of the actual hazard workflow.
+
+Why this outranks alternatives: This is the key missing performance demonstration between current small measured probes and Swiss-scale projection.
+
+Inspect first:
+
+- `scripts/submit_balfrin_probe.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/summarize_balfrin_probe_metrics_report.py`
+- generated scratch: reviewed hazard-throughput submission package from TB-602
+
+Deliverables:
+
+- Submit the package, monitor to terminal state, collect run-root metrics, and preserve validation/hazard output counts, bytes, runtime, memory, and conditional-curve rows.
+
+Definition of done:
+
+- The run is measured and collection-ready, or a persistent submission/runtime blocker is captured with the final scheduler/log evidence.
+
+
+### TB-604: Promote Hazard-Throughput Evidence Into The Readiness Matrix
+
+Goal: Integrate the measured larger hazard-throughput result into scale-readiness and Swiss-feasibility surfaces.
+
+Capability gap reduced: Separates measured hazard-throughput capability from diagnostic and projection-only evidence.
+
+Why this outranks alternatives: The repo needs its main dashboard to reflect actual hazard-throughput measurements immediately after a run.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- generated scratch: collected hazard-throughput run-root report from TB-603
+
+Deliverables:
+
+- Add the measured hazard-throughput tier, update bottleneck ranking, and keep operational/physical-probability/Swiss-wide claims deferred unless their evidence classes are satisfied.
+
+Definition of done:
+
+- Focused dashboard/projection tests pass and the new run is visible as measured hazard-throughput evidence.
+
+
+### TB-605: Run A Balfrin Scheduler-Level Distributed Chunk Dry Run
+
+Goal: Exercise distributed chunk submission, collection, and sorted merge semantics on Balfrin without attempting Swiss-wide execution.
+
+Capability gap reduced: Moves distributed execution from local fixture semantics to cluster-observed behavior.
+
+Why this outranks alternatives: The local distributed dry run proves logic, but Balfrin feasibility needs scheduler, shared-filesystem, and collection evidence.
+
+Inspect first:
+
+- `scripts/generate_pilot_command_plan.py`
+- `scripts/build_hazard_layers.py`
+- `scripts/run_balfrin_diagnostic.py`
+- `docs/tschamut_public_scalable_conditional_execution.md`
+- external: Balfrin `$SCRATCH` shared filesystem and `postproc` scheduler
+
+Deliverables:
+
+- Run a small multi-chunk Balfrin dry run that records chunk IDs, scheduler array or split-job mapping, partial state paths, merge order, run roots, and final merged output status.
+
+Definition of done:
+
+- The dry run proves or fails the cluster-side distributed semantics with measured scheduler and filesystem evidence.
+
+
+### TB-606: Measure Balfrin Restart And Resume Behavior For Chunked Runs
+
+Goal: Verify that a chunked Balfrin run can resume after one missing, stale, or failed chunk without corrupting the merge.
+
+Capability gap reduced: Establishes restartability evidence needed before larger split execution.
+
+Why this outranks alternatives: Swiss-scale feasibility depends on recovery behavior, not only first-pass success.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/summarize_balfrin_restartability_recovery.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `docs/tschamut_public_scalable_conditional_execution.md`
+- generated scratch: Balfrin chunk dry-run root from TB-605
+
+Deliverables:
+
+- Exercise one controlled resume/retry case on Balfrin and compare the final merged result with the pre-retry or single-pass expectation.
+
+Definition of done:
+
+- Restart/resume status is measured with chunk decisions, retry counts, partial-state reuse, and merge-state evidence.
+
+
+### TB-607: Build A National Swiss Tiling And Data-Volume Inventory
+
+Goal: Quantify the national public-geodata input footprint that a Swiss-scale run would require.
+
+Capability gap reduced: Replaces national data readiness assumptions with a concrete tile, byte, context-product, and cache inventory.
+
+Why this outranks alternatives: Swiss-wide compute feasibility is not meaningful without knowing national DEM/context tiling and cache requirements.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/public_real_site_geodata_preparation.md`
+- `docs/swisstopo_data_strategy.md`
+- `scripts/plan_swisstopo_aoi_acquisition.py`
+- `scripts/stage_public_geodata_cache.py`
+
+Deliverables:
+
+- Produce a share-safe national tiling inventory for swissALTI3D and required context products, including estimated tile count, bytes, cache paths, versions/checksum fields, and tiling IDs.
+
+Definition of done:
+
+- The Swiss-wide `data_ready` blocker is decomposed into concrete staged/missing national input classes without downloading excessive data.
+
+
+### TB-608: Prototype A National Tile-To-Chunk Mapping
+
+Goal: Map the national tiling inventory to stable execution chunks and merge groups.
+
+Capability gap reduced: Connects Swiss-wide data readiness to executable chunk orchestration.
+
+Why this outranks alternatives: Distributed feasibility needs stable tile/chunk identities before any national-scale run can be planned.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/generate_pilot_command_plan.py`
+- `scripts/run_aoi_hazard_workflow.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- generated scratch: national tiling inventory from TB-607
+
+Deliverables:
+
+- Generate a deterministic tile-to-chunk mapping with chunk keys, merge groups, expected input bytes, expected output classes, and restart boundaries.
+
+Definition of done:
+
+- The mapping is validated locally and can feed a future Balfrin split-run planner without changing current claim labels.
+
+
+### TB-609: Measure Larger AOI Output And COG Packaging Pressure
+
+Goal: Measure output-byte, file-count, manifest, and COG packaging pressure for a larger AOI-style package.
+
+Capability gap reduced: Turns output-budget and GIS packaging pressure from projection into measured local or Balfrin evidence.
+
+Why this outranks alternatives: Large-scale feasibility will fail on output and packaging before physics if artifact growth is uncontrolled.
+
+Inspect first:
+
+- `scripts/build_hazard_layers.py`
+- `scripts/audit_gis_cog_package_readiness.py`
+- `scripts/convert_same_scale_package_to_cog.py`
+- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- Run a bounded larger-output package probe with scalable controls and record standard output, COG output, manifest sizes, file counts, and conversion time.
+
+Definition of done:
+
+- The output/COG pressure result is measured and tied back to the Swiss-wide output-footprint readiness class.
+
+
+### TB-610: Regenerate Adjacent-Candidate Scenario Tables For Scale Planning
+
+Goal: Move the active management-AOI path from candidate review into concrete scenario-table evidence.
+
+Capability gap reduced: Reduces the scenario-cardinality and batching uncertainty that blocks larger Balfrin packages.
+
+Why this outranks alternatives: The current task context says to prefer the adjacent-candidate review path over stale source-zone-overlap repair.
+
+Inspect first:
+
+- `scripts/generate_candidate_source_zone_scenarios.py`
+- `scripts/generate_balfrin_target_area_scenario_tables.py`
+- `scripts/measure_scenario_storage_output_tier_pressure.py`
+- `scripts/summarize_management_aoi_scenario_pressure.py`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- Generate or refresh scenario-table evidence for the adjacent-candidate path and measure row counts, storage, manifest pressure, and batching implications.
+
+Definition of done:
+
+- Scenario-cardinality pressure is measured for the current active path and the next Balfrin package size can use that evidence.
+
+
+### TB-611: Build A 100-Zone Diagnostic Submission Package Without Submitting It
+
+Goal: Prepare a 100-zone diagnostic package to expose exact package size, commands, output budget, and pre-submit blockers.
+
+Capability gap reduced: Converts the 100-zone case from broad projection into a concrete reviewed package boundary.
+
+Why this outranks alternatives: The 100-zone case is the nearest useful proxy for Swiss-scale single-AOI pressure, but should not be submitted until smaller measured steps justify it.
+
+Inspect first:
+
+- `scripts/run_balfrin_diagnostic.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- external: Balfrin queue and `$SCRATCH` capacity if package paths are materialized remotely
+
+Deliverables:
+
+- Materialize or plan a 100-zone diagnostic package with exact commands, expected runtime/storage/file-count bands, run-root paths on `$SCRATCH`, and pre-submit no-go conditions.
+
+Definition of done:
+
+- The package is ready for review or fails closed with a precise blocker; no 100-zone live submission occurs in this task.
+
+
+### TB-612: Submit A 100-Zone Diagnostic Only If Prior Evidence Supports It
+
+Goal: Run the 100-zone diagnostic on Balfrin only if the 32-zone and next larger diagnostic evidence show low risk.
+
+Capability gap reduced: Provides a strong measured single-AOI pressure point toward Swiss-scale feasibility.
+
+Why this outranks alternatives: A measured 100-zone diagnostic would materially strengthen or falsify the Swiss-scale performance story.
+
+Inspect first:
+
+- `scripts/run_balfrin_diagnostic.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- generated scratch: 100-zone diagnostic package from TB-611
+- external: Balfrin `postproc` scheduler and `$SCRATCH`
+
+Deliverables:
+
+- Submit, monitor, and collect a 100-zone diagnostic only when prior measured diagnostics and current queue state keep expected use within standing clearance; otherwise record the measured no-go.
+
+Definition of done:
+
+- Either 100-zone evidence is measured, or the task records why the run should remain deferred.
+
+
+### TB-613: Promote The Largest Diagnostic Series Into Swiss-Scale Feasibility
+
+Goal: Update the Swiss-scale projection with the full measured diagnostic series through the largest safe run.
+
+Capability gap reduced: Replaces extrapolated reducer-pressure bands with a measured curve.
+
+Why this outranks alternatives: The final feasibility argument needs a measured series, not isolated diagnostics.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_evidence_bundle.py`
+- `docs/swiss_scale_feasibility_projection.md`
+- generated scratch: collected diagnostic run records from TB-599 through TB-612
+
+Deliverables:
+
+- Integrate the measured diagnostic series into runtime, memory, I/O, output, file-count, manifest, and next-blocker surfaces.
+
+Definition of done:
+
+- The Swiss-scale feasibility projection reports the measured series and a concrete remaining blocker instead of a single diagnostic ceiling.
+
+
+### TB-614: Stage Source-Frequency Evidence For The Physical-Probability Blocker
+
+Goal: Start closing the first scientific blocker by staging source-frequency evidence or a clearly labeled accepted-design placeholder.
+
+Capability gap reduced: Moves physical-probability readiness beyond the current first blocker.
+
+Why this outranks alternatives: The phase-change decision check ranks physical-probability evidence as the first scientifically useful action.
+
+Inspect first:
+
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `scripts/validate_source_frequency_evidence.py`
+- `validation/templates/source_frequency_evidence_v1.yaml`
+- `docs/current_maturity_snapshot.md`
+- external: any available public or local historical rockfall/source-frequency evidence for the selected sites
+
+Deliverables:
+
+- Create or validate a source-frequency evidence record with time window, censoring rules, provenance, uncertainty, and explicit non-production status if real evidence is not yet available.
+
+Definition of done:
+
+- The physical-probability readiness report either moves past `source_frequency_evidence` or names the exact external evidence still missing.
+
+
+### TB-615: Stage Independent Holdout Runout Or Deposition Evidence
+
+Goal: Acquire or stage holdout runout/deposition evidence that is independent of calibration and model selection.
+
+Capability gap reduced: Reduces the validation-ready blocker for both physical probability and future operational claims.
+
+Why this outranks alternatives: A scale demonstration is scientifically weak unless at least one independent holdout path is concrete.
+
+Inspect first:
+
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `scripts/audit_chant_sura_holdout_split.py`
+- `scripts/check_calibration_separation_preflight.py`
+- `scripts/audit_multisite_source_scenario_contract.py`
+- `docs/public_real_site_geodata_preparation.md`
+
+Deliverables:
+
+- Stage or validate a holdout evidence record with dataset/event/sample identifiers, split labels, provenance, and explicit calibration-separation status.
+
+Definition of done:
+
+- The validation/calibration evidence gap report identifies the next blocker after holdout evidence, or records the concrete missing field evidence.
+
+
+### TB-616: Produce A Balfrin Swiss-Scale Demonstration Summary From Measured Runs
+
+Goal: Summarize the measured Balfrin evidence into a concise demonstration of computational efficiency, performance, and feasibility boundaries.
+
+Capability gap reduced: Turns the measured run series into a clear feasibility demonstration without overstating scientific or operational claims.
+
+Why this outranks alternatives: Once the bounded runs and evidence promotion are complete, the repo needs a front-door summary of what was actually demonstrated.
+
+Inspect first:
+
+- `README.md`
+- `docs/swiss_scale_feasibility_projection.md`
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/current_maturity_snapshot.md`
+
+Deliverables:
+
+- Update the user-facing summary with measured Balfrin runtime, memory, output, diagnostic/hazard-throughput, distributed/restart, and Swiss-scale feasibility boundaries.
+
+Definition of done:
+
+- The README or linked front-door doc accurately communicates the measured demonstration, remaining blockers, and claim boundaries in approachable language.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:
