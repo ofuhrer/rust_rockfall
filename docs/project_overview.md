@@ -37,6 +37,11 @@ is to turn that diagnostic capacity into stronger scientific inputs for
 probability and validation while keeping operational and physical-probability
 claims separate.
 
+Operational readiness is now treated as its own evidence check in the Balfrin
+scale-readiness matrix. The check aggregates scientific validation,
+reproducibility, GIS/package QA, provenance, monitoring, versioning, and support
+status; current products remain diagnostic-only until each criterion passes.
+
 The public Balfrin diagnostic interface is `scripts/run_balfrin_diagnostic.py`:
 use `plan` to inspect the run root and materialized files, then `run` to
 prepare, submit, monitor, and collect one bounded `postproc` diagnostic into a

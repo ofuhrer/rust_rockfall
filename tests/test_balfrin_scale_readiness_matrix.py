@@ -27,6 +27,13 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["matrix_status"], "blocked_reducer_budget")
         self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
         self.assertEqual(
+            report["operational_readiness_check"]["readiness_status"],
+            "diagnostic_only_not_operational",
+        )
+        self.assertFalse(report["operational_readiness_check"]["operational_candidate_allowed"])
+        self.assertIn("scientific_validation", report["operational_readiness_check"]["failing_criteria"])
+        self.assertIn("support_status", report["operational_readiness_check"]["failing_criteria"])
+        self.assertEqual(
             report["next_evidence_field"],
             "regional_split_projection_delta_summary",
         )
@@ -636,6 +643,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             exit_code = MODULE.main(["--format", "text"])
         self.assertEqual(exit_code, 0)
         self.assertIn("matrix_status:", buffer.getvalue())
+        self.assertIn("operational_readiness_check:", buffer.getvalue())
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -664,6 +672,49 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("--materialize-root", projection["reducer_pressure_projection_surface"]["recovery_command"])
         self.assertIn("multi_zone_reducer_pressure_report", report["recovery_commands"])
+
+    def test_operational_readiness_check_classifies_diagnostic_only_state(self) -> None:
+        check = MODULE.build_operational_readiness_check(
+            {
+                "scientific_validation": {"status": "blocked", "first_missing_input": "validation_package"},
+                "reproducibility": {"status": "partial", "first_missing_input": "replay_artifacts"},
+                "gis_package_qa": {"status": "blocked", "first_missing_input": "gis_review"},
+                "provenance": {"status": "partial", "first_missing_input": "provenance"},
+                "monitoring": {"status": "partial", "first_missing_input": "monitoring"},
+                "versioning": {"status": "pass"},
+                "support_status": {"status": "blocked", "first_missing_input": "support_statement"},
+            }
+        )
+
+        self.assertEqual(check["readiness_status"], "diagnostic_only_not_operational")
+        self.assertFalse(check["operational_candidate_allowed"])
+        self.assertEqual(check["first_missing_input"], "validation_package")
+
+    def test_operational_readiness_check_classifies_review_ready_state(self) -> None:
+        inputs = {
+            criterion["criterion"]: {"status": "pass"}
+            for criterion in MODULE.OPERATIONAL_READINESS_REQUIREMENTS
+        }
+        inputs["monitoring"] = {"status": "partial", "first_missing_input": "monitoring_response_plan"}
+        inputs["support_status"] = {"status": "blocked", "first_missing_input": "support_statement"}
+
+        check = MODULE.build_operational_readiness_check(inputs)
+
+        self.assertEqual(check["readiness_status"], "review_ready_not_operational")
+        self.assertFalse(check["operational_candidate_allowed"])
+        self.assertEqual(check["failing_criteria"], ["monitoring", "support_status"])
+
+    def test_operational_readiness_check_classifies_operational_candidate_state(self) -> None:
+        inputs = {
+            criterion["criterion"]: {"status": "pass"}
+            for criterion in MODULE.OPERATIONAL_READINESS_REQUIREMENTS
+        }
+
+        check = MODULE.build_operational_readiness_check(inputs)
+
+        self.assertEqual(check["readiness_status"], "operational_candidate_ready")
+        self.assertTrue(check["operational_candidate_allowed"])
+        self.assertEqual(check["failing_criteria"], [])
 
 
 if __name__ == "__main__":

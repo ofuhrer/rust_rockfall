@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-591: Define Operational Readiness Acceptance Criteria
-
-Goal: Convert the operational-readiness target into a concrete readiness checklist and readiness check.
-
-Capability gap reduced: Names the reproducibility, QA, monitoring, provenance, versioning, review, and user-warning requirements needed for an operational candidate workflow.
-
-Why this outranks alternatives: Operational readiness is not a performance problem alone; it requires process and product controls that are currently absent.
-
-Inspect first:
-
-- `docs/project_overview.md`
-- `docs/roadmap_hazard_mapping.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-
-Deliverables:
-
-- Add an operational-readiness check or report that aggregates scientific validation, reproducibility, GIS/package QA, provenance, and support-status inputs.
-- Ensure current outputs do not pass with concrete missing criteria.
-- Add tests or smoke checks for diagnostic-only, review-ready, and operational-candidate states.
-
-Definition of done:
-
-- Focused readiness checks pass and the repo can state exactly which operational-readiness criteria remain unmet.
-
-
 ### TB-592: Build A Second-Site Validation Acquisition Plan
 
 Goal: Create an executable acquisition and validation plan for a second real site that can support portability and holdout evidence.

@@ -1422,6 +1422,7 @@ def build_report() -> dict[str, Any]:
         }
         for item in next_probe_ranking
     ]
+    operational_readiness_check = build_operational_readiness_check(default_operational_readiness_inputs(rows))
     projection_summary = {
         "status": "projection_only",
         "current_practical_ceiling": (
@@ -1562,6 +1563,7 @@ def build_report() -> dict[str, Any]:
             "recommended_next_action_status": recommended.get("status"),
             "blocked_reason": decision_report.get("blocked_reason"),
         },
+        "operational_readiness_check": operational_readiness_check,
         "next_probe_ranking": next_probe_ranking,
         "swiss_scale_feasibility_projection": projection_summary,
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
@@ -1628,6 +1630,157 @@ def build_report() -> dict[str, Any]:
     }
 
 
+OPERATIONAL_READINESS_REQUIREMENTS = (
+    {
+        "criterion": "scientific_validation",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "physical-probability or accepted conditional-use validation evidence is present",
+            "calibration/holdout separation is accepted",
+            "multi-site or held-out evidence supports the intended use",
+        ],
+    },
+    {
+        "criterion": "reproducibility",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "run commands, inputs, output manifests, hashes, and replay-critical artifacts are preserved",
+            "local and CI checks can reproduce the package-level evidence",
+        ],
+    },
+    {
+        "criterion": "gis_package_qa",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "GIS package manifests, raster metadata, and visual/automated QA are complete for the intended product",
+            "manual review blockers are resolved or explicitly accepted for the intended use",
+        ],
+    },
+    {
+        "criterion": "provenance",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "terrain, source-zone, scenario, calibration, validation, and run-root provenance are traceable",
+            "source licenses and non-production boundaries are recorded",
+        ],
+    },
+    {
+        "criterion": "monitoring",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "runtime, memory, output volume, scheduler state, and failure modes are monitored",
+            "regressions have a reviewed response path",
+        ],
+    },
+    {
+        "criterion": "versioning",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "model version, code commit, data versions, and output schema versions are pinned",
+            "breaking changes are isolated from operational candidates",
+        ],
+    },
+    {
+        "criterion": "support_status",
+        "required_status": "pass",
+        "acceptance_criteria": [
+            "the product is no longer labelled research_diagnostic for the intended use",
+            "user warnings and unsupported-use boundaries are explicit",
+        ],
+    },
+)
+
+
+def default_operational_readiness_inputs(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    measured_preserved = [
+        row["tier_id"]
+        for row in rows
+        if row.get("evidence_label") == "measured_on_balfrin"
+        and str(row.get("preservation_status", "")).startswith("ready")
+    ]
+    return {
+        "scientific_validation": {
+            "status": "blocked",
+            "evidence": "physical probability, calibration, and independent validation evidence remain incomplete",
+            "first_missing_input": "accepted_scientific_validation_package",
+        },
+        "reproducibility": {
+            "status": "pass" if measured_preserved else "partial",
+            "evidence": f"preserved measured tiers: {', '.join(measured_preserved) or 'none'}",
+            "first_missing_input": "" if measured_preserved else "preserved_replayable_run_root",
+        },
+        "gis_package_qa": {
+            "status": "blocked",
+            "evidence": "automated package checks exist, but operational visual/review acceptance is absent",
+            "first_missing_input": "accepted_operational_gis_package_qa",
+        },
+        "provenance": {
+            "status": "partial",
+            "evidence": "run-root and public-geodata provenance are recorded for diagnostics, but operational provenance is incomplete",
+            "first_missing_input": "complete_operational_product_provenance",
+        },
+        "monitoring": {
+            "status": "partial",
+            "evidence": "CI performance and Balfrin diagnostic monitoring exist, but operational monitoring is not defined",
+            "first_missing_input": "operational_monitoring_response_plan",
+        },
+        "versioning": {
+            "status": "pass",
+            "evidence": "crate/model version and git commits are recorded in reports and run records",
+            "first_missing_input": "",
+        },
+        "support_status": {
+            "status": "blocked",
+            "evidence": "current products remain research_diagnostic and explicitly non-operational",
+            "first_missing_input": "operational_candidate_support_statement",
+        },
+    }
+
+
+def build_operational_readiness_check(inputs: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    checks = []
+    for requirement in OPERATIONAL_READINESS_REQUIREMENTS:
+        criterion = str(requirement["criterion"])
+        current = dict(inputs.get(criterion) or {})
+        status = str(current.get("status") or "missing")
+        passed = status == requirement["required_status"]
+        checks.append(
+            {
+                "criterion": criterion,
+                "required_status": requirement["required_status"],
+                "current_status": status,
+                "check_status": "pass" if passed else "fail",
+                "evidence": str(current.get("evidence") or ""),
+                "first_missing_input": "" if passed else str(current.get("first_missing_input") or criterion),
+                "acceptance_criteria": list(requirement["acceptance_criteria"]),
+            }
+        )
+
+    failing = [check for check in checks if check["check_status"] != "pass"]
+    passing_count = len(checks) - len(failing)
+    if not failing:
+        readiness_status = "operational_candidate_ready"
+    elif passing_count >= len(checks) - 2:
+        readiness_status = "review_ready_not_operational"
+    else:
+        readiness_status = "diagnostic_only_not_operational"
+
+    return {
+        "schema_version": "operational_readiness_check_v1",
+        "readiness_status": readiness_status,
+        "operational_candidate_allowed": not failing,
+        "passing_criteria_count": passing_count,
+        "required_criteria_count": len(checks),
+        "failing_criteria": [check["criterion"] for check in failing],
+        "first_missing_input": failing[0]["first_missing_input"] if failing else "",
+        "criteria": checks,
+        "boundary_note": (
+            "Operational readiness requires scientific validation, reproducibility, GIS/package QA, provenance, "
+            "monitoring, versioning, and support-status evidence. Performance evidence alone cannot pass this check."
+        ),
+    }
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         "Balfrin Scale Readiness Baseline Matrix",
@@ -1637,6 +1790,11 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"next_evidence_field: {report['next_evidence_field']}",
         f"blocked_reason: {report['blocked_reason']}",
         f"next_recommended_scaling_task: {report['next_recommended_scaling_task']}",
+        "operational_readiness_check:",
+        f"  readiness_status: {report['operational_readiness_check']['readiness_status']}",
+        f"  passing_criteria_count: {report['operational_readiness_check']['passing_criteria_count']}/{report['operational_readiness_check']['required_criteria_count']}",
+        f"  failing_criteria: {', '.join(report['operational_readiness_check']['failing_criteria']) or 'none'}",
+        f"  first_missing_input: {report['operational_readiness_check']['first_missing_input'] or 'none'}",
         "swiss_scale_feasibility_projection:",
         f"  current_practical_ceiling: {report['swiss_scale_feasibility_projection']['current_practical_ceiling']}",
         f"  first_bottleneck: {report['swiss_scale_feasibility_projection']['first_bottleneck']}",

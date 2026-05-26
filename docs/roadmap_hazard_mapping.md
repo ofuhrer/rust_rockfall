@@ -122,6 +122,11 @@ Current status: architecture is deterministic and ready for local parallelism an
 later SLURM orchestration, but MPI, GPU, distributed execution, and production
 schedulers are deliberately absent.
 
+Operational readiness is tracked separately from execution scale. The current
+readiness check requires scientific validation, reproducibility, GIS/package QA,
+provenance, monitoring, versioning, and support-status evidence before an
+operational candidate can pass; diagnostic performance alone is insufficient.
+
 Replay checks in reducer chunk reuse are now local-process deterministic: stale
 or completed chunks are reused only when signatures and state schema match; any
 schema/signature mismatch forces re-execution. Cross-node/job-array replay

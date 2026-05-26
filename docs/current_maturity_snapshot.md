@@ -91,7 +91,11 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. After the 24-zone
+matrix gives workers one compact evidence dashboard. It now also carries an
+operational-readiness check across scientific validation, reproducibility,
+GIS/package QA, provenance, monitoring, versioning, and support status; the
+current classification remains diagnostic-only, not operational-candidate
+ready. After the 24-zone
 diagnostic push, the current hazard-planning boundary remains 10 zones while
 the diagnostic reducer-pressure boundary is measured and repeated at 24 zones
 on single-node `postproc`. The next scale action is a larger bounded diagnostic
