@@ -9286,3 +9286,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: readiness decomposition only; no Swiss-wide execution, phase-change authorization, operational, annual, physical-probability, distributed, or risk claim.
 - Next task: `TB-597`
+
+### TB-597: Create A Readiness Roadmap And Decision Check
+
+- Date: 2026-05-26
+- Commit: `9c3f244`
+- Objective: combine operational, physical-probability, Swiss-wide, non-`postproc`, and distributed readiness into one ranked phase-change decision surface.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `phase_change_decision_check_v1` to the Balfrin scale-readiness matrix.
+  - Evaluated operational, physical-probability, Swiss-wide, non-`postproc`, and distributed readiness independently.
+  - Ranked the first useful next action as physical-probability evidence acquisition, while preserving explicit deferral reasons for the other readiness classes.
+  - Linked the decision surface from the maturity snapshot.
+  - Removed TB-597 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json --json-output /tmp/tb597_scale_matrix.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: roadmap/decision surface only; no operational, physical-probability, Swiss-wide, distributed, non-`postproc`, annual-frequency, or risk claim is authorized.
+- Next task: backlog refill needed.
