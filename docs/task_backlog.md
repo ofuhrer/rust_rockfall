@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-581: Execute A Small Repeatability Pair At The Best Measured Diagnostic Size
-
-Goal: Run two additional diagnostic `postproc` jobs at the largest size that has passed checks to measure runtime/output variability.
-
-Capability gap reduced: Adds repeatability evidence instead of relying on one lucky or unlucky scheduler observation.
-
-Why this outranks alternatives: Scientific feasibility needs variance and repeatability, not only larger maxima.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `docs/orchestration_strategy.md`
-
-Deliverables:
-
-- Submit at most two reviewed diagnostic `postproc` jobs when the queue planner says the combined expected occupancy stays under the six-hour bound.
-- Use distinct run roots under `$SCRATCH` and preserve package hashes for each run.
-- Monitor both jobs to terminal state and record scheduler/output metrics.
-
-Definition of done:
-
-- Two terminal results are captured, or the batch does not pass before submission with exact queue/package/check diagnostics.
-
-
 ### TB-582: Collect Repeatability Metrics And Variance Bounds
 
 Goal: Collect the TB-581 run roots and compute simple variance bounds for elapsed time, MaxRSS, output bytes, and file counts.

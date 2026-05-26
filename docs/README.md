@@ -147,6 +147,8 @@ starting context for implementation unless a task explicitly asks for them.
   diagnostic `postproc` run record and metrics.
 - `balfrin_24_zone_diagnostic_metrics_tb580.md`: TB-580 promotion boundary for
   the measured 24-zone diagnostic evidence.
+- `balfrin_24_zone_repeatability_runs_tb581.md`: TB-581 two-run 24-zone
+  diagnostic repeatability record.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
