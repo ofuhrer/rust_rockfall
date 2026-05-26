@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-599: Submit And Monitor The Next Bounded 32-Zone Diagnostic On Balfrin
-
-Goal: Measure the next diagnostic reducer-pressure size beyond the repeated 24-zone ceiling.
-
-Capability gap reduced: Converts the 32-zone step from projection into measured Balfrin `postproc` evidence.
-
-Why this outranks alternatives: The current Swiss-scale projection names the next bounded diagnostic size as the practical scale step if queue policy allows it.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- external: Balfrin `$SCRATCH` and `postproc` scheduler state
-
-Deliverables:
-
-- Submit the 32-zone diagnostic to Balfrin `postproc`, monitor it to terminal state, keep the run root on `$SCRATCH`, and preserve runtime, memory, output-byte, file-count, manifest-byte, and job metadata.
-
-Definition of done:
-
-- The job reaches terminal state or a persistent blocker is documented, and the measured run root is ready for collection without using `/tmp` for large outputs.
-
-
 ### TB-600: Promote The 32-Zone Diagnostic Evidence Into Scale Surfaces
 
 Goal: Thread the measured 32-zone diagnostic result through the scale evidence dashboard and Swiss-wide projection.
