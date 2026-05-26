@@ -9361,3 +9361,32 @@ scan thousands of lines of completed history.
 - Metrics: job `4372124`, terminal `COMPLETED`; reducer wall time `5.39 s`; `/usr/bin/time -v` elapsed `0:00.75`; MaxRSS `34.168 MB`; diagnostic output files `100`; diagnostic output bytes `42,221`; manifest size `24,514 bytes`; run-root files `113`; run-root bytes `181,433`.
 - Boundaries: single-node `postproc` reducer-pressure diagnostic only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
 - Next task: `TB-600`
+
+### TB-600: Promote The 32-Zone Diagnostic Evidence Into Scale Surfaces
+
+- Date: 2026-05-26
+- Commit: `afa2ec6`, `af29818`, `933a28e`
+- Objective: make the measured 32-zone Balfrin diagnostic run the latest diagnostic ceiling in scale and projection surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Promoted `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526/run_record.json` to the default latest diagnostic run record.
+  - Kept the 24-zone repeatability pair as repeatability evidence below the current 32-zone diagnostic ceiling.
+  - Added a 32-zone planning class to the Swiss-wide envelope while preserving hazard-throughput and physical-probability boundaries.
+  - Updated scale-matrix tests so the latest diagnostic tier is `diagnostic_32_zone_reducer_pressure`, with next diagnostic step `40` zones.
+  - Repaired the Swiss-wide helper so missing same-scale local artifacts return structured blocked reports instead of tracebacks, while still preserving available 32-zone diagnostic support.
+  - Removed TB-600 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_evidence_bundle.py scripts/summarize_multi_zone_reducer_pressure.py scripts/summarize_balfrin_scale_readiness_matrix.py scripts/estimate_swiss_wide_execution_envelope.py tests/test_balfrin_scale_readiness_matrix.py tests/test_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope.SwissWideExecutionEnvelopeTests.test_canonical_planning_cases_cover_all_scale_labels tests.test_balfrin_scale_readiness_matrix.BalfrinScaleReadinessMatrixTests.test_32_zone_diagnostic_run_record_becomes_latest_diagnostic_tier -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope.SwissWideExecutionEnvelopeTests.test_missing_measured_evidence_returns_blocked_report -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --aoi-count 26 --release-zone-count 10 --trajectory-count 6 --format json --json-output /tmp/tb600_swiss_blocked.json` (expected no-go exit `2`)
+  - Remote Balfrin scale-matrix verification after `git pull --ff-only origin main`
+  - Remote Balfrin Swiss-wide blocked-report verification preserving diagnostic support for job `4372124`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Verification summary: Balfrin scale matrix reports `simultaneous_release_zone_batch_max=32`, `job_id=4372124`, next diagnostic release-zone count `40`, and latest diagnostic tier `diagnostic_32_zone_reducer_pressure`. The Swiss-wide envelope remains `blocked_missing_inputs` on the remote clone because same-scale hazard artifacts are absent there, but its `diagnostic_support` now reports measured 32-zone diagnostic support and the 24-zone repeatability pair.
+- Boundaries: diagnostic reducer-pressure evidence only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
+- Next task: `TB-601`
