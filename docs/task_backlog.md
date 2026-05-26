@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-604: Promote Hazard-Throughput Evidence Into The Readiness Matrix
-
-Goal: Integrate the measured larger hazard-throughput result into scale-readiness and Swiss-feasibility surfaces.
-
-Capability gap reduced: Separates measured hazard-throughput capability from diagnostic and projection-only evidence.
-
-Why this outranks alternatives: The repo needs its main dashboard to reflect actual hazard-throughput measurements immediately after a run.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_evidence_bundle.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- generated scratch: collected hazard-throughput run-root report from TB-603
-
-Deliverables:
-
-- Add the measured hazard-throughput tier, update bottleneck ranking, and keep operational/physical-probability/Swiss-wide claims deferred unless their evidence classes are satisfied.
-
-Definition of done:
-
-- Focused dashboard/projection tests pass and the new run is visible as measured hazard-throughput evidence.
-
-
 ### TB-605: Run A Balfrin Scheduler-Level Distributed Chunk Dry Run
 
 Goal: Exercise distributed chunk submission, collection, and sorted merge semantics on Balfrin without attempting Swiss-wide execution.

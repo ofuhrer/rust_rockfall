@@ -264,6 +264,52 @@ TB565_REGIONAL_SPLIT_PROBE = {
         "TB-565/TB-566 completed and preserved one current regional split Balfrin postproc probe with complete metrics and a ready preservation gate; output-budget promotion remains blocked by replay-critical artifacts and compactness thresholds."
     ),
 }
+TB603_HAZARD_THROUGHPUT_PROBE = {
+    "task_id": "TB-603",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_hazard_throughput_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526",
+    "run_id": "tschamut_public_balfrin_multi_release_zone_tb603_20260526",
+    "source_paths": ["docs/balfrin_hazard_throughput_run_tb603.md"],
+    "git_commit": "71e4296",
+    "slurm_job_id": "4372309",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:23",
+    "alloc_cpus": 16,
+    "batch_max_rss": "5508K",
+    "memory_peak_mb": 357.796875,
+    "total_wall_seconds": 7.043564590974711,
+    "batch_wall_seconds": 22.3286811549915,
+    "hazard_stage_seconds": 7.8358131679706275,
+    "release_zone_count": 10,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_316,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 31_439_786,
+    "hazard_manifest_output_file_count": 50,
+    "hazard_manifest_output_bytes": 17_417_138,
+    "conditional_curve_row_count": 729_600,
+    "trajectory_decision_counts": {"executed": 2},
+    "reducer_decision_counts": {"executed": 2},
+    "merge_order": "sorted_chunk_id",
+    "merge_order_independent": True,
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "metrics_contract_status": "complete",
+    "authorization_status": "standing_postproc_clearance_used",
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "claim_boundary": "measured bounded hazard-throughput runtime/output/reducer evidence only; no operational, physical-probability, distributed, Swiss-wide, risk, or non-postproc claim",
+    "summary": (
+        "TB-603 completed one bounded hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, and a fresh preserved $SCRATCH run root."
+    ),
+}
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -337,6 +383,10 @@ def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
             evidence["source_paths"] = [str(path)]
             return evidence
     return dict(TB565_REGIONAL_SPLIT_PROBE)
+
+
+def build_latest_hazard_throughput_evidence() -> dict[str, Any]:
+    return dict(TB603_HAZARD_THROUGHPUT_PROBE)
 
 
 def _metrics_completion_source(single_job_summary: dict[str, Any], probe_metrics_status: str) -> str:
@@ -488,6 +538,7 @@ def build_current_report() -> dict[str, Any]:
     )
     source_paths = build_source_paths(single_job_summary=single_job_summary, gis_report=gis_report)
     source_paths["multi_zone_balfrin_evidence"] = build_latest_multi_zone_balfrin_evidence()
+    source_paths["hazard_throughput_evidence"] = build_latest_hazard_throughput_evidence()
     return build_bundle_report(
         single_job_summary=single_job_summary,
         probe_metrics=probe_metrics,
@@ -627,8 +678,11 @@ def build_bundle_report(
         "multi_zone_balfrin_evidence": build_multi_zone_balfrin_evidence(
             source_paths.get("multi_zone_balfrin_evidence")
         ),
+        "hazard_throughput_evidence": build_multi_zone_balfrin_evidence(
+            source_paths.get("hazard_throughput_evidence")
+        ),
         "latest_bounded_probe_interpretation_gate_report": build_latest_bounded_probe_interpretation_gate(
-            source_paths.get("multi_zone_balfrin_evidence")
+            source_paths.get("hazard_throughput_evidence")
         ),
         "section_provenance_profile": section_provenance_profile,
         "claim_boundaries": claim_boundaries,

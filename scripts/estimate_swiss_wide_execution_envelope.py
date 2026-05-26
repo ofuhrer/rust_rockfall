@@ -69,6 +69,11 @@ MEASURED_SOURCE_COMMANDS = {
         "--run-root /scratch/mch/olifu/rust_rockfall/probes/"
         "tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517 --format json"
     ),
+    "hazard_throughput_probe_metrics_report": (
+        "PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py "
+        "--run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/"
+        "tschamut_public_balfrin_multi_release_zone_tb603_20260526 --format json"
+    ),
     "candidate_source_zone_scenarios": (
         "PYENV_VERSION=system uv run python scripts/generate_candidate_source_zone_scenarios.py "
         "--candidate-repeat-count 3 --template-ids candidate_release_point_summary_v1,policy_block_family_v1 "
@@ -452,6 +457,10 @@ def load_latest_diagnostic_evidence() -> dict[str, Any]:
             rows.append(evidence)
     rows.sort(key=lambda row: int(row.get("release_zone_count") or 0))
     return rows[-1] if rows else {}
+
+
+def load_latest_hazard_throughput_evidence() -> dict[str, Any]:
+    return EVIDENCE_BUNDLE.build_latest_hazard_throughput_evidence()
 
 
 def load_diagnostic_repeatability_summary() -> dict[str, Any]:
@@ -1171,6 +1180,7 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
     single_job_summary = SINGLE_JOB.build_summary()
     feasibility_report = FEASIBILITY.build_report()
     canonical_bundle_report = load_canonical_bundle_report()
+    hazard_throughput_evidence = load_latest_hazard_throughput_evidence()
     multi_zone_scaling_frontier = build_multi_zone_scaling_frontier(canonical_bundle_report)
     target_area_probe_report = load_target_area_probe_report()
     generated_scenario_table_report = load_generated_scenario_table_evidence()
@@ -1246,6 +1256,20 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "job_id": coefficients.diagnostic_job_id,
             "claim_boundary": "diagnostic reducer-pressure support only; hazard, physical-probability, operational, distributed, and Swiss-wide claims remain separate",
         },
+        "hazard_throughput_support": {
+            "status": hazard_throughput_evidence.get("status"),
+            "task_id": hazard_throughput_evidence.get("task_id"),
+            "job_id": hazard_throughput_evidence.get("slurm_job_id"),
+            "run_root": hazard_throughput_evidence.get("run_root"),
+            "runtime_seconds": hazard_throughput_evidence.get("total_wall_seconds"),
+            "memory_peak_mb": hazard_throughput_evidence.get("memory_peak_mb"),
+            "validation_output_file_count": hazard_throughput_evidence.get("validation_output_file_count"),
+            "validation_output_bytes": hazard_throughput_evidence.get("validation_output_bytes"),
+            "hazard_output_file_count": hazard_throughput_evidence.get("hazard_output_file_count"),
+            "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
+            "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
+            "claim_boundary": hazard_throughput_evidence.get("claim_boundary"),
+        },
         "job_count": job_count,
         "jobs_per_aoi": jobs_per_aoi,
         "runtime_seconds": runtime_seconds,
@@ -1298,6 +1322,16 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
                 "repeatability_bounds": coefficients.diagnostic_repeatability_bounds,
                 "run_root": coefficients.diagnostic_run_root,
                 "job_id": coefficients.diagnostic_job_id,
+            },
+            "hazard_throughput_support": {
+                "task_id": hazard_throughput_evidence.get("task_id"),
+                "job_id": hazard_throughput_evidence.get("slurm_job_id"),
+                "run_root": hazard_throughput_evidence.get("run_root"),
+                "runtime_seconds": hazard_throughput_evidence.get("total_wall_seconds"),
+                "memory_peak_mb": hazard_throughput_evidence.get("memory_peak_mb"),
+                "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
+                "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
+                "claim_boundary": hazard_throughput_evidence.get("claim_boundary"),
             },
             "canonical_bundle_status": canonical_bundle_report.get("bundle_status"),
             "canonical_bundle_summary": canonical_bundle_report.get("bundle_summary", {}),

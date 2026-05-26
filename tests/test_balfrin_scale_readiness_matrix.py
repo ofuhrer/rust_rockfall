@@ -50,6 +50,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-565 and TB-566 now provide current measured regional split evidence", report["summary"])
+        self.assertIn("TB-603 adds measured bounded hazard-throughput evidence", report["summary"])
         self.assertIn("TB-450 now threads the measured regional split", report["summary"])
         self.assertIn("ranked next probe ladder now places reducer-pressure optimization first", report["summary"])
         self.assertEqual(
@@ -61,6 +62,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 "four_zone_review_package",
                 "two_zone_preserved_hazard_run",
                 "regional_split_probe",
+                "hazard_throughput_probe",
             ],
         )
         self.assertEqual(report["blocked_tiers"], ["four_zone_hazard_probe"])
@@ -102,6 +104,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(projection["first_bottleneck"], "reducer_pressure_and_replay_metadata_growth")
         self.assertIn("deterministic local reducer-pressure scratch roots", projection["next_measurable_step"])
         self.assertIn("regional_split_probe", projection["evidence_class_separation"]["measured"])
+        self.assertIn("hazard_throughput_probe", projection["evidence_class_separation"]["measured"])
         self.assertIn("projected_larger_aoi", projection["evidence_class_separation"]["projection_only"])
         self.assertIn("management_aoi_multi_zone_run", projection["evidence_class_separation"]["failed_closed"])
         self.assertIn("swiss_wide_execution", projection["evidence_class_separation"]["deferred"])
@@ -129,6 +132,27 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["regional_split_status"]["supersedes_failed_closed_task"], "TB-432")
         self.assertEqual(report["regional_split_status"]["source_report"], "docs/balfrin_regional_split_run_root_metrics_tb566.md")
         self.assertEqual(report["regional_split_status"]["supersedes_regional_split_source_report"], "docs/balfrin_regional_split_run_root_metrics_tb448.md")
+        self.assertEqual(
+            report["hazard_throughput_status"]["classification"],
+            "measured_hazard_throughput_probe",
+        )
+        self.assertEqual(report["hazard_throughput_status"]["evidence_label"], "measured_on_balfrin")
+        self.assertEqual(report["hazard_throughput_status"]["measurement_status"], "measured_hazard_throughput_postproc")
+        self.assertEqual(report["hazard_throughput_status"]["job_id"], "4372309")
+        self.assertEqual(
+            report["hazard_throughput_status"]["run_root"],
+            "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526",
+        )
+        self.assertEqual(report["hazard_throughput_status"]["runtime_seconds"], 7.043564590974711)
+        self.assertEqual(report["hazard_throughput_status"]["memory_peak_mb"], 357.796875)
+        self.assertEqual(report["hazard_throughput_status"]["validation_output_file_count"], 130)
+        self.assertEqual(report["hazard_throughput_status"]["validation_output_bytes"], 34565316)
+        self.assertEqual(report["hazard_throughput_status"]["hazard_output_file_count"], 57)
+        self.assertEqual(report["hazard_throughput_status"]["hazard_output_bytes"], 31439786)
+        self.assertEqual(report["hazard_throughput_status"]["conditional_curve_rows"], 729600)
+        self.assertEqual(report["hazard_throughput_status"]["metrics_contract_status"], "complete")
+        self.assertEqual(report["hazard_throughput_status"]["preservation_status"], "ready_for_demonstration_evidence")
+        self.assertEqual(report["hazard_throughput_status"]["source_report"], "docs/balfrin_hazard_throughput_run_tb603.md")
         delta_summary = report["regional_split_projection_delta_summary"]
         self.assertFalse(delta_summary["within_expected_pressure_bands"])
         self.assertEqual(delta_summary["next_probe_class"], "summarize_multi_zone_reducer_pressure")
@@ -179,7 +203,15 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
             report["latest_execution_efficiency_status"]["regional_split_probe"],
             "measured_regional_split_postproc_probe",
         )
+        self.assertEqual(
+            report["latest_execution_efficiency_status"]["hazard_throughput_probe"],
+            "measured_hazard_throughput_postproc_probe",
+        )
         self.assertEqual(report["latest_output_budget_status"]["regional_split_probe"], "ready_for_demonstration_evidence")
+        self.assertEqual(
+            report["latest_hazard_execution_status"]["hazard_throughput_probe"],
+            "measured_bounded_hazard_throughput",
+        )
         self.assertEqual(
             report["latest_execution_efficiency_status"]["postproc_microbenchmark"],
             "measured_postproc_shell_overhead_only",

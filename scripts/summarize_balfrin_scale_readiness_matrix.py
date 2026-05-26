@@ -237,6 +237,36 @@ TB566_REGIONAL_SPLIT_METRICS = {
     "source_report": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
 }
 TB566_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 205049
+TB603_HAZARD_THROUGHPUT_METRICS = {
+    "task_id": "TB-603",
+    "job_id": "4372309",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:23",
+    "alloc_cpus": 16,
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526",
+    "metrics_contract_status": "complete",
+    "wall_time_seconds": 7.043564590974711,
+    "batch_wall_seconds": 22.3286811549915,
+    "hazard_stage_seconds": 7.8358131679706275,
+    "memory_peak_mb": 357.796875,
+    "validation_output_file_count": 130,
+    "validation_output_bytes": 34_565_316,
+    "hazard_output_file_count": 57,
+    "hazard_output_bytes": 31_439_786,
+    "hazard_manifest_output_file_count": 50,
+    "hazard_manifest_output_bytes": 17_417_138,
+    "conditional_curve_rows": 729_600,
+    "trajectory_decision_counts": {"executed": 2},
+    "reducer_decision_counts": {"executed": 2},
+    "merge_order": "sorted_chunk_id",
+    "merge_order_independent": True,
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "preservation_status": "ready_for_demonstration_evidence",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "source_report": "docs/balfrin_hazard_throughput_run_tb603.md",
+}
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "task_id": "TB-432",
     "submission_package_status": "failed_closed_preflight",
@@ -1021,6 +1051,75 @@ def _regional_split_measured_row() -> dict[str, Any]:
     }
 
 
+def _hazard_throughput_measured_row() -> dict[str, Any]:
+    metrics = TB603_HAZARD_THROUGHPUT_METRICS
+    return {
+        "tier_id": "hazard_throughput_probe",
+        "tier_label": "bounded hazard-throughput postproc run",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_hazard_throughput_postproc",
+        "classification": "measured_hazard_throughput_probe",
+        "output_budget_status": "summary_only_reduced_output_measured",
+        "output_pressure_status": "measured_hazard_throughput_output_pressure",
+        "reducer_pressure_status": "measured_chunked_hazard_reducer_pressure",
+        "execution_efficiency_status": "measured_hazard_throughput_postproc_probe",
+        "hazard_execution_status": "measured_bounded_hazard_throughput",
+        "file_count": metrics["validation_output_file_count"],
+        "bytes": metrics["validation_output_bytes"],
+        "validation_output_file_count": metrics["validation_output_file_count"],
+        "validation_output_bytes": metrics["validation_output_bytes"],
+        "hazard_output_file_count": metrics["hazard_output_file_count"],
+        "hazard_output_bytes": metrics["hazard_output_bytes"],
+        "hazard_manifest_output_file_count": metrics["hazard_manifest_output_file_count"],
+        "hazard_manifest_output_bytes": metrics["hazard_manifest_output_bytes"],
+        "manifest_bytes": None,
+        "reducer_sidecars": None,
+        "runtime_seconds": metrics["wall_time_seconds"],
+        "batch_wall_seconds": metrics["batch_wall_seconds"],
+        "hazard_stage_seconds": metrics["hazard_stage_seconds"],
+        "memory_peak_mb": metrics["memory_peak_mb"],
+        "run_root_preservation_status": metrics["preservation_status"],
+        "replayability_status": "preservation_gate_ready",
+        "authorization_status": "standing_postproc_clearance_used",
+        "next_evidence_field": "hazard_throughput_evidence",
+        "next_recommended_action": "promote_hazard_throughput_evidence_into_scale_surfaces",
+        "next_recommended_action_reason": (
+            "TB-603 supplies measured hazard-throughput runtime, memory, output, conditional-curve, and chunk-decision evidence; "
+            "the next larger step should improve scale planning without treating this as operational or physical-probability evidence."
+        ),
+        "next_blocker_category": "scientific_validation_and_distributed_semantics",
+        "blocker": None,
+        "current_blocker": None,
+        "metrics_contract_status": metrics["metrics_contract_status"],
+        "conditional_curve_rows": metrics["conditional_curve_rows"],
+        "conditional_curve_export": "summary-only",
+        "grid_csv_export": "none",
+        "plots_enabled": False,
+        "trajectory_decision_counts": metrics["trajectory_decision_counts"],
+        "reducer_decision_counts": metrics["reducer_decision_counts"],
+        "merge_order": metrics["merge_order"],
+        "merge_order_independent": metrics["merge_order_independent"],
+        "preservation_status": metrics["preservation_status"],
+        "required_run_root_entries_status": metrics["required_run_root_entries_status"],
+        "output_family_status": metrics["output_family_status"],
+        "latest_measured_task": metrics["task_id"],
+        "job_id": metrics["job_id"],
+        "slurm": {
+            "job_id": metrics["job_id"],
+            "state": metrics["slurm_state"],
+            "exit_code": metrics["exit_code"],
+            "elapsed": metrics["elapsed"],
+            "alloc_cpus": metrics["alloc_cpus"],
+        },
+        "run_root": metrics["run_root"],
+        "source_report": metrics["source_report"],
+        "summary": (
+            "TB-603 completed a bounded hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, no full grid CSV, no plots, and a fresh preserved $SCRATCH run root."
+        ),
+        "claim_boundary": "measured bounded hazard-throughput evidence only; no operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc claim",
+    }
+
+
 def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | None:
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
@@ -1388,6 +1487,7 @@ def build_report() -> dict[str, Any]:
         _two_zone_preserved_row(),
         _management_aoi_failed_closed_row(),
         _regional_split_measured_row(),
+        _hazard_throughput_measured_row(),
         *([diagnostic_row] if diagnostic_row is not None else []),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
@@ -1412,6 +1512,7 @@ def build_report() -> dict[str, Any]:
     overall_status = "blocked_missing_inputs" if reducer_projection_blocked else "blocked_reducer_budget" if blocked else "measured"
     recommended = dict(decision_report.get("recommended_next_action") or {})
     regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
+    hazard_throughput_row = next((row for row in rows if row["tier_id"] == "hazard_throughput_probe"), {})
     next_probe_ranking = decision_gate.build_reducer_first_probe_ranking()
     next_recommended_scaling_task = str(next_probe_ranking[0]["action_id"]) if next_probe_ranking else "second_site_public_context_progress"
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
@@ -1548,6 +1649,11 @@ def build_report() -> dict[str, Any]:
                 "evidence": "completed diagnostic run record",
                 "next_blocker": "queue_policy",
             },
+            "hazard_throughput": {
+                "class": "measured_hazard_throughput_postproc",
+                "evidence": "completed bounded hazard-throughput run record",
+                "next_blocker": "scientific_validation_and_distributed_semantics",
+            },
             "100_zone": {
                 "class": "projection_only_deferred",
                 "evidence": "extrapolated from diagnostic and older output-pressure evidence",
@@ -1586,6 +1692,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
+            "TB-603 adds measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
@@ -1680,6 +1787,24 @@ def build_report() -> dict[str, Any]:
             "supersedes_regional_split_source_report": regional_split_row.get("supersedes_regional_split_source_report"),
             "source_report": regional_split_row.get("source_report"),
             "projection_delta_summary": regional_split_projection_delta_summary,
+        },
+        "hazard_throughput_status": {
+            "classification": hazard_throughput_row.get("classification"),
+            "evidence_label": hazard_throughput_row.get("evidence_label"),
+            "measurement_status": hazard_throughput_row.get("measurement_status"),
+            "job_id": hazard_throughput_row.get("job_id"),
+            "run_root": hazard_throughput_row.get("run_root"),
+            "runtime_seconds": hazard_throughput_row.get("runtime_seconds"),
+            "memory_peak_mb": hazard_throughput_row.get("memory_peak_mb"),
+            "validation_output_file_count": hazard_throughput_row.get("validation_output_file_count"),
+            "validation_output_bytes": hazard_throughput_row.get("validation_output_bytes"),
+            "hazard_output_file_count": hazard_throughput_row.get("hazard_output_file_count"),
+            "hazard_output_bytes": hazard_throughput_row.get("hazard_output_bytes"),
+            "conditional_curve_rows": hazard_throughput_row.get("conditional_curve_rows"),
+            "metrics_contract_status": hazard_throughput_row.get("metrics_contract_status"),
+            "preservation_status": hazard_throughput_row.get("preservation_status"),
+            "source_report": hazard_throughput_row.get("source_report"),
+            "claim_boundary": hazard_throughput_row.get("claim_boundary"),
         },
         "regional_split_projection_delta_summary": regional_split_projection_delta_summary,
         "next_evidence_field": "regional_split_projection_delta_summary",

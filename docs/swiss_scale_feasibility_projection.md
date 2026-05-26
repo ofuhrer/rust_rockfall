@@ -26,6 +26,11 @@ risk, exposure, or vulnerability semantics.
   evidence; this is the diagnostic repeatability anchor.
 - 32-zone: measured as Balfrin diagnostic reducer-pressure evidence; this is
   the current diagnostic performance ceiling.
+- Hazard-throughput probe: TB-603 measured the bounded hazard workflow on
+  Balfrin `postproc` with complete mandatory runtime, memory, output, and
+  conditional-curve metrics. This is the current hazard-throughput support
+  point, not a Swiss-wide, operational, distributed, or physical-probability
+  claim.
 - 100-zone: deferred projection. Reducer pressure and replay metadata still
   dominate before any live hazard-throughput interpretation.
 - Regional split probe branch: TB-447 executed one bounded regional split
@@ -73,8 +78,9 @@ automation and onto the remaining planning bottlenecks:
 1. Queue policy for the next bounded `postproc` diagnostic step.
 1. Reducer pressure and replay/metadata growth for larger single-AOI batches.
 1. Output-byte and file-count growth when moving beyond diagnostic postproc.
-1. Hazard throughput, because the 32-zone evidence is diagnostic rather than a
-   larger measured hazard execution.
+1. Scaling beyond the measured TB-603 hazard-throughput run, because the
+   32-zone evidence is diagnostic and TB-603 remains a bounded single-node
+   hazard-throughput support point.
 1. Distributed and non-`postproc` execution, which remain explicit phase
    changes.
 
@@ -94,7 +100,8 @@ branches into measured capability:
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
     four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
-    TB-407 smallest multi-zone probe, and the current claim boundaries.
+    TB-407 smallest multi-zone probe, TB-603 bounded hazard-throughput run, and
+    the current claim boundaries.
 - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
   restartability, GIS scope, uncertainty, and claim boundaries in the measured
   section while separating projection-only and failed-closed sections and now
@@ -118,6 +125,13 @@ branches into measured capability:
   `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526`,
   reducer wall time `5.39` s, maximum RSS `34.168` MB, `100` output files,
   `42,221` output bytes, and `24,514` manifest bytes.
+- TB-603 measured the bounded hazard-throughput run on Balfrin:
+  job `4372309`, run root
+  `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526`,
+  hazard workflow wall time `7.043564590974711` s, process peak memory
+  `357.796875` MB, `57` hazard output files, `31,439,786` hazard output bytes,
+  `130` validation-output files, `34,565,316` validation-output bytes, and
+  `729,600` conditional-curve rows represented in summary-only mode.
 - TB-565 and TB-566 measured the current regional split probe: one bounded
   Balfrin `postproc` job completed as job `4367244`, the preserved run root
   recorded `130` validation files, `57` hazard files, `729600`
@@ -182,8 +196,9 @@ branches into measured capability:
     bottlenecks for larger bounded probes.
   - `reducer_pressure` and replay metadata growth remain the next bottlenecks
     for 100-zone planning.
-- `hazard_throughput` remains out of reach until a larger measured multi-zone
-  hazard execution exists.
+- `hazard_throughput` is now measured for the bounded TB-603 support point, but
+  larger multi-zone, distributed, and Swiss-wide hazard execution remains
+  unmeasured.
 - GIS/COG conversion remains blocked at the standard-root layer until the
   packaged AOI root has the required manifest fields and raster package
   metadata, even though the converted proof root is already ready.
@@ -214,6 +229,7 @@ treated as projection bounds, not new measurements.
 | 16-zone | measured diagnostic postproc | diagnostic reducer run | diagnostic output footprint | diagnostic file footprint | Scientific evidence prevents promotion beyond diagnostic performance | measured diagnostic | use only as diagnostic performance evidence |
 | 24-zone | measured repeatable diagnostic postproc | 4.03 reducer wall seconds | 32,904-32,922 output bytes | 76 output files | Queue policy and scientific evidence block broader claims | measured repeatability pair | use as repeatability evidence below the current ceiling |
 | 32-zone | measured diagnostic postproc | 5.39 reducer wall seconds | 42,221 output bytes | 100 output files | Queue policy and scientific evidence block broader claims | measured diagnostic | next diagnostic size only if queue use remains reasonable |
+| hazard-throughput probe | measured on Balfrin | 7.044 hazard workflow seconds | 31,439,786 hazard output bytes | 57 hazard output files | Scientific validation and distributed semantics block broader claims | summary-only reduced output measured | use as bounded hazard-throughput support |
 | 100-zone | projection-only deferred | 133.779 / 178.4 / 552.77 | 12,862,070 / 39,536,020 / 2,675,271,200 | 60 / 170 / 1,910 | Reducer pressure, manifest growth, and replay metadata dominate before live hazard throughput | deferred | optimize/re-measure reducer pressure before a live step |
 | regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,330 / 34,565,330 / 34,565,330 | 130 / 130 / 130 | Measured regional split run-root evidence is available, but it remains bounded comparison evidence | ready_for_demonstration_evidence | keep as comparison evidence |
 | regional workflows | deferred | projection-only | projection-only | projection-only | Multi-AOI support and queue policy are not yet measured as scale capability | deferred | no promotion without a phase change |
