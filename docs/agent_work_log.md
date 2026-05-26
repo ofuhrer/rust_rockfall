@@ -9008,3 +9008,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: reviewer package for measured diagnostic/repeatability evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-585`
+
+### TB-585: Publish Current Balfrin Diagnostic Performance On GitHub Pages
+
+- Date: 2026-05-26
+- Commit: `c6cfcd0`
+- Objective: publish current Balfrin diagnostic-performance evidence through the GitHub Pages performance dashboard while keeping CI timings separate.
+- Files changed: `scripts/performance_ci_tracking.py`, `tests/test_performance_ci_tracking.py`, `docs/performance_ci_tracking.md`, `README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added promoted 24-zone Balfrin diagnostic/repeatability evidence to the performance tracking helper as a separate Pages report.
+  - Made `record-main` emit stable CI files plus new `/performance/balfrin_diagnostic.json` and `/performance/balfrin_diagnostic.svg` artifacts.
+  - Updated the performance index HTML with a Balfrin diagnostic table and chart without mixing those values into `/performance/latest.json` or `/performance/main_performance.svg`.
+  - Updated README and performance docs to describe the separate diagnostic-performance section and its claim boundaries.
+  - Removed TB-585 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/performance_ci_tracking.py tests/test_performance_ci_tracking.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_performance_ci_tracking -v`
+  - local `record-main` smoke proving `balfrin_diagnostic.json` and `balfrin_diagnostic.svg` are generated while `latest.json` and `main_performance.svg` remain present
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: Pages publication for measured Balfrin diagnostic `postproc` performance only; no CI/Balfrin normalization, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-586`
