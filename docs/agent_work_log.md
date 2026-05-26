@@ -8898,3 +8898,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measured 24-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-580`
+
+### TB-580: Collect And Promote 24-Zone Diagnostic Metrics
+
+- Date: 2026-05-26
+- Commit: `d938b46`
+- Objective: promote the completed 24-zone diagnostic run into current evidence, scale, and performance comparison surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_24_zone_diagnostic_metrics_tb580.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Switched the latest diagnostic run-record path to the completed 24-zone run while retaining the 16-zone record as prior diagnostic comparison evidence.
+  - Added a diagnostic performance comparison surface containing current regional split, historical regional split, 16-zone diagnostic, and 24-zone diagnostic rows.
+  - Updated reducer-pressure constraints so the latest diagnostic run record becomes the single-node diagnostic batch ceiling when present.
+  - Verified on Balfrin that latest evidence is measured 24-zone job `4368588`, the scale matrix exposes `diagnostic_24_zone_reducer_pressure`, and the comparison surface reports latest diagnostic release-zone count `24`.
+  - Removed TB-580 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix tests.test_multi_zone_reducer_pressure -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `ssh balfrin '... build_latest_multi_zone_balfrin_evidence() ... summarize_balfrin_scale_readiness_matrix.build_report() ...'`
+- Result/status: implemented_measured
+- Boundaries: measured 24-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-581`
