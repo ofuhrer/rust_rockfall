@@ -8876,3 +8876,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_waiting_report
 - Boundaries: no `sbatch`, no Balfrin job id, no 24-zone runtime/MaxRSS measurement yet, no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-579`
+
+### TB-579: Execute One 24-Zone Diagnostic Postproc Probe If Checks Pass
+
+- Date: 2026-05-26
+- Commit: `d5fe597`
+- Objective: submit, monitor, and collect one 24-zone compact diagnostic `postproc` run after the queue planner and handoff checks passed.
+- Files changed: `docs/balfrin_24_zone_diagnostic_run_tb579.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Refreshed the Balfrin checkout to `d6863e299a590f97d93cc16ba0018745b2bf6506` and confirmed the queue planner classified the run as `run_now`.
+  - Ran `scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_simplified_next --partition postproc --time 00:30:00`.
+  - Collected completed job `4368588`: terminal state `COMPLETED`, exit code `0:0`, reducer wall time `4.03` seconds, elapsed `0:01.55`, MaxRSS `33.711` MB, 76 diagnostic output files, and 32,904 diagnostic output bytes.
+  - Recorded the run root `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next` and run record path in the TB-579 note.
+  - Removed TB-579 from the active backlog.
+- Checks run:
+  - `ssh balfrin '... summarize_balfrin_next_live_run_decision_gate.build_diagnostic_run_planner(...) ...'`
+  - `ssh balfrin '... scripts/run_balfrin_diagnostic.py run --release-zones 24 ...'`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: measured 24-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-580`
