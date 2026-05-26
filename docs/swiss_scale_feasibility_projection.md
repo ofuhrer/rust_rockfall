@@ -139,6 +139,13 @@ branches into measured capability:
   manifest bytes, and `13.55` reducer wall seconds. The 100-zone case remains
   `projection_only_deferred`; no Balfrin scheduler runtime or memory evidence
   exists for it yet.
+- TB-612 submitted that package as Balfrin `postproc` job `4372447`, which
+  completed with exit code `0:0`, scheduler elapsed `00:00:01`,
+  `/usr/bin/time` elapsed `0:01.26`, maximum RSS `34.16 MB`, `304` output
+  files, `121,172` output bytes, `61,119` manifest bytes, and `448,376`
+  run-root bytes. This promotes 100 zones to measured diagnostic reducer
+  pressure only; hazard throughput, Swiss-wide execution, distributed
+  execution, and physical-probability claims remain separate.
 - TB-565 and TB-566 measured the current regional split probe: one bounded
   Balfrin `postproc` job completed as job `4367244`, the preserved run root
   recorded `130` validation files, `57` hazard files, `729600`

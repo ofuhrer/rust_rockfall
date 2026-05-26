@@ -163,6 +163,8 @@ starting context for implementation unless a task explicitly asks for them.
   diagnostic `postproc` run record and metrics.
 - `balfrin_100_zone_diagnostic_package_tb611.md`: TB-611 prepared no-submit
   100-zone diagnostic package boundary and local same-shape pressure evidence.
+- `balfrin_100_zone_diagnostic_run_tb612.md`: TB-612 measured 100-zone
+  diagnostic reducer-pressure run on Balfrin `postproc`.
 - `balfrin_hazard_throughput_package_tb602.md`: TB-602 ready no-submit
   bounded hazard-throughput package for the next `postproc` run.
 - `balfrin_hazard_throughput_run_tb603.md`: TB-603 measured bounded

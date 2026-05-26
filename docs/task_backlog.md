@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-612: Submit A 100-Zone Diagnostic Only If Prior Evidence Supports It
-
-Goal: Run the 100-zone diagnostic on Balfrin only if the 32-zone and next larger diagnostic evidence show low risk.
-
-Capability gap reduced: Provides a strong measured single-AOI pressure point toward Swiss-scale feasibility.
-
-Why this outranks alternatives: A measured 100-zone diagnostic would materially strengthen or falsify the Swiss-scale performance story.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- generated scratch: 100-zone diagnostic package from TB-611
-- external: Balfrin `postproc` scheduler and `$SCRATCH`
-
-Deliverables:
-
-- Submit, monitor, and collect a 100-zone diagnostic only when prior measured diagnostics and current queue state keep expected use within standing clearance; otherwise record the measured no-go.
-
-Definition of done:
-
-- Either 100-zone evidence is measured, or the task records why the run should remain deferred.
-
-
 ### TB-613: Promote The Largest Diagnostic Series Into Swiss-Scale Feasibility
 
 Goal: Update the Swiss-scale projection with the full measured diagnostic series through the largest safe run.
