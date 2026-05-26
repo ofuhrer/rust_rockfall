@@ -9601,3 +9601,21 @@ scan thousands of lines of completed history.
 - Metrics: stress status `ready`; package generation `11.059617833001539 s`; standard package `39` files / `401,265` bytes; converted package `39` files / `403,419` bytes; raster count `22`; vector count `2`; manifest size `333,291` bytes standard and `333,888` bytes converted; COG conversion `25.104302958003245 s`; layer parity `parity_match`; first GIS packaging bottleneck `no_blocker`.
 - Boundaries: local packaging and COG conversion evidence only; no national public geodata staging, larger simulation, Swiss-wide execution authorization, or operational hazard/risk claim.
 - Next task: `TB-610`
+
+### TB-610: Regenerate Adjacent-Candidate Scenario Tables For Scale Planning
+
+- Date: 2026-05-26
+- Commit: `6084f8c`
+- Objective: measure scenario-table cardinality, batching, manifest pressure, and replay-tier implications for the active adjacent-candidate management-AOI path.
+- Files changed: `docs/management_aoi_scenario_pressure_tb610.md`, `docs/current_maturity_snapshot.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Ran the management-AOI scenario-pressure helper into fresh scratch roots under `/tmp/tb610_management_aoi_scenario_pressure` and `/tmp/tb610_management_aoi_scenario_table`.
+  - Ran the scenario storage/output-tier pressure helper and extracted the real-AOI table pressure, expanded candidate-set pressure, compact batching cap, and replay-tier recommendation.
+  - Recorded the result as TB-610 evidence, updated the maturity snapshot with the next package-sizing cap, indexed the evidence note, and removed TB-610 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --output-root /tmp/tb610_management_aoi_scenario_pressure --scenario-output-root /tmp/tb610_management_aoi_scenario_table --format json --json-output /tmp/tb610_management_aoi_scenario_pressure.json`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json --json-output /tmp/tb610_scenario_storage_pressure.json`
+- Result/status: implemented_measured
+- Metrics: active adjacent candidate `1`; candidate area `105,344 m2`; scenario rows `3`; scenario table `5` files / `14,996` bytes in the management-pressure report and `5` files / `15,162` bytes in the storage-tier report; active manifest `4,626` to `4,748` bytes depending on accounting helper; expanded cap `30` candidate records / `300` scenario rows / `211,277` manifest bytes / `595,867` total bytes; compact batch guard `pass`; recommended Balfrin replay tier `rebuildable_reduced`.
+- Boundaries: local scenario-table and storage-pressure evidence only; no Balfrin submission, Swiss-wide execution, distributed execution, operational hazard, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-611`
