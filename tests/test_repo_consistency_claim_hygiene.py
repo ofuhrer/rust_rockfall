@@ -104,7 +104,7 @@ class HazardClaimHygieneTests(unittest.TestCase):
             errors,
             [
                 "docs/old_report.md has archived/superseded status marker "
-                "'Status: planning artifact'; move it under docs/archive/ or add an explicit allowlist entry"
+                "'Status: planning artifact'; remove it or rewrite it as current documentation"
             ],
         )
 
@@ -143,14 +143,20 @@ class HazardClaimHygieneTests(unittest.TestCase):
 
         self.assertEqual(report["agent_task_context_status"], "ready")
         self.assertEqual(report["task_selection_scope"], "local_only")
-        self.assertEqual(report["local_only_selection_status"], "selected_first_local_task")
-        self.assertIsNotNone(report["selected_task"])
-        self.assertEqual(report["selected_task"]["task_id"], report["next_local_task"]["task_id"])
-        self.assertTrue(report["selected_task"]["local_only_eligible"])
-        self.assertTrue(report["local_active_tasks"])
-        self.assertTrue(all(task["local_only_eligible"] for task in report["local_active_tasks"]))
-        self.assertTrue(report["balfrin_required_tasks"])
-        self.assertTrue(any(task.get("balfrin_access_required") for task in report["balfrin_required_tasks"]))
+        self.assertIn(report["local_only_selection_status"], {"selected_first_local_task", "backlog_empty"})
+        if report["local_only_selection_status"] == "backlog_empty":
+            self.assertIsNone(report["selected_task"])
+            self.assertIsNone(report["next_local_task"])
+            self.assertEqual(report["local_active_tasks"], [])
+            self.assertEqual(report["balfrin_required_tasks"], [])
+        else:
+            self.assertIsNotNone(report["selected_task"])
+            self.assertEqual(report["selected_task"]["task_id"], report["next_local_task"]["task_id"])
+            self.assertTrue(report["selected_task"]["local_only_eligible"])
+            self.assertTrue(report["local_active_tasks"])
+            self.assertTrue(all(task["local_only_eligible"] for task in report["local_active_tasks"]))
+            self.assertTrue(report["balfrin_required_tasks"])
+            self.assertTrue(any(task.get("balfrin_access_required") for task in report["balfrin_required_tasks"]))
 
     def test_active_backlog_inspect_first_paths_detect_missing_file(self) -> None:
         backlog_text = """## Active Tasks

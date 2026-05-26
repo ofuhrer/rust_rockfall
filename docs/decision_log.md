@@ -3,8 +3,7 @@
 Status: consolidated historical decision log. This file replaces several
 standalone decision fragments and older roadmap snapshots that were useful at
 the time but had become competing sources of truth. Executable tasks are owned
-only by `task_backlog.md`; the long-term roadmap and recommendation matrix are
-supporting context, not current task authority.
+only by `task_backlog.md`.
 
 This log is intentionally concise. It records why a decision was made, its
 current status, and where the detailed evidence now lives. It does not define
@@ -19,8 +18,8 @@ Decision: maintain exactly one executable task queue in `task_backlog.md`, keep
 durable choices in `decision_log.md`, and keep completed execution history in
 `agent_work_log.md`.
 
-Current status: active. `next_development_targets.md` is retained only as a
-legacy pointer for older links and must not regain an active target queue.
+Current status: active. Legacy target and roadmap files have been removed so
+they cannot regain an active target queue.
 
 Rationale: prior target and roadmap documents created duplicated priority
 language, forcing agents to read and update too many files for each task. The
@@ -45,8 +44,7 @@ next phase needs to reduce scientific and implementation uncertainty through
 runs, measurements, scripts, features, and fixes rather than ending tasks with
 only another gate recommendation.
 
-Detailed sources: `../AGENTS.md`, `task_backlog.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`.
+Detailed sources: `../AGENTS.md`, `task_backlog.md`.
 
 ### Management AOI Candidate Screening Deferral
 
@@ -138,9 +136,7 @@ Rationale: the largest gaps are now source-zone/block-scenario semantics,
 real-site conditional hazard products, DEM/terrain sensitivity, GIS packaging,
 uncertainty provenance, and scalable ensemble execution.
 
-Detailed sources: `../README.md`, `../AGENTS.md`, `roadmap_hazard_mapping.md`,
-`task_backlog.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`.
+Detailed sources: `../README.md`, `../AGENTS.md`, `task_backlog.md`.
 
 ### Region-To-Intensity-Frequency Automation Boundary
 
@@ -186,9 +182,7 @@ reducers, or Balfrin orchestration before acceptance gates are defined would
 make behavior drift harder to review. The Tschamut pilot remains conditional,
 diagnostic, and non-operational until those gates classify it otherwise.
 
-Detailed sources: `task_backlog.md`,
-`roadmap_recommendation_matrix.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`.
+Detailed sources: `task_backlog.md`.
 
 ### Real-Site DEM/Input Conditioning Gate
 
@@ -206,9 +200,7 @@ interpretation can all create plausible but spatially wrong hazard maps even
 when the simulation itself is unchanged.
 
 Detailed sources: `task_backlog.md`,
-`real_site_dem_input_conditioning_qa_gate.md`,
-`roadmap_recommendation_matrix.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`.
+`real_site_dem_input_conditioning_qa_gate.md`.
 
 ### Output Budget And Reducer Scaling Gate
 
@@ -225,9 +217,7 @@ state, and dense-grid accumulator growth can make a run look finished while
 still being too large or too brittle for the next scale step.
 
 Detailed sources: `task_backlog.md`,
-`output_budget_reducer_scaling_gate.md`,
-`roadmap_recommendation_matrix.md`,
-`real_case_intensity_frequency_implementation_roadmap.md`.
+`output_budget_reducer_scaling_gate.md`.
 
 ### Balfrin Single-Job Sufficiency
 
@@ -394,8 +384,7 @@ worker counts, and merge order, but it is not a resumable scheduler,
 SLURM/MPI/GPU integration, annual-frequency product, physical probability
 model, or operational hazard-map claim.
 
-Detailed sources: `scalability_and_data_formats_review.md`,
-`performance_benchmarking.md`, `performance_benchmark_profile_reference.md`,
+Detailed sources: `performance_benchmarking.md`, `performance_benchmark_profile_reference.md`,
 `parquet_impact_benchmark_results.md`,
 `hazard_throughput_bottleneck_report.md`.
 
@@ -415,10 +404,7 @@ scheduler ownership metadata, and manifest output accounting.
 Rationale: large Swiss-scale pre-pilots require stable partial-reducer provenance
 before introducing job arrays or scheduler-level restart logic.
 
-Detailed sources: `docs/validation_data_schema.md`,
-`docs/scalability_and_data_formats_review.md`,
-`docs/real_case_intensity_frequency_implementation_roadmap.md`,
-`scripts/build_hazard_layers.py`.
+Detailed sources: `docs/validation_data_schema.md`, `scripts/build_hazard_layers.py`.
 
 ### Expert Review Baseline
 
@@ -432,9 +418,7 @@ current target is no longer to package a static review state. New work should
 optimize for the public-dataset Swiss pilot and later physical/annual
 intensity-frequency products.
 
-Detailed sources: `model_benchmark_execution_report.md`,
-`archive/model_overall_assessment_report.md`, `expert_review_briefing.md`,
-`benchmark_catalog.md`.
+Detailed sources: `benchmark_catalog.md`.
 
 ### Post TB-001 Through TB-004 Backlog Direction
 
@@ -451,7 +435,6 @@ execution blocker is validation debug-output volume. A distributed SLURM design
 would be premature until those blockers are reduced or shown to be secondary.
 
 Detailed sources: `docs/task_backlog.md`,
-`docs/archive/tschamut_public_conditional_pilot_acceptance_summary.md`,
 `docs/conditional_hazard_convergence_acceptance_protocol.md`,
 `docs/tschamut_public_bounded_validation_output_profile.md`,
 `docs/tschamut_public_obstacle_context_scope.md`.
@@ -620,7 +603,6 @@ roadmaps and evidence reports:
 - `expert_review_release_note.md`
 - `current_state_gap_analysis_next_directions.md`
 - `repository_scientific_roadmap_review.md`
-- `archive/deep_code_review.md`
 - `deep_repository_review.md`
 
 When a detailed result is needed, regenerate or re-read the current benchmark,

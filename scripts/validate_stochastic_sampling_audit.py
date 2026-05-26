@@ -21,9 +21,8 @@ REQUIRED_DOC_PATHS = (
     "docs/hazard_map_semantics.md",
     "docs/probabilistic_scenario_model_design.md",
     "docs/conditional_hazard_convergence_acceptance_protocol.md",
-    "docs/next_development_targets.md",
-    "docs/real_case_intensity_frequency_implementation_roadmap.md",
-    "docs/roadmap_recommendation_matrix.md",
+    "docs/task_backlog.md",
+    "docs/current_maturity_snapshot.md",
 )
 REQUIRED_RECORD_PATHS = (
     "validation/pilot_runs/tschamut_public_conditional_convergence_protocol_v1.yaml",

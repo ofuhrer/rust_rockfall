@@ -134,10 +134,9 @@ remain deferred phase changes. The main local reducer-pressure helpers
 can now regenerate deterministic scratch roots under a caller-supplied `/tmp`
 path and report manifest paths plus byte/file counts, but Balfrin access and
 remote checkout alignment still must be verified before any trusted submission
-package is used. Older local hazard-layer stress-test notes
-are preserved through `docs/archive/README.md`; current scale interpretation
-should use this snapshot, the scale readiness matrix, and the output-profile
-contract instead of dated archived reviews. The Balfrin/Tschamut conditional demonstration track now has
+package is used. Current scale interpretation should use this snapshot, the
+scale readiness matrix, and the output-profile contract. The Balfrin/Tschamut
+conditional demonstration track now has
 a frozen minimal
 demonstration contract, deterministic case and command planning, a working
 single-node SLURM submission path, a measured Balfrin run root, a canonical

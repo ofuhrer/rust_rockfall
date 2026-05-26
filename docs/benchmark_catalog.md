@@ -80,17 +80,6 @@ The default `translational_v0` contact model exposes `airborne`, `impact`, `slid
   Tschamut and Chant Sura, passive EOTA221 shape QA, and Mel de la Niva as
   metadata-only by default with an opt-in runnable smoke scaffold when verified
   public archives are cached locally.
-- `docs/archive/model_benchmark_execution_report.md`: consolidated expert-review
-  execution package that freezes the current benchmark inventory, public
-  Tschamut all-runs metrics, Chant Sura contact metrics, hazard-layer examples,
-  probabilistic Phase 1 smoke evidence, GeoTIFF/GIS-readiness evidence,
-  visual-artifact inventory, and reproducibility boundaries.
-- `docs/archive/model_overall_assessment_report.md`: maturity and gap assessment for the
-  current simulator and hazard-map workflow, including explicit non-operational
-  limits and recommendations for external review before major physics or
-  operational work.
-- `docs/archive/expert_review_briefing.md`: short reviewer briefing for rockfall,
-  contact-model, GIS, hazard-practitioner, and operational-stakeholder review.
 - `validation_synthetic_plane_basic`: checked-in synthetic observation fixture for validation metric computation.
 - `validation_swissalti3d_pilot`: tiny synthetic swissALTI3D-style ESRI ASCII crop with LV95/EPSG:2056 and LN02 metadata. It verifies the terrain-source metadata path, DEM/header consistency checks, and `run_manifest_v1` terrain provenance fields without committing raw swisstopo data.
 - `validation_swissalti3d_release_zone_pilot`: same tiny Swiss terrain fixture with an opt-in synthetic LV95/LN02 source-area polygon. It verifies deterministic release-point generation, CRS compatibility with terrain metadata, generated-release audit CSV output, source-area deposition summaries, and `run_manifest_v1` release-zone provenance fields.

@@ -51,12 +51,12 @@ point.
 
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,
-and completed task history is recorded in `docs/agent_work_log.md`. Long-term roadmap
-context is documented in `docs/roadmap_hazard_mapping.md`; it frames current
-conditional products such as reach, deposition, maximum kinetic energy, maximum
-jump height, threshold exceedance, and scenario uncertainty layers, plus future
-physical-probability and annual intensity-frequency products. Claim levels are
-defined in `docs/validation_maturity_framework.md`. Risk, exposure,
+and completed task history is recorded in `docs/agent_work_log.md`. Current
+conditional products include reach, deposition, maximum kinetic energy, maximum
+jump height, threshold exceedance, and scenario uncertainty layers. Future
+physical-probability and annual intensity-frequency products require separate
+scientific evidence. Claim levels are defined in
+`docs/validation_maturity_framework.md`. Risk, exposure,
 vulnerability, and warning-system work should stay separate from the hazard
 workflow unless a task explicitly brings those inputs in.
 
@@ -155,9 +155,7 @@ Core documentation:
 - `docs/literature_review.md`
 - `docs/model_design.md`
 - `docs/architecture_boundaries.md`
-- `docs/archive/implementation_plan.md`
 - `docs/onboarding.md`
-- `docs/roadmap_hazard_mapping.md`
 - `docs/swisstopo_data_strategy.md`
 - `docs/dataset_strategy.md`
 - `docs/chant_sura_contact_validation.md`

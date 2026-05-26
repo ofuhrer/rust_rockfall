@@ -1,356 +1,67 @@
-# Documentation Index
+# Documentation Guide
+
+This folder is intentionally a working reference, not a complete history of
+every experiment. Start with the documents below and follow links only when a
+task needs more detail.
 
 Current project version: `v0.6.1`.
 
-Use this index as the authority map for current work. Top-level docs should be
-current, actionable, or canonical evidence summaries. Historical reports and
-superseded planning notes live under `archive/` and should not be used as
-starting context for implementation unless a task explicitly asks for them.
+## Start Here
 
-## Status Taxonomy
+- `../README.md`: project overview, quickstart, and current demonstration
+  snapshot.
+- `onboarding.md`: local setup, checks, and handoff rules.
+- `aoi_user_manual.md`: compact user-facing AOI workflow.
+- `swiss_scale_feasibility_projection.md`: current Balfrin and Swiss-scale
+  feasibility evidence.
+- `current_maturity_snapshot.md`: detailed capability and gap assessment.
+- `task_backlog.md`: active executable task queue.
+- `agent_work_log.md`: completed task history.
 
-- `governing`: source of truth for scope, claims, or workflow rules.
-- `current_workflow`: actively used runbook, contract, or helper documentation.
-- `evidence_summary`: canonical measured or fixture-backed evidence summary.
-- `archived_evidence`: historical measured evidence preserved for traceability.
-- `superseded`: replaced by a named current document.
-- `inactive_contract`: future-schema or gate placeholder, not active workflow.
+## Core Model And Workflow
 
-## Governing
-
-- `../README.md`: project overview, quickstart, scope, and current caveats.
-- `../AGENTS.md`: automated-agent rules, hard boundaries, and worker fast path.
-- `task_backlog.md`: authoritative executable TB queue.
-- `current_maturity_snapshot.md`: current maturity, capability gaps, and
-  backlog-quality framing.
-- `decision_log.md`: durable design and sequencing decisions.
-- `agent_work_log.md`: concise chronological TB execution history.
-- `onboarding.md`: local setup, hooks, checks, and clean handoff rules.
-- `orchestration_strategy.md`: sequential worker execution strategy.
-- `agent_reference.md`: detailed policy for broad model, output, versioning,
-  HPC, and review changes.
-- `project_overview.md`: detailed background reference kept out of the root
-  README.
-
-## Model, Validation, And Claims
-
-- `model_design.md`: current equations, assumptions, terrain conventions,
-  contact models, API boundaries, and reproducibility model.
-- `architecture_boundaries.md`: module responsibility map, large-file refactor
-  targets, panic/error boundaries, and scaling boundary.
-- `validation_plan.md`: validation strategy, dataset policy, metrics, and
-  calibration separation.
-- `validation_maturity_framework.md`: evidence levels and allowed claim types.
-- `validation_data_schema.md`: validation-case and validation-data schema.
-- `source_frequency_evidence_tb614.md`: TB-614 non-production
-  source-frequency design-review evidence and updated physical-probability
-  blocker.
-- `holdout_runout_deposition_evidence_tb615.md`: TB-615 staged Chant Sura
-  held-out runout-axis benchmark intake and the remaining scientific blockers.
-- `verification_plan.md`: verification scope and current checked-in
-  verification workflow.
-- `dataset_strategy.md`: calibration, validation, pilot, and operational-input
-  dataset separation.
-- `datasets.md`: public dataset registry, download, preprocessing, and
-  calibration-data notes.
-- `literature_review.md`: public literature and grey-literature reference
-  context.
-- `hazard_map_semantics.md`: allowed/disallowed hazard-map language,
-  denominator rules, and hazard-versus-risk boundary.
-- `hazard_layers.md`: hazard-layer builder behavior, raster outputs, and
-  current layer semantics.
-- `opennhm_learnings_report.md`: OpenNHM/AvaFrame/DebrisFrame workflow lessons
-  relevant to future user-facing GIS and AOI workflow design.
-- `hazard_output_profile_contract.md`: `full_debug`,
-  `scalable_conditional`, and `provenance_audit` output profiles.
-- `stochastic_sampling_rng_stream_audit.md`: stochastic stream audit and
-  deterministic sampling evidence.
-
-## Current Swiss Workflow
-
-- `swisstopo_data_strategy.md`: Swiss public geodata roles, metadata
-  requirements, AOI automation gaps, explicit acquisition/staging modes, and
-  second-site boundaries.
-- `swiss_national_tiling_inventory_tb607.md`: TB-607 share-safe national
-  swisstopo tiling, byte, cache-path, and checksum-field inventory.
-- `swiss_national_tile_chunk_mapping_tb608.md`: TB-608 deterministic national
-  tile-index to chunk/merge-group mapping prototype.
-- `aoi_conditional_workflow_contract.md`: canonical AOI conditional-map phase
-  model and front-door command contract.
-- `aoi_user_manual.md`: compact AOI preparation, candidate review, package,
-  and QGIS review entry point.
-- `public_real_site_geodata_preparation.md`: public real-site geodata manifest,
-  AOI guided workflow, user-defined AOI local demonstration, and review-map
+- `model_design.md`: current model equations, assumptions, and API boundaries.
+- `architecture_boundaries.md`: module boundaries and scaling constraints.
+- `validation_plan.md`: validation strategy and calibration separation.
+- `validation_data_schema.md`: validation case and validation data schema.
+- `public_benchmark_framework.md`: public benchmark ingestion and no-tuning
   workflow.
-- `pilot_gis_package.md`: diagnostic QGIS/GeoTIFF package contract.
-- `public_real_site_conditional_pilot_report_template.md`: template for
-  conditional pilot reporting without operational claim upgrades.
-- `source_zone_block_scenario_policy_v1.md`: conditional source-zone and
-  block-scenario policy contract.
-- `swiss_terrain_ingestion_pilot.md`: minimal terrain-source, release-zone,
-  and terrain-class metadata contracts.
-- `terrain_model.md`: retained terrain-model record required by model
-  consistency checks.
-- `dem_terrain_sensitivity_benchmark.md`: dry-runnable DEM/terrain sensitivity
-  fixture and real-site scaffold.
-- `chant_sura_fluelapass_real_context_acquisition_decision.md`: deferred
-  second-site public-context staging decision and operator checklist.
+- `hazard_map_semantics.md`: allowed hazard-map language and claim boundaries.
+- `hazard_layers.md`: hazard-layer builder behavior and output semantics.
+- `aoi_conditional_workflow_contract.md`: AOI conditional-map phase model.
+- `swisstopo_data_strategy.md`: Swiss public geodata strategy.
+- `public_real_site_geodata_preparation.md`: real-site geodata preparation and
+  review workflow.
 
-## Current Balfrin And Tschamut Evidence
+## Current Evidence
 
-- `balfrin_probe_slurm_driver.md`: SLURM-first Balfrin probe driver.
-- `balfrin_two_zone_probe_tb309.md`: TB-309 fail-closed smallest two-zone
-  probe attempt and current pre-scheduler blocker.
-- `balfrin_four_zone_probe_tb312.md`: TB-312 measured four-zone compact
-  postproc probe evidence from Balfrin `postproc`.
-- `balfrin_four_zone_hazard_probe_tb332.md`: TB-332 fail-closed four-zone
-  hazard probe gate report before `sbatch`.
-- `balfrin_smallest_multi_zone_hazard_run_tb352.md`: TB-352 fail-closed
-  smallest multi-zone hazard run gate report before `sbatch`.
-- `balfrin_two_zone_hazard_run_tb362.md`: TB-362 fail-closed two-zone hazard
-  run gate report before `sbatch`.
-- `balfrin_two_zone_hazard_run_tb366.md`: TB-366 completed `postproc` job with
-  post-run preservation and submit-contract blockers; not measured two-zone
+- `balfrin_scale_demonstration_management_package.md`: concise Balfrin evidence
+  synthesis.
+- `balfrin_diagnostic_series_tb613.md`: measured diagnostic reducer-pressure
+  series through 100 release zones.
+- `balfrin_hazard_throughput_run_tb603.md`: bounded Balfrin hazard-throughput
+  support run.
+- `source_frequency_evidence_tb614.md`: staged source-frequency design-review
   evidence.
-- `balfrin_two_zone_hazard_run_tb367.md`: TB-367 repaired submit path and
-  completed one `postproc` rerun; preservation remains blocked on missing
-  trajectory chunk restartability evidence.
-- `balfrin_two_zone_hazard_run_tb368.md`: TB-368 completed one `postproc`
-  rerun with preserved `output/trajectory_chunks` and a ready preservation
-  gate.
-- `balfrin_four_zone_hazard_run_tb371.md`: TB-371 repaired the four-zone
-  handoff evidence contract and completed one measured `postproc` four-zone
-  run with a ready preservation gate.
-- `balfrin_multi_zone_hazard_run_tb407.md`: TB-407 completed one bounded
-  smallest multi-zone `postproc` run with measured metrics and a ready
-  preservation gate.
-- `balfrin_regional_split_probe_gate_tb428.md`: TB-428 failed closed before
-  `sbatch` because the regional split package exceeded the reviewed
-  manifest-size budget.
-- `balfrin_regional_split_probe_gate_tb432.md`: TB-432 failed closed before
-  `sbatch` because the Balfrin remote checkout hygiene/access preflight found
-  stale generated package files after the package compaction gate passed.
-- `balfrin_regional_split_run_root_metrics_tb448.md`: TB-448 measured
-  regional split run-root metrics and preservation evidence from completed
-  `postproc` job `4350232`.
-- `balfrin_bounded_reduced_output_run_tb557.md`: TB-557 measured bounded
-  reduced-output run-root metrics from completed `postproc` job `4366534`.
-- `balfrin_capacity_window_tb563.md`: TB-563 Balfrin checkout sync and live
-  `postproc` capacity-window classification.
-- `balfrin_regional_split_submission_package_tb564.md`: TB-564 no-submit
-  regional split submission package readiness evidence.
-- `balfrin_regional_split_postproc_run_tb565.md`: TB-565 measured bounded
-  regional split `postproc` run from the reviewed package gates.
-- `balfrin_regional_split_run_root_metrics_tb566.md`: TB-566 metrics,
-  preservation, and output-budget audit for job `4367244`.
-- `balfrin_16_zone_handoff_tb569.md`: TB-569 16-zone handoff package record.
-- `balfrin_16_zone_handoff_tb571.md`: TB-571 refreshed 16-zone handoff package
-  record.
-- `balfrin_16_zone_handoff_tb573.md`: TB-573 diagnostic-profile 16-zone
-  handoff evidence from the Balfrin checkout.
-- `balfrin_16_zone_postproc_run_tb574.md`: TB-574 no-submit decision for the
-  blocked 16-zone diagnostic `postproc` package.
-- `balfrin_16_zone_diagnostic_metrics_tb575.md`: TB-575 measured 16-zone
-  diagnostic run record, metrics, and evidence promotion.
-- `balfrin_24_zone_diagnostic_run_tb579.md`: TB-579 measured 24-zone
-  diagnostic `postproc` run record and metrics.
-- `balfrin_24_zone_diagnostic_metrics_tb580.md`: TB-580 promotion boundary for
-  the measured 24-zone diagnostic evidence.
-- `balfrin_24_zone_repeatability_runs_tb581.md`: TB-581 two-run 24-zone
-  diagnostic repeatability record.
-- `balfrin_24_zone_repeatability_metrics_tb582.md`: TB-582 bounded
-  repeatability summary for 24-zone diagnostic runs.
-- `balfrin_postproc_capacity_snapshot_20260526.md`: TB-598 live `postproc`
-  capacity snapshot and next 32-zone diagnostic submission size.
-- `balfrin_32_zone_diagnostic_run_tb599.md`: TB-599 measured 32-zone
-  diagnostic `postproc` run record and metrics.
-- `balfrin_40_zone_diagnostic_run_tb601.md`: TB-601 measured 40-zone
-  diagnostic `postproc` run record and metrics.
-- `balfrin_100_zone_diagnostic_package_tb611.md`: TB-611 prepared no-submit
-  100-zone diagnostic package boundary and local same-shape pressure evidence.
-- `balfrin_100_zone_diagnostic_run_tb612.md`: TB-612 measured 100-zone
-  diagnostic reducer-pressure run on Balfrin `postproc`.
-- `balfrin_diagnostic_series_tb613.md`: TB-613 measured diagnostic
-  reducer-pressure series through the 100-zone run and remaining blocker.
-- `balfrin_hazard_throughput_package_tb602.md`: TB-602 ready no-submit
-  bounded hazard-throughput package for the next `postproc` run.
-- `balfrin_hazard_throughput_run_tb603.md`: TB-603 measured bounded
-  hazard-throughput `postproc` run and metrics.
-- `balfrin_distributed_chunk_dry_run_tb605.md`: TB-605 scheduler-observed
-  split chunk dry run with partial-state reuse and final sorted merge evidence.
-- `balfrin_restartability_recovery_tb606.md`: TB-606 measured missing
-  partial-state recovery and hash-stable final merge evidence.
-- `management_aoi_scenario_pressure_tb610.md`: TB-610 measured
-  adjacent-candidate scenario-table, batching, and storage-tier pressure.
-- `large_aoi_gis_cog_stress_tb609.md`: TB-609 measured larger-output package
-  and COG conversion pressure for the current target-gate artifact.
-- `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
-  run gate report before `sbatch`.
-- `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
-  run gate report before `sbatch`.
-- `balfrin_postproc_microbenchmark_tb305.md`: measured TB-305 synthetic
-  postproc overhead evidence from Balfrin `postproc`.
-- `balfrin_remote_checkout_hygiene_tb304.md`: TB-304 before/after remote
-  checkout cleanup record for stale generated Balfrin files.
-- `balfrin_skills.md`: practical Balfrin cluster-discovery notes.
-- `balfrin_minimal_demo_vs_closure.md`: minimal demo versus scientific closure
-  boundary pointer retained because active Balfrin contracts cite it.
-- `balfrin_post_run_interpretation_gate.md`: post-run interpretation gate and
-  closure boundary.
-- `balfrin_failure_recovery_playbook.md`: failure/recovery playbook for the
-  current Balfrin pilot path.
-- `balfrin_restartability_recovery_report.md`: restartability/recovery
-  evidence summary consumed by the Balfrin evidence bundle.
-- `balfrin_single_job_execution_sufficiency.md`: canonical Balfrin runtime,
-  output, restartability, reducer, metrics, and scale-boundary summary.
+- `holdout_runout_deposition_evidence_tb615.md`: staged held-out runout-axis
+  benchmark intake.
+- `large_aoi_gis_cog_stress_tb609.md`: current larger-output GIS/COG pressure
+  evidence.
+
+## Operational References
+
+- `balfrin_skills.md`: practical Balfrin notes.
 - `balfrin_tschamut_pilot_runbook.md`: reusable Balfrin Tschamut pilot
-  operating procedure.
-- `balfrin_tschamut_readiness.md`: read-only readiness checker documentation.
-- `target_area_physical_evidence_acquisition_pack.md`: target-area
-  physical-evidence acquisition pack; not an annual/physical authorization.
-- `tschamut_public_conditional_pilot_gate_report.md`: selected public
-  conditional pilot gate report.
-- `tschamut_public_same_scale_uncertainty_envelope.md`: same-scale uncertainty
-  envelope and closure-limiting layers.
-- `tschamut_public_bounded_validation_output_profile.md`: validation-output
-  pressure and reduced-output evidence.
-- `tschamut_public_scalable_conditional_target_gate.md`: selected Tschamut
-  scalable conditional target-gate record.
-- `tschamut_public_scalable_conditional_execution.md`: scalable conditional
-  execution design and diagnostics contract.
-- `tschamut_public_ensemble_feasibility.md`: bounded ensemble feasibility
-  record for the selected public pilot.
-- `tschamut_public_obstacle_context_scope.md`: obstacle/context scope record
-  used by closure and consistency helpers.
-- `tschamut_public_pilot_gis_package_review.md`: local GIS package review
-  record retained because tracked pilot records cite it.
-- `tschamut_public_pilot_scaling_review.md`: local scaling and output-volume
-  evidence retained because validators and pilot records cite it.
-- `tschamut_swissalti3d_pilot.md`: current swissALTI3D public-pilot context.
-- `conditional_hazard_convergence_acceptance_protocol.md`: current conditional
-  hazard convergence protocol.
-- `output_budget_reducer_scaling_gate.md`: output-budget and reducer scaling
-  gate.
-- `real_site_dem_input_conditioning_qa_gate.md`: DEM/input conditioning QA gate.
+  procedure.
+- `balfrin_failure_recovery_playbook.md`: Balfrin failure and recovery notes.
+- `hazard_output_profile_contract.md`: output profiles and reduced-output
+  behavior.
+- `performance_ci_tracking.md`: CI benchmark trend publication.
+- `script_inventory.md`: script tiers and cleanup policy.
 
-## Benchmarks And Diagnostics
+## Maintenance Rule
 
-- `benchmark_catalog.md`: implemented verification and validation inventory.
-- `public_benchmark_framework.md`: unified public benchmark ingestion and
-  no-tuning workflow.
-- `public_benchmark_results_baseline.md`: no-tuning public benchmark inventory.
-- `tschamut_public_benchmark_reproduction.md`: public Tschamut reproduction
-  workflow and registration-reviewed context.
-- `public_tschamut_all_runs_grouped_validation.md`: grouped public Tschamut
-  validation report.
-- `public_tschamut_failure_mode_analysis.md`: grouped public Tschamut
-  failure-mode analysis.
-- `chant_sura_contact_validation.md`: Chant Sura contact validation.
-- `chant_sura_contact_generalization.md`: held-out Chant Sura split.
-- `stopping_behavior_diagnostic_report.md`: no-tuning stopping diagnostics.
-- `terrain_material_interaction_protocol.md`: implemented terrain/material
-  diagnostic instrumentation.
-- `terrain_material_interaction_diagnostic_protocol.md`: no-tuning
-  terrain/material diagnostic protocol.
-- `terrain_material_diagnostic_gap_report.md`: terrain/material calibration
-  and model-selection gaps.
-- `terrain_material_diagnostic_matrix.md`: first terrain/material matrix.
-- `impact_diagnostics.md`: optional per-impact event logging fields.
-
-## Calibration And Historical Research Records
-
-These remain top-level only because current consistency checks, calibration
-scripts, or validation docs still cite them directly. They are research
-diagnostics, not accepted calibration or physical-credibility evidence.
-
-- `tschamut_calibration.md`: v0.3.0 Tschamut calibration experiment record.
-- `tschamut_scarring_experiment.md`: Tschamut scarring comparison record.
-- `scarring_single_impact_calibration.md`: proxy single-impact scarring
-  calibration record.
-- `scarring_real_data_calibration.md`: Chant Sura table-derived
-  single-impact scarring calibration record.
-
-## Experimental Or Deferred
-
-- `active_shape_contact_design.md`: design-only active shape-contact proposal.
-- `shape_aware_block_scaffold_design.md`: passive shape metadata scaffold.
-- `shape_metadata_application_plan.md`: passive shape metadata application
-  plan.
-- `shape_contact_v0_experimental_contract.md`: frozen experimental contract.
-- `shape_contact_v0_runtime_wiring_plan.md`: design-only runtime wiring plan.
-- `shape_contact_v0_internal_validation_progression.md`: internal-only smoke
-  progression.
-- `shape_contact_v0_chant_sura_internal_model_selection.md`: internal model
-  selection result.
-- `shape_contact_v0_rebound_diagnostic_audit.md`: rebound/provenance audit and
-  pause rationale.
-
-## Inactive Physical/Annual Contracts
-
-These are retained as `inactive_contract` records. They do not enable annual
-frequency, physical probability, return-period, risk, exposure, vulnerability,
-or operational products.
-
-- `physical_source_frequency_design_gate.md`
-- `source_frequency_evidence_contract.md`
-- `block_release_probability_evidence_contract.md`
-- `physical_frequency_reducer_preconditions.md`
-- `annual_physical_validation_calibration_review_gate.md`
-- `annual_physical_prototype_preflight.md`
-- `probabilistic_scenario_model_design.md`
-- `probabilistic_trajectory_metadata_design.md`
-- `probabilistic_hazard_phase1_closure.md`
-
-## Performance And Scaling
-
-- `performance_benchmarking.md`: benchmark instrumentation and profiles.
-- `performance_ci_tracking.md`: CI benchmark comparison and trend
-  visualization workflow.
-- `performance_benchmark_profile_reference.md`: current benchmark profile
-  reference.
-- `performance_benchmark_synthetic_scale.md`: opt-in synthetic scale
-  benchmark design.
-- `parquet_impact_benchmark_results.md`: Parquet impact-event benchmark.
-- `hazard_throughput_bottleneck_report.md`: hazard input-throughput
-  observations.
-- `large_scale_execution_probe.md`: projection-only execution estimator.
-- `swiss_scale_feasibility_projection.md`: measured-evidence Swiss-scale
-  feasibility projection report.
-- `balfrin_scale_demonstration_management_package.md`: concise management
-  synthesis of measured, projected, failed-closed, fixture-backed, and deferred
-  Balfrin scale-demonstration evidence.
-- `multi_zone_reducer_pressure_probe.md`: scratch-root multi-zone reducer
-  pressure probe.
-
-## Archive And Script Inventory
-
-- `archive/README.md`: archived and superseded docs preserved for traceability.
-- `script_inventory.md`: script tiers, deletion policy, and high-risk workflow
-  CLIs that must not be moved in the first cleanup pass.
-- `next_development_targets.md`: legacy pointer kept only for old links; do not
-  add current priorities there.
-- `roadmap_recommendation_matrix.md`: supporting scoring appendix, not the
-  active queue.
-- `roadmap_hazard_mapping.md`: long-term roadmap.
-- `real_case_intensity_frequency_implementation_roadmap.md`: long-term staged
-  roadmap toward future physical/annual semantics, not current task authority.
-- `scalability_and_data_formats_review.md`: historical planning review with
-  current notes where implemented.
-
-## Maintenance Rules
-
-- Prefer updating a governing or current workflow document over adding a new
-  standalone report.
-- Put durable decisions in `decision_log.md` and completed TB execution in
-  `agent_work_log.md`.
-- Move superseded reports to `archive/` instead of leaving them top-level with
-  current-looking titles.
-- Do not treat archived evidence as current maturity unless a current summary
-  cites and interprets it.
-- After moving docs or changing command references, run:
-
-```bash
-PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py
-```
-
-Version notes are tracked in `../CHANGELOG.md`.
+Keep this guide short. Prefer improving one of the current documents above over
+adding another standalone report. Historical planning notes and superseded
+reviews should be deleted unless a current workflow or test still depends on
+them.

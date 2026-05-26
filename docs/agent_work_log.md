@@ -2,9 +2,10 @@
 
 Append-only current work log for TB tasks.
 
-This file is intentionally short and chronological. The full pre-refactor
-history, non-TB planning notes, M-series milestones, backlog refills, and
-review triage entries live in `docs/archive/agent_work_log_archive.md`.
+This file is intentionally short and chronological. Older pre-refactor history,
+non-TB planning notes, M-series milestones, backlog refills, and review triage
+entries were removed from the working documentation surface; use git history
+when that detail is needed.
 
 ## Worker Instructions
 
@@ -15,10 +16,7 @@ review triage entries live in `docs/archive/agent_work_log_archive.md`.
   its entry belongs after `TB-057`.
 - Do not add backlog-refill notes, review triage, planning notes, or
   non-task narrative here. Put durable planning in `docs/task_backlog.md` or
-  `docs/decision_log.md`; archive older non-TB history only in
-  `docs/archive/agent_work_log_archive.md`. If a user explicitly requests a
-  non-TB guidance-cleanup work-log note, keep it in the compact guidance-notes
-  section and do not format it as a `TB-XXX` entry.
+  `docs/decision_log.md`.
 - Prefer concise entries. Link to generated helpers, docs, and commits rather
   than pasting long command transcripts.
 - Do not leave `Commit: pending` in a committed entry. Use a two-commit
@@ -47,18 +45,16 @@ review triage entries live in `docs/archive/agent_work_log_archive.md`.
 ## Completed TB Entries
 
 This active log keeps detailed entries for the latest completed TB range only.
-Older detailed TB entries were moved to `docs/archive/agent_work_log_archive.md`
-during the documentation-surface cleanup so normal onboarding does not have to
-scan thousands of lines of completed history.
+Older detailed TB entries were removed from the current documentation surface
+during cleanup so normal onboarding does not have to scan thousands of lines of
+completed history.
 
 ## Archived Milestone Summary
 
 - TB-001 through TB-060: early hazard-map, public benchmark, same-scale
-  Tschamut, and workflow-orchestration foundation work. Full entries are in the
-  archive.
+  Tschamut, and workflow-orchestration foundation work.
 - TB-061 through TB-120: same-scale uncertainty, output-profile, Balfrin
-  single-release-zone, and post-run interpretation work. Full entries are in
-  the archive.
+  single-release-zone, and post-run interpretation work.
 - TB-121 through TB-180: Balfrin evidence-bundle, AOI automation,
   target-area demonstration, second-site dry-run, and physical-evidence
   boundary work. Full entries are in the archive.

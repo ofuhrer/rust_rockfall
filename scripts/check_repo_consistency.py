@@ -119,12 +119,7 @@ TOP_LEVEL_HISTORICAL_DOC_MARKERS = (
     "Status: superseded",
     "not authoritative",
 )
-TOP_LEVEL_HISTORICAL_DOC_ALLOWLIST = {
-    "docs/next_development_targets.md",
-    "docs/roadmap_recommendation_matrix.md",
-    "docs/real_case_intensity_frequency_implementation_roadmap.md",
-    "docs/scalability_and_data_formats_review.md",
-}
+TOP_LEVEL_HISTORICAL_DOC_ALLOWLIST: set[str] = set()
 IGNORED_ARTIFACT_ROOT_PREFIXES = (
     "hazard/results/",
     "validation/private/",
@@ -619,7 +614,6 @@ def check_local_parallel_ensemble_contract() -> list[str]:
         for path in (
             ROOT / "docs/model_design.md",
             ROOT / "docs/validation_data_schema.md",
-            ROOT / "docs/scalability_and_data_formats_review.md",
             ROOT / "docs/task_backlog.md",
         )
     )
@@ -2340,9 +2334,6 @@ def _requirement_name(requirement: str) -> str:
 def check_roadmap_target_authority() -> list[str]:
     errors: list[str] = []
     backlog = ROOT / "docs/task_backlog.md"
-    legacy_targets = ROOT / "docs/next_development_targets.md"
-    matrix = ROOT / "docs/roadmap_recommendation_matrix.md"
-    long_term = ROOT / "docs/real_case_intensity_frequency_implementation_roadmap.md"
 
     expected_marker = "Status: authoritative executable task backlog."
     backlog_text = backlog.read_text()
@@ -2365,27 +2356,10 @@ def check_roadmap_target_authority() -> list[str]:
         if term not in maturity_text:
             errors.append(f"docs/current_maturity_snapshot.md omits {term!r}")
 
-    legacy_text = legacy_targets.read_text()
-    if "Status: legacy pointer." not in legacy_text or "Current executable tasks have moved to `task_backlog.md`." not in legacy_text:
-        errors.append("docs/next_development_targets.md must remain a legacy pointer to task_backlog.md")
-
-    support_marker = "not authoritative for current target selection"
-    for path in (matrix, long_term):
-        if support_marker not in path.read_text():
-            errors.append(
-                f"{path.relative_to(ROOT)} must state it is not authoritative for current target selection"
-            )
-
     docs_to_scan = [
         path
         for path in sorted((ROOT / "docs").glob("*.md"))
-        if path.name
-        in {
-            "task_backlog.md",
-            "next_development_targets.md",
-            "roadmap_recommendation_matrix.md",
-            "real_case_intensity_frequency_implementation_roadmap.md",
-        }
+        if path.name == "task_backlog.md"
     ]
     for path in docs_to_scan:
         for line_number, line in enumerate(path.read_text().splitlines(), start=1):
@@ -2426,20 +2400,27 @@ def find_top_level_historical_doc_surface_errors(
             if marker in header:
                 errors.append(
                     f"{tracked_path} has archived/superseded status marker {marker!r}; "
-                    "move it under docs/archive/ or add an explicit allowlist entry"
+                    "remove it or rewrite it as current documentation"
                 )
                 break
     return errors
 
 
 def check_top_level_doc_index_coverage() -> list[str]:
-    docs = [
-        path.relative_to(ROOT).as_posix()
-        for path in (ROOT / "docs").glob("*.md")
-        if path.name != "README.md"
-    ]
     index_text = (ROOT / "docs/README.md").read_text(encoding="utf-8")
-    return find_top_level_doc_index_coverage_errors(docs, index_text)
+    required_docs = [
+        "docs/onboarding.md",
+        "docs/aoi_user_manual.md",
+        "docs/swiss_scale_feasibility_projection.md",
+        "docs/current_maturity_snapshot.md",
+        "docs/task_backlog.md",
+        "docs/agent_work_log.md",
+        "docs/model_design.md",
+        "docs/validation_plan.md",
+        "docs/hazard_map_semantics.md",
+        "docs/balfrin_scale_demonstration_management_package.md",
+    ]
+    return find_top_level_doc_index_coverage_errors(required_docs, index_text)
 
 
 def find_top_level_doc_index_coverage_errors(
@@ -2832,7 +2813,6 @@ def check_hazard_layer_metadata() -> list[str]:
         ROOT / "hazard/results/.gitkeep",
         ROOT / "docs/hazard_layers.md",
         ROOT / "docs/performance_benchmarking.md",
-        ROOT / "docs/archive/hazard_workflow_scale_review.md",
         ROOT / "tests/test_hazard_layers.py",
         ROOT / "tests/fixtures/hazard/plane_case.yaml",
         ROOT / "tests/fixtures/hazard/ensemble_case.yaml",
@@ -3091,7 +3071,6 @@ def check_swisstopo_geodata_metadata() -> list[str]:
         path.read_text()
         for path in (
             ROOT / "docs/hazard_layers.md",
-            ROOT / "docs/archive/hazard_workflow_scale_review.md",
         )
         if path.exists()
     )
@@ -3226,7 +3205,6 @@ def check_swisstopo_geodata_metadata() -> list[str]:
 def check_contact_model_docs() -> list[str]:
     errors = []
     paths = [
-        ROOT / "docs/archive/model_review_v0.md",
         ROOT / "docs/model_design.md",
         ROOT / "docs/validation_data_schema.md",
     ]

@@ -605,8 +605,6 @@ trajectory kernel:
   ensembles;
 - keep calibration/validation metadata attached to every generated map product.
 
-The historical first scaling review is archived in
-`docs/archive/hazard_workflow_scale_review.md`; use
-`docs/current_maturity_snapshot.md` for current scale interpretation.
+Use `docs/current_maturity_snapshot.md` for current scale interpretation.
 The swisstopo input-data strategy is documented in
 `docs/swisstopo_data_strategy.md`.
