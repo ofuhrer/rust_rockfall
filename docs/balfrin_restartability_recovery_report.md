@@ -6,6 +6,30 @@
 - Pilot id: `tschamut_public_pilot`
 - Run id: `tschamut_public_balfrin_restartability_recovery_v1`
 
+## Latest Chunk Recovery Evidence
+
+TB-606 adds a bounded scheduler-observed chunk recovery run at:
+`/scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2`.
+
+That run copied the TB-605 distributed chunk dry-run output, rewrote preserved
+absolute partial-state paths to the copied root, removed
+`tb605_scheduler_dry_run__chunk_0001_state.json`, reran only that scheduled
+chunk, and then ran a dependent merge job.
+
+Measured result:
+
+- recovery job `4372418`: `COMPLETED`, elapsed `00:00:06`
+- merge job `4372419`: `COMPLETED`, elapsed `00:01:01`
+- recovered chunk decision: `completed_state_reset_for_rerun`
+- final execution plan: `completed`
+- reducer merge state: `ready`
+- completed chunks: `3`
+- failed chunks: `0`
+- stable hazard-product hash comparison: `37` baseline files, `37` recovered
+  files, `0` changed artifacts
+
+Detailed evidence: `docs/balfrin_restartability_recovery_tb606.md`.
+
 ## Partial State
 
 - Interrupted run root: `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_single_release_zone_v1`

@@ -163,6 +163,8 @@ starting context for implementation unless a task explicitly asks for them.
   hazard-throughput `postproc` run and metrics.
 - `balfrin_distributed_chunk_dry_run_tb605.md`: TB-605 scheduler-observed
   split chunk dry run with partial-state reuse and final sorted merge evidence.
+- `balfrin_restartability_recovery_tb606.md`: TB-606 measured missing
+  partial-state recovery and hash-stable final merge evidence.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

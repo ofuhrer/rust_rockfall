@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-606: Measure Balfrin Restart And Resume Behavior For Chunked Runs
-
-Goal: Verify that a chunked Balfrin run can resume after one missing, stale, or failed chunk without corrupting the merge.
-
-Capability gap reduced: Establishes restartability evidence needed before larger split execution.
-
-Why this outranks alternatives: Swiss-scale feasibility depends on recovery behavior, not only first-pass success.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `docs/tschamut_public_scalable_conditional_execution.md`
-- generated scratch: Balfrin chunk dry-run root from TB-605
-
-Deliverables:
-
-- Exercise one controlled resume/retry case on Balfrin and compare the final merged result with the pre-retry or single-pass expectation.
-
-Definition of done:
-
-- Restart/resume status is measured with chunk decisions, retry counts, partial-state reuse, and merge-state evidence.
-
-
 ### TB-607: Build A National Swiss Tiling And Data-Volume Inventory
 
 Goal: Quantify the national public-geodata input footprint that a Swiss-scale run would require.
