@@ -281,13 +281,16 @@ def main(argv: list[str] | None = None) -> int:
 
 @lru_cache(maxsize=1)
 def load_measured_coefficients() -> MeasuredCoefficients:
-    runtime_report = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
-    single_job_summary = SINGLE_JOB.build_summary()
-    feasibility_report = FEASIBILITY.build_report()
-    with tempfile.TemporaryDirectory(dir="/tmp", prefix="swiss_envelope_reducer_ladder_") as tmpdir:
-        manifest_pressure_ladder = MANIFEST_PRESSURE.build_manifest_pressure_ladder_report(
-            ladder_root=Path(tmpdir) / "ladder"
-        )
+    try:
+        runtime_report = RUNTIME_SCALING.build_report(RUNTIME_SCALING.DEFAULT_ARTIFACTS)
+        single_job_summary = SINGLE_JOB.build_summary()
+        feasibility_report = FEASIBILITY.build_report()
+        with tempfile.TemporaryDirectory(dir="/tmp", prefix="swiss_envelope_reducer_ladder_") as tmpdir:
+            manifest_pressure_ladder = MANIFEST_PRESSURE.build_manifest_pressure_ladder_report(
+                ladder_root=Path(tmpdir) / "ladder"
+            )
+    except Exception as exc:  # Helper modules use their own user-facing error classes.
+        raise SwissWideExecutionEnvelopeError(f"measured input helper failed: {exc}") from exc
     wall_time_evidence = dict(single_job_summary.get("wall_time_evidence") or {})
     memory_evidence = dict(single_job_summary.get("memory_evidence") or {})
     output_size_evidence = dict(single_job_summary.get("output_size_evidence") or {})
