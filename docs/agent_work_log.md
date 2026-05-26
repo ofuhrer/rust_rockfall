@@ -8792,3 +8792,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_waiting_report
 - Boundaries: no `sbatch`, no job id, no runtime/MaxRSS metrics, no non-postproc partition, no distributed execution, no scale-up claim, no operational claim, and no physical-probability claim.
 - Next task: `TB-575`
+
+### TB-575: Collect And Promote 16-Zone Diagnostic Metrics
+
+- Date: 2026-05-26
+- Commit: `c763a9a`
+- Objective: preserve and promote the completed 16-zone Balfrin diagnostic run-record evidence.
+- Files changed: `docs/balfrin_16_zone_diagnostic_metrics_tb575.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Used the simplified run record at `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_16_zone_simplified_20260525/run_record.json`.
+  - Confirmed Balfrin job `4367731` completed on `postproc` with 16 release zones, compact manifest mode, reducer wall time `3.07` seconds, elapsed `0:01.24`, MaxRSS `34.066` MB, 52 diagnostic output files, and 23,661 diagnostic output bytes.
+  - Promoted the run record through `summarize_balfrin_evidence_bundle.py` and `summarize_balfrin_scale_readiness_matrix.py`; the scale matrix now reports `diagnostic_16_zone_reducer_pressure` as a measured tier when the run record is present.
+  - Preserved older measured regional split evidence as historical comparison instead of replacing it.
+  - Removed TB-575 from the active backlog.
+- Checks run:
+  - `ssh balfrin '... read diagnostic_16_zone_simplified_20260525/run_record.json ...'`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_evidence_bundle tests.test_balfrin_scale_readiness_matrix -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: measured 16-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-576`
