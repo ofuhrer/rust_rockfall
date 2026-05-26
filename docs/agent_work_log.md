@@ -9584,3 +9584,20 @@ scan thousands of lines of completed history.
 - Mapping summary: chunk size `512` tiles; chunk count `85`; merge group size `8` chunks; merge group count `11`; full chunk input estimate `512 MB` swissALTI3D 2 m raw terrain, optional `24.576 GB` SWISSIMAGE 25 cm RGB raw context, and optional `8.192 GB` swissSURFACE3D Raster raw context; final chunk `0084` contains `492` tiles.
 - Boundaries: prototype mapping only; no national tile manifest is staged, no public geodata is downloaded, no Balfrin job is submitted, and no Swiss-wide execution or operational claim is authorized.
 - Next task: `TB-609`
+
+### TB-609: Measure Larger AOI Output And COG Packaging Pressure
+
+- Date: 2026-05-26
+- Commit: `93ce904`
+- Objective: measure output-byte, file-count, manifest, and COG packaging pressure for the current larger target-gate artifact.
+- Files changed: `docs/large_aoi_gis_cog_stress_tb609.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Ran `scripts/summarize_large_aoi_gis_cog_stress_test.py` on `hazard/results/tschamut_public_pilot/target_gate_v1` with fresh scratch package roots under `/tmp/tb609_large_aoi_gis_cog`.
+  - Measured package generation, standard package audit, COG conversion, converted package audit, manifest sizes, raster/vector counts, and layer parity.
+  - Recorded the measured result in `docs/large_aoi_gis_cog_stress_tb609.md`, updated the Swiss-scale projection note, and removed TB-609 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --packaged-package-root /tmp/tb609_large_aoi_gis_cog/package --converted-package-root /tmp/tb609_large_aoi_gis_cog/converted --format json --json-output /tmp/tb609_large_aoi_gis_cog/report.json --text-output /tmp/tb609_large_aoi_gis_cog/report.md`
+- Result/status: implemented_measured
+- Metrics: stress status `ready`; package generation `11.059617833001539 s`; standard package `39` files / `401,265` bytes; converted package `39` files / `403,419` bytes; raster count `22`; vector count `2`; manifest size `333,291` bytes standard and `333,888` bytes converted; COG conversion `25.104302958003245 s`; layer parity `parity_match`; first GIS packaging bottleneck `no_blocker`.
+- Boundaries: local packaging and COG conversion evidence only; no national public geodata staging, larger simulation, Swiss-wide execution authorization, or operational hazard/risk claim.
+- Next task: `TB-610`
