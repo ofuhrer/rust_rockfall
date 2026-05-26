@@ -9147,3 +9147,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: separation classification only; it does not establish calibration quality, holdout adequacy, physical probability, operational readiness, annual frequency, Swiss-wide execution, distributed execution, or non-`postproc` readiness.
 - Next task: `TB-591`
+
+### TB-591: Define Operational Readiness Acceptance Criteria
+
+- Date: 2026-05-26
+- Commit: `cbfc01b`
+- Objective: make operational readiness a concrete check instead of a performance or prose implication.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/project_overview.md`, `docs/roadmap_hazard_mapping.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `operational_readiness_check_v1` to the Balfrin scale-readiness matrix.
+  - Defined criteria for scientific validation, reproducibility, GIS/package QA, provenance, monitoring, versioning, and support status.
+  - Classified the current repository state as `diagnostic_only_not_operational` with concrete failing criteria and first missing input.
+  - Added tests for diagnostic-only, review-ready, and operational-candidate synthetic states.
+  - Removed TB-591 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json --json-output /tmp/tb591_scale_matrix.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: operational-readiness classification only; current products remain diagnostic and no operational, physical-probability, annual-frequency, Swiss-wide, distributed, or non-`postproc` claim is made.
+- Next task: `TB-592`
