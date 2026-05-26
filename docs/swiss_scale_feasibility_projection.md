@@ -152,6 +152,13 @@ branches into measured capability:
     bytes, and `20` rasters. The exact next unblock action is to run
     `scripts/convert_same_scale_package_to_cog.py` on the standard root into a
     scratch COG output root if a refreshed converted proof is needed.
+  - TB-609 refreshed that proof through
+    `scripts/summarize_large_aoi_gis_cog_stress_test.py` on
+    `target_gate_v1`: the standard package is `gis_package_ready` with `39`
+    files, `401,265` bytes, `22` rasters, and `3` manifest files; the scratch
+    converted package is `cog_package_ready` with `39` files, `403,419` bytes,
+    `22` rasters, `333,888` manifest bytes, `25.104302958003245` seconds of
+    conversion time, and `parity_match` layer inventory.
   - TB-389 measured a nonempty restaged management-AOI candidate bundle with
     `scripts/stage_management_aoi_restaged_terrain.py` followed by
     `scripts/plan_terrain_release_zone_candidates.py`; that evidence is
@@ -268,6 +275,11 @@ Measured:
   measured and blocked at the standard root rather than being operationally
   ready, and the next unblock action is the conversion helper on the standard
   root.
+- TB-609 provides the current refreshed local package-and-convert measurement:
+  `target_gate_v1` packages to `39` files / `401,265` bytes, converts to a
+  COG-ready scratch root with `39` files / `403,419` bytes, keeps all `22`
+  raster layers in parity, and takes `25.104302958003245` seconds for COG
+  conversion on the local machine.
 - `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
   current real-AOI candidate scenario table at 3 rows, the fixture scenario
   table at 3 rows, and an expanded candidate-repeat ladder at 1 / 3 / 8

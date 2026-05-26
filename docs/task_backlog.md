@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-609: Measure Larger AOI Output And COG Packaging Pressure
-
-Goal: Measure output-byte, file-count, manifest, and COG packaging pressure for a larger AOI-style package.
-
-Capability gap reduced: Turns output-budget and GIS packaging pressure from projection into measured local or Balfrin evidence.
-
-Why this outranks alternatives: Large-scale feasibility will fail on output and packaging before physics if artifact growth is uncontrolled.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/audit_gis_cog_package_readiness.py`
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Run a bounded larger-output package probe with scalable controls and record standard output, COG output, manifest sizes, file counts, and conversion time.
-
-Definition of done:
-
-- The output/COG pressure result is measured and tied back to the Swiss-wide output-footprint readiness class.
-
-
 ### TB-610: Regenerate Adjacent-Candidate Scenario Tables For Scale Planning
 
 Goal: Move the active management-AOI path from candidate review into concrete scenario-table evidence.

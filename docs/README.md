@@ -169,6 +169,8 @@ starting context for implementation unless a task explicitly asks for them.
   split chunk dry run with partial-state reuse and final sorted merge evidence.
 - `balfrin_restartability_recovery_tb606.md`: TB-606 measured missing
   partial-state recovery and hash-stable final merge evidence.
+- `large_aoi_gis_cog_stress_tb609.md`: TB-609 measured larger-output package
+  and COG conversion pressure for the current target-gate artifact.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
