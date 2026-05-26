@@ -83,6 +83,14 @@ needed before a distributed dry run. It is intentionally a design contract only:
 `distributed_execution_authorized` remains `false`, and no multi-node,
 scheduler, Swiss-wide, or operational claim follows from the contract.
 
+The same command emits `local_distributed_orchestration_dry_run_v1`, an
+in-memory fixture proof that splits synthetic reducer rows into multiple chunks,
+simulates one retry, merges the chunk states in sorted order, and checks the
+merged state against the equivalent single-process reducer state. The dry run is
+useful for local orchestration semantics only; scheduler submission, shared
+filesystem leases, worker isolation, and large-run restart cost still need live
+cluster evidence.
+
 ## Output-Volume Controls
 
 Target-scale runs must use `--conditional-curve-export summary-only`. This keeps

@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-595: Prototype Local Distributed-Orchestration Semantics
-
-Goal: Exercise the distributed execution contract locally with deterministic fixture chunks and reducer replay.
-
-Capability gap reduced: Provides a low-risk proof of orchestration semantics before any cluster distributed phase change.
-
-Why this outranks alternatives: Local replay can catch split/merge/retry bugs before consuming scarce cluster resources.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/build_hazard_layers.py`
-- `tests/test_pilot_command_plan.py`
-- `tests/test_hazard_layers.py`
-
-Deliverables:
-
-- Add a local fixture-backed distributed dry run that simulates multiple chunks, one retry, deterministic merge, and preservation of replay-critical outputs.
-- Compare the merged output against the equivalent single-process fixture output.
-- Record limitations that still block real distributed execution.
-
-Definition of done:
-
-- Focused local orchestration tests pass and the output names the remaining cluster-side blockers.
-
-
 ### TB-596: Quantify Swiss-Wide Data And Execution Inputs Needed For A Phase Change
 
 Goal: Replace the Swiss-wide target with a quantified input, compute, storage, validation, and review readiness matrix.

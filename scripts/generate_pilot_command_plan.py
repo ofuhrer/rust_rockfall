@@ -10,6 +10,7 @@ reports.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -27,6 +28,7 @@ from scripts.lib.workflow_validation import load_repo_script_module
 
 SCHEMA_VERSION = "portable_pilot_command_plan_v1"
 DISTRIBUTED_EXECUTION_CONTRACT_SCHEMA_VERSION = "distributed_execution_contract_v1"
+LOCAL_DISTRIBUTED_ORCHESTRATION_DRY_RUN_SCHEMA_VERSION = "local_distributed_orchestration_dry_run_v1"
 DEFAULT_SECOND_SITE_CONFIG = ROOT / "tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml"
 
 
@@ -156,6 +158,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         label="pilot_command_plan",
     )
     distributed_execution_contract = build_distributed_execution_contract(flattened_commands)
+    local_distributed_dry_run = build_local_distributed_orchestration_dry_run(distributed_execution_contract)
     ignored_output_paths = sorted(
         {
             *readiness_ignored_output_paths(),
@@ -223,6 +226,7 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         ),
         "output_profile_validation": output_profile_validation,
         "distributed_execution_contract": distributed_execution_contract,
+        "local_distributed_orchestration_dry_run": local_distributed_dry_run,
         "command_groups": flattened_groups,
         "commands": flattened_commands,
         "command_ids": COMMAND_PLAN.command_ids(flattened_commands),
@@ -233,6 +237,136 @@ def build_report(site: str, site_config: Path) -> dict[str, Any]:
         "command_group_keys": [group["group_key"] for group in flattened_groups],
     }
     return report
+
+
+def build_local_distributed_orchestration_dry_run(contract: dict[str, Any]) -> dict[str, Any]:
+    fixture_rows = [
+        {"fixture_row": 0, "cell": "0,0", "reach": 1, "kinetic_j": 10.0, "jump_m": 0.5, "deposition": 1, "significant_impact": 0},
+        {"fixture_row": 1, "cell": "0,1", "reach": 1, "kinetic_j": 15.0, "jump_m": 0.2, "deposition": 0, "significant_impact": 1},
+        {"fixture_row": 2, "cell": "0,0", "reach": 1, "kinetic_j": 6.0, "jump_m": 1.5, "deposition": 2, "significant_impact": 0},
+        {"fixture_row": 3, "cell": "1,1", "reach": 1, "kinetic_j": 20.0, "jump_m": 0.7, "deposition": 1, "significant_impact": 1},
+        {"fixture_row": 4, "cell": "0,1", "reach": 1, "kinetic_j": 12.0, "jump_m": 0.9, "deposition": 1, "significant_impact": 0},
+    ]
+    chunk_records = build_distributed_fixture_chunk_records(
+        prefix="fixture_local_distributed",
+        chunk_count=3,
+        phase="hazard_reduction",
+    )
+    chunk_payloads: list[dict[str, Any]] = []
+    for chunk in chunk_records:
+        start = int(chunk["chunk_index"]) * 2
+        end = min(start + 2, len(fixture_rows))
+        if start >= len(fixture_rows):
+            rows: list[dict[str, Any]] = []
+        else:
+            rows = fixture_rows[start:end]
+        chunk_payloads.append(
+            {
+                **chunk,
+                "input_index_start": start,
+                "input_index_end_exclusive": end,
+                "input_signature": stable_json_digest(rows),
+                "first_attempt_status": "failed" if chunk["chunk_index"] == 1 else "completed",
+                "final_status": "completed",
+                "attempt_count": 2 if chunk["chunk_index"] == 1 else 1,
+                "retry_count": 1 if chunk["chunk_index"] == 1 else 0,
+                "orchestration_decision": "retried_after_transient_fixture_failure"
+                if chunk["chunk_index"] == 1
+                else "executed",
+                "partial_state": reduce_fixture_rows(rows),
+            }
+        )
+    merged_state = merge_fixture_states([chunk["partial_state"] for chunk in sorted(chunk_payloads, key=lambda item: item["chunk_id"])])
+    single_process_state = reduce_fixture_rows(fixture_rows)
+    comparison = {
+        "match": merged_state == single_process_state,
+        "merged_state": merged_state,
+        "single_process_state": single_process_state,
+    }
+    return {
+        "schema_version": LOCAL_DISTRIBUTED_ORCHESTRATION_DRY_RUN_SCHEMA_VERSION,
+        "dry_run_status": "fixture_replay_matched" if comparison["match"] else "fixture_replay_mismatch",
+        "contract_schema_version": contract.get("schema_version"),
+        "executed_locally": True,
+        "distributed_execution_authorized": False,
+        "chunk_count": len(chunk_payloads),
+        "simulated_retry_count": sum(int(chunk["retry_count"]) for chunk in chunk_payloads),
+        "merge_order": "sorted_chunk_id",
+        "chunk_ids": [str(chunk["chunk_id"]) for chunk in sorted(chunk_payloads, key=lambda item: item["chunk_id"])],
+        "chunk_records": chunk_payloads,
+        "comparison": comparison,
+        "replay_critical_outputs_preserved": [
+            "execution_plan",
+            "chunk_manifests",
+            "partial_state",
+            "execution_index",
+            "merge_state",
+        ],
+        "remaining_cluster_side_blockers": [
+            "scheduler submission and collection are not implemented for distributed chunks",
+            "shared filesystem locking/lease behavior has not been exercised on Balfrin",
+            "multi-process or multi-node worker isolation has not been measured",
+            "large AOI output budgets and restart costs remain unmeasured",
+        ],
+        "claim_boundary": "local in-memory fixture orchestration only; no distributed, Swiss-wide, or operational execution claim",
+    }
+
+
+def reduce_fixture_rows(rows: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    reach: dict[str, float] = {}
+    max_ke: dict[str, float] = {}
+    max_jump: dict[str, float] = {}
+    deposition: dict[str, float] = {}
+    significant_impact: dict[str, float] = {}
+    for row in rows:
+        cell = str(row["cell"])
+        reach[cell] = reach.get(cell, 0.0) + float(row["reach"])
+        max_ke[cell] = max(max_ke.get(cell, float("-inf")), float(row["kinetic_j"]))
+        max_jump[cell] = max(max_jump.get(cell, float("-inf")), float(row["jump_m"]))
+        deposition[cell] = deposition.get(cell, 0.0) + float(row["deposition"])
+        significant_impact[cell] = significant_impact.get(cell, 0.0) + float(row["significant_impact"])
+    return {
+        "reach_counts": sorted_numeric_mapping(reach),
+        "max_kinetic_energy": sorted_numeric_mapping(max_ke),
+        "max_jump_height": sorted_numeric_mapping(max_jump),
+        "deposition_density_counts": sorted_numeric_mapping(deposition),
+        "significant_impact_counts": sorted_numeric_mapping(significant_impact),
+    }
+
+
+def merge_fixture_states(states: list[dict[str, dict[str, float]]]) -> dict[str, dict[str, float]]:
+    merged = {
+        "reach_counts": {},
+        "max_kinetic_energy": {},
+        "max_jump_height": {},
+        "deposition_density_counts": {},
+        "significant_impact_counts": {},
+    }
+    for state in states:
+        add_numeric_mapping(merged["reach_counts"], state.get("reach_counts", {}))
+        max_numeric_mapping(merged["max_kinetic_energy"], state.get("max_kinetic_energy", {}))
+        max_numeric_mapping(merged["max_jump_height"], state.get("max_jump_height", {}))
+        add_numeric_mapping(merged["deposition_density_counts"], state.get("deposition_density_counts", {}))
+        add_numeric_mapping(merged["significant_impact_counts"], state.get("significant_impact_counts", {}))
+    return {key: sorted_numeric_mapping(value) for key, value in merged.items()}
+
+
+def add_numeric_mapping(target: dict[str, float], source: dict[str, float]) -> None:
+    for key, value in source.items():
+        target[key] = target.get(key, 0.0) + float(value)
+
+
+def max_numeric_mapping(target: dict[str, float], source: dict[str, float]) -> None:
+    for key, value in source.items():
+        target[key] = max(target.get(key, float("-inf")), float(value))
+
+
+def sorted_numeric_mapping(values: dict[str, float]) -> dict[str, float]:
+    return {key: values[key] for key in sorted(values)}
+
+
+def stable_json_digest(payload: Any) -> str:
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def build_distributed_execution_contract(commands: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1906,6 +2040,22 @@ def render_text_report(report: dict[str, Any]) -> str:
                 f"- merge_order: {distributed_contract.get('merge_contract', {}).get('merge_order')}",
                 f"- chunk_id_policy: {distributed_contract.get('chunk_key_contract', {}).get('chunk_id_policy')}",
                 f"- future_task: {distributed_contract.get('smallest_future_distributed_dry_run_task', {}).get('task')}",
+            ]
+        )
+    local_dry_run = report.get("local_distributed_orchestration_dry_run") or {}
+    if local_dry_run:
+        blockers = local_dry_run.get("remaining_cluster_side_blockers") or []
+        lines.extend(
+            [
+                "",
+                "local_distributed_orchestration_dry_run:",
+                f"- schema_version: {local_dry_run.get('schema_version')}",
+                f"- status: {local_dry_run.get('dry_run_status')}",
+                f"- chunk_count: {local_dry_run.get('chunk_count')}",
+                f"- simulated_retry_count: {local_dry_run.get('simulated_retry_count')}",
+                f"- merge_order: {local_dry_run.get('merge_order')}",
+                f"- comparison_match: {str(local_dry_run.get('comparison', {}).get('match')).lower()}",
+                f"- first_cluster_side_blocker: {blockers[0] if blockers else 'none'}",
             ]
         )
     lines.extend(["", "command_groups:"])

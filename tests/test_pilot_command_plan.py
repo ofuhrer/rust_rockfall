@@ -222,6 +222,13 @@ class PilotCommandPlanTest(unittest.TestCase):
             "stable_prefix_sorted_chunk_index",
         )
         self.assertIn("tschamut_target_hazard_build", distributed_contract["applicable_command_ids"])
+        local_dry_run = report["local_distributed_orchestration_dry_run"]
+        self.assertEqual(local_dry_run["schema_version"], "local_distributed_orchestration_dry_run_v1")
+        self.assertEqual(local_dry_run["dry_run_status"], "fixture_replay_matched")
+        self.assertEqual(local_dry_run["chunk_count"], 3)
+        self.assertEqual(local_dry_run["simulated_retry_count"], 1)
+        self.assertTrue(local_dry_run["comparison"]["match"])
+        self.assertFalse(local_dry_run["distributed_execution_authorized"])
         self.assertIn("validation/private/tschamut_public_pilot/target_gate_v1_summary_only", report["ignored_output_paths"])
         self.assertIn("hazard/results/tschamut_public_pilot/gate_v1_cog_poc", report["ignored_output_paths"])
         self.assertIn(
@@ -515,6 +522,10 @@ class PilotCommandPlanTest(unittest.TestCase):
         self.assertIn("schema_version: distributed_execution_contract_v1", output)
         self.assertIn("merge_order: sorted_chunk_id", output)
         self.assertIn("distributed_execution_authorized: false", output)
+        self.assertIn("local_distributed_orchestration_dry_run:", output)
+        self.assertIn("status: fixture_replay_matched", output)
+        self.assertIn("simulated_retry_count: 1", output)
+        self.assertIn("comparison_match: true", output)
         self.assertIn("tschamut_same_scale::case_generation", output)
         self.assertIn("tschamut_same_scale::gis_cog_package_conversion", output)
         self.assertIn("tschamut_same_scale::rebuildable_reduced_output", output)
@@ -555,6 +566,34 @@ class PilotCommandPlanTest(unittest.TestCase):
             "merged fixture output equals single-process fixture output",
             contract["smallest_future_distributed_dry_run_task"]["expected_assertions"],
         )
+
+    def test_local_distributed_dry_run_simulates_retry_and_matches_single_process(self) -> None:
+        report = self._fixture_report("tschamut_same_scale")
+        dry_run = report["local_distributed_orchestration_dry_run"]
+
+        self.assertEqual(dry_run["contract_schema_version"], "distributed_execution_contract_v1")
+        self.assertEqual(dry_run["merge_order"], "sorted_chunk_id")
+        self.assertEqual(dry_run["chunk_ids"], sorted(dry_run["chunk_ids"]))
+        self.assertEqual(dry_run["replay_critical_outputs_preserved"], [
+            "execution_plan",
+            "chunk_manifests",
+            "partial_state",
+            "execution_index",
+            "merge_state",
+        ])
+        retried = [chunk for chunk in dry_run["chunk_records"] if chunk["retry_count"] == 1]
+        self.assertEqual(len(retried), 1)
+        self.assertEqual(retried[0]["first_attempt_status"], "failed")
+        self.assertEqual(retried[0]["final_status"], "completed")
+        self.assertEqual(retried[0]["attempt_count"], 2)
+        self.assertEqual(
+            dry_run["comparison"]["merged_state"],
+            dry_run["comparison"]["single_process_state"],
+        )
+        self.assertEqual(dry_run["comparison"]["merged_state"]["reach_counts"]["0,0"], 2.0)
+        self.assertEqual(dry_run["comparison"]["merged_state"]["max_kinetic_energy"]["1,1"], 20.0)
+        self.assertIn("scheduler submission", dry_run["remaining_cluster_side_blockers"][0])
+        self.assertIn("local in-memory fixture", dry_run["claim_boundary"])
 
     def test_shared_output_profile_validator_blocks_scalable_full_debug_drift(self) -> None:
         command = COMMAND_PLAN.build_command_record(
