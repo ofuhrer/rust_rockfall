@@ -88,7 +88,7 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
         "summary": "Overlap-adjusted reducers and uncertainty propagation must be accepted before annual or physical products are contemplated.",
     },
 )
-DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/templates/source_frequency_evidence_v1.yaml"
+DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml"
 
 PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
     {
@@ -448,11 +448,13 @@ def next_concrete_scientific_tasks(evidence_gap_categories: list[dict[str, Any]]
         ),
     ]
     tasks: list[dict[str, Any]] = []
-    for rank, (task_id, category, action, target_artifact) in enumerate(task_specs, start=1):
+    for task_id, category, action, target_artifact in task_specs:
         gap = categories.get(category, {})
+        if gap.get("classification") == "present":
+            continue
         tasks.append(
             {
-                "rank": rank,
+                "rank": len(tasks) + 1,
                 "task_id": task_id,
                 "category": category,
                 "current_classification": gap.get("classification", "unknown"),

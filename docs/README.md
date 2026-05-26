@@ -42,6 +42,9 @@ starting context for implementation unless a task explicitly asks for them.
   calibration separation.
 - `validation_maturity_framework.md`: evidence levels and allowed claim types.
 - `validation_data_schema.md`: validation-case and validation-data schema.
+- `source_frequency_evidence_tb614.md`: TB-614 non-production
+  source-frequency design-review evidence and updated physical-probability
+  blocker.
 - `verification_plan.md`: verification scope and current checked-in
   verification workflow.
 - `dataset_strategy.md`: calibration, validation, pilot, and operational-input

@@ -96,6 +96,12 @@ and storage-pressure measurements. The current accepted candidate generates
 Balfrin replay tier. This helps size the next diagnostic package without
 promoting operational or physical-probability claims.
 
+The physical-probability gap report now has a design-review-only
+source-frequency record for the Tschamut source zone. It moves the first
+physical-probability blocker from source-frequency intake to
+release-probability evidence, while keeping physical and operational products
+deferred.
+
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
 core inputs are ready; and physical-evidence intake separates observed

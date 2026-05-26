@@ -1,0 +1,50 @@
+schema_version: source_frequency_evidence_v1
+record_id: source_frequency_evidence_tschamut_design_review_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+non_production_status: design_review_only
+frequency_model_id: tschamut_design_review_source_event_rate_v1
+frequency_mode: source_event_rate_evidence_only
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class:
+  event_class_id: design_review_detachment_event_v1
+  description: Design-review source detachment event class for the Tschamut public pilot source zone.
+  occurrence_denominator: source_zone_event_class
+frequency_unit: events_per_source_zone_per_year
+source_event_rate_per_year: 0.02
+rate_time_window_years: 50
+rate_observation_period:
+  start_year: 1970
+  end_year: 2020
+rate_evidence_type: expert_elicitation
+rate_provenance:
+  source: design_review_placeholder
+  citation_or_url: validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml
+  license: not_applicable
+rate_uncertainty:
+  type: interval
+  lower_per_year: 0.005
+  upper_per_year: 0.08
+source_zone_overlap_policy:
+  policy: mutually_exclusive_partition
+  overlap_adjustment: not_needed_for_single_tschamut_design_review_source
+calibration_dataset_ids:
+  - tschamut_design_review_source_frequency_placeholder_v1
+validation_dataset_ids:
+  - chant_sura_holdout_validation_metadata_contact_split_v1
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - design-review placeholder only, not observed Tschamut source-event evidence
+  - rate and uncertainty values are deliberately broad planning inputs
+  - not used by runtime products or map generation
+  - physical and operational products remain deferred

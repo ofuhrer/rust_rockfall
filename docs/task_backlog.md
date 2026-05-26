@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-614: Stage Source-Frequency Evidence For The Physical-Probability Blocker
-
-Goal: Start closing the first scientific blocker by staging source-frequency evidence or a clearly labeled accepted-design placeholder.
-
-Capability gap reduced: Moves physical-probability readiness beyond the current first blocker.
-
-Why this outranks alternatives: The phase-change decision check ranks physical-probability evidence as the first scientifically useful action.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/validate_source_frequency_evidence.py`
-- `validation/templates/source_frequency_evidence_v1.yaml`
-- `docs/current_maturity_snapshot.md`
-- external: any available public or local historical rockfall/source-frequency evidence for the selected sites
-
-Deliverables:
-
-- Create or validate a source-frequency evidence record with time window, censoring rules, provenance, uncertainty, and explicit non-production status if real evidence is not yet available.
-
-Definition of done:
-
-- The physical-probability readiness report either moves past `source_frequency_evidence` or names the exact external evidence still missing.
-
-
 ### TB-615: Stage Independent Holdout Runout Or Deposition Evidence
 
 Goal: Acquire or stage holdout runout/deposition evidence that is independent of calibration and model selection.

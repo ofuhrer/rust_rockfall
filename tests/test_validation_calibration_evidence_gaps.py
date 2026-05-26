@@ -49,7 +49,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             report["post_diagnostic_scale_context"]["claim_boundaries"]["scientific_validity_upgraded"]
         )
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
-        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "missing")
+        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
         self.assertEqual(
             report["calibration_holdout_separation_check"]["separation_status"],
             "separated_holdout_ready",
@@ -66,7 +66,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "blocked_missing_required_evidence",
             "partial_evidence_missing_critical_inputs",
         })
-        self.assertIn("source_frequency_evidence", readiness["failing_evidence_classes"])
+        self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "release_probability_model")
         self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
@@ -150,10 +151,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             categories["block_size_and_block_population_evidence"]["first_missing_input"],
             "block_size_survey_or_photogrammetry_census",
         )
-        self.assertEqual(
-            categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"],
-            "historical_rockfall_event_catalogue",
-        )
+        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["classification"], "present")
+        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "")
         self.assertTrue(
             categories["source_frequency_and_temporal_frequency_evidence"][
                 "conditional_sampling_weights_are_not_frequency_evidence"
@@ -288,7 +287,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
 
         self.assertIn("physical_probability_readiness_check:", text)
         self.assertIn("physical_probability_claims_allowed: false", text)
-        self.assertIn("source_frequency_intake: missing", text)
+        self.assertIn("source_frequency_intake: accepted", text)
         self.assertIn("validation_leakage_guardrails:", text)
         self.assertIn("calibration_holdout_separation_check:", text)
         self.assertIn("guardrail_status: passed", text)
@@ -301,8 +300,9 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         tasks = report["next_concrete_scientific_tasks"]
 
         self.assertEqual(tasks[0]["task_id"], "stage_independent_holdout_deposition_runout_evidence")
-        self.assertEqual(tasks[1]["task_id"], "stage_source_frequency_catalogue")
-        self.assertEqual(tasks[2]["task_id"], "stage_block_population_survey")
+        self.assertEqual(tasks[1]["task_id"], "stage_block_population_survey")
+        self.assertEqual(tasks[2]["task_id"], "define_calibration_dataset_and_objective")
+        self.assertNotIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
         self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
         self.assertIn("scientific evidence", tasks[0]["why_now"])
 
