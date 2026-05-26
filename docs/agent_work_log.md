@@ -9446,3 +9446,34 @@ scan thousands of lines of completed history.
 - Output controls: `summary-only` conditional curves, no full grid CSV, no plots, compact manifest, and replay-critical trajectory/deposition/impact/merge-state outputs retained.
 - Boundaries: package generation only; no `sbatch` was attempted and no Balfrin job was submitted. No operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
 - Next task: `TB-603`
+
+### TB-603: Submit And Monitor The Larger Bounded Hazard-Throughput Probe
+
+- Date: 2026-05-26
+- Commit: `cb64e37`
+- Objective: submit the reviewed bounded hazard-throughput package on Balfrin `postproc`, monitor it, and collect run-root metrics.
+- Files changed: `docs/balfrin_hazard_throughput_run_tb603.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to `71e42966e8c0a70dd33adab64ea1d60eea726641`.
+  - Regenerated the reviewed submission package on Balfrin under `/scratch/mch/olifu/rust_rockfall/submission_packages/tb603_hazard_throughput_submission_package`.
+  - Submitted the job with a fresh isolated run root at `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526`.
+  - Monitored SLURM job `4372309` to terminal `COMPLETED` state with exit code `0:0`.
+  - Collected probe metrics and a metrics report under `/scratch/mch/olifu/rust_rockfall/submission_packages/`.
+  - Recorded the measured run in `docs/balfrin_hazard_throughput_run_tb603.md` and removed TB-603 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - Remote `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall`
+  - Remote `PYENV_VERSION=system uv run python scripts/generate_balfrin_regional_split_submission_package.py --artifact-dir /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_hazard_throughput_submission_package --balfrin-access-preflight-json /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_balfrin_access.json --format json --json-output /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_regional_package.json --text-output /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_regional_package.txt`
+  - Remote `PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526 --run-id tschamut_public_balfrin_multi_release_zone_tb603_20260526 --partition postproc --time 00:30:00 --nodes 1 --ntasks 1 --cpus-per-task 16 --authorized-submit --reviewed-handoff-package /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_hazard_throughput_submission_package/handoff/balfrin_multi_release_zone_demo_package_v1.json --authorization-record /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_hazard_throughput_submission_package/handoff/balfrin_multi_zone_live_authorization_record_v1.yaml --balfrin-access-preflight-json /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_balfrin_access.json`
+  - Remote `squeue` polling and `sacct -j 4372309 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,MaxRSS,AllocCPUS,NNodes,NodeList -P`
+  - Remote `PYENV_VERSION=system uv run python scripts/collect_balfrin_probe_metrics.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526 --output-json /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_probe_metrics.json`
+  - Remote `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526 --format json --json-output /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_probe_metrics_report.json --text-output /scratch/mch/olifu/rust_rockfall/submission_packages/tb603_probe_metrics_report.txt`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py scripts/collect_balfrin_probe_metrics.py scripts/summarize_balfrin_probe_metrics_report.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_metrics_report -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Metrics: job `4372309`, terminal `COMPLETED`; SLURM elapsed `00:00:23`; hazard workflow wall time `7.043564590974711 s`; full batch measured time `22.3286811549915 s`; hazard-stage measured time `7.8358131679706275 s`; process peak memory `357.796875 MB`; hazard output `57` files / `31,439,786` bytes; validation output footprint `130` files / `34,565,316` bytes; conditional-curve rows `729,600`; trajectory chunk decisions `{"executed": 2}`; reducer chunk decisions `{"executed": 2}`.
+- Boundaries: bounded single-node `postproc` hazard-throughput evidence only. No operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
+- Next task: `TB-604`
