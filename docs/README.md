@@ -143,6 +143,8 @@ starting context for implementation unless a task explicitly asks for them.
   blocked 16-zone diagnostic `postproc` package.
 - `balfrin_16_zone_diagnostic_metrics_tb575.md`: TB-575 measured 16-zone
   diagnostic run record, metrics, and evidence promotion.
+- `balfrin_24_zone_diagnostic_run_tb579.md`: TB-579 measured 24-zone
+  diagnostic `postproc` run record and metrics.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard
