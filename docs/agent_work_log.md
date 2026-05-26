@@ -8920,3 +8920,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measured 24-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-581`
+
+### TB-581: Execute A Small Repeatability Pair At The Best Measured Diagnostic Size
+
+- Date: 2026-05-26
+- Commit: `e2ce0e5`
+- Objective: run two additional 24-zone diagnostic `postproc` jobs to capture same-size repeatability evidence.
+- Files changed: `docs/balfrin_24_zone_repeatability_runs_tb581.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Refreshed the Balfrin checkout to `5f9c93790cfa89855fdbbb3d30be81a31298bb50` and confirmed the queue planner classified the two-job batch as `run_batch_now`.
+  - Submitted two distinct 24-zone compact diagnostic run roots under `$SCRATCH`: `diagnostic_24_zone_repeatability_a_tb581` and `diagnostic_24_zone_repeatability_b_tb581`.
+  - Captured terminal results for jobs `4368592` and `4368593`; both completed with 76 output files and 32,922 bytes.
+  - Recorded elapsed time `0:00.34` for both jobs, MaxRSS `34.242` MB and `39.879` MB, and reducer wall time `4.03` seconds for both.
+  - Removed TB-581 from the active backlog.
+- Checks run:
+  - `ssh balfrin '... build_diagnostic_run_planner(... diagnostic_job_count=2 ...) ...'`
+  - `ssh balfrin '... scripts/run_balfrin_diagnostic.py run --run-id diagnostic_24_zone_repeatability_a_tb581 ... & ... diagnostic_24_zone_repeatability_b_tb581 ... &'`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: repeatability diagnostics for single-node 24-zone `postproc` reducer pressure only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-582`
