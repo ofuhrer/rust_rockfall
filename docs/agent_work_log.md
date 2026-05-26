@@ -9193,3 +9193,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: acquisition planning only; no second-site validation, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-593`
+
+### TB-593: Assess Non-Postproc Partition Requirements And Risks
+
+- Date: 2026-05-26
+- Commit: `1195834`
+- Objective: make any non-`postproc` phase change depend on measured resource and policy evidence.
+- Files changed: `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `docs/balfrin_skills.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `non_postproc_readiness_assessment_v1` to the next live-run decision gate.
+  - Compared CPU count, memory, runtime, I/O volume, walltime, partition policy, and execution-model dimensions.
+  - Classified current evidence as `deferred_no_policy_or_execution_model_need` with next blocker `partition_policy`, while leaving `phase_change_authorized=false`.
+  - Added synthetic tests for measured resource blockers and policy-only deferral.
+  - Removed TB-593 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_next_live_run_decision_gate.py tests/test_balfrin_next_live_run_decision_gate.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_next_live_run_decision_gate -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --format json --json-output /tmp/tb593_decision.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: assessment only; no non-`postproc` request, scheduler-policy change, operational, physical-probability, Swiss-wide, or distributed-execution claim.
+- Next task: `TB-594`
