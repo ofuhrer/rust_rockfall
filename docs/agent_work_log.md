@@ -9333,3 +9333,31 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: read-only scheduler/capacity snapshot only; no Balfrin job was submitted, no performance measurement was made, and no operational, physical-probability, Swiss-wide, distributed, or non-`postproc` claim changed.
 - Next task: `TB-599`
+
+### TB-599: Submit And Monitor The Next Bounded 32-Zone Diagnostic On Balfrin
+
+- Date: 2026-05-26
+- Commit: `adc17eb`
+- Objective: execute the next bounded 32-zone reducer-pressure diagnostic on Balfrin `postproc`.
+- Files changed: `docs/balfrin_32_zone_diagnostic_run_tb599.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout at `/users/olifu/work/rust_rockfall` to `ac1aed47a374572ef200b2752cf5aeb06c62ee13`.
+  - Submitted the 32-zone diagnostic to `postproc` with 4 reducer chunks, 4 reducer workers, compact manifest mode, and run root `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526`.
+  - Monitored SLURM job `4372124` to terminal `COMPLETED` state with exit code `0:0`.
+  - Preserved measured runtime, memory, output-byte, file-count, manifest-byte, scheduler, and run-root metadata in the `$SCRATCH` run root.
+  - Recorded the measured run in `docs/balfrin_32_zone_diagnostic_run_tb599.md` and removed TB-599 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - Remote `git pull --ff-only origin main` in `/users/olifu/work/rust_rockfall`
+  - Remote `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526 --partition postproc --time 00:45:00 --poll-seconds 10 --format json`
+  - Remote `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py collect --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526 --partition postproc --time 00:45:00 --format json`
+  - Remote `find`, `/usr/bin/time -v` output, and `slurm_accounting.psv` inspection for the run root
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_32_zone_tb599_20260526 --partition postproc --time 00:45:00 --format json`
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Metrics: job `4372124`, terminal `COMPLETED`; reducer wall time `5.39 s`; `/usr/bin/time -v` elapsed `0:00.75`; MaxRSS `34.168 MB`; diagnostic output files `100`; diagnostic output bytes `42,221`; manifest size `24,514 bytes`; run-root files `113`; run-root bytes `181,433`.
+- Boundaries: single-node `postproc` reducer-pressure diagnostic only; no hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-`postproc` claim changed.
+- Next task: `TB-600`
