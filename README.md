@@ -124,11 +124,21 @@ normally be reached through these commands or through a documented workflow.
 ## Advanced Scaling
 
 The first path through the repository is local. Balfrin/HPC work is an advanced
-scaling topic for already-prepared experiments. The compact execution path is:
+scaling topic for already-prepared experiments. The public diagnostic path is
+one runner: inspect the plan, then run it on Balfrin.
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan \
+  --release-zones 24 \
+  --manifest-mode compact \
+  --format text
+```
+
+When the plan points at the intended `$SCRATCH` run root, execute:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run \
-  --release-zones 16 \
+  --release-zones 24 \
   --manifest-mode compact \
   --format text
 ```
@@ -139,8 +149,9 @@ The current reviewer-facing Balfrin evidence package is
 It records the measured 24-zone diagnostic run, the same-size repeatability
 pair, reproduction commands, run roots, and boundaries. These are diagnostic
 performance results, not operational or physical-probability claims. The older
-Balfrin runbook remains useful background, but routine diagnostic runs should
-use the single command above.
+Balfrin handoff, preflight, submit, and collect scripts remain compatibility
+and forensic helpers; routine diagnostic runs should use the single runner
+above.
 
 ## Development Workflow
 

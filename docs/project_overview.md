@@ -37,6 +37,13 @@ is to turn that diagnostic capacity into stronger scientific inputs for
 probability and validation while keeping operational and physical-probability
 claims separate.
 
+The public Balfrin diagnostic interface is `scripts/run_balfrin_diagnostic.py`:
+use `plan` to inspect the run root and materialized files, then `run` to
+prepare, submit, monitor, and collect one bounded `postproc` diagnostic into a
+single `$SCRATCH/.../run_record.json`. Older handoff, preflight, submit, and
+collect helpers remain compatibility and forensic tools, not the normal entry
+point.
+
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,
 and completed task history is recorded in `docs/agent_work_log.md`. Long-term roadmap

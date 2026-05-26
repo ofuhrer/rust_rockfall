@@ -582,7 +582,20 @@ Planned next stage (not implemented yet):
 3. Reducer/merge dependency jobs.
 4. Deterministic restart and stale-state recovery across arrays.
 
-## Commands
+## Current Public Path
+
+Routine bounded `postproc` diagnostic runs should use the compact runner:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 24 --manifest-mode compact --format text
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --manifest-mode compact --format text
+```
+
+The commands below document the older probe-manifest driver. Keep them for
+preserved reproduction records and forensic inspection, but do not treat them as
+the front-door diagnostic workflow.
+
+## Compatibility Commands
 
 Dry-run example:
 

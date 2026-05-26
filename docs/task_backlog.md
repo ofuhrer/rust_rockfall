@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-587: Simplify The Large-Run Interface Around One Command Path
-
-Goal: Consolidate the diagnostic handoff, preflight, submit, collect, and promote path into one simple user-facing command sequence .
-
-Capability gap reduced: Reduces repo complexity and makes the successful large-run workflow approachable after the diagnostic scale push.
-
-Why this outranks alternatives: The repo has accumulated many reports and scripts; after the measurement sprint, users need one clean path for reproducing the demonstrated workflow.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `README.md`
-
-Deliverables:
-
-- Identify duplicate or stale large-run entry points and replace them with one documented command sequence.
-- Keep detailed helper scripts available internally but expose one primary path from README/project overview.
-- Add smoke tests or command-plan checks proving the path still materializes the required files.
-
-Definition of done:
-
-- Focused smoke checks pass and the front-door docs present one clean large-run diagnostic workflow .
-
-
 ### TB-588: Define The Evidence Check For Physical-Probability Products
 
 Goal: Convert the physical-probability target into an explicit evidence check with data requirements, acceptance criteria, and failure modes.

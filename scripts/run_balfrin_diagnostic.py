@@ -3,7 +3,7 @@
 
 This is the user-facing path for bounded postproc diagnostics:
 
-prepare -> submit -> monitor -> collect
+plan -> prepare -> submit -> monitor -> collect
 
 It deliberately writes one run record under the run root instead of creating a
 separate handoff package, authorization record, and preflight artifact.
@@ -50,7 +50,7 @@ def default_scratch_root() -> Path:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "submit", "monitor", "collect", "run"))
+    parser.add_argument("action", choices=("plan", "prepare", "submit", "monitor", "collect", "run"))
     parser.add_argument("--release-zones", type=int, default=16)
     parser.add_argument("--reducer-chunks", type=int, default=2)
     parser.add_argument("--reducer-workers", type=int, default=2)
@@ -114,6 +114,90 @@ def diagnostic_paths(run_root: Path) -> dict[str, Path]:
         "pressure_md": run_root / "multi_zone_reducer_pressure.md",
         "sacct": run_root / "slurm_accounting.psv",
     }
+
+
+def public_command_sequence(args: argparse.Namespace, run_root: Path) -> list[dict[str, Any]]:
+    base = [
+        "PYENV_VERSION=system",
+        "uv",
+        "run",
+        "python",
+        "scripts/run_balfrin_diagnostic.py",
+    ]
+    shared = [
+        "--release-zones",
+        str(args.release_zones),
+        "--reducer-chunks",
+        str(args.reducer_chunks),
+        "--reducer-workers",
+        str(args.reducer_workers),
+        "--manifest-mode",
+        args.manifest_mode,
+        "--run-root",
+        str(run_root),
+        "--partition",
+        args.partition,
+        "--time",
+        args.time,
+    ]
+    return [
+        {
+            "name": "plan",
+            "purpose": "Inspect the exact run root, generated files, and SLURM shape without writing artifacts.",
+            "command": [*base, "plan", *shared, "--format", "json"],
+        },
+        {
+            "name": "run",
+            "purpose": "Prepare, submit, monitor, and collect one bounded postproc diagnostic into one run record.",
+            "command": [*base, "run", *shared, "--format", "text"],
+        },
+    ]
+
+
+def required_materialized_files(run_root: Path) -> list[dict[str, str]]:
+    paths = diagnostic_paths(run_root)
+    return [
+        {
+            "path": str(paths["run_record"]),
+            "created_by": "prepare",
+            "purpose": "Single source of run shape, scheduler state, collection metrics, paths, and claim boundary.",
+        },
+        {
+            "path": str(paths["sbatch"]),
+            "created_by": "prepare",
+            "purpose": "Submitted SLURM script for the bounded reducer-pressure diagnostic.",
+        },
+        {
+            "path": str(paths["stdout"]),
+            "created_by": "slurm",
+            "purpose": "Scheduler stdout for the diagnostic job.",
+        },
+        {
+            "path": str(paths["stderr"]),
+            "created_by": "slurm",
+            "purpose": "Scheduler stderr for the diagnostic job.",
+        },
+        {
+            "path": str(paths["time"]),
+            "created_by": "slurm",
+            "purpose": "Measured wall time and memory from /usr/bin/time -v.",
+        },
+        {
+            "path": str(paths["pressure_json"]),
+            "created_by": "diagnostic_command",
+            "purpose": "Machine-readable reducer/output pressure report promoted into run_record.json.",
+        },
+        {
+            "path": str(paths["pressure_md"]),
+            "created_by": "diagnostic_command",
+            "purpose": "Human-readable reducer/output pressure report.",
+        },
+        {
+            "path": str(paths["sacct"]),
+            "created_by": "monitor",
+            "purpose": "Captured scheduler accounting used to classify terminal job state.",
+        },
+    ]
 
 
 def pressure_command(args: argparse.Namespace, run_root: Path) -> list[str]:
@@ -209,6 +293,18 @@ def base_record(args: argparse.Namespace, run_root: Path) -> dict[str, Any]:
         "paths": {key: str(value) for key, value in paths.items()},
         "command": pressure_command(args, run_root),
         "sbatch_command": ["sbatch", "--parsable", str(paths["sbatch"])],
+        "public_interface": {
+            "primary_script": "scripts/run_balfrin_diagnostic.py",
+            "primary_actions": ["plan", "run"],
+            "command_sequence": public_command_sequence(args, run_root),
+            "required_materialized_files": required_materialized_files(run_root),
+            "legacy_helper_policy": (
+                "generate_balfrin_multi_release_zone_demo_handoff.py, "
+                "preflight_balfrin_smallest_multi_zone_probe_authorization.py, "
+                "submit_balfrin_probe.py, and collect_balfrin_probe_metrics.py remain compatibility and "
+                "forensic helpers; routine diagnostic runs should use this runner."
+            ),
+        },
         "guardrails": {
             "standing_postproc_clearance": True,
             "partition_scope": "postproc_only",
@@ -442,7 +538,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     run_root = resolve_run_root(args)
     try:
-        if args.action == "prepare":
+        if args.action == "plan":
+            validate_run_shape(args, run_root)
+            record = base_record(args, run_root)
+            record["status"] = "planned"
+        elif args.action == "prepare":
             record = prepare(args, run_root)
         elif args.action == "submit":
             record = submit(args, run_root)

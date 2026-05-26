@@ -71,6 +71,36 @@ class RunBalfrinDiagnosticTests(unittest.TestCase):
             self.assertIn("scripts/summarize_multi_zone_reducer_pressure.py", sbatch)
             self.assertNotIn("authorization-record", sbatch)
             self.assertNotIn("reviewed-handoff-package", sbatch)
+            required_paths = {
+                item["path"]
+                for item in persisted["public_interface"]["required_materialized_files"]
+            }
+            self.assertIn(str(record_path), required_paths)
+            self.assertIn(str(sbatch_path), required_paths)
+            paths = MODULE.diagnostic_paths(run_root)
+            self.assertIn(str(paths["pressure_json"]), required_paths)
+            self.assertEqual(persisted["public_interface"]["primary_actions"], ["plan", "run"])
+
+    def test_plan_exposes_one_public_command_sequence_without_materializing_files(self) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:
+            args = self._args(Path(tmpdir))
+            args.action = "plan"
+            run_root = MODULE.resolve_run_root(args)
+
+            MODULE.validate_run_shape(args, run_root)
+            record = MODULE.base_record(args, run_root)
+            record["status"] = "planned"
+
+            self.assertFalse((run_root / "run_record.json").exists())
+            interface = record["public_interface"]
+            self.assertEqual(interface["primary_script"], "scripts/run_balfrin_diagnostic.py")
+            command_names = [entry["name"] for entry in interface["command_sequence"]]
+            self.assertEqual(command_names, ["plan", "run"])
+            run_command = " ".join(interface["command_sequence"][1]["command"])
+            self.assertIn("scripts/run_balfrin_diagnostic.py run", run_command)
+            self.assertIn("--release-zones 16", run_command)
+            self.assertIn("--run-root", run_command)
+            self.assertIn("routine diagnostic runs should use this runner", interface["legacy_helper_policy"])
 
     def test_run_root_must_stay_under_scratch_root(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmpdir:

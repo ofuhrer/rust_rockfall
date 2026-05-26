@@ -60,10 +60,15 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/package_aoi_hazard_map.py`
 - `scripts/run_balfrin_diagnostic.py`
 - `scripts/run_aoi_hazard_workflow.py`
-- `scripts/submit_balfrin_probe.py`
 - `scripts/stage_public_geodata_cache.py`
 - `scripts/stage_management_aoi_restaged_terrain.py`
 - `scripts/verify_public_geodata_cache.py`
+
+For routine Balfrin diagnostics, `scripts/run_balfrin_diagnostic.py plan` and
+`scripts/run_balfrin_diagnostic.py run` are the public path. The older
+multi-release-zone handoff, authorization-preflight, submit, and collect
+scripts are retained for compatibility with preserved reproduction records and
+forensic inspection.
 
 Related non-script interface fixture:
 
