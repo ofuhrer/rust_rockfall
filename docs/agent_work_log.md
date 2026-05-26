@@ -9619,3 +9619,25 @@ scan thousands of lines of completed history.
 - Metrics: active adjacent candidate `1`; candidate area `105,344 m2`; scenario rows `3`; scenario table `5` files / `14,996` bytes in the management-pressure report and `5` files / `15,162` bytes in the storage-tier report; active manifest `4,626` to `4,748` bytes depending on accounting helper; expanded cap `30` candidate records / `300` scenario rows / `211,277` manifest bytes / `595,867` total bytes; compact batch guard `pass`; recommended Balfrin replay tier `rebuildable_reduced`.
 - Boundaries: local scenario-table and storage-pressure evidence only; no Balfrin submission, Swiss-wide execution, distributed execution, operational hazard, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-611`
+
+### TB-611: Build A 100-Zone Diagnostic Submission Package Without Submitting It
+
+- Date: 2026-05-26
+- Commit: `a621945`
+- Objective: prepare a concrete no-submit 100-zone diagnostic package on Balfrin and expose the exact commands, package footprint, output budget, and pre-submit no-go conditions.
+- Files changed: `docs/balfrin_100_zone_diagnostic_package_tb611.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Fast-forwarded the Balfrin checkout to `bb22df0` and prepared a 100-zone diagnostic run record and sbatch script under `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526`.
+  - Confirmed the prepared package contains only `diagnostic.sbatch`, `run_record.json`, and captured prepare stdout; no `sbatch` command was run.
+  - Measured the same 100-zone reducer-pressure shape locally under `/tmp/tb611_100_zone_pressure_root`.
+  - Ran the Swiss-wide envelope and scale-readiness helpers to keep the 100-zone case classified as projection-only/deferred, then recorded the package boundary and removed TB-611 from the active backlog.
+- Checks run:
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && git pull --ff-only origin main && git status --short --branch'`
+  - `ssh balfrin 'PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py prepare --release-zones 100 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526 --time 00:30:00 --format json'`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/tb611_100_zone_pressure_root --release-zone-count 100 --reducer-workers 4 --reducer-chunk-count 4 --output-family-mix trajectory_csv,deposition_csv,impact_events_csv,trajectory_merge_state,reducer_merge_state --manifest-mode compact --format json --json-output /tmp/tb611_100_zone_pressure.json --markdown-output /tmp/tb611_100_zone_pressure.md`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --release-zone-count 100 --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+- Result/status: implemented_measured
+- Metrics: remote prepared package `3` files / `16,052` bytes; local same-shape pressure `100` release zones, `100` scenarios, `4` reducer chunks, `4` reducer workers, `13.55` reducer wall seconds, `304` output files, `121,016` output bytes, `309` scratch-root files, `207,258` scratch-root bytes, `60,703` manifest bytes, and `2` sidecar files / `215` bytes. Projection bands remain `133.779` / `178.4` / `552.77` runtime seconds, `12,862,070` / `39,536,020` / `2,675,271,200` storage bytes, and `60` / `170` / `1,910` files.
+- Boundaries: no 100-zone job was submitted; this is package and local reducer-pressure evidence only, with no Balfrin runtime/memory measurement and no Swiss-wide, distributed, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-612`
