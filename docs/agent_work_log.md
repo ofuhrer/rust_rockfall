@@ -9760,3 +9760,27 @@ completed history.
 - Metrics: `postproc` had 11 idle nodes despite many running jobs; scratch had `45T` free but remained `95%` used, so the next run should remain bounded and avoid bulky outputs.
 - Boundaries: capacity decision only; no Balfrin job submitted, no new hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, physical-probability, operational, risk, exposure, or vulnerability claim.
 - Next task: `TB-618`
+
+### TB-618: Build The Next Larger Hazard-Throughput Package
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: prepare a Balfrin-visible no-submit package for the next larger bounded hazard-throughput run.
+- Files changed: `docs/balfrin_hazard_throughput_package_tb618.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Materialized a four-zone hazard-throughput package under `$SCRATCH` at `/scratch/mch/olifu/rust_rockfall/submission_packages/tb618_four_zone_hazard_throughput_package`.
+  - Used `scripts/generate_balfrin_multi_release_zone_demo_handoff.py` with `--requested-release-zone-batch-size 4`, `--requested-reducer-chunk-count 2`, and `--requested-reducer-worker-count 2`.
+  - Preserved the reviewed handoff package, authorization record, command plan, authorization preflight, and generated report JSON in the package root.
+  - Verified the authorization preflight reports `ready_for_authorization_review` and `ready_for_live_postproc_submission=true`.
+  - Documented that the historical default four-zone run root already exists and that TB-619 should use a fresh `..._tb619_20260527` run root to avoid contaminating old evidence.
+  - Removed TB-618 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-618 --format json`
+  - local probe of `scripts/generate_balfrin_multi_release_zone_demo_handoff.py --requested-release-zone-batch-size 4`
+  - Balfrin package materialization under `$SCRATCH`
+  - Balfrin authorization preflight with `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+  - attempted `scripts/check_hazard_output_profile.py --command-plan` on the package-level command plan; it correctly reported that this orchestration plan does not contain a direct `build_hazard_layers` command, so the package's embedded output-profile policy and output-budget projection were used as the applicable checks.
+- Result/status: implemented_waiting_report
+- Metrics: package status `mixed_provenance`; package constraint status `warning`; requested release-zone batch size `4`; output-budget status `accepted`; profile `next_larger_four_zone_review_only_probe`; `23` output files; `19,247` output bytes; `18,271` manifest bytes; package footprint `199K`.
+- Boundaries: no-submit package only; no Balfrin job submitted, no new hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-619`

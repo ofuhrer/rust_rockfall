@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-618: Build The Next Larger Hazard-Throughput Package
-
-Goal: Prepare a no-submit package for the largest bounded hazard-throughput run selected by TB-617.
-
-Capability gap reduced: The project needs measured hazard-throughput evidence beyond the TB-603 support point, not only diagnostic reducer-pressure evidence.
-
-Why this outranks alternatives: TB-603 is the current hazard-throughput anchor, while the 100-zone evidence is diagnostic-only; the missing bridge is a larger real hazard workflow package with scalable outputs.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/generate_balfrin_target_area_demo_handoff.py`
-- `scripts/check_hazard_output_profile.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/balfrin_hazard_throughput_package_tb602.md`
-
-Deliverables:
-
-- A regenerated Balfrin submission package under `$SCRATCH` for the selected larger hazard-throughput run, with command plan, output-profile check, estimated file/byte footprint, and no-submit review summary.
-
-Definition of done:
-
-- The package can be inspected on Balfrin, output controls are bounded, run roots stay on `$SCRATCH`, and the expected footprint is compared against TB-603 before submission.
-
 ### TB-619: Run The Larger Hazard-Throughput Job On Balfrin
 
 Goal: Submit and monitor the reviewed larger hazard-throughput package if TB-617 and TB-618 show it is safe.
