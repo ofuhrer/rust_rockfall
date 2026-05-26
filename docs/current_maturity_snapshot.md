@@ -86,13 +86,12 @@ excessive sidecars, missing rebuildability artifacts, or submit-package
 contract mismatches; validation-output summaries separate replay-critical
 families from diagnostic/debug fanout; preserved Balfrin run roots can be
 audited read-only against output/reducer budgets; and the scale readiness
-matrix gives workers one compact evidence dashboard. After the TB-461 decision
-refresh and the latest local scratch-root regeneration work, the intended next
-scale action is still reducer-pressure optimization ahead of scenario batching
-and candidate-stability refinement. The current projection ceiling remains a
-10-zone single-AOI planning class under the single-node/postproc boundary; the
-bounded regional split is measured diagnostic evidence, while regional and
-Swiss-wide execution remain deferred. The main local reducer-pressure helpers
+matrix gives workers one compact evidence dashboard. After the 24-zone
+diagnostic push, the current hazard-planning boundary remains 10 zones while
+the diagnostic reducer-pressure boundary is measured and repeated at 24 zones
+on single-node `postproc`. The next scale action is a larger bounded diagnostic
+only if queue policy remains favorable; regional and Swiss-wide execution
+remain deferred phase changes. The main local reducer-pressure helpers
 can now regenerate deterministic scratch roots under a caller-supplied `/tmp`
 path and report manifest paths plus byte/file counts, but Balfrin access and
 remote checkout alignment still must be verified before any trusted submission

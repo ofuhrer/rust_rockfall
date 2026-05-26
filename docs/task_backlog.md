@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-584: Build A Reviewer-Facing Balfrin Diagnostic Evidence Package
-
-Goal: Package the latest measured Balfrin efficiency, performance, output, preservation, repeatability, and feasibility evidence into one reviewer-facing demonstration surface.
-
-Capability gap reduced: Converts scattered run reports and helper outputs into a coherent demonstration of what has been achieved and what remains next.
-
-Why this outranks alternatives: A full demonstration needs one reproducible entry point, not a chain of historical TB reports.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/project_overview.md`
-- `docs/current_maturity_snapshot.md`
-- `README.md`
-
-Deliverables:
-
-- Refresh the management demo package from the latest measured evidence.
-- Ensure README/project overview point to current performance and Balfrin demonstration surfaces without overselling the result.
-- Include exact reproduction commands, run-root hashes, and live evidence boundaries.
-
-Definition of done:
-
-- Focused management package tests pass and the package clearly reports measured efficiency/performance/feasibility evidence plus remaining scientific and scale blockers.
-
-
 ### TB-585: Publish Current Balfrin Diagnostic Performance On GitHub Pages
 
 Goal: Extend the public performance dashboard with a clearly separated Balfrin diagnostic-performance section.

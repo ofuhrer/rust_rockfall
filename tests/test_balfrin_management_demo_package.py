@@ -31,7 +31,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(
             report["package_summary"]["section_counts"],
             {
-                "measured": 9,
+                "measured": 10,
                 "fixture_backed": 1,
                 "unavailable": 2,
                 "blocked_missing_inputs": 1,
@@ -53,6 +53,10 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["uncertainty_section"]["status"], "measured")
         self.assertEqual(report["claim_boundary_section"]["status"], "guarded")
         self.assertEqual(report["scaling_section"]["status"], "measured")
+        self.assertEqual(report["diagnostic_performance_section"]["status"], "measured")
+        self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["job_id"], "4368588")
+        self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["status"], "measured_repeatability_pair")
+        self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["bounds"]["reducer_wall_time_seconds"]["spread"], 0.0)
         self.assertEqual(report["physical_credibility_section"]["status"], "measured_diagnostic_only")
         self.assertEqual(report["physical_credibility_section"]["physical_credibility_state"], "no_physical_evidence")
         self.assertEqual(report["swiss_wide_extension_section"]["status"], "no_go_extrapolated_beyond_measured_evidence")
@@ -61,20 +65,24 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             ["aoi_count_exceeds_measured_support", "total_job_count_exceeds_measured_single_job_support"],
         )
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["status"], "projection_only")
-        self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "feasible")
+        self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["10_zone"], "hazard_planning_boundary")
+        self.assertEqual(
+            report["swiss_scale_feasibility_projection_section"]["projection_classification"]["24_zone"],
+            "measured_repeatable_diagnostic_postproc",
+        )
         self.assertEqual(report["swiss_scale_feasibility_projection_section"]["projection_classification"]["regional_split_probe"], "measured")
         self.assertEqual(
             report["swiss_scale_feasibility_projection_section"]["upstream_data_blockers"],
-            ["scenario_cardinality"],
+            ["source_frequency", "calibration_holdout", "physical_probability_evidence"],
         )
         self.assertEqual(
             report["swiss_scale_feasibility_projection_section"]["top_blockers"],
             [
-                "scenario_cardinality",
+                "scientific_evidence",
+                "queue_policy",
                 "reducer_pressure",
                 "hazard_throughput",
-                "gis_packaging",
-                "balfrin_access",
+                "output_bytes",
             ],
         )
         self.assertEqual(report["failed_closed_section"]["status"], "failed_closed")
@@ -89,8 +97,8 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("AOI automation is template-only", report["package_summary"]["summary"])
         self.assertIn("Swiss-scale feasibility is projection-only", report["package_summary"]["summary"])
         self.assertIn("failed closed before live execution", report["package_summary"]["summary"])
-        self.assertIn("TB-447/TB-448 supply measured regional split evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
-        self.assertIn("scenario cardinality", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("24-zone is measured as repeated diagnostic postproc evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
+        self.assertIn("scientific evidence", report["swiss_scale_feasibility_projection_section"]["summary"])
         self.assertIn("adjacent-candidate review bundle", report["failed_closed_section"]["summary"])
         self.assertIn("next authorized step is management review", report["package_summary"]["summary"])
         self.assertEqual(len(report["regeneration_commands"]), 5)
@@ -100,6 +108,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertIn("target_area_aoi_automation_section:", package.render_text_report(report))
         self.assertIn("swiss_wide_extension_section:", package.render_text_report(report))
         self.assertIn("swiss_scale_feasibility_projection_section:", package.render_text_report(report))
+        self.assertIn("diagnostic_performance_section:", package.render_text_report(report))
         self.assertIn("failed_closed_section:", package.render_text_report(report))
 
     def test_readiness_matrix_tracks_required_gates_and_claim_boundaries(self) -> None:
@@ -132,6 +141,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
             {
                 "measured_multi_zone_execution",
                 "regional_split_projection_comparison",
+                "diagnostic_performance_repeatability",
                 "preservation_gate",
                 "reducer_constraints",
                 "scenario_batching_cap",
@@ -170,9 +180,17 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(regional_split_row["evidence_status"], "measured")
         self.assertEqual(regional_split_row["current_evidence"]["classification"], "measured_regional_split_probe")
         self.assertEqual(regional_split_row["current_evidence"]["evidence_label"], "measured_on_balfrin")
-        self.assertEqual(regional_split_row["current_evidence"]["job_id"], "4350232")
+        self.assertEqual(regional_split_row["current_evidence"]["job_id"], "4367244")
         self.assertEqual(regional_split_row["current_evidence"]["supersedes_failed_closed_task"], "TB-432")
         self.assertIn("comparison work", regional_split_row["summary"])
+        diagnostic_row = next(row for row in matrix["rows"] if row["gate"] == "diagnostic_performance_repeatability")
+        self.assertEqual(diagnostic_row["status"], "measured")
+        self.assertEqual(diagnostic_row["gate_status"], "measured_repeatability_pair")
+        self.assertEqual(diagnostic_row["current_evidence"]["latest_diagnostic"]["job_id"], "4368588")
+        self.assertEqual(
+            diagnostic_row["current_evidence"]["repeatability_pair"]["bounds"]["output_bytes"]["spread"],
+            0,
+        )
         scenario_row = next(row for row in matrix["rows"] if row["gate"] == "scenario_batching_cap")
         self.assertEqual(scenario_row["status"], "ready")
         self.assertEqual(scenario_row["evidence_status"], "scratch_local")
@@ -239,7 +257,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
                 "measured": 0,
                 "fixture_backed": 0,
                 "unavailable": 0,
-                "blocked_missing_inputs": 16,
+                "blocked_missing_inputs": 17,
                 "projection_only": 0,
                 "failed_closed": 0,
                 "deferred": 0,

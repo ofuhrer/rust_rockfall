@@ -132,8 +132,13 @@ PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run \
 ```
 
 This writes a single `run_record.json` under the selected `$SCRATCH` run root.
-The older Balfrin runbook remains useful background, but routine diagnostic
-runs should use the single command above.
+The current reviewer-facing Balfrin evidence package is
+[`docs/balfrin_scale_demonstration_management_package.md`](docs/balfrin_scale_demonstration_management_package.md).
+It records the measured 24-zone diagnostic run, the same-size repeatability
+pair, reproduction commands, run roots, and boundaries. These are diagnostic
+performance results, not operational or physical-probability claims. The older
+Balfrin runbook remains useful background, but routine diagnostic runs should
+use the single command above.
 
 ## Development Workflow
 

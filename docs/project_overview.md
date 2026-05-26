@@ -29,11 +29,13 @@ proprietary binaries.
 
 Current Balfrin evidence has crossed from dry-run scaffolding into measured
 single-node SLURM execution. The repo records measured single-release-zone,
-target-area, multi-zone, and regional-split `postproc` evidence plus
-interruption/resume and preservation checks. The next useful work is to keep
-turning that capacity into measured runtime, memory, output, and repeatability
-evidence while improving the scientific inputs needed for probability and
-validation.
+target-area, multi-zone, regional-split, and 24-zone diagnostic `postproc`
+evidence plus repeatability, interruption/resume, and preservation checks. The
+reviewer-facing entry point for this evidence is
+`docs/balfrin_scale_demonstration_management_package.md`. The next useful work
+is to turn that diagnostic capacity into stronger scientific inputs for
+probability and validation while keeping operational and physical-probability
+claims separate.
 
 Current executable tasks are authoritative in `docs/task_backlog.md` using
 `TB-xxx` identifiers. Durable decisions are recorded in `docs/decision_log.md`,

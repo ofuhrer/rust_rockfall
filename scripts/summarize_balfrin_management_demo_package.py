@@ -156,6 +156,7 @@ def build_report(
         "uncertainty_section",
         "claim_boundary_section",
         "scaling_section",
+        "diagnostic_performance_section",
         "physical_credibility_section",
         "swiss_wide_extension_section",
         "swiss_scale_feasibility_projection_section",
@@ -183,6 +184,7 @@ def build_report(
             uncertainty_section=dict(evidence_override["uncertainty_section"]),
             claim_boundary_section=dict(evidence_override["claim_boundary_section"]),
             scaling_section=dict(evidence_override["scaling_section"]),
+            diagnostic_performance_section=dict(evidence_override["diagnostic_performance_section"]),
             physical_credibility_section=dict(evidence_override["physical_credibility_section"]),
             swiss_wide_extension_section=dict(evidence_override["swiss_wide_extension_section"]),
             swiss_scale_feasibility_projection_section=dict(
@@ -242,6 +244,7 @@ def build_current_report(
         uncertainty_section=build_uncertainty_section(bundle_report, smoke_report),
         claim_boundary_section=build_claim_boundary_section(post_run_report),
         scaling_section=build_scaling_section(bundle_report, post_run_report),
+        diagnostic_performance_section=build_diagnostic_performance_section(),
         physical_credibility_section=build_physical_credibility_section(physical_credibility_report),
         swiss_wide_extension_section=build_swiss_wide_extension_section(
             bundle_report=bundle_report,
@@ -263,6 +266,15 @@ def build_current_report(
         run_root=run_root,
     )
     multi_zone_handoff_artifact_dir = Path("/tmp/rust_rockfall") / "balfrin_full_scale_readiness_matrix_v1" / "multi_zone_handoff"
+    try:
+        multi_zone_handoff_report = multi_zone_handoff.build_report(artifact_dir=multi_zone_handoff_artifact_dir)
+    except multi_zone_handoff.BalfrinMultiReleaseZoneDemoHandoffError as exc:
+        multi_zone_handoff_report = {
+            "report_status": "blocked_missing_reducer_constraints",
+            "constraint_pressure": {"status": "blocked_missing_reducer_constraints", "blocked_reason": str(exc)},
+            "multi_zone_pressure": {},
+            "follow_up_recommendation": {"action": "refresh_diagnostic_reducer_pressure_evidence"},
+        }
     package_report["readiness_matrix"] = build_readiness_matrix(
         run_root=run_root,
         artifact_dir=artifact_dir,
@@ -271,7 +283,7 @@ def build_current_report(
         replay_report=smoke_report,
         output_tier_report=output_tier.build_report(dict(bundle_report.get("probe_metrics") or {})),
         preservation_report=preservation_gate.build_report(run_root=run_root),
-        multi_zone_handoff_report=multi_zone_handoff.build_report(artifact_dir=multi_zone_handoff_artifact_dir),
+        multi_zone_handoff_report=multi_zone_handoff_report,
         next_live_decision_report=next_live_decision.build_report(
             balfrin_access_preflight=balfrin_access_preflight
         ),
@@ -292,6 +304,7 @@ def assemble_package_report(
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
     scaling_section: dict[str, Any],
+    diagnostic_performance_section: dict[str, Any],
     physical_credibility_section: dict[str, Any],
     swiss_wide_extension_section: dict[str, Any],
     swiss_scale_feasibility_projection_section: dict[str, Any],
@@ -330,6 +343,11 @@ def assemble_package_report(
         ("uncertainty_section", uncertainty_section, build_section_source_paths(uncertainty_section)),
         ("claim_boundary_section", claim_boundary_section, build_section_source_paths(claim_boundary_section)),
         ("scaling_section", scaling_section, build_section_source_paths(scaling_section)),
+        (
+            "diagnostic_performance_section",
+            diagnostic_performance_section,
+            build_section_source_paths(diagnostic_performance_section),
+        ),
         (
             "physical_credibility_section",
             physical_credibility_section,
@@ -377,6 +395,7 @@ def assemble_package_report(
             uncertainty_section,
             claim_boundary_section,
             scaling_section,
+            diagnostic_performance_section,
             physical_credibility_section,
             swiss_wide_extension_section,
             swiss_scale_feasibility_projection_section,
@@ -403,6 +422,7 @@ def assemble_package_report(
         "uncertainty_section": uncertainty_section,
         "claim_boundary_section": claim_boundary_section,
         "scaling_section": scaling_section,
+        "diagnostic_performance_section": diagnostic_performance_section,
         "physical_credibility_section": physical_credibility_section,
         "swiss_wide_extension_section": swiss_wide_extension_section,
         "swiss_scale_feasibility_projection_section": swiss_scale_feasibility_projection_section,
@@ -436,6 +456,7 @@ def blocked_report(
         "uncertainty_section",
         "claim_boundary_section",
         "scaling_section",
+        "diagnostic_performance_section",
         "physical_credibility_section",
         "swiss_wide_extension_section",
         "swiss_scale_feasibility_projection_section",
@@ -476,6 +497,7 @@ def blocked_report(
             "claim_boundaries": claim_boundaries,
         },
         "scaling_section": {"status": "blocked_missing_inputs"},
+        "diagnostic_performance_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "physical_credibility_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "swiss_wide_extension_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
         "swiss_scale_feasibility_projection_section": {"status": "blocked_missing_inputs", "evidence_type": "blocked"},
@@ -562,21 +584,39 @@ def build_readiness_matrix(
             ),
             helper_sources=[
                 "scripts/summarize_balfrin_scale_readiness_matrix.py",
-                "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+                "docs/balfrin_regional_split_run_root_metrics_tb566.md",
                 "docs/balfrin_regional_split_probe_gate_tb432.md",
             ],
             current_evidence={
                 "classification": "measured_regional_split_probe",
                 "evidence_label": "measured_on_balfrin",
-                "job_id": "4350232",
+                "job_id": "4367244",
                 "validation_output_file_count": 130,
-                "hazard_output_file_count": 53,
+                "hazard_output_file_count": 57,
                 "conditional_curve_rows": 729600,
                 "preservation_status": "ready_for_demonstration_evidence",
                 "next_recommended_action": "compare_measured_regional_split_against_scenario_and_output_projections",
                 "supersedes_failed_closed_task": "TB-432",
-                "source_report": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+                "source_report": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
             },
+        ),
+        matrix_row(
+            gate="diagnostic_performance_repeatability",
+            status="measured",
+            gate_status="measured_repeatability_pair",
+            evidence_status="measured",
+            summary=(
+                "TB-579 measured a 24-zone diagnostic reducer-pressure run and TB-581 repeated the same diagnostic shape twice; "
+                "this is current diagnostic performance evidence, not hazard-throughput or operational evidence."
+            ),
+            helper_sources=[
+                "scripts/run_balfrin_diagnostic.py",
+                "scripts/summarize_balfrin_scale_readiness_matrix.py",
+                "docs/balfrin_24_zone_diagnostic_run_tb579.md",
+                "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+                "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+            ],
+            current_evidence=build_diagnostic_performance_section(),
         ),
         matrix_row(
             gate="preservation_gate",
@@ -1022,6 +1062,85 @@ def build_restartability_section(bundle_report: dict[str, Any]) -> dict[str, Any
     }
 
 
+def build_diagnostic_performance_section() -> dict[str, Any]:
+    return {
+        "status": "measured",
+        "evidence_type": "measured",
+        "summary": (
+            "Balfrin now has measured 24-zone single-node postproc diagnostic evidence plus a same-size repeatability pair. "
+            "The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
+        ),
+        "latest_diagnostic": {
+            "task_id": "TB-579",
+            "run_id": "diagnostic_24_zone_simplified_next",
+            "job_id": "4368588",
+            "git_head": "d6863e299a590f97d93cc16ba0018745b2bf6506",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next",
+            "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_simplified_next/run_record.json",
+            "release_zone_count": 24,
+            "reducer_wall_time_seconds": 4.03,
+            "max_rss_mb": 33.711,
+            "output_file_count": 76,
+            "output_bytes": 32904,
+            "manifest_bytes": 20170,
+        },
+        "repeatability_pair": {
+            "task_id": "TB-581",
+            "status": "measured_repeatability_pair",
+            "release_zone_count": 24,
+            "runs": [
+                {
+                    "run_id": "diagnostic_24_zone_repeatability_a_tb581",
+                    "job_id": "4368592",
+                    "git_head": "5f9c93790cfa89855fdbbb3d30be81a31298bb50",
+                    "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_a_tb581",
+                    "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_a_tb581/run_record.json",
+                    "reducer_wall_time_seconds": 4.03,
+                    "max_rss_mb": 34.242,
+                    "output_file_count": 76,
+                    "output_bytes": 32922,
+                    "manifest_bytes": 20218,
+                },
+                {
+                    "run_id": "diagnostic_24_zone_repeatability_b_tb581",
+                    "job_id": "4368593",
+                    "git_head": "5f9c93790cfa89855fdbbb3d30be81a31298bb50",
+                    "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_b_tb581",
+                    "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_24_zone_repeatability_b_tb581/run_record.json",
+                    "reducer_wall_time_seconds": 4.03,
+                    "max_rss_mb": 39.879,
+                    "output_file_count": 76,
+                    "output_bytes": 32922,
+                    "manifest_bytes": 20218,
+                },
+            ],
+            "bounds": {
+                "reducer_wall_time_seconds": {"min": 4.03, "median": 4.03, "max": 4.03, "spread": 0.0},
+                "max_rss_mb": {"min": 34.242, "median": 37.0605, "max": 39.879, "spread": 5.637},
+                "output_file_count": {"min": 76, "median": 76, "max": 76, "spread": 0},
+                "output_bytes": {"min": 32922, "median": 32922, "max": 32922, "spread": 0},
+                "manifest_bytes": {"min": 20218, "median": 20218, "max": 20218, "spread": 0},
+            },
+        },
+        "reproduction_commands": [
+            "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_simplified_next --partition postproc --time 00:30:00",
+            "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_repeatability_a_tb581 --partition postproc --time 00:30:00",
+            "PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --run-id diagnostic_24_zone_repeatability_b_tb581 --partition postproc --time 00:30:00",
+        ],
+        "claim_boundary": (
+            "diagnostic reducer-pressure performance only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim"
+        ),
+        "source_paths": [
+            "docs/balfrin_24_zone_diagnostic_run_tb579.md",
+            "docs/balfrin_24_zone_diagnostic_metrics_tb580.md",
+            "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+            "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+            "scripts/run_balfrin_diagnostic.py",
+            "scripts/summarize_balfrin_scale_readiness_matrix.py",
+        ],
+    }
+
+
 def build_physical_credibility_section(physical_credibility_report: dict[str, Any]) -> dict[str, Any]:
     validation_state = dict(physical_credibility_report.get("validation_calibration_state") or {})
     source_paths = dict(physical_credibility_report.get("current_evidence_sources") or {})
@@ -1115,26 +1234,30 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "status": "projection_only",
         "evidence_type": "projection_only",
         "summary": (
-            "Swiss-scale feasibility remains projection-only: 10-zone is feasible, 100-zone is conditionally feasible but deferred, "
-            "and broader regional plus Swiss-wide workflows remain out of reach under the current single-node/postproc boundary. "
-            "TB-407 supplies measured smallest multi-zone evidence, TB-447/TB-448 supply measured regional split evidence, and the adjacent-candidate management-AOI path now shifts the first remaining bottleneck to scenario cardinality rather than source-zone automation."
+            "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 24-zone is measured as repeated diagnostic postproc evidence, "
+            "100-zone is deferred projection, and broader regional plus Swiss-wide workflows remain phase changes. "
+            "The next blockers are scientific evidence for physical use, queue policy for larger diagnostics, and reducer/output pressure before larger hazard-throughput claims."
         ),
         "projection_classification": {
-            "10_zone": "feasible",
-            "100_zone": "conditionally_feasible_deferred",
+            "10_zone": "hazard_planning_boundary",
+            "16_zone": "measured_diagnostic_postproc",
+            "24_zone": "measured_repeatable_diagnostic_postproc",
+            "100_zone": "projection_only_deferred",
             "regional_split_probe": "measured",
-            "regional": "out_of_reach",
-            "swiss_wide": "out_of_reach",
+            "regional": "deferred_phase_change",
+            "swiss_wide": "deferred_phase_change",
         },
         "upstream_data_blockers": [
-            "scenario_cardinality",
+            "source_frequency",
+            "calibration_holdout",
+            "physical_probability_evidence",
         ],
         "top_blockers": [
-            "scenario_cardinality",
+            "scientific_evidence",
+            "queue_policy",
             "reducer_pressure",
             "hazard_throughput",
-            "gis_packaging",
-            "balfrin_access",
+            "output_bytes",
         ],
         "measured_basis": {
             "aoi_count": 1,
@@ -1142,9 +1265,16 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "trajectory_count": 6,
             "single_node_postproc_boundary": True,
             "adjacent_candidate_review_path": True,
-            "regional_split_job_id": "4350232",
+            "diagnostic_release_zone_count": 24,
+            "diagnostic_latest_job_id": "4368588",
+            "diagnostic_repeatability_job_ids": ["4368592", "4368593"],
+            "diagnostic_reducer_wall_time_seconds": 4.03,
+            "diagnostic_output_file_count": 76,
+            "diagnostic_output_bytes": 32904,
+            "diagnostic_memory_peak_mb_bounds": {"min": 33.711, "max": 39.879},
+            "regional_split_job_id": "4367244",
             "regional_split_validation_output_file_count": 130,
-            "regional_split_hazard_output_file_count": 53,
+            "regional_split_hazard_output_file_count": 57,
             "regional_split_conditional_curve_rows": 729600,
             "regional_split_preservation_status": "ready_for_demonstration_evidence",
         },
@@ -1154,7 +1284,10 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "docs/swiss_scale_feasibility_projection.md",
             "docs/current_maturity_snapshot.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
-            "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+            "docs/balfrin_24_zone_diagnostic_run_tb579.md",
+            "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+            "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+            "docs/balfrin_regional_split_run_root_metrics_tb566.md",
             "docs/balfrin_regional_split_probe_gate_tb432.md",
             "docs/balfrin_management_demo_package.md",
         ],
@@ -1517,6 +1650,12 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  scale_up_authorized: {report['scaling_section'].get('scale_up_authorized', False)}",
             f"  distributed_execution_authorized: {report['scaling_section'].get('distributed_execution_authorized', False)}",
             f"  scaling_implication: {report['scaling_section'].get('scaling_implication', 'unknown')}",
+            "diagnostic_performance_section:",
+            f"  status: {report['diagnostic_performance_section'].get('status', 'unknown')}",
+            f"  latest_job_id: {report['diagnostic_performance_section'].get('latest_diagnostic', {}).get('job_id', 'unknown')}",
+            f"  latest_release_zone_count: {report['diagnostic_performance_section'].get('latest_diagnostic', {}).get('release_zone_count', 'unknown')}",
+            f"  repeatability_status: {report['diagnostic_performance_section'].get('repeatability_pair', {}).get('status', 'unknown')}",
+            f"  claim_boundary: {report['diagnostic_performance_section'].get('claim_boundary', 'unknown')}",
             "physical_credibility_section:",
             f"  status: {report['physical_credibility_section'].get('status', 'unknown')}",
             f"  physical_credibility_state: {report['physical_credibility_section'].get('physical_credibility_state', 'unknown')}",
@@ -1633,6 +1772,7 @@ def summarize_package(
     uncertainty_section: dict[str, Any],
     claim_boundary_section: dict[str, Any],
     scaling_section: dict[str, Any],
+    diagnostic_performance_section: dict[str, Any],
     physical_credibility_section: dict[str, Any],
     swiss_wide_extension_section: dict[str, Any],
     swiss_scale_feasibility_projection_section: dict[str, Any],
@@ -1655,6 +1795,10 @@ def summarize_package(
         swiss_scale_feasibility_projection_section.get("summary")
         or "Swiss-scale feasibility remains projection-only."
     )
+    diagnostic_summary = str(
+        diagnostic_performance_section.get("summary")
+        or "Balfrin diagnostic performance evidence is not yet packaged."
+    )
     failed_closed_summary = str(
         failed_closed_section.get("summary")
         or "Failed-closed branches remain separate from measured evidence."
@@ -1666,7 +1810,7 @@ def summarize_package(
             "Runtime, restartability, GIS scope, uncertainty, and claim boundaries are measured; "
             f"replay is fixture-backed, AOI automation is {aoi_status}, release/scenario automation is {release_status}, "
             f"target-area probe metrics are {probe_status}, Swiss-scale feasibility is projection-only, and failed-closed branches stay separate. "
-            f"{projection_summary} {failed_closed_summary} {swiss_wide_answer} Physical credibility is {physical_state}. "
+            f"{diagnostic_summary} {projection_summary} {failed_closed_summary} {swiss_wide_answer} Physical credibility is {physical_state}. "
             f"{scaling_implication} The next authorized step is {next_step}."
         )
     if package_status == "fixture_backed":
