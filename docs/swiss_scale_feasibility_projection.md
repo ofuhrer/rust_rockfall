@@ -36,6 +36,14 @@ risk, exposure, or vulnerability semantics.
 - Swiss-wide: still deferred as a phase change because there is no measured
   Swiss-wide execution and the physical/scientific evidence basis is not ready.
 
+The next live-run decision gate also reports
+`non_postproc_readiness_assessment_v1`. It compares CPU count, memory, runtime,
+I/O volume, walltime, partition policy, and execution-model evidence. Current
+evidence does not show a measured CPU, memory, runtime, I/O, or walltime reason
+to leave `postproc`; the deferred blockers are partition policy and unsupported
+execution model. The assessment does not request access or authorize a phase
+change.
+
 ## Bottleneck Ranking
 
 The adjacent-candidate branch moved the first blocker away from source-zone

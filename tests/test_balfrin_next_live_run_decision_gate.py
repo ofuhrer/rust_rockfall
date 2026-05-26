@@ -45,6 +45,12 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertEqual(report["criteria"]["missing_target_area_metrics"]["metrics_completion_source"], "blocked_missing_metrics")
         self.assertEqual(report["criteria"]["preservation_gate_readiness"]["status"], "ready")
         self.assertEqual(report["criteria"]["balfrin_access"]["status"], "not_checked_not_needed_for_decision_refresh")
+        self.assertEqual(
+            report["non_postproc_readiness"]["readiness_status"],
+            "deferred_no_policy_or_execution_model_need",
+        )
+        self.assertEqual(report["non_postproc_readiness"]["next_blocker"], "partition_policy")
+        self.assertFalse(report["non_postproc_readiness"]["phase_change_authorized"])
         self.assertFalse(report["criteria"]["balfrin_access"]["hard_live_run_blocker"])
         self.assertEqual(report["ranked_actions"][0]["action_id"], "metrics_completion_rerun")
         self.assertIn("annual frequency", report["recommended_next_action"]["boundary_that_prevents_claim_upgrade"])
@@ -59,6 +65,7 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertIn("physical_evidence_acquisition", rendered)
         self.assertIn("hazard_builder_accumulation_optimization", rendered)
         self.assertIn("defer_portability_or_physical_evidence", rendered)
+        self.assertIn("non_postproc_readiness:", rendered)
 
     def test_multi_zone_branch_lists_exact_blockers(self) -> None:
         report = MODULE.build_report(self.load_fixture("default_bundle.json"))
@@ -441,6 +448,38 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertFalse(planner["six_hour_partition_fill_ok"])
         self.assertIn("expected_walltime_exceeds_six_hours", planner["blockers"])
         self.assertIn("partition_fill_exceeds_six_hours", planner["blockers"])
+
+    def test_non_postproc_readiness_identifies_resource_and_policy_blockers(self) -> None:
+        resource_blocked = MODULE.build_non_postproc_readiness_from_dimensions(
+            {
+                "cpu_count": {"status": "pass"},
+                "memory": {"status": "blocked", "blocker": "memory", "evidence": "peak exceeds node memory"},
+                "runtime": {"status": "pass"},
+                "io_volume": {"status": "pass"},
+                "walltime": {"status": "pass"},
+                "partition_policy": {"status": "deferred", "blocker": "partition_policy"},
+                "execution_model": {"status": "deferred", "blocker": "unsupported_execution_model"},
+            },
+            measured_release_zones=24,
+        )
+        policy_deferred = MODULE.build_non_postproc_readiness_from_dimensions(
+            {
+                "cpu_count": {"status": "pass"},
+                "memory": {"status": "pass"},
+                "runtime": {"status": "pass"},
+                "io_volume": {"status": "pass"},
+                "walltime": {"status": "pass"},
+                "partition_policy": {"status": "deferred", "blocker": "partition_policy"},
+                "execution_model": {"status": "deferred", "blocker": "unsupported_execution_model"},
+            },
+            measured_release_zones=24,
+        )
+
+        self.assertEqual(resource_blocked["readiness_status"], "blocked_measured_resource_or_evidence_gap")
+        self.assertEqual(resource_blocked["next_blocker"], "memory")
+        self.assertEqual(policy_deferred["readiness_status"], "deferred_no_policy_or_execution_model_need")
+        self.assertEqual(policy_deferred["next_blocker"], "partition_policy")
+        self.assertFalse(policy_deferred["phase_change_authorized"])
 
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

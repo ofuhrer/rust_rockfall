@@ -287,6 +287,7 @@ def build_report(
     criteria = build_criteria(bundle)
     option_assessments = build_option_assessments(criteria)
     recommended = choose_recommendation(option_assessments)
+    non_postproc_readiness = build_non_postproc_readiness_assessment(criteria)
 
     report = {
         "schema_version": SCHEMA_VERSION,
@@ -295,6 +296,7 @@ def build_report(
         "recommended_next_action": recommended,
         "next_follow_up_package_task": recommended["follow_up_task"],
         "criteria": criteria,
+        "non_postproc_readiness": non_postproc_readiness,
         "option_assessments": option_assessments,
         "ranked_actions": build_ranked_actions(option_assessments),
         "evidence_sources": build_evidence_sources(bundle),
@@ -623,6 +625,118 @@ def diagnostic_run_planner_summary(
     if classification == "defer_due_to_capacity":
         return "Capacity or six-hour partition-fill checks say to defer: " + ", ".join(blockers)
     return "The diagnostic queue decision is unknown until the preflight, remote head, and queue snapshot are current."
+
+
+NON_POSTPROC_DIMENSIONS = (
+    "cpu_count",
+    "memory",
+    "runtime",
+    "io_volume",
+    "walltime",
+    "partition_policy",
+    "execution_model",
+)
+
+
+def build_non_postproc_readiness_assessment(criteria: dict[str, Any]) -> dict[str, Any]:
+    evidence = dict(criteria.get("multi_zone_balfrin_evidence") or {})
+    planner = dict(dict(criteria.get("balfrin_access") or {}).get("diagnostic_run_planner") or {})
+    measured_release_zones = evidence.get("release_zone_count")
+    reducer_wall = evidence.get("reducer_wall_time_seconds")
+    output_bytes = evidence.get("output_byte_count")
+    max_rss_mb = evidence.get("max_rss_mb") or evidence.get("memory_peak_mb")
+    expected_wall_minutes = planner.get("expected_wall_minutes")
+
+    dimension_inputs = {
+        "cpu_count": {
+            "status": "pass",
+            "evidence": "single-node postproc diagnostics use bounded CPU counts and do not show CPU-count exhaustion",
+            "blocker": "",
+        },
+        "memory": {
+            "status": "pass" if not isinstance(max_rss_mb, (int, float)) or max_rss_mb < 400_000 else "blocked",
+            "evidence": f"measured max_rss_mb={max_rss_mb}",
+            "blocker": "memory" if isinstance(max_rss_mb, (int, float)) and max_rss_mb >= 400_000 else "",
+        },
+        "runtime": {
+            "status": "pass" if not isinstance(reducer_wall, (int, float)) or reducer_wall < 21_600 else "blocked",
+            "evidence": f"measured reducer_wall_time_seconds={reducer_wall}",
+            "blocker": "runtime" if isinstance(reducer_wall, (int, float)) and reducer_wall >= 21_600 else "",
+        },
+        "io_volume": {
+            "status": "pass" if not isinstance(output_bytes, int) or output_bytes < 100_000_000_000 else "blocked",
+            "evidence": f"measured output_byte_count={output_bytes}",
+            "blocker": "io" if isinstance(output_bytes, int) and output_bytes >= 100_000_000_000 else "",
+        },
+        "walltime": {
+            "status": "pass"
+            if not isinstance(expected_wall_minutes, (int, float)) or expected_wall_minutes <= DIAGNOSTIC_POSTPROC_PARTITION_FILL_LIMIT_MINUTES
+            else "blocked",
+            "evidence": f"expected_wall_minutes={expected_wall_minutes}",
+            "blocker": "walltime"
+            if isinstance(expected_wall_minutes, (int, float))
+            and expected_wall_minutes > DIAGNOSTIC_POSTPROC_PARTITION_FILL_LIMIT_MINUTES
+            else "",
+        },
+        "partition_policy": {
+            "status": "deferred",
+            "evidence": "no measured resource bottleneck currently requires leaving postproc",
+            "blocker": "partition_policy",
+        },
+        "execution_model": {
+            "status": "deferred",
+            "evidence": "current workflow is single-node postproc; distributed or GPU execution is not implemented",
+            "blocker": "unsupported_execution_model",
+        },
+    }
+    return build_non_postproc_readiness_from_dimensions(
+        dimension_inputs,
+        measured_release_zones=measured_release_zones,
+    )
+
+
+def build_non_postproc_readiness_from_dimensions(
+    dimension_inputs: dict[str, dict[str, Any]],
+    *,
+    measured_release_zones: Any = None,
+) -> dict[str, Any]:
+    dimensions = []
+    for dimension in NON_POSTPROC_DIMENSIONS:
+        row = dict(dimension_inputs.get(dimension) or {})
+        status = str(row.get("status") or "missing")
+        dimensions.append(
+            {
+                "dimension": dimension,
+                "status": status,
+                "evidence": str(row.get("evidence") or ""),
+                "blocker": str(row.get("blocker") or ""),
+            }
+        )
+    blockers = [row["blocker"] for row in dimensions if row["status"] in {"blocked", "deferred", "missing"} and row["blocker"]]
+    hard_blockers = [row["blocker"] for row in dimensions if row["status"] in {"blocked", "missing"} and row["blocker"]]
+    if hard_blockers:
+        readiness_status = "blocked_measured_resource_or_evidence_gap"
+        next_blocker = hard_blockers[0]
+    elif blockers:
+        readiness_status = "deferred_no_policy_or_execution_model_need"
+        next_blocker = blockers[0]
+    else:
+        readiness_status = "ready_to_request_non_postproc_phase_change"
+        next_blocker = ""
+    return {
+        "schema_version": "non_postproc_readiness_assessment_v1",
+        "readiness_status": readiness_status,
+        "phase_change_authorized": False,
+        "measured_release_zones": measured_release_zones,
+        "next_blocker": next_blocker,
+        "dimensions": dimensions,
+        "supporting_evidence_needed": [
+            "measured postproc bottleneck that cannot be resolved within postproc",
+            "scheduler policy confirmation for the requested non-postproc partition",
+            "reproducible run contract for any changed execution model",
+        ],
+        "boundary_note": "Assessment only; this does not request non-postproc access or authorize a phase change.",
+    }
 
 
 def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -1689,6 +1803,20 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"  - rank {row.get('rank', '?')}: {row.get('action_id', 'unknown')} "
             f"({row.get('status', 'unknown')}, {row.get('path_state', 'unknown')})"
         )
+
+    non_postproc = report.get("non_postproc_readiness", {})
+    if isinstance(non_postproc, dict) and non_postproc:
+        lines.extend(
+            [
+                "",
+                "non_postproc_readiness:",
+                f"  readiness_status: {non_postproc.get('readiness_status', 'unknown')}",
+                f"  next_blocker: {non_postproc.get('next_blocker', '')}",
+                f"  phase_change_authorized: {non_postproc.get('phase_change_authorized', False)}",
+            ]
+        )
+        for row in non_postproc.get("dimensions", []):
+            lines.append(f"  - {row.get('dimension')}: {row.get('status')} ({row.get('blocker')})")
 
     recommended = report.get("recommended_next_action", {})
     lines.extend(

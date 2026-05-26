@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-593: Assess Non-Postproc Partition Requirements And Risks
-
-Goal: Determine what evidence and safeguards are needed before any non-`postproc` Balfrin partition could be responsibly requested.
-
-Capability gap reduced: Turns the non-postproc path into a concrete resource, policy, and reproducibility assessment.
-
-Why this outranks alternatives: Non-postproc access should be driven by measured bottlenecks and scheduler policy, not convenience.
-
-Inspect first:
-
-- `docs/balfrin_skills.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Add a non-postproc readiness report that compares measured CPU, memory, runtime, IO, walltime, and partition-policy needs.
-- Identify whether the next blocker is walltime, memory, queue policy, CPU count, IO, or unsupported execution model.
-- Keep the report as an assessment unless a future task explicitly authorizes a non-postproc phase change.
-
-Definition of done:
-
-- Focused decision/readiness checks pass and the repo can justify why non-postproc remains currently deferred or what exact evidence would support a request.
-
-
 ### TB-594: Design A Distributed Execution Contract Without Running It
 
 Goal: Specify the chunking, merge, idempotency, restartability, and provenance contract required for distributed execution.

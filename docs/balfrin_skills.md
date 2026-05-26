@@ -138,6 +138,12 @@ post-processing work. Prefer `pp-short` for short checks, `postproc` for
 ordinary CPU work, `pp-serial` for serial/low-core work, and `pp-long` for
 longer CPU work.
 
+For this repository, routine diagnostics remain on `postproc`. A non-`postproc`
+request should be driven by the machine-readable non-postproc readiness
+assessment in `scripts/summarize_balfrin_next_live_run_decision_gate.py`, which
+checks measured CPU, memory, runtime, I/O, walltime, partition-policy, and
+execution-model evidence. Current evidence keeps non-`postproc` deferred.
+
 ### GPU Nodes
 
 Representative sampled nodes: `nid001009` for full CPU/OS data and `nid001005`
