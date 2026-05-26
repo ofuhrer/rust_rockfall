@@ -9239,3 +9239,27 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: contract only; no distributed job, multi-node execution, scheduler phase change, Swiss-wide, operational, or physical-probability claim.
 - Next task: `TB-595`
+
+### TB-595: Prototype Local Distributed-Orchestration Semantics
+
+- Date: 2026-05-26
+- Commit: `7072bbb`
+- Objective: exercise the distributed contract locally with deterministic fixture chunks, a retry, and reducer replay comparison.
+- Files changed: `scripts/generate_pilot_command_plan.py`, `tests/test_pilot_command_plan.py`, `docs/tschamut_public_scalable_conditional_execution.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `local_distributed_orchestration_dry_run_v1` to the portable command plan.
+  - Split synthetic reducer rows into three deterministic fixture chunks, simulated one failed first attempt and retry, merged by sorted chunk id, and compared the merged state against the equivalent single-process state.
+  - Preserved replay-critical output classes in the dry-run report and named remaining cluster-side blockers.
+  - Backed the report with command-plan tests and existing real chunked-reducer retry tests.
+  - Removed TB-595 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/generate_pilot_command_plan.py tests/test_pilot_command_plan.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_pilot_command_plan -v`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --site tschamut_same_scale --format json --json-output /tmp/tb595_command_plan.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_matches_serial_outputs_and_writes_chunk_manifests tests.test_hazard_layers.HazardLayerTests.test_chunked_reducer_retries_failed_chunks_on_restart -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: local in-memory fixture plus existing local reducer tests only; no distributed job, Balfrin scheduler exercise, shared-filesystem lease measurement, Swiss-wide, operational, or physical-probability claim.
+- Next task: `TB-596`
