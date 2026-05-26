@@ -89,6 +89,13 @@ one place. Its current first scientifically useful action remains physical
 probability evidence acquisition; the surface is a roadmap and does not
 authorize any phase change.
 
+The active adjacent-candidate management-AOI path now has local scenario-table
+and storage-pressure measurements. The current accepted candidate generates
+`3` scenario rows, and the measured compact planning cap for the next package is
+`30` candidate records / `300` scenario rows with a `rebuildable_reduced`
+Balfrin replay tier. This helps size the next diagnostic package without
+promoting operational or physical-probability claims.
+
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real
 core inputs are ready; and physical-evidence intake separates observed

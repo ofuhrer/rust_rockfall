@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-610: Regenerate Adjacent-Candidate Scenario Tables For Scale Planning
-
-Goal: Move the active management-AOI path from candidate review into concrete scenario-table evidence.
-
-Capability gap reduced: Reduces the scenario-cardinality and batching uncertainty that blocks larger Balfrin packages.
-
-Why this outranks alternatives: The current task context says to prefer the adjacent-candidate review path over stale source-zone-overlap repair.
-
-Inspect first:
-
-- `scripts/generate_candidate_source_zone_scenarios.py`
-- `scripts/generate_balfrin_target_area_scenario_tables.py`
-- `scripts/measure_scenario_storage_output_tier_pressure.py`
-- `scripts/summarize_management_aoi_scenario_pressure.py`
-- `docs/current_maturity_snapshot.md`
-
-Deliverables:
-
-- Generate or refresh scenario-table evidence for the adjacent-candidate path and measure row counts, storage, manifest pressure, and batching implications.
-
-Definition of done:
-
-- Scenario-cardinality pressure is measured for the current active path and the next Balfrin package size can use that evidence.
-
-
 ### TB-611: Build A 100-Zone Diagnostic Submission Package Without Submitting It
 
 Goal: Prepare a 100-zone diagnostic package to expose exact package size, commands, output budget, and pre-submit blockers.
