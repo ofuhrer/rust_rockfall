@@ -151,6 +151,8 @@ starting context for implementation unless a task explicitly asks for them.
   diagnostic repeatability record.
 - `balfrin_24_zone_repeatability_metrics_tb582.md`: TB-582 bounded
   repeatability summary for 24-zone diagnostic runs.
+- `balfrin_postproc_capacity_snapshot_20260526.md`: TB-598 live `postproc`
+  capacity snapshot and next 32-zone diagnostic submission size.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-598: Snapshot Current Balfrin Postproc Capacity And Running Jobs
-
-Goal: Establish the current Balfrin `postproc` queue state before submitting larger measurements.
-
-Capability gap reduced: Prevents large-run planning from relying on stale assumptions about available capacity.
-
-Why this outranks alternatives: Balfrin access is currently healthy, but live `postproc` occupancy has running jobs and must shape safe submission order.
-
-Inspect first:
-
-- `docs/balfrin_skills.md`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/run_balfrin_diagnostic.py`
-- external: Balfrin `squeue`, `sinfo`, and any currently running `olifu` jobs
-
-Deliverables:
-
-- Record the current `postproc` node/job availability, identify any running `olifu` job roots that should be collected before new submissions, and name the largest bounded diagnostic submission that can run without filling `postproc` for more than 6 hours.
-
-Definition of done:
-
-- A dated queue/capacity snapshot exists in the work log or a small evidence artifact, and the next executable submission size is explicit.
-
-
 ### TB-599: Submit And Monitor The Next Bounded 32-Zone Diagnostic On Balfrin
 
 Goal: Measure the next diagnostic reducer-pressure size beyond the repeated 24-zone ceiling.
