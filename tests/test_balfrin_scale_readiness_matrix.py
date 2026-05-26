@@ -33,6 +33,17 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertFalse(report["operational_readiness_check"]["operational_candidate_allowed"])
         self.assertIn("scientific_validation", report["operational_readiness_check"]["failing_criteria"])
         self.assertIn("support_status", report["operational_readiness_check"]["failing_criteria"])
+        phase_change = report["phase_change_decision_check"]
+        self.assertEqual(phase_change["schema_version"], "phase_change_decision_check_v1")
+        self.assertEqual(phase_change["decision_status"], "blocked_or_deferred")
+        self.assertFalse(phase_change["phase_change_authorized"])
+        self.assertEqual(
+            phase_change["first_scientifically_useful_next_action"]["readiness_class"],
+            "physical_probability",
+        )
+        self.assertIn("swiss_wide", phase_change["blocked_or_deferred_classes"])
+        self.assertIn("distributed", phase_change["blocked_or_deferred_classes"])
+        self.assertIn("non_postproc", phase_change["blocked_or_deferred_classes"])
         self.assertEqual(
             report["next_evidence_field"],
             "regional_split_projection_delta_summary",
@@ -644,6 +655,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("matrix_status:", buffer.getvalue())
         self.assertIn("operational_readiness_check:", buffer.getvalue())
+        self.assertIn("phase_change_decision_check:", buffer.getvalue())
+        self.assertIn("first_next_action:", buffer.getvalue())
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -715,6 +728,73 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(check["readiness_status"], "operational_candidate_ready")
         self.assertTrue(check["operational_candidate_allowed"])
         self.assertEqual(check["failing_criteria"], [])
+
+    def test_phase_change_decision_check_ranks_scientific_evidence_first(self) -> None:
+        check = MODULE.build_phase_change_decision_check(
+            operational_readiness_check={
+                "readiness_status": "diagnostic_only_not_operational",
+                "first_missing_input": "scientific_validation",
+            },
+            physical_probability_readiness_check={
+                "physical_probability_claims_allowed": False,
+                "first_blocking_evidence_class": "source_frequency_evidence",
+            },
+            swiss_wide_phase_change_readiness={
+                "phase_change_status": "deferred",
+                "first_missing_input": "national_public_geodata_inventory",
+            },
+            non_postproc_readiness={
+                "readiness_status": "deferred_no_policy_or_execution_model_need",
+                "next_blocker": "partition_policy",
+            },
+            distributed_execution_contract={
+                "distributed_execution_authorized": False,
+            },
+            local_distributed_orchestration_dry_run={
+                "remaining_cluster_side_blockers": ["scheduler submission missing"],
+            },
+        )
+
+        self.assertEqual(check["decision_status"], "blocked_or_deferred")
+        self.assertEqual(check["blocked_or_deferred_classes"][0], "physical_probability")
+        self.assertEqual(
+            check["first_scientifically_useful_next_action"]["next_task"],
+            "stage_source_frequency_release_probability_block_population_and_holdout_validation_evidence",
+        )
+        self.assertEqual(check["ranked_next_actions"][1]["readiness_class"], "swiss_wide")
+        self.assertFalse(check["phase_change_authorized"])
+
+    def test_phase_change_decision_check_can_reach_review_ready_without_authorizing(self) -> None:
+        check = MODULE.build_phase_change_decision_check(
+            operational_readiness_check={
+                "readiness_status": "operational_candidate_ready",
+                "first_missing_input": None,
+            },
+            physical_probability_readiness_check={
+                "physical_probability_claims_allowed": True,
+                "first_blocking_evidence_class": "",
+            },
+            swiss_wide_phase_change_readiness={
+                "phase_change_status": "ready_for_phase_change_review",
+                "first_missing_input": None,
+            },
+            non_postproc_readiness={
+                "readiness_status": "ready_to_request_non_postproc_phase_change",
+                "next_blocker": None,
+            },
+            distributed_execution_contract={
+                "distributed_execution_authorized": True,
+            },
+            local_distributed_orchestration_dry_run={
+                "remaining_cluster_side_blockers": [],
+            },
+        )
+
+        self.assertEqual(check["decision_status"], "ready_for_phase_change_review")
+        self.assertEqual(check["blocked_or_deferred_classes"], [])
+        self.assertEqual(check["ranked_next_actions"], [])
+        self.assertIsNone(check["first_scientifically_useful_next_action"])
+        self.assertFalse(check["phase_change_authorized"])
 
 
 if __name__ == "__main__":

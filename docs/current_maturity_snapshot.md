@@ -82,6 +82,12 @@ for explicitly labelled holdout-validation records.
 The multisite source/scenario audit now turns the second-site gap into a
 validation-acquisition plan, splitting public-geodata blockers from
 field/observational blockers and naming the first executable staging task.
+The scale readiness matrix now also exposes
+`phase_change_decision_check_v1`, which ranks operational,
+physical-probability, Swiss-wide, non-`postproc`, and distributed readiness in
+one place. Its current first scientifically useful action remains physical
+probability evidence acquisition; the surface is a roadmap and does not
+authorize any phase change.
 
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real

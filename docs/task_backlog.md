@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-597: Create A Readiness Roadmap And Decision Check
-
-Goal: Combine operational, physical-probability, Swiss-wide, non-postproc, and distributed readiness into one phase-change decision check.
-
-Capability gap reduced: Replaces scattered prose with one ranked roadmap for future evidence work.
-
-Why this outranks alternatives: After individual readiness checks exist, the project needs one decision surface that says which evidence gap is most useful to close next.
-
-Inspect first:
-
-- `docs/current_maturity_snapshot.md`
-- `docs/decision_log.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Add a phase-change decision report that evaluates each readiness class independently.
-- Produce a ranked next-action list for the first scientifically useful evidence upgrade.
-- Link the decision surface from the maturity snapshot without changing current output labels.
-
-Definition of done:
-
-- Focused decision/gap tests pass and each readiness class has a concrete next task or an explicit deferral reason.
-
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

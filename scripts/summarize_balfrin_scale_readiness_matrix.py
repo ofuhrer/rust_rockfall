@@ -21,6 +21,8 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts import estimate_swiss_wide_execution_envelope as swiss_wide  # noqa: E402
+from scripts import assess_validation_calibration_evidence_gaps as validation_gaps  # noqa: E402
+from scripts import generate_pilot_command_plan as pilot_command_plan  # noqa: E402
 from scripts import generate_balfrin_multi_release_zone_demo_handoff as handoff  # noqa: E402
 from scripts import measure_scenario_storage_output_tier_pressure as scenario_pressure  # noqa: E402
 from scripts import preflight_balfrin_smallest_multi_zone_probe_authorization as smallest_preflight  # noqa: E402
@@ -32,6 +34,7 @@ from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure  #
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_scale_readiness_matrix_v1"
+PHASE_CHANGE_DECISION_SCHEMA_VERSION = "phase_change_decision_check_v1"
 REDUCER_PRESSURE_REGENERATION_COMMAND = (
     "PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py "
     "--materialize-root /tmp/rust_rockfall/balfrin_scale_readiness_matrix_v1/reducer_pressure --format json"
@@ -1423,6 +1426,85 @@ def build_report() -> dict[str, Any]:
         for item in next_probe_ranking
     ]
     operational_readiness_check = build_operational_readiness_check(default_operational_readiness_inputs(rows))
+    physical_probability_report = validation_gaps.build_report()
+    projected_row = _projection_row()
+    swiss_wide_national_requirements = swiss_wide.build_swiss_wide_national_requirements(
+        projected_storage_bytes={
+            "nominal": projected_row.get("bytes"),
+            "high": projected_row.get("bytes"),
+        },
+        projected_file_count={
+            "nominal": projected_row.get("file_count"),
+            "high": projected_row.get("file_count"),
+        },
+        projected_job_count=26,
+        projected_jobs_per_aoi=1,
+    )
+    swiss_wide_phase_change_readiness = swiss_wide.build_swiss_wide_phase_change_readiness(
+        projection_status="no_go_extrapolated_beyond_measured_evidence",
+        no_go_labels=["aoi_count_exceeds_measured_support", "total_job_count_exceeds_measured_single_job_support"],
+        distributed_execution_authorized=False,
+        national_requirements=swiss_wide_national_requirements,
+    )
+    non_postproc_readiness = decision_gate.build_non_postproc_readiness_from_dimensions(
+        {
+            "cpu_count": {
+                "status": "pass",
+                "blocker": "",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "measured CPU exhaustion on postproc",
+            },
+            "memory": {
+                "status": "pass",
+                "blocker": "",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "measured memory pressure on postproc",
+            },
+            "runtime": {
+                "status": "pass",
+                "blocker": "",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "measured runtime pressure on postproc",
+            },
+            "io_volume": {
+                "status": "pass",
+                "blocker": "",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "measured I/O pressure on postproc",
+            },
+            "walltime": {
+                "status": "pass",
+                "blocker": "",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "measured walltime pressure on postproc",
+            },
+            "partition_policy": {
+                "status": "deferred",
+                "blocker": "partition_policy",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "documented non-postproc partition policy need",
+            },
+            "execution_model": {
+                "status": "deferred",
+                "blocker": "unsupported_execution_model",
+                "evidence": "scale_matrix_phase_change_decision",
+                "required_evidence_for_phase_change": "supported non-postproc execution model",
+            },
+        },
+        measured_release_zones=diagnostic_ceiling.get("simultaneous_release_zone_batch_max"),
+    )
+    pilot_plan = pilot_command_plan.build_report(
+        "tschamut_same_scale",
+        pilot_command_plan.DEFAULT_SECOND_SITE_CONFIG,
+    )
+    phase_change_decision_check = build_phase_change_decision_check(
+        operational_readiness_check=operational_readiness_check,
+        physical_probability_readiness_check=physical_probability_report["physical_probability_readiness_check"],
+        swiss_wide_phase_change_readiness=swiss_wide_phase_change_readiness,
+        non_postproc_readiness=non_postproc_readiness,
+        distributed_execution_contract=pilot_plan["distributed_execution_contract"],
+        local_distributed_orchestration_dry_run=pilot_plan["local_distributed_orchestration_dry_run"],
+    )
     projection_summary = {
         "status": "projection_only",
         "current_practical_ceiling": (
@@ -1564,6 +1646,7 @@ def build_report() -> dict[str, Any]:
             "blocked_reason": decision_report.get("blocked_reason"),
         },
         "operational_readiness_check": operational_readiness_check,
+        "phase_change_decision_check": phase_change_decision_check,
         "next_probe_ranking": next_probe_ranking,
         "swiss_scale_feasibility_projection": projection_summary,
         "next_recommended_scaling_task": next_recommended_scaling_task or "second_site_public_context_progress",
@@ -1781,6 +1864,96 @@ def build_operational_readiness_check(inputs: dict[str, dict[str, Any]]) -> dict
     }
 
 
+def build_phase_change_decision_check(
+    *,
+    operational_readiness_check: dict[str, Any],
+    physical_probability_readiness_check: dict[str, Any],
+    swiss_wide_phase_change_readiness: dict[str, Any],
+    non_postproc_readiness: dict[str, Any],
+    distributed_execution_contract: dict[str, Any],
+    local_distributed_orchestration_dry_run: dict[str, Any],
+) -> dict[str, Any]:
+    classes = {
+        "physical_probability": {
+            "status": "ready"
+            if physical_probability_readiness_check.get("physical_probability_claims_allowed")
+            else "blocked",
+            "next_task": "stage_source_frequency_release_probability_block_population_and_holdout_validation_evidence",
+            "deferral_reason": physical_probability_readiness_check.get("first_blocking_evidence_class")
+            or "physical_probability_evidence_missing",
+            "evidence_source": "assess_validation_calibration_evidence_gaps.py",
+        },
+        "operational": {
+            "status": "ready"
+            if operational_readiness_check.get("readiness_status") == "operational_candidate_ready"
+            else "blocked",
+            "next_task": "complete_scientific_validation_gis_qa_provenance_monitoring_versioning_and_support_inputs",
+            "deferral_reason": operational_readiness_check.get("first_missing_input") or "operational_inputs_missing",
+            "evidence_source": "summarize_balfrin_scale_readiness_matrix.py",
+        },
+        "swiss_wide": {
+            "status": "ready"
+            if swiss_wide_phase_change_readiness.get("phase_change_status") == "ready_for_phase_change_review"
+            else "deferred",
+            "next_task": (
+                "complete_national_public_geodata_inventory_tiling_execution_validation_and_review_inputs"
+            ),
+            "deferral_reason": swiss_wide_phase_change_readiness.get("first_missing_input")
+            or "swiss_wide_phase_change_inputs_missing",
+            "evidence_source": "estimate_swiss_wide_execution_envelope.py",
+        },
+        "non_postproc": {
+            "status": "ready"
+            if non_postproc_readiness.get("readiness_status") == "ready_to_request_non_postproc_phase_change"
+            else "deferred",
+            "next_task": "collect_partition_policy_and_execution_model_evidence_after_postproc_pressure_requires_it",
+            "deferral_reason": non_postproc_readiness.get("next_blocker") or "non_postproc_phase_change_not_needed",
+            "evidence_source": "summarize_balfrin_next_live_run_decision_gate.py",
+        },
+        "distributed": {
+            "status": "ready"
+            if distributed_execution_contract.get("distributed_execution_authorized")
+            else "deferred",
+            "next_task": "exercise_scheduler_submission_collection_shared_filesystem_leases_and_restart_costs",
+            "deferral_reason": (
+                (local_distributed_orchestration_dry_run.get("remaining_cluster_side_blockers") or [None])[0]
+                or "distributed_execution_authorization_missing"
+            ),
+            "evidence_source": "generate_pilot_command_plan.py",
+        },
+    }
+    ranked_order = [
+        "physical_probability",
+        "swiss_wide",
+        "distributed",
+        "non_postproc",
+        "operational",
+    ]
+    ranked_next_actions = [
+        {
+            "rank": index + 1,
+            "readiness_class": class_name,
+            "status": classes[class_name]["status"],
+            "next_task": classes[class_name]["next_task"],
+            "deferral_reason": classes[class_name]["deferral_reason"],
+            "evidence_source": classes[class_name]["evidence_source"],
+        }
+        for index, class_name in enumerate(ranked_order)
+        if classes[class_name]["status"] != "ready"
+    ]
+    all_ready = not ranked_next_actions
+    return {
+        "schema_version": PHASE_CHANGE_DECISION_SCHEMA_VERSION,
+        "decision_status": "ready_for_phase_change_review" if all_ready else "blocked_or_deferred",
+        "phase_change_authorized": False,
+        "readiness_classes": classes,
+        "blocked_or_deferred_classes": [row["readiness_class"] for row in ranked_next_actions],
+        "ranked_next_actions": ranked_next_actions,
+        "first_scientifically_useful_next_action": ranked_next_actions[0] if ranked_next_actions else None,
+        "claim_boundary": "decision surface only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc phase change is authorized",
+    }
+
+
 def render_text_report(report: dict[str, Any]) -> str:
     lines = [
         "Balfrin Scale Readiness Baseline Matrix",
@@ -1795,6 +1968,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"  passing_criteria_count: {report['operational_readiness_check']['passing_criteria_count']}/{report['operational_readiness_check']['required_criteria_count']}",
         f"  failing_criteria: {', '.join(report['operational_readiness_check']['failing_criteria']) or 'none'}",
         f"  first_missing_input: {report['operational_readiness_check']['first_missing_input'] or 'none'}",
+        "phase_change_decision_check:",
+        f"  decision_status: {report['phase_change_decision_check']['decision_status']}",
+        f"  blocked_or_deferred_classes: {', '.join(report['phase_change_decision_check']['blocked_or_deferred_classes']) or 'none'}",
+        f"  first_next_action: {(report['phase_change_decision_check']['first_scientifically_useful_next_action'] or {}).get('next_task', 'none')}",
         "swiss_scale_feasibility_projection:",
         f"  current_practical_ceiling: {report['swiss_scale_feasibility_projection']['current_practical_ceiling']}",
         f"  first_bottleneck: {report['swiss_scale_feasibility_projection']['first_bottleneck']}",
