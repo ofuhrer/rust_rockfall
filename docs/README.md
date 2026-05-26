@@ -159,6 +159,8 @@ starting context for implementation unless a task explicitly asks for them.
   diagnostic `postproc` run record and metrics.
 - `balfrin_hazard_throughput_package_tb602.md`: TB-602 ready no-submit
   bounded hazard-throughput package for the next `postproc` run.
+- `balfrin_hazard_throughput_run_tb603.md`: TB-603 measured bounded
+  hazard-throughput `postproc` run and metrics.
 - `balfrin_four_zone_hazard_run_tb370.md`: TB-370 fail-closed four-zone hazard
   run gate report before `sbatch`.
 - `balfrin_four_zone_hazard_run_tb355.md`: TB-355 fail-closed four-zone hazard

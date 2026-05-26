@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-603: Submit And Monitor The Larger Bounded Hazard-Throughput Probe
-
-Goal: Measure a larger bounded hazard-throughput run on Balfrin `postproc`.
-
-Capability gap reduced: Provides direct evidence for runtime, memory, output, and preservation behavior of the actual hazard workflow.
-
-Why this outranks alternatives: This is the key missing performance demonstration between current small measured probes and Swiss-scale projection.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- generated scratch: reviewed hazard-throughput submission package from TB-602
-
-Deliverables:
-
-- Submit the package, monitor to terminal state, collect run-root metrics, and preserve validation/hazard output counts, bytes, runtime, memory, and conditional-curve rows.
-
-Definition of done:
-
-- The run is measured and collection-ready, or a persistent submission/runtime blocker is captured with the final scheduler/log evidence.
-
-
 ### TB-604: Promote Hazard-Throughput Evidence Into The Readiness Matrix
 
 Goal: Integrate the measured larger hazard-throughput result into scale-readiness and Swiss-feasibility surfaces.
