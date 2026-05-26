@@ -8963,3 +8963,25 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: repeatability summary for single-node 24-zone `postproc` reducer-pressure diagnostics only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-583`
+
+### TB-583: Recompute Swiss-Scale Feasibility From The New Diagnostic Evidence
+
+- Date: 2026-05-26
+- Commit: `6a36156`
+- Objective: refresh the Swiss-scale feasibility projection so it separates 10-zone hazard planning, 16/24-zone diagnostic evidence, 100-zone extrapolation, regional deferral, and Swiss-wide deferral.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added diagnostic-support fields to the Swiss-wide envelope helper so latest Balfrin diagnostic run records, per-zone runtime/output coefficients, and repeatability bounds are surfaced separately from hazard-throughput coefficients.
+  - Added 16-zone and 24-zone diagnostic planning classes alongside 10-zone, 100-zone, regional, and Swiss-wide classes, with explicit blocker categories.
+  - Updated the scale readiness projection to report the 24-zone diagnostic ceiling and repeatability status when run records are available.
+  - Refreshed the feasibility document around the measured 24-zone diagnostic/repeatability evidence while keeping broader claims deferred.
+  - Removed TB-583 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py scripts/summarize_balfrin_scale_readiness_matrix.py tests/test_swiss_wide_execution_envelope.py tests/test_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope tests.test_balfrin_scale_readiness_matrix tests.test_large_scale_execution_probe -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: diagnostic reducer-pressure feasibility only; 100-zone, regional, Swiss-wide, operational, physical-probability, distributed, and non-`postproc` claims remain deferred.
+- Next task: `TB-584`
