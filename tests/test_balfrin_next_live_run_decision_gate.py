@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import importlib.util
 import io
 import json
@@ -325,6 +326,121 @@ class BalfrinNextLiveRunDecisionGateTests(unittest.TestCase):
         self.assertIn("scripts/run_balfrin_diagnostic.py", criteria["next_safe_expansion"])
         self.assertEqual(multi_zone["scaling_frontier_branch"], "diagnostic_single_node_postproc_boundary")
         self.assertIn("diagnostic single-node postproc evidence", multi_zone["next_safe_expansion"])
+
+    def test_queue_aware_diagnostic_planner_classifies_run_now_and_batch_now(self) -> None:
+        access = {
+            "status": "ready_for_read_only_collection",
+            "ready_for_pre_submit": True,
+            "remote_head": "abc123",
+            "captured_at": "2026-05-26T20:00:00Z",
+            "postproc_queue_snapshot": {
+                "partition": "postproc",
+                "idle_nodes": 4,
+                "total_nodes": 8,
+                "running_jobs": 40,
+                "pending_jobs": 0,
+                "current_user_jobs": 0,
+            },
+        }
+        now = dt.datetime(2026, 5, 26, 20, 10, tzinfo=dt.UTC)
+
+        single = MODULE.build_diagnostic_run_planner(
+            access,
+            now=now,
+            local_head="abc123",
+            diagnostic_job_count=1,
+            expected_wall_minutes=30,
+        )
+        batch = MODULE.build_diagnostic_run_planner(
+            access,
+            now=now,
+            local_head="abc123",
+            diagnostic_job_count=3,
+            expected_wall_minutes=30,
+        )
+
+        self.assertEqual(single["classification"], "run_now")
+        self.assertEqual(batch["classification"], "run_batch_now")
+        self.assertFalse(single["stale_preflight"])
+        self.assertTrue(single["expected_walltime_ok"])
+        self.assertTrue(single["six_hour_partition_fill_ok"])
+
+    def test_queue_snapshot_parser_reads_preflight_scheduler_stdout(self) -> None:
+        snapshot = MODULE.parse_postproc_queue_snapshot(
+            "\n".join(
+                [
+                    "captured_at=2026-05-26T20:00:00Z",
+                    "partition=postproc",
+                    "__NODE_STATES__",
+                    "idle|11|1-00:00:00",
+                    "alloc|1|1-00:00:00",
+                    "mix|1|1-00:00:00",
+                    "__QUEUE_COUNTS__",
+                    "running_jobs=141",
+                    "pending_jobs=0",
+                    "current_user_jobs=0",
+                ]
+            )
+        )
+
+        self.assertEqual(snapshot["idle_nodes"], 11)
+        self.assertEqual(snapshot["total_nodes"], 13)
+        self.assertEqual(snapshot["running_jobs"], 141)
+        self.assertEqual(snapshot["pending_jobs"], 0)
+        self.assertEqual(snapshot["current_user_jobs"], 0)
+
+    def test_queue_aware_diagnostic_planner_fails_closed_on_stale_or_mismatched_preflight(self) -> None:
+        access = {
+            "status": "ready_for_read_only_collection",
+            "ready_for_pre_submit": True,
+            "remote_head": "remote-old",
+            "captured_at": "2026-05-26T18:00:00Z",
+            "postproc_queue_snapshot": {
+                "partition": "postproc",
+                "idle_nodes": 8,
+                "total_nodes": 8,
+                "running_jobs": 0,
+                "pending_jobs": 0,
+            },
+        }
+        planner = MODULE.build_diagnostic_run_planner(
+            access,
+            now=dt.datetime(2026, 5, 26, 20, 0, tzinfo=dt.UTC),
+            local_head="local-new",
+            diagnostic_job_count=1,
+            expected_wall_minutes=30,
+        )
+
+        self.assertEqual(planner["classification"], "unknown")
+        self.assertIn("stale_preflight_or_missing_timestamp", planner["blockers"])
+        self.assertIn("remote_head_mismatch", planner["blockers"])
+
+    def test_queue_aware_diagnostic_planner_defers_partition_fill_over_six_hours(self) -> None:
+        access = {
+            "status": "ready_for_read_only_collection",
+            "ready_for_pre_submit": True,
+            "remote_head": "abc123",
+            "captured_at": "2026-05-26T20:00:00Z",
+            "postproc_queue_snapshot": {
+                "partition": "postproc",
+                "idle_nodes": 8,
+                "total_nodes": 8,
+                "pending_jobs": 0,
+            },
+        }
+        planner = MODULE.build_diagnostic_run_planner(
+            access,
+            now=dt.datetime(2026, 5, 26, 20, 10, tzinfo=dt.UTC),
+            local_head="abc123",
+            diagnostic_job_count=8,
+            expected_wall_minutes=420,
+        )
+
+        self.assertEqual(planner["classification"], "defer_due_to_capacity")
+        self.assertFalse(planner["expected_walltime_ok"])
+        self.assertFalse(planner["six_hour_partition_fill_ok"])
+        self.assertIn("expected_walltime_exceeds_six_hours", planner["blockers"])
+        self.assertIn("partition_fill_exceeds_six_hours", planner["blockers"])
 
     def test_cli_writes_report_artifacts_from_default_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

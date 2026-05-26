@@ -27,7 +27,16 @@ DEFAULT_RUN_ROOT = (
     "/scratch/mch/olifu/rust_rockfall/probes/"
     "tschamut_public_balfrin_target_area_demo_v1/authorized_tb168_20260517"
 )
-DEFAULT_SCHEDULER_QUERY_COMMAND = 'command -v squeue >/dev/null && squeue -h -u "$(whoami)" -o "%.18i" >/dev/null'
+DEFAULT_SCHEDULER_QUERY_COMMAND = (
+    "command -v squeue >/dev/null && command -v sinfo >/dev/null && "
+    "printf 'captured_at=%s\\n' \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\" && "
+    "printf 'partition=postproc\\n' && "
+    "printf '__NODE_STATES__\\n' && sinfo -h -p postproc -o '%T|%D|%l' && "
+    "printf '__QUEUE_COUNTS__\\n' && "
+    "printf 'running_jobs=%s\\n' \"$(squeue -h -p postproc -t R -o '%i' | wc -l | tr -d ' ')\" && "
+    "printf 'pending_jobs=%s\\n' \"$(squeue -h -p postproc -t PD -o '%i' | wc -l | tr -d ' ')\" && "
+    "printf 'current_user_jobs=%s\\n' \"$(squeue -h -p postproc -u $(whoami) -o '%i' | wc -l | tr -d ' ')\""
+)
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]

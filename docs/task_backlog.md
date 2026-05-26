@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-577: Add A Queue-Aware Diagnostic Run Planner
-
-Goal: Make diagnostic Balfrin run decisions aware of live `postproc` capacity, package freshness, expected wall time, and the six-hour partition-fill limit.
-
-Capability gap reduced: Lets the repo exploit low Balfrin utilization without ad hoc manual judgment or stale package submissions.
-
-Why this outranks alternatives: The standing clearance already allows multiple `postproc` jobs, but the repo lacks a compact planner that turns queue state into bounded diagnostic run choices.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `docs/balfrin_capacity_window_tb563.md`
-- `tests/test_balfrin_next_live_run_decision_gate.py`
-
-Deliverables:
-
-- Add a queue snapshot parser/classifier for single and small batches of diagnostic `postproc` jobs.
-- Classify capacity as `run_now`, `run_batch_now`, `run_soon`, `defer_due_to_capacity`, or `unknown`.
-- Include stale-preflight, remote-head mismatch, expected-walltime, and six-hour partition-fill checks.
-
-Definition of done:
-
-- Focused tests pass and the next-run decision report can explain whether the current live queue supports one or several bounded diagnostic `postproc` submissions.
-
-
 ### TB-578: Build A 24-Zone Diagnostic Handoff From The Updated Ceiling
 
 Goal: Generate a no-submit 24-zone compact reduced-output diagnostic package after the 16-zone ceiling update.

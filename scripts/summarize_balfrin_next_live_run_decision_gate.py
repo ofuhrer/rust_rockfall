@@ -17,7 +17,9 @@ required measured inputs or Balfrin access prerequisites are missing.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -42,6 +44,8 @@ DEFAULT_ARTIFACT_DIR = ROOT / "validation/private/tschamut_public_pilot/balfrin_
 DEFAULT_EVIDENCE_BUNDLE = ROOT / "tests/fixtures/balfrin_next_live_run_decision_gate/default_bundle.json"
 DEFAULT_PRESERVATION_RUN_ROOT = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
 DEFAULT_REDUCER_PRESSURE_ROOT = Path("/tmp/rust_rockfall/balfrin_next_live_run_decision_gate_v1/reducer_pressure")
+DIAGNOSTIC_QUEUE_SNAPSHOT_MAX_AGE_MINUTES = 30
+DIAGNOSTIC_POSTPROC_PARTITION_FILL_LIMIT_MINUTES = 360
 REDUCER_PRESSURE_REGENERATION_COMMAND = (
     "PYENV_VERSION=system uv run python scripts/validate_multi_zone_reducer_pressure_gate.py "
     "--materialize-root /tmp/rust_rockfall/balfrin_next_live_run_decision_gate_v1/reducer_pressure --format json"
@@ -391,12 +395,234 @@ def build_balfrin_access_from_preflight(access_report: dict[str, Any]) -> dict[s
         "remote_checkout_hygiene_status": hygiene.get("status"),
         "remote_dirty_path_count": hygiene.get("dirty_path_count"),
         "ready_for_pre_submit": bool(access_report.get("ready_for_pre_submit")),
+        "diagnostic_run_planner": build_diagnostic_run_planner(access_report),
         "summary": (
             "Balfrin access preflight is current, remote checkout hygiene passed, and the checkout is ready for pre-submit gates."
             if ready
             else "Balfrin access preflight is not ready for pre-submit gates."
         ),
     }
+
+
+def current_git_head() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return None
+    head = result.stdout.strip()
+    return head if result.returncode == 0 and head else None
+
+
+def _parse_datetime(value: Any) -> dt.datetime | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.UTC)
+    return parsed.astimezone(dt.UTC)
+
+
+def _scheduler_stdout(access_report: dict[str, Any]) -> str:
+    for check in access_report.get("checked_commands") or []:
+        if isinstance(check, dict) and check.get("name") == "scheduler_query":
+            return str(check.get("stdout") or "")
+    return ""
+
+
+def parse_postproc_queue_snapshot(snapshot: Any) -> dict[str, Any]:
+    if isinstance(snapshot, dict):
+        return {
+            "status": "parsed",
+            "idle_nodes": int(snapshot.get("idle_nodes") or 0),
+            "total_nodes": int(snapshot.get("total_nodes") or snapshot.get("idle_nodes") or 0),
+            "running_jobs": int(snapshot.get("running_jobs") or 0),
+            "pending_jobs": int(snapshot.get("pending_jobs") or 0),
+            "current_user_jobs": int(snapshot.get("current_user_jobs") or 0),
+            "partition": str(snapshot.get("partition") or "postproc"),
+            "captured_at": snapshot.get("captured_at"),
+        }
+    text = str(snapshot or "")
+    if not text.strip():
+        return {"status": "missing", "idle_nodes": None, "total_nodes": None}
+    idle_nodes = 0
+    total_nodes = 0
+    running_jobs = 0
+    pending_jobs = 0
+    current_user_jobs = 0
+    captured_at = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        lower = line.lower()
+        if "=" in line and not line.startswith("__"):
+            key, value = [part.strip() for part in line.split("=", 1)]
+            if key == "captured_at":
+                captured_at = value
+            elif key == "running_jobs":
+                running_jobs = int(value or 0)
+            elif key == "pending_jobs":
+                pending_jobs = int(value or 0)
+            elif key == "current_user_jobs":
+                current_user_jobs = int(value or 0)
+            elif key == "idle_nodes":
+                idle_nodes = int(value or 0)
+            elif key == "total_nodes":
+                total_nodes = int(value or 0)
+            continue
+        if lower.startswith("captured at:"):
+            captured_at = line.split(":", 1)[1].strip()
+        if lower.startswith("- captured at:"):
+            captured_at = line.split(":", 1)[1].strip()
+        if lower.startswith("- running jobs in `postproc`:"):
+            running_jobs = int(line.rsplit(":", 1)[1].strip().split()[0])
+        elif lower.startswith("- pending jobs in `postproc`:"):
+            pending_jobs = int(line.rsplit(":", 1)[1].strip().split()[0])
+        elif lower.startswith("- current `olifu` jobs in `postproc`:"):
+            current_user_jobs = int(line.rsplit(":", 1)[1].strip().split()[0])
+        elif "|" in line and "`idle`" in line:
+            idle_nodes = int(line.rsplit("|", 1)[1].strip())
+            total_nodes += idle_nodes
+        elif "|" in line and any(state in line for state in ("`alloc`", "`mix`", "`resv`")):
+            total_nodes += int(line.rsplit("|", 1)[1].strip())
+        elif "|" in line and not line.startswith("|"):
+            parts = [part.strip() for part in line.split("|")]
+            if len(parts) >= 2 and parts[1].isdigit():
+                state = parts[0].lower()
+                node_count = int(parts[1])
+                total_nodes += node_count
+                if state == "idle":
+                    idle_nodes += node_count
+        elif "|" in line and not line.startswith("__"):
+            parts = [part.strip() for part in line.split("|")]
+            if len(parts) >= 3:
+                state = parts[2].upper()
+                if state.startswith("R"):
+                    running_jobs += 1
+                elif state.startswith("P"):
+                    pending_jobs += 1
+                if len(parts) >= 2 and parts[1] == "olifu":
+                    current_user_jobs += 1
+    return {
+        "status": "parsed",
+        "idle_nodes": idle_nodes,
+        "total_nodes": total_nodes or idle_nodes,
+        "running_jobs": running_jobs,
+        "pending_jobs": pending_jobs,
+        "current_user_jobs": current_user_jobs,
+        "partition": "postproc",
+        "captured_at": captured_at,
+    }
+
+
+def build_diagnostic_run_planner(
+    access_report: dict[str, Any],
+    *,
+    diagnostic_job_count: int = 1,
+    expected_wall_minutes: int = 30,
+    now: dt.datetime | None = None,
+    local_head: str | None = None,
+) -> dict[str, Any]:
+    now = now or dt.datetime.now(dt.UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=dt.UTC)
+    local_head = local_head if local_head is not None else current_git_head()
+    snapshot = parse_postproc_queue_snapshot(
+        access_report.get("postproc_queue_snapshot")
+        or access_report.get("postproc_queue_snapshot_text")
+        or _scheduler_stdout(access_report)
+    )
+    captured_at = _parse_datetime(access_report.get("captured_at") or snapshot.get("captured_at"))
+    snapshot_age_minutes = None
+    stale_preflight = captured_at is None
+    if captured_at is not None:
+        snapshot_age_minutes = max(0.0, (now.astimezone(dt.UTC) - captured_at).total_seconds() / 60.0)
+        stale_preflight = snapshot_age_minutes > DIAGNOSTIC_QUEUE_SNAPSHOT_MAX_AGE_MINUTES
+
+    idle_nodes = snapshot.get("idle_nodes")
+    total_nodes = snapshot.get("total_nodes")
+    pending_jobs = snapshot.get("pending_jobs")
+    remote_head = access_report.get("remote_head") or dict(access_report.get("remote_checkout_hygiene") or {}).get("remote_head")
+    remote_head_mismatch = bool(local_head and remote_head and local_head != remote_head)
+    expected_walltime_ok = expected_wall_minutes <= DIAGNOSTIC_POSTPROC_PARTITION_FILL_LIMIT_MINUTES
+    partition_fill_minutes = (
+        expected_wall_minutes
+        if isinstance(total_nodes, int) and total_nodes > 0 and diagnostic_job_count >= total_nodes
+        else 0
+    )
+    six_hour_partition_fill_ok = partition_fill_minutes <= DIAGNOSTIC_POSTPROC_PARTITION_FILL_LIMIT_MINUTES
+
+    blockers: list[str] = []
+    if access_report.get("status") != "ready_for_read_only_collection" or not access_report.get("ready_for_pre_submit"):
+        blockers.append(f"access_preflight:{access_report.get('status') or 'missing'}")
+    if stale_preflight:
+        blockers.append("stale_preflight_or_missing_timestamp")
+    if remote_head_mismatch:
+        blockers.append("remote_head_mismatch")
+    if not expected_walltime_ok:
+        blockers.append("expected_walltime_exceeds_six_hours")
+    if not six_hour_partition_fill_ok:
+        blockers.append("partition_fill_exceeds_six_hours")
+    if snapshot.get("status") != "parsed" or not isinstance(idle_nodes, int):
+        blockers.append("queue_snapshot_unavailable")
+
+    if blockers:
+        classification = "unknown" if any(item in blockers for item in ("stale_preflight_or_missing_timestamp", "remote_head_mismatch", "queue_snapshot_unavailable")) else "defer_due_to_capacity"
+    elif isinstance(pending_jobs, int) and pending_jobs > 0 and (not isinstance(idle_nodes, int) or idle_nodes < diagnostic_job_count):
+        classification = "defer_due_to_capacity"
+        blockers.append("pending_postproc_jobs")
+    elif isinstance(idle_nodes, int) and idle_nodes >= diagnostic_job_count and diagnostic_job_count > 1:
+        classification = "run_batch_now"
+    elif isinstance(idle_nodes, int) and idle_nodes >= 1:
+        classification = "run_now"
+    else:
+        classification = "run_soon"
+
+    return {
+        "schema_version": "balfrin_diagnostic_run_planner_v1",
+        "classification": classification,
+        "diagnostic_job_count": diagnostic_job_count,
+        "expected_wall_minutes": expected_wall_minutes,
+        "partition": "postproc",
+        "queue_snapshot": snapshot,
+        "snapshot_age_minutes": round(snapshot_age_minutes, 3) if snapshot_age_minutes is not None else None,
+        "stale_preflight": stale_preflight,
+        "remote_head": remote_head,
+        "local_head": local_head,
+        "remote_head_mismatch": remote_head_mismatch,
+        "expected_walltime_ok": expected_walltime_ok,
+        "six_hour_partition_fill_ok": six_hour_partition_fill_ok,
+        "partition_fill_minutes": partition_fill_minutes,
+        "blockers": blockers,
+        "summary": diagnostic_run_planner_summary(classification, diagnostic_job_count, expected_wall_minutes, blockers),
+    }
+
+
+def diagnostic_run_planner_summary(
+    classification: str,
+    diagnostic_job_count: int,
+    expected_wall_minutes: int,
+    blockers: list[str],
+) -> str:
+    if classification == "run_batch_now":
+        return f"The postproc queue supports a {diagnostic_job_count}-job diagnostic batch now for the expected {expected_wall_minutes} minute wall time."
+    if classification == "run_now":
+        return f"The postproc queue supports one bounded diagnostic job now for the expected {expected_wall_minutes} minute wall time."
+    if classification == "run_soon":
+        return "The postproc queue is occupied but has no hard local blocker; retry the capacity snapshot before submitting."
+    if classification == "defer_due_to_capacity":
+        return "Capacity or six-hour partition-fill checks say to defer: " + ", ".join(blockers)
+    return "The diagnostic queue decision is unknown until the preflight, remote head, and queue snapshot are current."
 
 
 def build_criteria(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -751,6 +977,7 @@ def build_balfrin_access_criteria(access: dict[str, Any]) -> dict[str, Any]:
         "remote_checkout_hygiene_status": access.get("remote_checkout_hygiene_status"),
         "remote_dirty_path_count": access.get("remote_dirty_path_count"),
         "ready_for_pre_submit": _bool(access.get("ready_for_pre_submit")),
+        "diagnostic_run_planner": _copy_mapping(access.get("diagnostic_run_planner")),
         "summary": str(
             access.get("summary")
             or "Remote Balfrin SSH access was not checked because this helper is a deterministic local decision refresh."
