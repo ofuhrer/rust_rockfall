@@ -9170,3 +9170,26 @@ scan thousands of lines of completed history.
 - Result/status: implemented_fixture_backed
 - Boundaries: operational-readiness classification only; current products remain diagnostic and no operational, physical-probability, annual-frequency, Swiss-wide, distributed, or non-`postproc` claim is made.
 - Next task: `TB-592`
+
+### TB-592: Build A Second-Site Validation Acquisition Plan
+
+- Date: 2026-05-26
+- Commit: `f743c5e`
+- Objective: turn the second-site gap into a concrete validation-acquisition plan.
+- Files changed: `scripts/audit_multisite_source_scenario_contract.py`, `tests/test_multisite_source_scenario_contract.py`, `docs/public_real_site_geodata_preparation.md`, `docs/current_maturity_snapshot.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added `second_site_validation_acquisition_plan_v1` to the multisite source/scenario audit.
+  - Defined checklist entries for terrain, context, release-zone provenance, observed runout/deposition, source-frequency evidence, and holdout labels.
+  - Split blockers into `public_geodata_blockers` and `field_observational_blockers`.
+  - Added `first_executable_task` so workers can route to concrete public-geodata staging or field-evidence acquisition instead of generic second-site wording.
+  - Removed TB-592 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/audit_multisite_source_scenario_contract.py tests/test_multisite_source_scenario_contract.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multisite_source_scenario_contract -v`
+  - `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --format json --json-output /tmp/tb592_multisite.json`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_fixture_backed
+- Boundaries: acquisition planning only; no second-site validation, physical-probability, operational, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-593`
