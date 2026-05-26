@@ -9660,3 +9660,23 @@ scan thousands of lines of completed history.
 - Metrics: job `4372447` completed on `postproc` with exit `0:0`; scheduler elapsed `00:00:01`; batch MaxRSS `5,468K`; `/usr/bin/time` elapsed `0:01.26`; `/usr/bin/time` MaxRSS `34.16 MB`; release zones `100`; scenarios `100`; reducer wall time `13.55` s; output files `304`; output bytes `121,172`; pressure-root footprint `309` files / `212,978` bytes; run-root footprint `318` files / `448,376` bytes; manifest bytes `61,119`.
 - Boundaries: measured 100-zone diagnostic reducer-pressure evidence only; no 100-zone hazard-throughput, Swiss-wide, distributed, non-`postproc`, operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-613`
+
+### TB-613: Promote The Largest Diagnostic Series Into Swiss-Scale Feasibility
+
+- Date: 2026-05-26
+- Commit: `62c96a5`
+- Objective: integrate the measured Balfrin diagnostic reducer-pressure series through 100 zones into the helper surfaces and Swiss-scale feasibility projection.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_diagnostic_series_tb613.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added the 40-zone and 100-zone run-record paths to the canonical diagnostic evidence list and made the 100-zone planning case a measured diagnostic class rather than a deferred projection.
+  - Updated the scale-readiness matrix so the 100-zone diagnostic ceiling stops recommending another diagnostic size by default and instead surfaces scientific validation plus hazard-throughput scaling as the next blocker.
+  - Added regression coverage for the 16/24/32/40/100-zone measured diagnostic series and updated the Swiss-scale projection with the measured runtime, memory, output, file-count, and manifest curve.
+  - Removed TB-613 from the active backlog.
+- Checks run:
+  - `ssh balfrin 'PYENV_VERSION=system uv run python ...'` to read collected diagnostic run records for 16, 24, 24-repeat, 32, 40, and 100 zones
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py scripts/summarize_balfrin_scale_readiness_matrix.py scripts/summarize_balfrin_evidence_bundle.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope tests.test_balfrin_scale_readiness_matrix -v`
+- Result/status: implemented_measured
+- Metrics: measured diagnostic series now spans 16, 24, repeated 24, 32, 40, and 100 zones. The 100-zone ceiling is job `4372447` with reducer wall time `13.55` s, `/usr/bin/time` MaxRSS `34.16 MB`, `304` output files, `121,172` output bytes, `61,119` manifest bytes, and `448,376` run-root bytes.
+- Boundaries: diagnostic reducer-pressure series only; no hazard-throughput at 100 zones, Swiss-wide execution, distributed execution, non-`postproc` behavior, operational claim, annual-frequency claim, physical-probability claim, risk, exposure, or vulnerability claim.
+- Next task: `TB-614`
