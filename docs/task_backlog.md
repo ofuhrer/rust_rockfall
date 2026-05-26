@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-608: Prototype A National Tile-To-Chunk Mapping
-
-Goal: Map the national tiling inventory to stable execution chunks and merge groups.
-
-Capability gap reduced: Connects Swiss-wide data readiness to executable chunk orchestration.
-
-Why this outranks alternatives: Distributed feasibility needs stable tile/chunk identities before any national-scale run can be planned.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- generated scratch: national tiling inventory from TB-607
-
-Deliverables:
-
-- Generate a deterministic tile-to-chunk mapping with chunk keys, merge groups, expected input bytes, expected output classes, and restart boundaries.
-
-Definition of done:
-
-- The mapping is validated locally and can feed a future Balfrin split-run planner without changing current claim labels.
-
-
 ### TB-609: Measure Larger AOI Output And COG Packaging Pressure
 
 Goal: Measure output-byte, file-count, manifest, and COG packaging pressure for a larger AOI-style package.

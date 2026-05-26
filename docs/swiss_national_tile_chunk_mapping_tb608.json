@@ -1,0 +1,2525 @@
+{
+  "chunking_policy": {
+    "chunk_count": 85,
+    "chunk_id_template": "swiss_lv95_1km_terrain_chunk_{chunk_index:04d}",
+    "chunk_size_tiles": 512,
+    "merge_group_count": 11,
+    "merge_group_id_template": "swiss_lv95_1km_merge_group_{merge_group_index:04d}",
+    "merge_group_size_chunks": 8,
+    "scheduler_index_rule": "chunk_index % scheduler_count == scheduler_index",
+    "tile_count": 43500,
+    "tile_sort_key": "tile_id lexical order from completed national manifest"
+  },
+  "chunks": [
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0000",
+      "chunk_index": 0,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0000/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0000/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 512,
+      "tile_index_start_inclusive": 0
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0001",
+      "chunk_index": 1,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0001/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0001/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 1024,
+      "tile_index_start_inclusive": 512
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0002",
+      "chunk_index": 2,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0002/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0002/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 1536,
+      "tile_index_start_inclusive": 1024
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0003",
+      "chunk_index": 3,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0003/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0003/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 2048,
+      "tile_index_start_inclusive": 1536
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0004",
+      "chunk_index": 4,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0004/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0004/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 2560,
+      "tile_index_start_inclusive": 2048
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0005",
+      "chunk_index": 5,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0005/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0005/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 3072,
+      "tile_index_start_inclusive": 2560
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0006",
+      "chunk_index": 6,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0006/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0006/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 3584,
+      "tile_index_start_inclusive": 3072
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0007",
+      "chunk_index": 7,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0007/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0007/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 4096,
+      "tile_index_start_inclusive": 3584
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0008",
+      "chunk_index": 8,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0008/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0008/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 4608,
+      "tile_index_start_inclusive": 4096
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0009",
+      "chunk_index": 9,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0009/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0009/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 5120,
+      "tile_index_start_inclusive": 4608
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0010",
+      "chunk_index": 10,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0010/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0010/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 5632,
+      "tile_index_start_inclusive": 5120
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0011",
+      "chunk_index": 11,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0011/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0011/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 6144,
+      "tile_index_start_inclusive": 5632
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0012",
+      "chunk_index": 12,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0012/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0012/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 6656,
+      "tile_index_start_inclusive": 6144
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0013",
+      "chunk_index": 13,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0013/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0013/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 7168,
+      "tile_index_start_inclusive": 6656
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0014",
+      "chunk_index": 14,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0014/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0014/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 7680,
+      "tile_index_start_inclusive": 7168
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0015",
+      "chunk_index": 15,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0015/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0015/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 8192,
+      "tile_index_start_inclusive": 7680
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0016",
+      "chunk_index": 16,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0016/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0016/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 8704,
+      "tile_index_start_inclusive": 8192
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0017",
+      "chunk_index": 17,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0017/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0017/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 9216,
+      "tile_index_start_inclusive": 8704
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0018",
+      "chunk_index": 18,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0018/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0018/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 9728,
+      "tile_index_start_inclusive": 9216
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0019",
+      "chunk_index": 19,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0019/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0019/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 10240,
+      "tile_index_start_inclusive": 9728
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0020",
+      "chunk_index": 20,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0020/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0020/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 10752,
+      "tile_index_start_inclusive": 10240
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0021",
+      "chunk_index": 21,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0021/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0021/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 11264,
+      "tile_index_start_inclusive": 10752
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0022",
+      "chunk_index": 22,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0022/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0022/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 11776,
+      "tile_index_start_inclusive": 11264
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0023",
+      "chunk_index": 23,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0023/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0023/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 12288,
+      "tile_index_start_inclusive": 11776
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0024",
+      "chunk_index": 24,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0024/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0024/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 12800,
+      "tile_index_start_inclusive": 12288
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0025",
+      "chunk_index": 25,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0025/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0025/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 13312,
+      "tile_index_start_inclusive": 12800
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0026",
+      "chunk_index": 26,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0026/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0026/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 13824,
+      "tile_index_start_inclusive": 13312
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0027",
+      "chunk_index": 27,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0027/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0027/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 14336,
+      "tile_index_start_inclusive": 13824
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0028",
+      "chunk_index": 28,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0028/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0028/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 14848,
+      "tile_index_start_inclusive": 14336
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0029",
+      "chunk_index": 29,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0029/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0029/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 15360,
+      "tile_index_start_inclusive": 14848
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0030",
+      "chunk_index": 30,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0030/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0030/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 15872,
+      "tile_index_start_inclusive": 15360
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0031",
+      "chunk_index": 31,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0031/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0031/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 16384,
+      "tile_index_start_inclusive": 15872
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0032",
+      "chunk_index": 32,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0032/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0032/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 16896,
+      "tile_index_start_inclusive": 16384
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0033",
+      "chunk_index": 33,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0033/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0033/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 17408,
+      "tile_index_start_inclusive": 16896
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0034",
+      "chunk_index": 34,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0034/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0034/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 17920,
+      "tile_index_start_inclusive": 17408
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0035",
+      "chunk_index": 35,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0035/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0035/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 18432,
+      "tile_index_start_inclusive": 17920
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0036",
+      "chunk_index": 36,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0036/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0036/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 18944,
+      "tile_index_start_inclusive": 18432
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0037",
+      "chunk_index": 37,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0037/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0037/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 19456,
+      "tile_index_start_inclusive": 18944
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0038",
+      "chunk_index": 38,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0038/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0038/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 19968,
+      "tile_index_start_inclusive": 19456
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0039",
+      "chunk_index": 39,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0039/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0039/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 20480,
+      "tile_index_start_inclusive": 19968
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0040",
+      "chunk_index": 40,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0040/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0040/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 20992,
+      "tile_index_start_inclusive": 20480
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0041",
+      "chunk_index": 41,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0041/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0041/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 21504,
+      "tile_index_start_inclusive": 20992
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0042",
+      "chunk_index": 42,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0042/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0042/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 22016,
+      "tile_index_start_inclusive": 21504
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0043",
+      "chunk_index": 43,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0043/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0043/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 22528,
+      "tile_index_start_inclusive": 22016
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0044",
+      "chunk_index": 44,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0044/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0044/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 23040,
+      "tile_index_start_inclusive": 22528
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0045",
+      "chunk_index": 45,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0045/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0045/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 23552,
+      "tile_index_start_inclusive": 23040
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0046",
+      "chunk_index": 46,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0046/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0046/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 24064,
+      "tile_index_start_inclusive": 23552
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0047",
+      "chunk_index": 47,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0047/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0047/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 24576,
+      "tile_index_start_inclusive": 24064
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0048",
+      "chunk_index": 48,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0048/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0048/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 25088,
+      "tile_index_start_inclusive": 24576
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0049",
+      "chunk_index": 49,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0049/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0049/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 25600,
+      "tile_index_start_inclusive": 25088
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0050",
+      "chunk_index": 50,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0050/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0050/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 26112,
+      "tile_index_start_inclusive": 25600
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0051",
+      "chunk_index": 51,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0051/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0051/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 26624,
+      "tile_index_start_inclusive": 26112
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0052",
+      "chunk_index": 52,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0052/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0052/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 27136,
+      "tile_index_start_inclusive": 26624
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0053",
+      "chunk_index": 53,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0053/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0053/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 27648,
+      "tile_index_start_inclusive": 27136
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0054",
+      "chunk_index": 54,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0054/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0054/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 28160,
+      "tile_index_start_inclusive": 27648
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0055",
+      "chunk_index": 55,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0055/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0055/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 28672,
+      "tile_index_start_inclusive": 28160
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0056",
+      "chunk_index": 56,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0056/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0056/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 29184,
+      "tile_index_start_inclusive": 28672
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0057",
+      "chunk_index": 57,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0057/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0057/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 29696,
+      "tile_index_start_inclusive": 29184
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0058",
+      "chunk_index": 58,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0058/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0058/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 30208,
+      "tile_index_start_inclusive": 29696
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0059",
+      "chunk_index": 59,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0059/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0059/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 30720,
+      "tile_index_start_inclusive": 30208
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0060",
+      "chunk_index": 60,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0060/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0060/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 31232,
+      "tile_index_start_inclusive": 30720
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0061",
+      "chunk_index": 61,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0061/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0061/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 31744,
+      "tile_index_start_inclusive": 31232
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0062",
+      "chunk_index": 62,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0062/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0062/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 32256,
+      "tile_index_start_inclusive": 31744
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0063",
+      "chunk_index": 63,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0063/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0063/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 32768,
+      "tile_index_start_inclusive": 32256
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0064",
+      "chunk_index": 64,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0064/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0064/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 33280,
+      "tile_index_start_inclusive": 32768
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0065",
+      "chunk_index": 65,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0065/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0065/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 33792,
+      "tile_index_start_inclusive": 33280
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0066",
+      "chunk_index": 66,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0066/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0066/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 34304,
+      "tile_index_start_inclusive": 33792
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0067",
+      "chunk_index": 67,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0067/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0067/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 34816,
+      "tile_index_start_inclusive": 34304
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0068",
+      "chunk_index": 68,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0068/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0068/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 35328,
+      "tile_index_start_inclusive": 34816
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0069",
+      "chunk_index": 69,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0069/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0069/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 35840,
+      "tile_index_start_inclusive": 35328
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0070",
+      "chunk_index": 70,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0070/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0070/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 36352,
+      "tile_index_start_inclusive": 35840
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0071",
+      "chunk_index": 71,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0071/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0071/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 36864,
+      "tile_index_start_inclusive": 36352
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0072",
+      "chunk_index": 72,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0072/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0072/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 37376,
+      "tile_index_start_inclusive": 36864
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0073",
+      "chunk_index": 73,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0073/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0073/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 37888,
+      "tile_index_start_inclusive": 37376
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0074",
+      "chunk_index": 74,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0074/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0074/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 38400,
+      "tile_index_start_inclusive": 37888
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0075",
+      "chunk_index": 75,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0075/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0075/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 38912,
+      "tile_index_start_inclusive": 38400
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0076",
+      "chunk_index": 76,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0076/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0076/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 39424,
+      "tile_index_start_inclusive": 38912
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0077",
+      "chunk_index": 77,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0077/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0077/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 39936,
+      "tile_index_start_inclusive": 39424
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0078",
+      "chunk_index": 78,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0078/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0078/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 40448,
+      "tile_index_start_inclusive": 39936
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0079",
+      "chunk_index": 79,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0079/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0079/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 40960,
+      "tile_index_start_inclusive": 40448
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0080",
+      "chunk_index": 80,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0080/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0080/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 41472,
+      "tile_index_start_inclusive": 40960
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0081",
+      "chunk_index": 81,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0081/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0081/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 41984,
+      "tile_index_start_inclusive": 41472
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0082",
+      "chunk_index": 82,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0082/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0082/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 42496,
+      "tile_index_start_inclusive": 41984
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0083",
+      "chunk_index": 83,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 512000000,
+        "swissimage_25cm_rgb_raw_optional": 24576000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 8192000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0083/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0083/state.json"
+      },
+      "tile_count": 512,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 43008,
+      "tile_index_start_inclusive": 42496
+    },
+    {
+      "chunk_id": "swiss_lv95_1km_terrain_chunk_0084",
+      "chunk_index": 84,
+      "expected_input_bytes": {
+        "swissalti3d_2m_raw_float32": 492000000,
+        "swissimage_25cm_rgb_raw_optional": 23616000000,
+        "swisssurface3d_raster_0_5m_float32_optional": 7872000000
+      },
+      "expected_output_classes": [
+        "chunk_execution_manifest",
+        "reducer_partial_state_json",
+        "hazard_raster_tiles_or_cogs",
+        "merge_state_reference"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "restart_boundary": {
+        "manifest_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0084/manifest.json",
+        "max_chunk_attempts": 3,
+        "reuse_rule": "reuse only when chunk_id, tile index range, sorted tile ids, product versions, checksums, and execution signature match",
+        "state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/chunks/swiss_lv95_1km_terrain_chunk_0084/state.json"
+      },
+      "tile_count": 492,
+      "tile_id_source": "canonical sorted national tile manifest using tiling_grid.tile_id_policy",
+      "tile_index_end_exclusive": 43500,
+      "tile_index_start_inclusive": 43008
+    }
+  ],
+  "claim_boundary": "Prototype mapping only; no national tile manifest is staged, no download is performed, and no Swiss-wide execution is authorized.",
+  "mapping_status": "prototype_from_inventory_no_download",
+  "merge_groups": [
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0000",
+        "swiss_lv95_1km_terrain_chunk_0001",
+        "swiss_lv95_1km_terrain_chunk_0002",
+        "swiss_lv95_1km_terrain_chunk_0003",
+        "swiss_lv95_1km_terrain_chunk_0004",
+        "swiss_lv95_1km_terrain_chunk_0005",
+        "swiss_lv95_1km_terrain_chunk_0006",
+        "swiss_lv95_1km_terrain_chunk_0007"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0000",
+      "merge_group_index": 0,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0000/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0008",
+        "swiss_lv95_1km_terrain_chunk_0009",
+        "swiss_lv95_1km_terrain_chunk_0010",
+        "swiss_lv95_1km_terrain_chunk_0011",
+        "swiss_lv95_1km_terrain_chunk_0012",
+        "swiss_lv95_1km_terrain_chunk_0013",
+        "swiss_lv95_1km_terrain_chunk_0014",
+        "swiss_lv95_1km_terrain_chunk_0015"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0001",
+      "merge_group_index": 1,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0001/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0016",
+        "swiss_lv95_1km_terrain_chunk_0017",
+        "swiss_lv95_1km_terrain_chunk_0018",
+        "swiss_lv95_1km_terrain_chunk_0019",
+        "swiss_lv95_1km_terrain_chunk_0020",
+        "swiss_lv95_1km_terrain_chunk_0021",
+        "swiss_lv95_1km_terrain_chunk_0022",
+        "swiss_lv95_1km_terrain_chunk_0023"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0002",
+      "merge_group_index": 2,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0002/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0024",
+        "swiss_lv95_1km_terrain_chunk_0025",
+        "swiss_lv95_1km_terrain_chunk_0026",
+        "swiss_lv95_1km_terrain_chunk_0027",
+        "swiss_lv95_1km_terrain_chunk_0028",
+        "swiss_lv95_1km_terrain_chunk_0029",
+        "swiss_lv95_1km_terrain_chunk_0030",
+        "swiss_lv95_1km_terrain_chunk_0031"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0003",
+      "merge_group_index": 3,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0003/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0032",
+        "swiss_lv95_1km_terrain_chunk_0033",
+        "swiss_lv95_1km_terrain_chunk_0034",
+        "swiss_lv95_1km_terrain_chunk_0035",
+        "swiss_lv95_1km_terrain_chunk_0036",
+        "swiss_lv95_1km_terrain_chunk_0037",
+        "swiss_lv95_1km_terrain_chunk_0038",
+        "swiss_lv95_1km_terrain_chunk_0039"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0004",
+      "merge_group_index": 4,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0004/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0040",
+        "swiss_lv95_1km_terrain_chunk_0041",
+        "swiss_lv95_1km_terrain_chunk_0042",
+        "swiss_lv95_1km_terrain_chunk_0043",
+        "swiss_lv95_1km_terrain_chunk_0044",
+        "swiss_lv95_1km_terrain_chunk_0045",
+        "swiss_lv95_1km_terrain_chunk_0046",
+        "swiss_lv95_1km_terrain_chunk_0047"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0005",
+      "merge_group_index": 5,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0005/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0048",
+        "swiss_lv95_1km_terrain_chunk_0049",
+        "swiss_lv95_1km_terrain_chunk_0050",
+        "swiss_lv95_1km_terrain_chunk_0051",
+        "swiss_lv95_1km_terrain_chunk_0052",
+        "swiss_lv95_1km_terrain_chunk_0053",
+        "swiss_lv95_1km_terrain_chunk_0054",
+        "swiss_lv95_1km_terrain_chunk_0055"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0006",
+      "merge_group_index": 6,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0006/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0056",
+        "swiss_lv95_1km_terrain_chunk_0057",
+        "swiss_lv95_1km_terrain_chunk_0058",
+        "swiss_lv95_1km_terrain_chunk_0059",
+        "swiss_lv95_1km_terrain_chunk_0060",
+        "swiss_lv95_1km_terrain_chunk_0061",
+        "swiss_lv95_1km_terrain_chunk_0062",
+        "swiss_lv95_1km_terrain_chunk_0063"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0007",
+      "merge_group_index": 7,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0007/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0064",
+        "swiss_lv95_1km_terrain_chunk_0065",
+        "swiss_lv95_1km_terrain_chunk_0066",
+        "swiss_lv95_1km_terrain_chunk_0067",
+        "swiss_lv95_1km_terrain_chunk_0068",
+        "swiss_lv95_1km_terrain_chunk_0069",
+        "swiss_lv95_1km_terrain_chunk_0070",
+        "swiss_lv95_1km_terrain_chunk_0071"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0008",
+      "merge_group_index": 8,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0008/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 8,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0072",
+        "swiss_lv95_1km_terrain_chunk_0073",
+        "swiss_lv95_1km_terrain_chunk_0074",
+        "swiss_lv95_1km_terrain_chunk_0075",
+        "swiss_lv95_1km_terrain_chunk_0076",
+        "swiss_lv95_1km_terrain_chunk_0077",
+        "swiss_lv95_1km_terrain_chunk_0078",
+        "swiss_lv95_1km_terrain_chunk_0079"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0009",
+      "merge_group_index": 9,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0009/merge_state.json",
+      "tile_count": 4096
+    },
+    {
+      "chunk_count": 5,
+      "chunk_ids": [
+        "swiss_lv95_1km_terrain_chunk_0080",
+        "swiss_lv95_1km_terrain_chunk_0081",
+        "swiss_lv95_1km_terrain_chunk_0082",
+        "swiss_lv95_1km_terrain_chunk_0083",
+        "swiss_lv95_1km_terrain_chunk_0084"
+      ],
+      "merge_group_id": "swiss_lv95_1km_merge_group_0010",
+      "merge_group_index": 10,
+      "merge_order": "sorted_chunk_id",
+      "merge_state_path_template": "$SCRATCH/rust_rockfall/swiss_wide/merge_groups/swiss_lv95_1km_merge_group_0010/merge_state.json",
+      "tile_count": 2540
+    }
+  ],
+  "national_expected_input_bytes": {
+    "swissalti3d_2m_raw_float32": 43500000000,
+    "swissimage_25cm_rgb_raw_optional": 2088000000000,
+    "swisssurface3d_raster_0_5m_float32_optional": 696000000000
+  },
+  "schema_version": "swiss_national_tile_chunk_mapping_v1",
+  "source_inventory_id": "swiss_lv95_1km_national_inventory_v1",
+  "source_inventory_path": "docs/swiss_national_tiling_inventory_tb607.json",
+  "source_inventory_schema_version": "swiss_national_tiling_inventory_v1",
+  "task_id": "TB-608",
+  "validation": {
+    "all_chunks_assigned_to_one_merge_group": true,
+    "chunk_ids_unique": true,
+    "chunk_tile_counts_sum_to_inventory_tile_count": true,
+    "merge_group_ids_unique": true
+  }
+}

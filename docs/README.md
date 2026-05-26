@@ -68,6 +68,8 @@ starting context for implementation unless a task explicitly asks for them.
   second-site boundaries.
 - `swiss_national_tiling_inventory_tb607.md`: TB-607 share-safe national
   swisstopo tiling, byte, cache-path, and checksum-field inventory.
+- `swiss_national_tile_chunk_mapping_tb608.md`: TB-608 deterministic national
+  tile-index to chunk/merge-group mapping prototype.
 - `aoi_conditional_workflow_contract.md`: canonical AOI conditional-map phase
   model and front-door command contract.
 - `aoi_user_manual.md`: compact AOI preparation, candidate review, package,
