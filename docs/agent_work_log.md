@@ -8814,3 +8814,23 @@ scan thousands of lines of completed history.
 - Result/status: implemented_measured
 - Boundaries: measured 16-zone reducer-pressure diagnostic evidence only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
 - Next task: `TB-576`
+
+### TB-576: Update The Measured Batch Ceiling From Diagnostic Evidence
+
+- Date: 2026-05-26
+- Commit: `74bb488`
+- Objective: consume the completed 16-zone diagnostic run record as the measured single-node postproc batch ceiling without treating it as operational scale capability.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_next_live_run_decision_gate.py`, `tests/test_multi_zone_reducer_pressure.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_next_live_run_decision_gate.py`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added diagnostic run-record detection to the reducer-pressure constraint surface while preserving the old 8-zone scratch-local default when no completed run record exists.
+  - Threaded the measured 16-zone `diagnostic_single_node_postproc` ceiling into the scale matrix and decision gate with an explicit 24-zone diagnostic next step.
+  - Kept the diagnostic evidence branch separate from operational scale, distributed execution, and physical-probability semantics.
+  - Removed TB-576 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_next_live_run_decision_gate -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Boundaries: diagnostic single-node `postproc` batch ceiling only; no operational claim, no physical-probability claim, no Swiss-wide claim, no distributed-execution claim, and no non-`postproc` partition claim.
+- Next task: `TB-577`
