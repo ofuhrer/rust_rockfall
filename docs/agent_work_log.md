@@ -9566,3 +9566,21 @@ scan thousands of lines of completed history.
 - Inventory summary: national 1 km tile estimate `43,500`; swissALTI3D 2 m raw float32 planning estimate `43.5 GB`; swissALTI3D 0.5 m estimate `696 GB`; SWISSIMAGE RGB raw planning estimate `12.81 TB` at 10 cm or `2.05 TB` at 25 cm; swissSURFACE3D Raster 0.5 m estimate `696 GB`; swissTLM3D, GeoCover/geology, and swissBUILDINGS3D remain product/package-selection inventory items with missing version/checksum/cache fields.
 - Boundaries: share-safe inventory only; no download, no staged national cache, no Swiss-wide execution authorization, and no operational hazard, annual-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-608`
+
+### TB-608: Prototype A National Tile-To-Chunk Mapping
+
+- Date: 2026-05-26
+- Commit: `acea374`
+- Objective: turn the TB-607 national tiling inventory into deterministic chunk and merge-group identities that can feed a future split-run planner.
+- Files changed: `docs/swiss_national_tile_chunk_mapping_tb608.md`, `docs/swiss_national_tile_chunk_mapping_tb608.json`, `docs/README.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Generated `swiss_national_tile_chunk_mapping_v1` from the TB-607 inventory using 512 sorted LV95 1 km tile slots per chunk.
+  - Produced `85` stable chunk records and `11` merge groups with deterministic IDs, tile-index ranges, expected input bytes, output classes, scheduler assignment rule, and restart path templates.
+  - Added a concise human-readable mapping note and removed TB-608 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m json.tool docs/swiss_national_tile_chunk_mapping_tb608.json`
+  - Local JSON validation confirmed chunk tile counts sum to `43,500`, chunk ids are unique, merge group ids are unique, and all chunks are assigned to one merge group.
+- Result/status: implemented_fixture_backed
+- Mapping summary: chunk size `512` tiles; chunk count `85`; merge group size `8` chunks; merge group count `11`; full chunk input estimate `512 MB` swissALTI3D 2 m raw terrain, optional `24.576 GB` SWISSIMAGE 25 cm RGB raw context, and optional `8.192 GB` swissSURFACE3D Raster raw context; final chunk `0084` contains `492` tiles.
+- Boundaries: prototype mapping only; no national tile manifest is staged, no public geodata is downloaded, no Balfrin job is submitted, and no Swiss-wide execution or operational claim is authorized.
+- Next task: `TB-609`
