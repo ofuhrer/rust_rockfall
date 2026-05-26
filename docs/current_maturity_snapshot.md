@@ -69,11 +69,11 @@ fragility, Chant Sura second-site blockers, holdout split independence, and
 calibration/validation separation executable locally. They remain diagnostic
 and routing evidence only: they do not establish physical probability, annual
 frequency, operational use, risk/exposure/vulnerability, scale-up, distributed
-execution, or Balfrin authorization. The recommendation surface currently
-ranks the next local scientific queue as Chant Sura terrain extent QA, public
-context staging review, extreme-layer support/nodata sensitivity,
-denominator/deposition interpretation gating, holdout/calibration guardrail
-integration, and worker-facing doc refresh.
+execution, or Balfrin authorization. After the 24-zone diagnostic scale push,
+`scripts/assess_validation_calibration_evidence_gaps.py` now makes that split
+explicit and ranks the next concrete scientific work as independent holdout
+deposition/runout evidence, source-frequency evidence, block-population
+evidence, calibration-design evidence, and second-site public-geodata staging.
 
 The Chant Sura real-input gate distinguishes real, fixture-backed, partial, missing, and
 metadata-mismatched inputs; the prepared-pilot dry run fails closed unless real

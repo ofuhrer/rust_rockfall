@@ -18,9 +18,11 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "operational_claims_allowed",
             "risk_exposure_vulnerability_claims_allowed",
             "scale_up_authorized",
+            "post_diagnostic_scale_context",
             "evidence_gap_categories",
             "claim_boundary_matrix",
             "validation_leakage_guardrails",
+            "next_concrete_scientific_tasks",
             "product_layer_claim_boundaries",
             "site_reference_evidence",
             "required_evidence_for_physical_credibility",
@@ -34,6 +36,13 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertFalse(report["operational_claims_allowed"])
         self.assertFalse(report["risk_exposure_vulnerability_claims_allowed"])
         self.assertFalse(report["scale_up_authorized"])
+        self.assertEqual(
+            report["post_diagnostic_scale_context"]["status"],
+            "diagnostic_scale_progress_does_not_close_scientific_gaps",
+        )
+        self.assertFalse(
+            report["post_diagnostic_scale_context"]["claim_boundaries"]["scientific_validity_upgraded"]
+        )
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
         self.assertTrue(report["validation_leakage_guardrails"]["interpretation_allowed"])
         self.assertEqual(report["validation_leakage_guardrails"]["failing_checks"], [])
@@ -187,6 +196,18 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertIn("validation_leakage_guardrails:", text)
         self.assertIn("guardrail_status: passed", text)
         self.assertIn("failing_checks: none", text)
+        self.assertIn("post_diagnostic_scale_context:", text)
+        self.assertIn("next_concrete_scientific_tasks:", text)
+
+    def test_next_concrete_scientific_tasks_rank_data_acquisition_before_more_performance_reports(self) -> None:
+        report = assessment.build_report()
+        tasks = report["next_concrete_scientific_tasks"]
+
+        self.assertEqual(tasks[0]["task_id"], "stage_independent_holdout_deposition_runout_evidence")
+        self.assertEqual(tasks[1]["task_id"], "stage_source_frequency_catalogue")
+        self.assertEqual(tasks[2]["task_id"], "stage_block_population_survey")
+        self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
+        self.assertIn("scientific evidence", tasks[0]["why_now"])
 
 
 if __name__ == "__main__":  # pragma: no cover

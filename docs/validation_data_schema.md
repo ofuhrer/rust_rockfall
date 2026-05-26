@@ -582,6 +582,14 @@ reported_without_acceptance_thresholds`. Their legacy `status: passed` still
 means the workflow completed and reported metrics, not that scientific skill was
 accepted against thresholds.
 
+The current scientific-gap assessment deliberately separates performance
+feasibility from scientific validity. Larger Balfrin diagnostic runs can
+improve runtime, memory, output, and reducer-pressure evidence, but they do not
+change validation status unless new independent evidence is staged. The next
+evidence classes are holdout deposition/runout observations, source-frequency
+records, block-population evidence, calibration-design inputs, and second-site
+public geodata.
+
 Phase 1 probabilistic hazard-map metadata is available through Rust parsers for:
 
 - `source_zone_metadata_v1` YAML source-zone sidecars;

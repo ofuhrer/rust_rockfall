@@ -221,6 +221,7 @@ def build_report() -> dict[str, Any]:
         "candidate_site_id": candidate_portability["candidate_site"]["candidate_site_id"],
         "candidate_site_name": candidate_portability["candidate_site"]["candidate_site_name"],
         "second_site_portability_status": candidate_portability["second_site_portability_status"],
+        "post_diagnostic_scale_context": post_diagnostic_scale_context(),
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
         "calibration_status": "missing",
         "validation_status": "partial",
@@ -231,6 +232,7 @@ def build_report() -> dict[str, Any]:
         "evidence_gap_categories": evidence_gap_categories,
         "claim_boundary_matrix": claim_boundary_matrix,
         "validation_leakage_guardrails": validation_leakage_guardrails,
+        "next_concrete_scientific_tasks": next_concrete_scientific_tasks(evidence_gap_categories),
         "product_layer_claim_boundaries": product_layer_claim_boundaries(),
         "site_reference_evidence": site_reference_evidence(
             datasets,
@@ -257,6 +259,89 @@ def build_report() -> dict[str, Any]:
     validate_report_boundaries(report)
     shared_scan_text_for_misleading_claims(report, require_fn=require)
     return report
+
+
+def post_diagnostic_scale_context() -> dict[str, Any]:
+    return {
+        "status": "diagnostic_scale_progress_does_not_close_scientific_gaps",
+        "measured_diagnostic_evidence": {
+            "release_zone_count": 24,
+            "evidence_type": "single_node_postproc_reducer_pressure",
+            "repeatability_status": "measured_repeatability_pair",
+            "source_documents": [
+                "docs/balfrin_24_zone_diagnostic_run_tb579.md",
+                "docs/balfrin_24_zone_repeatability_runs_tb581.md",
+                "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+                "docs/balfrin_scale_demonstration_management_package.md",
+            ],
+        },
+        "scientific_interpretation": (
+            "The 24-zone diagnostic push improves execution and output-footprint confidence, but it does not add calibration, holdout, source-frequency, "
+            "block-population, or field-observation evidence."
+        ),
+        "claim_boundaries": {
+            "performance_feasibility_progress": True,
+            "scientific_validity_upgraded": False,
+            "physical_probability_claims_allowed": False,
+            "operational_claims_allowed": False,
+            "swiss_wide_claims_allowed": False,
+        },
+    }
+
+
+def next_concrete_scientific_tasks(evidence_gap_categories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    categories = {entry["category"]: entry for entry in evidence_gap_categories}
+    task_specs = [
+        (
+            "stage_independent_holdout_deposition_runout_evidence",
+            "holdout_and_validation_evidence",
+            "Stage an independent holdout deposition/runout benchmark with site provenance, split rules, and scoring fields.",
+            "validation/data/processed/<site>/holdout_validation_evidence_manifest.json",
+        ),
+        (
+            "stage_source_frequency_catalogue",
+            "source_frequency_and_temporal_frequency_evidence",
+            "Stage source-frequency evidence with observation windows, censoring assumptions, provenance, and uncertainty.",
+            "validation/source_frequency/<site>_source_frequency_evidence.yaml",
+        ),
+        (
+            "stage_block_population_survey",
+            "block_size_and_block_population_evidence",
+            "Stage block-population or block-size survey evidence before any physical-probability bridge is considered.",
+            "validation/block_population/<site>_block_population_evidence.yaml",
+        ),
+        (
+            "define_calibration_dataset_and_objective",
+            "calibration_evidence",
+            "Define a calibration dataset, objective function, parameter scope, and separate holdout split before parameter fitting.",
+            "calibration/experiments/<site>/calibration_design.yaml",
+        ),
+        (
+            "stage_second_site_public_geodata_inputs",
+            "multi_site_transfer_evidence",
+            "Stage the Chant Sura / Fluelapass public geodata inputs needed to turn portability planning into a second-site check.",
+            "data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/",
+        ),
+    ]
+    tasks: list[dict[str, Any]] = []
+    for rank, (task_id, category, action, target_artifact) in enumerate(task_specs, start=1):
+        gap = categories.get(category, {})
+        tasks.append(
+            {
+                "rank": rank,
+                "task_id": task_id,
+                "category": category,
+                "current_classification": gap.get("classification", "unknown"),
+                "first_missing_input": gap.get("first_missing_input"),
+                "action": action,
+                "target_artifact": target_artifact,
+                "why_now": (
+                    "Performance feasibility has improved enough that the next limiting factor is scientific evidence rather than another local execution report."
+                ),
+                "claim_boundary": "preparatory evidence acquisition only; no calibration, validation acceptance, physical-probability, or operational claim",
+            }
+        )
+    return tasks
 
 
 def build_validation_leakage_guardrails(
@@ -1093,6 +1178,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"risk_exposure_vulnerability_claims_allowed: {str(report['risk_exposure_vulnerability_claims_allowed']).lower()}",
         f"scale_up_authorized: {str(report['scale_up_authorized']).lower()}",
         "",
+        "post_diagnostic_scale_context:",
+        f"- status: {report['post_diagnostic_scale_context']['status']}",
+        f"- scientific_validity_upgraded: {str(report['post_diagnostic_scale_context']['claim_boundaries']['scientific_validity_upgraded']).lower()}",
+        "",
         "evidence_gap_categories:",
     ]
     for entry in report["evidence_gap_categories"]:
@@ -1118,6 +1207,10 @@ def render_text_report(report: dict[str, Any]) -> str:
             lines.append(f"  - {item['guardrail']}: {item['status']} ({item['dataset_or_parameter_source']})")
     else:
         lines.append("- failing_checks: none")
+    lines.append("")
+    lines.append("next_concrete_scientific_tasks:")
+    for item in report.get("next_concrete_scientific_tasks", []):
+        lines.append(f"- {item['rank']}. {item['task_id']}: {item['current_classification']} ({item['first_missing_input']})")
     lines.append("")
     lines.append("site_reference_evidence:")
     for entry in report["site_reference_evidence"]:

@@ -30,33 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-586: Reassess Scientific Validation Gaps After The Diagnostic Scale Push
-
-Goal: Identify which scientific-validation gaps remain after the larger Balfrin diagnostic evidence is collected.
-
-Capability gap reduced: Prevents performance progress from being mistaken for physical validation progress.
-
-Why this outranks alternatives: Once larger runs are feasible, the main project risk shifts back toward calibration, holdout evidence, source frequency, and terrain/context validation.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/audit_conditional_denominator_provenance.py`
-- `scripts/audit_trajectory_deposition_traceability.py`
-- `docs/current_maturity_snapshot.md`
-- `docs/validation_data_schema.md`
-
-Deliverables:
-
-- Run and refresh the local scientific-gap assessment using current evidence.
-- Rank the next field/data/acquisition tasks that would convert diagnostic hazard maps into scientifically stronger validation evidence.
-- Keep performance feasibility and scientific validity explicitly separated.
-
-Definition of done:
-
-- Focused scientific-gap checks pass and the output names the next concrete validation-data acquisition or calibration task.
-
-
 ### TB-587: Simplify The Large-Run Interface Around One Command Path
 
 Goal: Consolidate the diagnostic handoff, preflight, submit, collect, and promote path into one simple user-facing command sequence .
