@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-662: Measure Output Pressure After QA Checklist Packaging
-
-Goal: Quantify whether the new package QA checklist materially changes package file count, byte count, or manifest pressure.
-
-Capability gap reduced: Output-footprint control for larger AOI and Balfrin packages.
-
-Why this outranks alternatives: Review usability improved, but larger runs still depend on keeping package and manifest growth bounded.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/summarize_balfrin_output_tier_audit.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/hazard_output_profile_contract.md`
-
-Deliverables:
-
-- A before/after or current-package pressure measurement that includes checklist manifest bytes and package file counts.
-
-Definition of done:
-
-- The result states whether checklist packaging is negligible, acceptable, or a scaling concern for larger packages.
-
 ### TB-663: Run A Local CI Front-Door Cleanup Pass
 
 Goal: Identify one slow, redundant, or confusing local CI path and simplify it without reducing coverage.

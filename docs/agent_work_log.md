@@ -10702,3 +10702,21 @@ completed history.
 - Metrics: status `planning_inventory_ready_missing_cache`; tile count `43,500`; chunk count `85`; merge group count `11`; chunk size `512`; last chunk tile count `492`; estimated required input bytes `2,093,100,000,000`; missing products `7`; mapping validation ready `true`; data cache ready `false`; execution ready `false`.
 - Boundaries: share-safe inventory/chunk smoke only; no national download, cache staging, Swiss-wide execution, distributed execution, operational, annual-frequency, physical-probability, risk/exposure/vulnerability, or non-`postproc` claim.
 - Next task: `TB-662`
+
+### TB-662: Measure Output Pressure After QA Checklist Packaging
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: quantify whether the package QA checklist materially changes package file count, byte count, or manifest pressure.
+- Files changed: `docs/aoi_package_qa_output_pressure_tb662.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Repackaged the target-gate AOI hazard map into `/tmp/tb662_aoi_package`.
+  - Measured package file count, byte count, manifest sizes, review surface status, and QA checklist footprint.
+  - Recorded the checklist overhead classification in a short TB-662 note.
+  - Removed TB-662 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --input-root hazard/results/tschamut_public_pilot/target_gate_v1 --output-root /tmp/tb662_aoi_package --overwrite --format json`
+- Result/status: implemented_measured
+- Metrics: package status `map_package_ready`; package files `39`; package bytes `440,839`; package manifest bytes `165,220`; pilot GIS manifest bytes `82,313`; summary bytes `1,671`; QA checklist bytes `8,292`; checklist/package ratio `1.9%`; checklist/manifest ratio `5.0%`; checklist status `diagnostic_review_pending`; review surface `review_ready_with_warnings`.
+- Boundaries: package-footprint measurement only; no package semantics, hazard values, output policy, physical-probability, operational, annual-frequency, risk/exposure/vulnerability, Swiss-wide, distributed, Balfrin, or non-`postproc` claim changed.
+- Next task: `TB-663`
