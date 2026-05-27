@@ -30,8 +30,9 @@ Current result:
 - maximum endpoint distance: `0.0 m`
 - coverage within the staged `0.5 m` geometry tolerance: `1.0`
 - calibration/model-selection overlap in metric inputs: `0`
-- remaining physical-probability blockers: `release_probability_model`,
-  `block_population_evidence`, and `calibration_evidence`
+- remaining physical-probability blocker after TB-656/TB-657/TB-658:
+  `calibration_evidence`, specifically
+  `accepted_residual_quality_threshold_or_review_decision`
 
 Focused checks:
 

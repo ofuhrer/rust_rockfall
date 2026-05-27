@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-658: Refresh Calibration And Holdout Separation Evidence
-
-Goal: Re-run the calibration/holdout separation checks against the latest staged evidence and identify the first unresolved scientific blocker.
-
-Capability gap reduced: Validation credibility and calibration discipline.
-
-Why this outranks alternatives: Stronger scale evidence is not persuasive without clear calibration and holdout separation.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/audit_chant_sura_holdout_split.py`
-- `docs/holdout_runout_deposition_evidence_tb615.md`
-
-Deliverables:
-
-- A refreshed local evidence-gap result that ranks the next scientific action and states whether holdout/calibration separation still passes.
-
-Definition of done:
-
-- The first unresolved blocker is explicit and the result does not promote validation acceptance beyond the evidence.
-
 ### TB-659: Collapse One Specialist AOI Command Into The Front Door
 
 Goal: Reduce user-facing complexity by routing one commonly needed specialist AOI helper through `run_aoi_hazard_workflow.py`.

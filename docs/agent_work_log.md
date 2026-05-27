@@ -10626,3 +10626,24 @@ completed history.
 - Metrics: block-population record status `accepted_for_design_review`; block population classes `3`; observed inventory total count `3`; observed-row summary rows `1`; observed release samples `10`; policy block-family rows `9`; policy sampling-weight total `30.0`; normalized sampling-share total `1.0`; physical-probability readiness remains `partial_evidence_missing_critical_inputs`; first blocking evidence class `calibration_evidence`.
 - Boundaries: design-review evidence summary only; no simulation defaults changed, scenario sampling weights remain conditional only, and `physical_probability_claims_allowed`, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, and non-`postproc` claims remain false.
 - Next task: `TB-658`
+
+### TB-658: Refresh Calibration And Holdout Separation Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: re-run calibration/holdout separation checks against the latest staged evidence and identify the first unresolved scientific blocker.
+- Files changed: `docs/calibration_holdout_evidence_tb658.md`, `docs/holdout_runout_deposition_evidence_tb615.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Re-ran the calibration separation preflight and Chant Sura holdout split audit.
+  - Re-ran the validation/calibration evidence gap report after the release-probability and block-population evidence updates.
+  - Recorded the refreshed evidence state and narrowed first blocker in a short TB-658 note.
+  - Updated the older holdout evidence note so it no longer lists release-probability and block-population as current blockers.
+  - Removed TB-658 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json --json-output /tmp/tb658_calibration_separation.json`
+  - `PYENV_VERSION=system uv run python scripts/audit_chant_sura_holdout_split.py --format json --json-output /tmp/tb658_holdout_split.json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb658_validation_gaps.json`
+- Result/status: implemented_checked_evidence_summary
+- Metrics: calibration separation `passed`; calibration artifacts `3`; validation cases `22`; prohibited crossings `0`; holdout split audit `passed`; model-selection trajectories `5`; held-out trajectories `6`; shared trajectories `0`; physical-probability readiness `partial_evidence_missing_critical_inputs`; passing evidence classes `6/7`; first blocking evidence class `calibration_evidence`; first blocking input `accepted_residual_quality_threshold_or_review_decision`.
+- Boundaries: evidence refresh only; measured calibration remains diagnostic pending acceptance criteria or review, and no validation acceptance, physical-probability map label, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, or non-`postproc` claim is enabled.
+- Next task: `TB-659`
