@@ -14,7 +14,7 @@ class BalfrinPhysicalCredibilityEvidenceGapsTests(unittest.TestCase):
         self.assertEqual(report["balfrin_demo_evidence_status"], "measured")
         self.assertEqual(report["physical_credibility_state"], "no_physical_evidence")
         self.assertEqual(report["validation_calibration_state"]["physical_credibility_status"], "not_established")
-        self.assertEqual(report["validation_calibration_state"]["calibration_status"], "missing")
+        self.assertEqual(report["validation_calibration_state"]["calibration_status"], "partial")
         self.assertEqual(report["validation_calibration_state"]["validation_status"], "partial")
         self.assertFalse(report["claim_boundaries"]["annual_frequency_claims_allowed"])
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
@@ -24,15 +24,25 @@ class BalfrinPhysicalCredibilityEvidenceGapsTests(unittest.TestCase):
         self.assertFalse(report["claim_boundaries"]["distributed_execution_authorized"])
 
         diagnostic = [row["requirement_key"] for row in report["diagnostic_reproducibility_only_requirements"]]
+        design_review = [row["requirement_key"] for row in report["design_review_candidate_requirements"]]
         missing = [row["requirement_key"] for row in report["missing_physical_requirements"]]
         self.assertEqual(
             diagnostic,
             [
                 "observed_runout_deposition",
-                "release_zone_evidence",
                 "independent_holdout_validation",
             ],
         )
+        self.assertEqual(design_review, ["release_zone_evidence"])
+        self.assertEqual(
+            report["design_review_candidate_requirements"][0]["validation_gap_support_role"],
+            "design_review_candidate_only",
+        )
+        self.assertEqual(
+            report["design_review_candidate_requirements"][0]["validation_gap_category_status"],
+            "present",
+        )
+        self.assertTrue(report["design_review_candidate_requirements"][0]["design_review_evidence"])
         self.assertEqual(
             missing,
             [
@@ -97,6 +107,7 @@ class BalfrinPhysicalCredibilityEvidenceGapsTests(unittest.TestCase):
         self.assertEqual(report["missing_inputs"], ["docs/missing.json"])
         self.assertEqual(report["requirement_matrix"], [])
         self.assertEqual(report["diagnostic_reproducibility_only_requirements"], [])
+        self.assertEqual(report["design_review_candidate_requirements"], [])
         self.assertEqual(report["missing_physical_requirements"], [])
         self.assertEqual(report["validation_calibration_state"]["calibration_status"], "blocked_missing_inputs")
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])

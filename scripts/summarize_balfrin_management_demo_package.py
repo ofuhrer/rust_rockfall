@@ -1167,6 +1167,9 @@ def build_physical_credibility_section(physical_credibility_report: dict[str, An
         "diagnostic_reproducibility_only_requirements": list(
             physical_credibility_report.get("diagnostic_reproducibility_only_requirements") or []
         ),
+        "design_review_candidate_requirements": list(
+            physical_credibility_report.get("design_review_candidate_requirements") or []
+        ),
         "missing_physical_requirements": list(physical_credibility_report.get("missing_physical_requirements") or []),
         "claim_boundaries": dict(physical_credibility_report.get("claim_boundaries") or {}),
         "source_paths": source_paths,

@@ -117,7 +117,12 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         validation_report=validation_report,
         observed_report=observed_report,
     )
-    diagnostic_only_requirements = [row for row in requirement_matrix if row["balfrin_evidence_state"] == "diagnostic_reproducibility_only"]
+    diagnostic_only_requirements = [
+        row for row in requirement_matrix if row["balfrin_evidence_state"] == "diagnostic_reproducibility_only"
+    ]
+    design_review_candidate_requirements = [
+        row for row in requirement_matrix if row["balfrin_evidence_state"] == "design_review_candidate_only"
+    ]
     missing_requirements = [row for row in requirement_matrix if row["balfrin_evidence_state"] == "missing_physical_evidence"]
 
     return {
@@ -137,6 +142,7 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
         "bundle_summary": summarize_bundle(bundle_report),
         "requirement_matrix": requirement_matrix,
         "diagnostic_reproducibility_only_requirements": diagnostic_only_requirements,
+        "design_review_candidate_requirements": design_review_candidate_requirements,
         "missing_physical_requirements": missing_requirements,
         "diagnostic_reproducibility_evidence": diagnostic_reproducibility_evidence(bundle_report),
         "claim_boundaries": claim_boundaries(validation_report),
@@ -172,6 +178,7 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
         },
         "requirement_matrix": [],
         "diagnostic_reproducibility_only_requirements": [],
+        "design_review_candidate_requirements": [],
         "missing_physical_requirements": [],
         "diagnostic_reproducibility_evidence": [],
         "claim_boundaries": claim_boundaries(),
@@ -204,10 +211,13 @@ def build_requirement_matrix(
     *,
     physical_report: dict[str, Any],
     bundle_report: dict[str, Any],
-    validation_report: dict[str, Any],  # noqa: ARG001 - kept for future report expansion.
+    validation_report: dict[str, Any],
     observed_report: dict[str, Any],
 ) -> list[dict[str, Any]]:
     categories = {entry["category"]: entry for entry in physical_report.get("evidence_requirement_categories", [])}
+    validation_categories = {
+        entry["category"]: entry for entry in validation_report.get("evidence_gap_categories", []) if isinstance(entry, dict)
+    }
     matrix: list[dict[str, Any]] = []
     for requirement_key in (
         "observed_runout_deposition",
@@ -219,17 +229,22 @@ def build_requirement_matrix(
         "source_frequency_and_temporal_frequency_evidence",
     ):
         category = categories.get(requirement_key, {})
-        balfrin_state = (
-            "diagnostic_reproducibility_only"
-            if requirement_key in DIAGNOSTIC_ONLY_REQUIREMENTS
-            else "missing_physical_evidence"
+        validation_category = validation_categories.get(requirement_key, {})
+        balfrin_state = balfrin_evidence_state_for_requirement(
+            requirement_key=requirement_key,
+            validation_category=validation_category,
         )
         row = {
             "requirement_key": requirement_key,
             "requirement_label": requirement_label(requirement_key),
             "current_repo_evidence_status": category.get("current_repo_evidence_status", "unknown"),
+            "validation_gap_category_status": validation_category.get("classification", "unknown"),
+            "validation_gap_support_role": validation_category.get("support_role", ""),
             "balfrin_evidence_state": balfrin_state,
             "current_repo_evidence_sources": category.get("current_repo_evidence_sources", []),
+            "design_review_evidence": validation_category.get("current_evidence", [])
+            if balfrin_state == "design_review_candidate_only"
+            else [],
             "future_acquisition_classes": category.get("future_acquisition_classes", []),
             "why_it_matters": category.get("why_it_matters", ""),
             "diagnostic_or_reproducibility_evidence": diagnostic_reproducibility_evidence(bundle_report)
@@ -240,6 +255,22 @@ def build_requirement_matrix(
         }
         matrix.append(row)
     return matrix
+
+
+def balfrin_evidence_state_for_requirement(
+    *,
+    requirement_key: str,
+    validation_category: dict[str, Any],
+) -> str:
+    if (
+        requirement_key == "release_zone_evidence"
+        and validation_category.get("classification") == "present"
+        and validation_category.get("support_role") == "design_review_candidate_only"
+    ):
+        return "design_review_candidate_only"
+    if requirement_key in DIAGNOSTIC_ONLY_REQUIREMENTS:
+        return "diagnostic_reproducibility_only"
+    return "missing_physical_evidence"
 
 
 def requirement_label(requirement_key: str) -> str:
@@ -334,6 +365,12 @@ def render_text_report(report: dict[str, Any]) -> str:
     for item in report["diagnostic_reproducibility_only_requirements"]:
         lines.append(
             f"- {item['requirement_key']}: {item['balfrin_evidence_state']} | {item['current_repo_evidence_status']}"
+        )
+    lines.append("design_review_candidate_requirements:")
+    for item in report.get("design_review_candidate_requirements", []):
+        lines.append(
+            f"- {item['requirement_key']}: {item['balfrin_evidence_state']} | "
+            f"validation_gap={item.get('validation_gap_category_status', 'unknown')}"
         )
     lines.append("missing_physical_requirements:")
     for item in report["missing_physical_requirements"]:

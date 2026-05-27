@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-656: Strengthen Release-Probability Evidence
-
-Goal: Convert the current release-probability gap into a concrete empirical or design-review evidence summary from existing source-zone and candidate records.
-
-Capability gap reduced: Physical-probability scientific credibility.
-
-Why this outranks alternatives: Release-probability evidence is one of the remaining blockers for physical-probability readiness.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
-- `scripts/validate_block_release_probability_evidence.py`
-- `docs/block_release_probability_evidence_contract.md`
-- `docs/source_zone_block_scenario_policy_v1.md`
-
-Deliverables:
-
-- A checked evidence summary or blocker that states what release-probability information is present, absent, and needed next.
-
-Definition of done:
-
-- The physical-credibility gap report moves forward with real evidence or a smaller blocker, without enabling physical-probability map labels.
-
 ### TB-657: Strengthen Block-Population Evidence
 
 Goal: Summarize current block-size, block-shape, and scenario-weight evidence from scenario tables and staged records.

@@ -10580,3 +10580,26 @@ completed history.
 - Metrics: inventory status `ready_with_deferred_public_context`; first blocking group `public_context_inputs`; AOI prepare status `ready_for_planning`; prepared-pilot compiler classification `blocked_missing_inputs`; local prepared-pilot execution status `blocked_local_execution`; missing real input families `swissimage_context`, `swisstlm3d_context`, `swisssurface3d_context`, `swisssurface3d_raster_context`, `swissbuildings3d_context`.
 - Boundaries: blocked second-site prepared-pilot path only; the smoke case remains fixture-backed portability evidence and is not counted as real-input second-site validation; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-656`
+
+### TB-656: Strengthen Release-Probability Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: convert the release-probability gap into a checked evidence summary from existing source-zone and candidate records.
+- Files changed: `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_management_demo_package.py`, `docs/release_probability_evidence_tb656.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Validated the staged Tschamut public block/release probability candidate record.
+  - Updated the Balfrin physical-credibility summary so `release_zone_evidence` is surfaced as `design_review_candidate_only` instead of being flattened into diagnostic-only evidence.
+  - Threaded the new design-review candidate list into the management demo package.
+  - Recorded a short release-probability evidence note with the remaining blocker.
+  - Removed TB-656 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/validate_block_release_probability_evidence.py validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb656_validation_gaps.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_physical_credibility_evidence_gaps.py --format json --json-output /tmp/tb656_physical_gaps.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json --json-output /tmp/tb656_management_package.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_physical_credibility_evidence_gaps tests.test_block_release_probability_evidence tests.test_validation_calibration_evidence_gaps tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_checked_evidence_summary
+- Metrics: release-probability record status `accepted_for_design_review`; source zone `tschamut_public_lps_release_bbox`; block scenarios `3`; release cells `10`; physical-probability readiness `partial_evidence_missing_critical_inputs`; passing evidence classes `6/7`; first blocking evidence class `calibration_evidence`.
+- Boundaries: design-review evidence summary only; `physical_probability_claims_allowed`, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, and non-`postproc` claims remain false.
+- Next task: `TB-657`

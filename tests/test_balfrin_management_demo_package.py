@@ -65,6 +65,10 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["bounds"]["reducer_wall_time_seconds"]["spread"], 0.0)
         self.assertEqual(report["physical_credibility_section"]["status"], "measured_diagnostic_only")
         self.assertEqual(report["physical_credibility_section"]["physical_credibility_state"], "no_physical_evidence")
+        self.assertEqual(
+            [row["requirement_key"] for row in report["physical_credibility_section"]["design_review_candidate_requirements"]],
+            ["release_zone_evidence"],
+        )
         self.assertEqual(report["swiss_wide_extension_section"]["status"], "no_go_extrapolated_beyond_measured_evidence")
         self.assertEqual(
             report["swiss_wide_extension_section"]["no_go_labels"],
