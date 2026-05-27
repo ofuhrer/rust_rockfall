@@ -10078,3 +10078,22 @@ completed history.
 - Metrics: stress-test status `ready`; package generation `10.16826254199259 s`; package files `39`; package bytes `401265`; raster count `22`; vector count `2`; COG conversion `19.775688750029076 s`; converted files `39`; converted bytes `403419`; converted raster count `22`; layer parity `parity_match`; first GIS packaging bottleneck `no_blocker`.
 - Boundaries: local package/COG conversion measurement only; no new simulation, public geodata acquisition, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-632`
+
+### TB-632: Simplify Obsolete Balfrin Evidence Surfaces
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: prune superseded Balfrin diagnostic report files while keeping measured facts in current summary surfaces.
+- Files changed: `docs/README.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`, `scripts/performance_ci_tracking.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `scripts/summarize_balfrin_management_demo_package.py`, and deleted superseded Balfrin diagnostic/handoff docs.
+- Implementation summary:
+  - Consolidated active source references for old diagnostic reports onto `docs/balfrin_diagnostic_series_tb613.md`.
+  - Deleted 13 superseded Balfrin 16/24/32/40/100-zone diagnostic and handoff documents whose durable metrics are preserved in the diagnostic series and Swiss-scale synthesis.
+  - Updated the docs front door to point at the current TB-619 hazard-throughput support run and the consolidated diagnostic series.
+  - Refreshed the Balfrin management and Swiss-scale summaries so they no longer describe current GIS/COG packaging as blocked after TB-631.
+  - Removed TB-632 from the active backlog.
+- Checks run:
+  - `rg -n "balfrin_(16_zone_diagnostic_metrics_tb575|24_zone_diagnostic_run_tb579|24_zone_diagnostic_metrics_tb580|24_zone_repeatability_runs_tb581|24_zone_repeatability_metrics_tb582|32_zone_diagnostic_run_tb599|40_zone_diagnostic_run_tb601|100_zone_diagnostic_package_tb611|100_zone_diagnostic_run_tb612|16_zone_handoff_tb569|16_zone_handoff_tb571|16_zone_handoff_tb573|16_zone_postproc_run_tb574)" docs scripts tests README.md | rg -v "docs/agent_work_log.md" || true`
+- Result/status: implemented_measured
+- Metrics: deleted superseded top-level docs `13`; active references to deleted docs outside historical work log `0`; docs front-door current evidence list now points to the consolidated diagnostic series and TB-619 as current hazard-throughput evidence.
+- Boundaries: documentation consolidation only; no evidence reinterpretation beyond existing measured summaries and no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: backlog refill needed

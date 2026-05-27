@@ -612,9 +612,7 @@ def build_readiness_matrix(
             helper_sources=[
                 "scripts/run_balfrin_diagnostic.py",
                 "scripts/summarize_balfrin_scale_readiness_matrix.py",
-                "docs/balfrin_24_zone_diagnostic_run_tb579.md",
-                "docs/balfrin_24_zone_repeatability_runs_tb581.md",
-                "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+                "docs/balfrin_diagnostic_series_tb613.md",
             ],
             current_evidence=build_diagnostic_performance_section(),
         ),
@@ -1131,12 +1129,7 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             "diagnostic reducer-pressure performance only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim"
         ),
         "source_paths": [
-            "docs/balfrin_100_zone_diagnostic_run_tb612.md",
             "docs/balfrin_diagnostic_series_tb613.md",
-            "docs/balfrin_24_zone_diagnostic_run_tb579.md",
-            "docs/balfrin_24_zone_diagnostic_metrics_tb580.md",
-            "docs/balfrin_24_zone_repeatability_runs_tb581.md",
-            "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
             "scripts/run_balfrin_diagnostic.py",
             "scripts/summarize_balfrin_scale_readiness_matrix.py",
         ],
@@ -1296,12 +1289,10 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "docs/swiss_scale_feasibility_projection.md",
             "docs/current_maturity_snapshot.md",
             "docs/balfrin_multi_zone_hazard_run_tb407.md",
-            "docs/balfrin_24_zone_diagnostic_run_tb579.md",
-            "docs/balfrin_24_zone_repeatability_runs_tb581.md",
-            "docs/balfrin_24_zone_repeatability_metrics_tb582.md",
+            "docs/balfrin_diagnostic_series_tb613.md",
             "docs/balfrin_regional_split_run_root_metrics_tb566.md",
             "docs/balfrin_regional_split_probe_gate_tb432.md",
-            "docs/balfrin_management_demo_package.md",
+            "docs/balfrin_scale_demonstration_management_package.md",
         ],
     }
 

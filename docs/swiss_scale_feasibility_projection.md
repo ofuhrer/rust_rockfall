@@ -237,12 +237,12 @@ branches into measured capability:
     bottlenecks for larger bounded probes.
   - `reducer_pressure` and replay metadata growth remain the next bottlenecks
     for 100-zone planning.
-- `hazard_throughput` is now measured for the bounded TB-603 support point, but
+- `hazard_throughput` is now measured for the bounded TB-619 support point, but
   larger multi-zone, distributed, and Swiss-wide hazard execution remains
   unmeasured.
-- GIS/COG conversion remains blocked at the standard-root layer until the
-  packaged AOI root has the required manifest fields and raster package
-  metadata, even though the converted proof root is already ready.
+- GIS/COG conversion is measured for the current largest package-capable output
+  root: TB-631 produced a COG-ready scratch package with 22/22 raster parity
+  and no packaging blocker.
   - `job_count > 1` still crosses the current single-job evidence boundary.
   - `scale_up_authorized=false` and `distributed_execution_authorized=false`
     remain hard boundaries.

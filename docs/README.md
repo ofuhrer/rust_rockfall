@@ -37,10 +37,10 @@ Current project version: `v0.6.1`.
 
 - `balfrin_scale_demonstration_management_package.md`: concise Balfrin evidence
   synthesis.
-- `balfrin_diagnostic_series_tb613.md`: measured diagnostic reducer-pressure
-  series through 100 release zones.
-- `balfrin_hazard_throughput_run_tb603.md`: bounded Balfrin hazard-throughput
-  support run.
+- `balfrin_diagnostic_series_tb613.md`: consolidated measured diagnostic
+  reducer-pressure series through 100 release zones.
+- `balfrin_four_zone_hazard_run_tb619.md`: current bounded Balfrin
+  hazard-throughput support run.
 - `source_frequency_evidence_tb614.md`: staged source-frequency design-review
   evidence.
 - `holdout_runout_deposition_evidence_tb615.md`: staged held-out runout-axis

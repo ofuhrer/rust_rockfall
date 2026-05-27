@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-632: Simplify Obsolete Balfrin Evidence Surfaces
-
-Goal: Remove or consolidate old Balfrin documents that are superseded by current scale summaries while preserving measured run facts.
-
-Capability gap reduced: Repository clarity and user-facing navigability after many task-specific Balfrin reports.
-
-Why this outranks alternatives: The repo has grown many narrow reports, and simplifying them makes the actual execution path and current evidence easier to find.
-
-Inspect first:
-
-- `docs/README.md`
-- `docs/agent_work_log.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/balfrin_diagnostic_series_tb613.md`
-- `scripts/check_repo_consistency.py`
-
-Deliverables:
-
-- A safe documentation prune or consolidation that removes superseded Balfrin report files from the docs index and keeps durable measured facts in summary surfaces.
-
-Definition of done:
-
-- Repo consistency checks pass, no active references point to deleted docs, and the docs front door is shorter or clearer than before.
 ## Backlog Protocol
 
 Task headings must always be exactly:
