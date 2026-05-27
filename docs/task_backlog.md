@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-642: Run A Larger Bounded Hazard-Throughput Probe On Balfrin
-
-Goal: Measure hazard-throughput beyond the current bounded four-zone support point while staying inside the existing `postproc` standing clearance.
-
-Capability gap reduced: Performance and feasibility evidence for larger Balfrin hazard runs.
-
-Why this outranks alternatives: Diagnostic reducer pressure is measured through 100 zones, but hazard-throughput is still bounded at four zones.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_next_live_run_decision_gate.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_four_zone_hazard_run_tb619.md`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- A submitted and monitored Balfrin `postproc` hazard-throughput run larger than TB-619, or a concrete pre-submit blocker.
-
-Definition of done:
-
-- Run roots live under `$SCRATCH`, runtime/memory/output/conditional-curve metrics are collected if the job completes, and claims remain bounded hazard-throughput evidence only.
-
 ### TB-643: Measure Reducer Metadata Pressure On Larger Hazard Outputs
 
 Goal: Identify whether reducer metadata, manifest size, or replay sidecars become the next practical bottleneck after a larger hazard-throughput run.

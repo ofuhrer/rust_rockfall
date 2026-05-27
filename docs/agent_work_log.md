@@ -10282,3 +10282,25 @@ completed history.
 - Metrics: second-site package-map status `blocked_missing_hazard_outputs`; missing outputs `hazard/results/chant_sura_fluelapass_portability_example_v1/*map_package_manifest*.json` and `hazard/results/chant_sura_fluelapass_portability_example_v1/*pilot_gis_package_manifest*.json`; Tschamut package status `ready`; Tschamut package files `39`; Tschamut package bytes `413305`; raster count `22`; vector count `2`.
 - Boundaries: output-shape blocker only; no second-site run, no second-site package parity, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-642`
+
+### TB-642: Run A Larger Bounded Hazard-Throughput Probe On Balfrin
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: submit a bounded Balfrin `postproc` hazard-throughput run larger than the TB-619 four-zone support point, or record the concrete pre-submit blocker.
+- Files changed: `docs/balfrin_hazard_throughput_probe_tb642.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Rechecked Balfrin SSH, remote checkout hygiene, `$SCRATCH` run-root visibility, and `postproc` scheduler reachability.
+  - Ran the next live-run decision gate with the fresh access preflight and confirmed it still returns `defer`.
+  - Probed an eight-zone handoff with the current multi-release-zone package helper.
+  - Confirmed the requested eight-zone handoff is blocked by output-budget thresholds while the executable hazard-throughput package branch remains a four-zone package.
+  - Documented the pre-submit blocker and removed TB-642 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-642 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_next_live_run_decision_gate.py --balfrin-access-preflight-json /tmp/tb642_balfrin_preflight.json --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/tb642_handoff_8 --requested-release-zone-batch-size 8 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json`
+- Result/status: implemented_waiting_report
+- Metrics: preflight ready for read-only/pre-submit checks; `postproc` snapshot had 10 idle nodes, 12 running jobs, 0 pending jobs, and 1 current-user job; decision gate status `defer`; eight-zone handoff output-budget status `blocked_threshold_exceeded`; manifest bytes `22,570` versus threshold `22,000`; output files `35` versus threshold `28`; replay-critical `trajectory_csv`, `deposition_csv`, and `impact_events_csv` counts `8` versus threshold `4`; generated hazard execution package still reports `release_zone_count=4`.
+- Boundaries: pre-submit blocker only; no new Balfrin job submitted, no larger hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-643`
