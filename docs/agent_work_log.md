@@ -10015,3 +10015,25 @@ completed history.
 - Metrics: inventory status `ready_with_deferred_public_context`; first external data blocker `public_context_inputs`; terrain/source-zone/scenario groups `ready`; prepared-pilot group `ready_with_deferred_public_context`; deferred public-context blocker count `5`; explicit-acquire package status `materialized`; unresolved acquisition decisions `6`.
 - Boundaries: local inventory and acquisition-plan packaging only; no public geodata download, no Balfrin job, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-629`
+
+### TB-629: Run A Second-Site AOI Workflow Smoke
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: attempt the smallest useful Chant Sura / Flüelapass AOI smoke path and record either a second-site output package or the first concrete blocker.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the Chant Sura / Flüelapass `prepare` front-door command against the staged second-site input bundle.
+  - Confirmed the preparation delegates for acquisition resolution, public-geodata cache, terrain preparation, release-candidate planning, and scenario-freeze readiness are ready.
+  - Ran `run-prepared-pilot-local` with the prepared-pilot report path to exercise the execution handoff.
+  - Captured the concrete prepared-pilot blocker: missing public-context roots for `swissimage`, `swisstlm3d`, `swisssurface3d`, `swisssurface3d_raster`, and `swissbuildings3d`.
+  - Also ran the generic local AOI smoke path and confirmed it completes, but it remains fixture-backed and is not second-site evidence.
+  - Removed TB-629 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --format json --json-output /tmp/rust_rockfall_tb629_prepare.json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --prepared-pilot-report-path /tmp/rust_rockfall_tb629_prepare.json --prepared-pilot-output-root /tmp/rust_rockfall_tb629_prepared_pilot --format json --json-output /tmp/rust_rockfall_tb629_prepared_pilot_with_report.json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-local-smoke --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --smoke-output-root /tmp/rust_rockfall_tb629_local_smoke --format json --json-output /tmp/rust_rockfall_tb629_local_smoke.json`
+- Result/status: implemented_waiting_report
+- Metrics: second-site prepare status `ready`; ready prepare delegate count `6`; prepared-pilot local execution status `blocked_local_execution`; first blocker step `prepared_pilot_inputs`; missing public-context root count `5`; generic fixture-backed local smoke status `smoke_completed`; generic fixture-backed local smoke output bytes `56465`.
+- Boundaries: no second-site hazard execution completed; the successful local smoke is fixture-backed and not second-site evidence; no public geodata download, Balfrin job, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-630`

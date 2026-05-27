@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-629: Run A Second-Site AOI Workflow Smoke
-
-Goal: Execute the smallest useful AOI candidate or hazard-workflow smoke on the staged second site.
-
-Capability gap reduced: Evidence that the pipeline is not overfit to the Tschamut pilot.
-
-Why this outranks alternatives: A second-site smoke is a stronger credibility step than additional single-site summaries.
-
-Inspect first:
-
-- `scripts/bootstrap_aoi_manifest.py`
-- `scripts/plan_terrain_release_zone_candidates.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/aoi_user_manual.md`
-- generated scratch: TB-628 second-site input bundle
-
-Deliverables:
-
-- A completed second-site AOI smoke with candidate count, scenario count, runtime, output bytes, and any failed data assumptions.
-
-Definition of done:
-
-- The workflow either produces a small second-site output package or fails with a concrete missing input that is not hidden behind generic setup language.
-
 ### TB-630: Add A Spatial Holdout Metric For Runout Evidence
 
 Goal: Strengthen holdout validation by adding a spatial metric beyond simple presence/intake of observed runout/deposition evidence.
