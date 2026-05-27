@@ -10487,3 +10487,27 @@ completed history.
 - Metrics: local profile release zones `12`; local profile output files `29`; local profile output bytes `1,144,550`; dominant phase `accumulation_seconds`; 8-zone handoff review readiness `ready_for_review`; scenario count `24`; output-budget gate `fixture_backed_ready`; projection status `acceptable`; projected output files `35`; projected output bytes `26,422`; projected manifest bytes `22,570`; replay-critical families retained `5`; constraint pressure `warning`.
 - Boundaries: package/profile measurement only; no Balfrin submission in this task, no scale-up claim, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-652`
+
+### TB-652: Run The Next Bounded Hazard-Throughput Probe On Balfrin
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: submit, monitor, collect, and summarize the next bounded 8-zone `postproc` hazard-throughput diagnostic on Balfrin.
+- Files changed: `scripts/summarize_balfrin_probe_metrics_report.py`, `tests/test_balfrin_probe_metrics_report.py`, `docs/balfrin_hazard_throughput_probe_tb652.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified Balfrin SSH, clean remote checkout, readable `$SCRATCH` roots, and `postproc` scheduler visibility.
+  - Planned and ran an 8-zone compact diagnostic under `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`.
+  - Collected the completed run record, pressure report, scheduler accounting, stdout/stderr, and `/usr/bin/time -v` metrics.
+  - Fixed `summarize_balfrin_probe_metrics_report.py` so it classifies the simplified `run_record.json` diagnostic shape natively instead of reporting false missing legacy metrics.
+  - Copied the corrected metrics report into the preserved Balfrin run root under `metrics_report_fixed/`.
+  - Removed TB-652 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 8 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --partition postproc --time 00:30:00 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527 --format json'`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 8 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --partition postproc --time 00:30:00 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527 --poll-seconds 10 --monitor-timeout-seconds 3600 --format json'`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py --evidence-json /tmp/tb652_run_record.json --format json --json-output /tmp/tb652_metrics_report_fixed.json --text-output /tmp/tb652_metrics_report_fixed.txt`
+- Result/status: implemented_measured
+- Metrics: job id `4377075`; terminal state `COMPLETED`; run root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`; release zones `8`; reducer chunks `2`; reducer workers `2`; elapsed wall time `0:00.59`; peak RSS `34.223` MB; scenario count `8`; output files `28`; output bytes `14,397`; manifest bytes `11,458`; reducer wall time `2.11` seconds; run-root footprint `41` files / `85,295` bytes; corrected metrics report `14` measured / `0` blocked mandatory diagnostic metrics.
+- Boundaries: measured Balfrin `postproc` diagnostic only; remote checkout was clean but behind local `main`; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-653`

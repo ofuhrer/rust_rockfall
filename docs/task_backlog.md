@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-652: Run The Next Bounded Hazard-Throughput Probe On Balfrin
-
-Goal: If TB-651 produces a safe package profile, submit and monitor the next bounded `postproc` hazard-throughput probe on Balfrin.
-
-Capability gap reduced: Measured Balfrin hazard-throughput scaling beyond TB-619.
-
-Why this outranks alternatives: A successful larger hazard-throughput run would replace speculation with the next measured feasibility point while Balfrin capacity is available.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- A preserved `$SCRATCH` run root with run record and collected metrics, or a concrete no-submit blocker if access, profile, queue, or output gates fail.
-
-Definition of done:
-
-- The run is completed and summarized, or the no-submit reason is explicit enough to make the next corrective task obvious.
-
 ### TB-653: Compare Hazard-Throughput Runs And Refresh Scale Surfaces
 
 Goal: Thread the newest hazard-throughput result or blocker through the scale projection and management summary.

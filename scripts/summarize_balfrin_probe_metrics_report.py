@@ -98,6 +98,32 @@ def _safe_mapping(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
+def _elapsed_to_seconds(value: Any) -> float | None:
+    if not isinstance(value, str) or not value:
+        return None
+    parts = value.split(":")
+    try:
+        if len(parts) == 2:
+            minutes = float(parts[0])
+            seconds = float(parts[1])
+            return round(minutes * 60 + seconds, 6)
+        if len(parts) == 3:
+            hours = float(parts[0])
+            minutes = float(parts[1])
+            seconds = float(parts[2])
+            return round(hours * 3600 + minutes * 60 + seconds, 6)
+    except ValueError:
+        return None
+    return None
+
+
+def _metric_entry(status: str, source: str, value: Any, reason: str | None = None) -> dict[str, Any]:
+    entry = {"status": status, "source": source, "value": value}
+    if reason:
+        entry["reason"] = reason
+    return entry
+
+
 def _collect_source_paths(source_paths: dict[str, Any] | None) -> list[str]:
     if not isinstance(source_paths, dict):
         return []
@@ -197,6 +223,177 @@ def _classification(metric_statuses: dict[str, Any], metrics_remediation: dict[s
     }
 
 
+def _load_diagnostic_run_record(run_root: Path) -> dict[str, Any] | None:
+    run_record_path = run_root / "run_record.json"
+    run_record = _load_json(run_record_path)
+    if run_record and run_record.get("schema_version") == "balfrin_diagnostic_run_record_v1":
+        return run_record
+    return None
+
+
+def build_diagnostic_run_record_report(
+    run_record: dict[str, Any],
+    *,
+    run_root: Path | None = None,
+) -> dict[str, Any]:
+    collection = _safe_mapping(run_record.get("collection"))
+    pressure_report = _safe_mapping(collection.get("pressure_report"))
+    time_verbose = _safe_mapping(collection.get("time_verbose"))
+    run_root_footprint = _safe_mapping(collection.get("run_root_footprint"))
+    pressure_root_footprint = _safe_mapping(collection.get("pressure_root_footprint"))
+    diagnostic_shape = _safe_mapping(run_record.get("diagnostic_shape"))
+
+    elapsed = time_verbose.get("elapsed")
+    elapsed_seconds = _elapsed_to_seconds(elapsed)
+    max_rss_mb = time_verbose.get("max_rss_mb")
+    terminal_state = run_record.get("terminal_state")
+    collection_status = collection.get("status")
+    pressure_status = pressure_report.get("status")
+
+    mandatory_statuses = {
+        "slurm_terminal_state": _metric_entry(
+            "measured" if terminal_state else "blocked",
+            "run_record.terminal_state",
+            terminal_state,
+            None if terminal_state else "missing terminal scheduler state",
+        ),
+        "diagnostic_collection_status": _metric_entry(
+            "measured" if collection_status else "blocked",
+            "run_record.collection.status",
+            collection_status,
+            None if collection_status else "missing collection status",
+        ),
+        "diagnostic_wall_time_seconds": _metric_entry(
+            "measured" if elapsed_seconds is not None else "blocked",
+            "run_record.collection.time_verbose.elapsed",
+            elapsed_seconds,
+            None if elapsed_seconds is not None else "missing /usr/bin/time elapsed wall time",
+        ),
+        "diagnostic_memory_peak_mb": _metric_entry(
+            "measured" if max_rss_mb is not None else "blocked",
+            "run_record.collection.time_verbose.max_rss_mb",
+            max_rss_mb,
+            None if max_rss_mb is not None else "missing /usr/bin/time peak RSS",
+        ),
+        "release_zone_count": _metric_entry(
+            "measured" if diagnostic_shape.get("release_zone_count") is not None else "blocked",
+            "run_record.diagnostic_shape.release_zone_count",
+            diagnostic_shape.get("release_zone_count"),
+            None if diagnostic_shape.get("release_zone_count") is not None else "missing release-zone count",
+        ),
+        "pressure_report.status": _metric_entry(
+            "measured" if pressure_status else "blocked",
+            "run_record.collection.pressure_report.status",
+            pressure_status,
+            None if pressure_status else "missing pressure report status",
+        ),
+        "pressure_output.file_count": _metric_entry(
+            "measured" if pressure_report.get("output_file_count") is not None else "blocked",
+            "run_record.collection.pressure_report.output_file_count",
+            pressure_report.get("output_file_count"),
+            None if pressure_report.get("output_file_count") is not None else "missing pressure output file count",
+        ),
+        "pressure_output.bytes": _metric_entry(
+            "measured" if pressure_report.get("output_byte_count") is not None else "blocked",
+            "run_record.collection.pressure_report.output_byte_count",
+            pressure_report.get("output_byte_count"),
+            None if pressure_report.get("output_byte_count") is not None else "missing pressure output bytes",
+        ),
+        "pressure_manifest.bytes": _metric_entry(
+            "measured" if pressure_report.get("manifest_size_bytes") is not None else "blocked",
+            "run_record.collection.pressure_report.manifest_size_bytes",
+            pressure_report.get("manifest_size_bytes"),
+            None if pressure_report.get("manifest_size_bytes") is not None else "missing pressure manifest bytes",
+        ),
+        "reducer_wall_time_seconds": _metric_entry(
+            "measured" if pressure_report.get("reducer_wall_time_seconds") is not None else "blocked",
+            "run_record.collection.pressure_report.reducer_wall_time_seconds",
+            pressure_report.get("reducer_wall_time_seconds"),
+            None if pressure_report.get("reducer_wall_time_seconds") is not None else "missing reducer wall time",
+        ),
+        "run_root.file_count": _metric_entry(
+            "measured" if run_root_footprint.get("file_count") is not None else "blocked",
+            "run_record.collection.run_root_footprint.file_count",
+            run_root_footprint.get("file_count"),
+            None if run_root_footprint.get("file_count") is not None else "missing run-root file count",
+        ),
+        "run_root.bytes": _metric_entry(
+            "measured" if run_root_footprint.get("bytes") is not None else "blocked",
+            "run_record.collection.run_root_footprint.bytes",
+            run_root_footprint.get("bytes"),
+            None if run_root_footprint.get("bytes") is not None else "missing run-root bytes",
+        ),
+        "pressure_root.file_count": _metric_entry(
+            "measured" if pressure_root_footprint.get("file_count") is not None else "blocked",
+            "run_record.collection.pressure_root_footprint.file_count",
+            pressure_root_footprint.get("file_count"),
+            None if pressure_root_footprint.get("file_count") is not None else "missing pressure-root file count",
+        ),
+        "pressure_root.bytes": _metric_entry(
+            "measured" if pressure_root_footprint.get("bytes") is not None else "blocked",
+            "run_record.collection.pressure_root_footprint.bytes",
+            pressure_root_footprint.get("bytes"),
+            None if pressure_root_footprint.get("bytes") is not None else "missing pressure-root bytes",
+        ),
+    }
+    measured = sorted(name for name, entry in mandatory_statuses.items() if entry.get("status") == "measured")
+    blocked = sorted(name for name, entry in mandatory_statuses.items() if entry.get("status") == "blocked")
+    metric_statuses = {
+        "mandatory": mandatory_statuses,
+        "ancillary": {},
+        "measured": measured,
+        "blocked": blocked,
+        "unavailable": [],
+    }
+    metrics_remediation = {
+        "schema_version": "balfrin_probe_metrics_remediation_v1",
+        "status": "complete" if not blocked else "action_required",
+        "missing_mandatory_metrics": blocked,
+        "unavailable_ancillary_metrics": [],
+        "next_run_required_metrics": blocked,
+        "next_run_collection_checklist": [],
+    }
+    classification = _classification(metric_statuses, metrics_remediation)
+    source_paths = {
+        "run_root": str(run_root) if run_root is not None else run_record.get("run_root"),
+        "run_record_path": str(run_root / "run_record.json") if run_root is not None else run_record.get("paths", {}).get("run_record"),
+        "pressure_report_path": _safe_mapping(run_record.get("paths")).get("pressure_json"),
+        "pressure_root": _safe_mapping(run_record.get("paths")).get("pressure_root"),
+        "sacct_path": _safe_mapping(run_record.get("paths")).get("sacct"),
+        "time_verbose_path": _safe_mapping(run_record.get("paths")).get("time"),
+    }
+    report_status = "complete" if not blocked else "blocked_missing_inputs"
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "report_status": report_status,
+        "run_root_status": "measured_run_root",
+        "run_root": str(run_root) if run_root is not None else run_record.get("run_root"),
+        "metrics_completion_source": "diagnostic_run_record",
+        "metrics_completion_outcome": "measured" if not blocked else "incomplete",
+        "metrics_completion_attempt_status": run_record.get("status"),
+        "metrics_contract_status": "complete" if not blocked else "blocked_missing_inputs",
+        "metrics_contract_missing_metrics": blocked,
+        "metrics_contract_ancillary_unavailable_metrics": [],
+        "metric_statuses": metric_statuses,
+        "metrics_remediation": metrics_remediation,
+        "classification": classification,
+        "source_paths": source_paths,
+        "diagnostic_run": {
+            "job_id": run_record.get("job_id"),
+            "terminal_state": terminal_state,
+            "git_head": run_record.get("git_head"),
+            "partition": run_record.get("partition"),
+            "diagnostic_shape": diagnostic_shape,
+            "pressure_report": pressure_report,
+            "time_verbose": time_verbose,
+            "run_root_footprint": run_root_footprint,
+            "pressure_root_footprint": pressure_root_footprint,
+        },
+    }
+    report["summary"] = summarize_report(report_status, classification, report)
+    return report
+
+
 def build_report(
     evidence: dict[str, Any] | None = None,
     *,
@@ -207,7 +404,12 @@ def build_report(
             return blocked_missing_run_root_report(Path("missing-run-root"))
         if not run_root.exists():
             return blocked_missing_run_root_report(run_root)
+        diagnostic_run_record = _load_diagnostic_run_record(run_root)
+        if diagnostic_run_record is not None:
+            return build_diagnostic_run_record_report(diagnostic_run_record, run_root=run_root)
         evidence = probe_metrics.collect_run_metrics(run_root)
+    elif evidence.get("schema_version") == "balfrin_diagnostic_run_record_v1":
+        return build_diagnostic_run_record_report(evidence, run_root=run_root)
 
     report_status = "complete"
     if evidence.get("metrics_contract_status") == "blocked_missing_inputs":

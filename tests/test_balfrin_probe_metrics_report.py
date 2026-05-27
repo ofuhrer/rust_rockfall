@@ -81,6 +81,27 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
         self.assertIn("metrics_completion_source=recovered_existing_run_root", report["summary"])
         self.assertIn("metrics_completion_source:", MODULE.render_text_report(report))
 
+    def test_diagnostic_run_record_root_reports_native_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_root = Path(tmpdir)
+            (run_root / "run_record.json").write_text(
+                json.dumps(self.diagnostic_run_record(run_root), indent=2),
+                encoding="utf-8",
+            )
+
+            report = MODULE.build_report(None, run_root=run_root)
+
+        self.assertEqual(report["report_status"], "complete")
+        self.assertEqual(report["metrics_completion_source"], "diagnostic_run_record")
+        self.assertEqual(report["metrics_completion_outcome"], "measured")
+        self.assertEqual(report["metrics_contract_status"], "complete")
+        self.assertEqual(report["classification"]["mandatory"]["blocked"], [])
+        self.assertIn("diagnostic_wall_time_seconds", report["classification"]["mandatory"]["measured"])
+        self.assertIn("pressure_output.file_count", report["classification"]["mandatory"]["measured"])
+        self.assertEqual(report["diagnostic_run"]["job_id"], "4377075")
+        self.assertEqual(report["diagnostic_run"]["pressure_report"]["output_file_count"], 28)
+        self.assertIn("14 mandatory metrics measured", report["summary"])
+
     def test_explicit_new_metrics_completion_rerun_source_is_preserved(self) -> None:
         run_root = ROOT / "tests/fixtures/balfrin_probe_metrics_contract/complete_run_root"
         report = MODULE.build_report(None, run_root=run_root)
@@ -264,6 +285,66 @@ class BalfrinProbeMetricsReportTests(unittest.TestCase):
                 "error_like_line_count": 0,
                 "affected_log_paths": [],
                 "files": [],
+            },
+        }
+
+    def diagnostic_run_record(self, run_root: Path) -> dict[str, object]:
+        return {
+            "schema_version": "balfrin_diagnostic_run_record_v1",
+            "status": "completed",
+            "run_root": str(run_root),
+            "git_head": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+            "job_id": "4377075",
+            "terminal_state": "COMPLETED",
+            "partition": "postproc",
+            "diagnostic_shape": {
+                "release_zone_count": 8,
+                "reducer_chunk_count": 2,
+                "reducer_worker_count": 2,
+                "manifest_mode": "compact",
+                "output_family_mix": [
+                    "trajectory_csv",
+                    "deposition_csv",
+                    "impact_events_csv",
+                    "trajectory_merge_state",
+                    "reducer_merge_state",
+                ],
+            },
+            "paths": {
+                "run_record": str(run_root / "run_record.json"),
+                "pressure_json": str(run_root / "multi_zone_reducer_pressure.json"),
+                "pressure_root": str(run_root / "pressure_root"),
+                "sacct": str(run_root / "slurm_accounting.psv"),
+                "time": str(run_root / "time_verbose.txt"),
+            },
+            "collection": {
+                "status": "complete",
+                "time_verbose": {
+                    "status": "measured",
+                    "elapsed": "0:00.59",
+                    "max_rss_kb": 35044,
+                    "max_rss_mb": 34.223,
+                },
+                "run_root_footprint": {
+                    "status": "measured",
+                    "file_count": 41,
+                    "bytes": 85295,
+                },
+                "pressure_root_footprint": {
+                    "status": "measured",
+                    "file_count": 33,
+                    "bytes": 24704,
+                },
+                "pressure_report": {
+                    "status": "measured_scratch_root",
+                    "release_zone_count": 8,
+                    "scenario_count": 8,
+                    "manifest_size_bytes": 11458,
+                    "output_file_count": 28,
+                    "output_byte_count": 14397,
+                    "root_file_count": 33,
+                    "reducer_wall_time_seconds": 2.11,
+                },
             },
         }
 
