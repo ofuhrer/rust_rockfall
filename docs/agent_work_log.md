@@ -10198,3 +10198,24 @@ completed history.
 - Metrics: calibrated runout error improved by `10.205165246645223 m`; centroid error improved by `10.224831509066512 m`; cloud mean-nearest error improved by `9.900244344188458 m`; lateral spread error improved by `1.8856842085460137 m`; deposition overlap increased by `0.19`; hazard comparison status `ok`; shared layers `24`; shape mismatches `0`; threshold disagreements `0`; output checksum mismatches `48`; reach-probability `L1=15.345000000000006`; weighted reach-probability `L1=2.7899999999984835`; max kinetic-energy `RMSE=3295.221414758502`; max jump-height `RMSE=0.5803971479025157`.
 - Boundaries: scratch-only 20-member hazard smoke; no committed hazard outputs, validation case mutation, default parameter mutation, validation acceptance, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-638`
+
+### TB-638: Make Calibration Readiness Report Actionable
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: replace the generic calibration `partial` blocker with concrete measured and missing calibration evidence fields.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `calibration_readiness_detail` to the validation/calibration evidence report.
+  - Classified fitted-parameter provenance and holdout scoring completeness as present for the current Tschamut run.
+  - Classified residual-quality review and predeclared calibration acceptance thresholds as the remaining blocking calibration sub-fields.
+  - Kept `physical_probability_claims_allowed=false` and the readiness check failing on `calibration_evidence`.
+  - Removed TB-638 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/assess_validation_calibration_evidence_gaps.py tests/test_validation_calibration_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+- Result/status: implemented_measured
+- Metrics: physical-probability readiness `partial_evidence_missing_critical_inputs`; first blocking evidence class `calibration_evidence`; calibration support role `measured_fit_pending_acceptance_threshold`; present sub-blockers `fitted_parameter_provenance`, `holdout_scoring_completeness`; blocking sub-blockers `residual_quality_review`, `acceptance_threshold`; first missing calibration input `accepted_residual_quality_threshold_or_review_decision`.
+- Boundaries: reporting/actionability change only; no validation acceptance, selected-parameter promotion, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-639`

@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-638: Make Calibration Readiness Report Actionable
-
-Goal: Convert the remaining calibration blocker from a generic `partial` state into specific missing/weak evidence fields.
-
-Capability gap reduced: Clear path from local calibration smoke toward physical-probability readiness.
-
-Why this outranks alternatives: The readiness check now says only calibration is failing, but the next calibration fix needs a precise target.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `calibration/experiments/tschamut_v0_3/objective_contract.json`
-- `tests/test_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A readiness report that identifies concrete calibration sub-blockers such as residual quality, fitted-parameter provenance, acceptance threshold, or holdout scoring completeness.
-
-Definition of done:
-
-- Focused tests pass and the report still keeps physical-probability claims false until all required calibration sub-blockers are satisfied.
-
 ### TB-639: Stage Second-Site Public Context Inputs If Available
 
 Goal: Move Chant Sura / Flüelapass from prepared-core readiness to an actual second-site smoke by resolving public-context inputs where local source data are available.

@@ -104,6 +104,7 @@ DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY = (
 DEFAULT_TSCHAMUT_CALIBRATION_OBJECTIVE_CONTRACT = (
     ROOT / "calibration/experiments/tschamut_v0_3/objective_contract.json"
 )
+DEFAULT_TSCHAMUT_CALIBRATION_SUMMARY = ROOT / "calibration/experiments/tschamut_v0_3/summary.json"
 
 PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
     {
@@ -506,7 +507,11 @@ def next_concrete_scientific_tasks(evidence_gap_categories: list[dict[str, Any]]
         gap = categories.get(category, {})
         if gap.get("classification") == "present":
             continue
-        if category == "calibration_evidence" and gap.get("support_role") == "objective_defined_pending_smoke":
+        if category == "calibration_evidence" and gap.get("support_role") in {
+            "objective_defined_pending_smoke",
+            "measured_fit_pending_acceptance_threshold",
+            "measured_fit_ready_for_review",
+        }:
             continue
         tasks.append(
             {
@@ -1137,9 +1142,12 @@ def calibration_gap(
     calibration_objective_contract: dict[str, Any],
 ) -> dict[str, Any]:
     objective_ready = calibration_objective_contract.get("objective_status") == "executable_smoke_ready"
+    calibration_summary = load_tschamut_calibration_summary()
+    readiness = build_calibration_readiness_detail(calibration_objective_contract, calibration_summary)
+    measured_fit_ready = readiness["measured_fit_status"] == "present"
     return {
         "category": "calibration_evidence",
-        "classification": "partial" if objective_ready else "missing",
+        "classification": "partial" if objective_ready or measured_fit_ready else "missing",
         "current_evidence": [
             tschamut_manifest.get("claim_boundary", {}),
             tschamut_gate.get("physics_freeze", {}),
@@ -1147,43 +1155,186 @@ def calibration_gap(
             chant_contact_heldout.get("expected", {}).get("metrics", []),
             chant_model_selection.get("frozen_reference_metrics", {}),
             calibration_objective_contract,
+            readiness["evidence_summary"],
         ],
         "what_exists": [
             "Current pilot evidence is explicitly non-tuning and non-operational",
             "Chant Sura contact fixtures support model comparison and shape sensitivity only",
             (
-                "The Tschamut calibration objective names its training partition, excluded holdout partition, "
-                "parameter grid, metrics, and expected artifacts"
-                if objective_ready
-                else "No executable calibration objective contract is staged"
+                f"The Tschamut calibration run measured {readiness['evidence_summary'].get('candidate_count', 0)} "
+                f"candidates and selected {readiness['evidence_summary'].get('selected_candidate_id', '')}"
+                if measured_fit_ready
+                else (
+                    "The Tschamut calibration objective names its training partition, excluded holdout partition, "
+                    "parameter grid, metrics, and expected artifacts"
+                    if objective_ready
+                    else "No executable calibration objective contract is staged"
+                )
             ),
         ],
         "what_is_missing": [
-            (
-                "A completed calibration smoke or fit record from the staged objective"
-                if objective_ready
-                else "A calibration dataset with a documented objective function and parameter bounds"
-            ),
-            (
-                "A post-fit comparison that keeps the excluded holdout partition out of fitting"
-                if objective_ready
-                else "A holdout split reserved for post-fit validation"
-            ),
-            "A statement that current Tschamut outputs are calibrated evidence",
+            item["missing_input"]
+            for item in readiness["sub_blockers"]
+            if item["status"] == "blocking"
         ],
         "minimum_additional_evidence_needed": (
-            "Run the staged calibration objective in smoke mode, record candidate sensitivity and fitted values, "
-            "and keep the excluded holdout partition out of fitting."
-            if objective_ready
-            else "A calibration record that names the calibration dataset, objective function, parameter bounds, "
-            "fitted values, and a separate holdout validation dataset."
+            readiness["next_action"]
         ),
-        "support_role": "objective_defined_pending_smoke" if objective_ready else "not_calibrated",
-        "claim_boundary": "calibration_objective_only_not_validation_evidence"
-        if objective_ready
-        else "calibration_out_of_scope_for_current_pilot",
-        "physical_probability_relevance": "partial" if objective_ready else "missing",
-        "holdout_validation_relevance": "partial" if objective_ready else "missing",
+        "first_missing_input": readiness["first_blocking_input"],
+        "support_role": readiness["support_role"],
+        "calibration_readiness_detail": readiness,
+        "claim_boundary": "measured_calibration_diagnostic_only_not_validation_acceptance"
+        if measured_fit_ready
+        else (
+            "calibration_objective_only_not_validation_evidence"
+            if objective_ready
+            else "calibration_out_of_scope_for_current_pilot"
+        ),
+        "physical_probability_relevance": "partial" if objective_ready or measured_fit_ready else "missing",
+        "holdout_validation_relevance": "partial" if objective_ready or measured_fit_ready else "missing",
+    }
+
+
+def load_tschamut_calibration_summary(path: Path | None = None) -> dict[str, Any]:
+    summary_path = path or DEFAULT_TSCHAMUT_CALIBRATION_SUMMARY
+    if not summary_path.exists():
+        return {"summary_status": "missing", "record_path": str(summary_path)}
+    summary = load_json(summary_path)
+    if not isinstance(summary, dict):
+        return {"summary_status": "invalid", "record_path": str(summary_path)}
+    summary["summary_status"] = "present"
+    summary["record_path"] = str(summary_path)
+    return summary
+
+
+def build_calibration_readiness_detail(
+    objective_contract: dict[str, Any],
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    best = summary.get("best_candidate") if isinstance(summary.get("best_candidate"), dict) else {}
+    split = summary.get("split") if isinstance(summary.get("split"), dict) else {}
+    leakage = split.get("leakage_check") if isinstance(split.get("leakage_check"), dict) else {}
+    residuals = summary.get("residual_diagnostics") if isinstance(summary.get("residual_diagnostics"), dict) else {}
+    calibration_residuals = residuals.get("calibration") if isinstance(residuals.get("calibration"), dict) else {}
+    holdout_residuals = residuals.get("holdout") if isinstance(residuals.get("holdout"), dict) else {}
+    objective_candidate_count = int(
+        (objective_contract.get("parameters") or {}).get("candidate_count")
+        or objective_contract.get("candidate_count")
+        or 0
+    )
+    summary_candidate_count = int(summary.get("candidate_count") or 0)
+    selected_candidate_id = str(best.get("candidate_id") or "")
+    measured_fit_present = bool(
+        summary.get("summary_status") == "present"
+        and summary_candidate_count > 0
+        and selected_candidate_id
+        and best.get("calibration_objective") is not None
+        and best.get("holdout_objective") is not None
+    )
+    overlap_count = int(leakage.get("intersection_size") or 0)
+    holdout_scoring_present = bool(
+        measured_fit_present
+        and overlap_count == 0
+        and holdout_residuals.get("status") == "measured"
+        and int(holdout_residuals.get("trajectory_count") or 0) > 0
+    )
+    calibration_residual_present = bool(
+        calibration_residuals.get("status") == "measured"
+        and int(calibration_residuals.get("trajectory_count") or 0) > 0
+    )
+    calibration_runout_max = (
+        (calibration_residuals.get("summaries") or {}).get("runout_abs_error_m") or {}
+    ).get("max")
+    holdout_runout_max = (
+        (holdout_residuals.get("summaries") or {}).get("runout_abs_error_m") or {}
+    ).get("max")
+
+    sub_blockers = [
+        {
+            "blocker_id": "fitted_parameter_provenance",
+            "status": "present" if measured_fit_present and summary_candidate_count == objective_candidate_count else "blocking",
+            "missing_input": "candidate_results_summary_selected_parameters_provenance",
+            "evidence": {
+                "objective_candidate_count": objective_candidate_count,
+                "summary_candidate_count": summary_candidate_count,
+                "selected_candidate_id": selected_candidate_id,
+                "calibration_objective": best.get("calibration_objective"),
+                "holdout_objective": best.get("holdout_objective"),
+            },
+            "next_action": "Regenerate calibration summaries from the committed candidate CSV and selected-parameter record.",
+        },
+        {
+            "blocker_id": "holdout_scoring_completeness",
+            "status": "present" if holdout_scoring_present else "blocking",
+            "missing_input": "measured_holdout_residuals_with_zero_calibration_overlap",
+            "evidence": {
+                "overlap_count": overlap_count,
+                "holdout_residual_status": holdout_residuals.get("status"),
+                "holdout_trajectory_count": holdout_residuals.get("trajectory_count"),
+                "holdout_runout_abs_error_max_m": holdout_runout_max,
+            },
+            "next_action": "Regenerate holdout residual diagnostics and keep holdout IDs excluded from candidate selection.",
+        },
+        {
+            "blocker_id": "residual_quality_review",
+            "status": "blocking",
+            "missing_input": "accepted_residual_quality_threshold_or_review_decision",
+            "evidence": {
+                "calibration_residual_status": calibration_residuals.get("status"),
+                "calibration_runout_abs_error_max_m": calibration_runout_max,
+                "holdout_runout_abs_error_max_m": holdout_runout_max,
+                "calibration_residual_present": calibration_residual_present,
+            },
+            "next_action": "Define a residual-quality acceptance rule or explicitly record that residual outliers keep calibration evidence diagnostic only.",
+        },
+        {
+            "blocker_id": "acceptance_threshold",
+            "status": "blocking",
+            "missing_input": "predeclared_calibration_acceptance_threshold",
+            "evidence": {
+                "threshold_source": None,
+                "validation_acceptance_claimed": False,
+            },
+            "next_action": "Predeclare calibration and holdout acceptance thresholds before using fitted parameters as physical-probability evidence.",
+        },
+    ]
+    first_blocker = next((item for item in sub_blockers if item["status"] == "blocking"), None)
+    if not measured_fit_present:
+        support_role = "objective_defined_pending_smoke" if objective_candidate_count else "not_calibrated"
+    elif first_blocker:
+        support_role = "measured_fit_pending_acceptance_threshold"
+    else:
+        support_role = "measured_fit_ready_for_review"
+    return {
+        "schema_version": "calibration_readiness_detail_v1",
+        "readiness_status": "partial_evidence_missing_acceptance_criteria" if first_blocker else "present",
+        "measured_fit_status": "present" if measured_fit_present else "missing",
+        "support_role": support_role,
+        "first_blocking_input": first_blocker["missing_input"] if first_blocker else "",
+        "sub_blockers": sub_blockers,
+        "evidence_summary": {
+            "candidate_count": summary_candidate_count,
+            "objective_candidate_count": objective_candidate_count,
+            "selected_candidate_id": selected_candidate_id,
+            "calibration_objective": best.get("calibration_objective"),
+            "holdout_objective": best.get("holdout_objective"),
+            "calibration_holdout_overlap_count": overlap_count,
+            "calibration_residual_status": calibration_residuals.get("status"),
+            "holdout_residual_status": holdout_residuals.get("status"),
+            "calibration_runout_abs_error_max_m": calibration_runout_max,
+            "holdout_runout_abs_error_max_m": holdout_runout_max,
+        },
+        "next_action": (
+            first_blocker["next_action"]
+            if first_blocker
+            else "Review the measured calibration package before changing any validation or default parameters."
+        ),
+        "claim_boundary": {
+            "calibration_claim_supported": False,
+            "validation_acceptance_claimed": False,
+            "selected_parameters_promoted_to_validation": False,
+            "physical_probability_supported": False,
+        },
     }
 
 

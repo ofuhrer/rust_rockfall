@@ -76,6 +76,17 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "present")
         self.assertEqual(report["block_population_intake"]["intake_classification"], "present")
         self.assertEqual(report["calibration_objective_contract"]["objective_status"], "executable_smoke_ready")
+        calibration_category = {
+            entry["category"]: entry for entry in report["evidence_gap_categories"]
+        }["calibration_evidence"]
+        self.assertEqual(
+            calibration_category["calibration_readiness_detail"]["readiness_status"],
+            "partial_evidence_missing_acceptance_criteria",
+        )
+        self.assertEqual(
+            calibration_category["calibration_readiness_detail"]["first_blocking_input"],
+            "accepted_residual_quality_threshold_or_review_decision",
+        )
 
     def test_block_population_candidate_validates_as_design_review_evidence(self) -> None:
         summary = assessment.validate_block_population_evidence_record(
@@ -166,7 +177,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "",
         )
         self.assertEqual(categories["calibration_evidence"]["classification"], "partial")
-        self.assertEqual(categories["calibration_evidence"]["support_role"], "objective_defined_pending_smoke")
+        self.assertEqual(
+            categories["calibration_evidence"]["support_role"],
+            "measured_fit_pending_acceptance_threshold",
+        )
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "present")
         self.assertEqual(
@@ -180,8 +194,18 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
                 "conditional_sampling_weights_are_not_frequency_evidence"
             ]
         )
+        calibration_detail = categories["calibration_evidence"]["calibration_readiness_detail"]
+        self.assertEqual(calibration_detail["measured_fit_status"], "present")
+        self.assertEqual(calibration_detail["evidence_summary"]["candidate_count"], 144)
+        self.assertEqual(calibration_detail["evidence_summary"]["selected_candidate_id"], "candidate_103")
+        self.assertEqual(calibration_detail["evidence_summary"]["calibration_holdout_overlap_count"], 0)
+        sub_blockers = {item["blocker_id"]: item for item in calibration_detail["sub_blockers"]}
+        self.assertEqual(sub_blockers["fitted_parameter_provenance"]["status"], "present")
+        self.assertEqual(sub_blockers["holdout_scoring_completeness"]["status"], "present")
+        self.assertEqual(sub_blockers["residual_quality_review"]["status"], "blocking")
+        self.assertEqual(sub_blockers["acceptance_threshold"]["status"], "blocking")
         self.assertTrue(
-            any("calibration smoke" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
+            any("acceptance" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
         )
         self.assertTrue(
             any(
