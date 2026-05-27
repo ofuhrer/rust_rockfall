@@ -14,46 +14,37 @@ Current project version: `v0.6.1`.
 - `aoi_user_manual.md`: compact user-facing AOI workflow.
 - `swiss_scale_feasibility_projection.md`: current Balfrin and Swiss-scale
   feasibility evidence.
-- `current_maturity_snapshot.md`: detailed capability and gap assessment.
 - `task_backlog.md`: active executable task queue.
 - `agent_work_log.md`: completed task history.
 
-## Core Model And Workflow
+## Core References
 
+- `project_overview.md`: detailed model, workflow, validation, and performance
+  background.
 - `model_design.md`: current model equations, assumptions, and API boundaries.
-- `architecture_boundaries.md`: module boundaries and scaling constraints.
-- `validation_plan.md`: validation strategy and calibration separation.
-- `validation_data_schema.md`: validation case and validation data schema.
-- `public_benchmark_framework.md`: public benchmark ingestion and no-tuning
-  workflow.
 - `hazard_map_semantics.md`: allowed hazard-map language and claim boundaries.
 - `hazard_layers.md`: hazard-layer builder behavior and output semantics.
-- `aoi_conditional_workflow_contract.md`: AOI conditional-map phase model.
+- `validation_plan.md`: validation strategy and calibration separation.
+- `public_benchmark_framework.md`: public benchmark ingestion and no-tuning
+  workflow.
 - `swisstopo_data_strategy.md`: Swiss public geodata strategy.
-- `public_real_site_geodata_preparation.md`: real-site geodata preparation and
-  review workflow.
 
 ## Current Evidence
 
 - `balfrin_scale_demonstration_management_package.md`: concise Balfrin evidence
   synthesis.
-- `balfrin_diagnostic_series_tb613.md`: consolidated measured diagnostic
-  reducer-pressure series through 100 release zones.
-- `balfrin_four_zone_hazard_run_tb619.md`: current bounded Balfrin
-  hazard-throughput support run.
 - `source_frequency_evidence_tb614.md`: staged source-frequency design-review
   evidence.
 - `holdout_runout_deposition_evidence_tb615.md`: staged held-out runout-axis
   benchmark intake.
-- `large_aoi_gis_cog_stress_tb609.md`: current larger-output GIS/COG pressure
-  evidence.
+- `large_aoi_gis_cog_stress_tb609.md`: larger-output GIS/COG pressure evidence.
+- `current_maturity_snapshot.md`: detailed capability and gap assessment.
 
 ## Operational References
 
 - `balfrin_skills.md`: practical Balfrin notes.
 - `balfrin_tschamut_pilot_runbook.md`: reusable Balfrin Tschamut pilot
   procedure.
-- `balfrin_failure_recovery_playbook.md`: Balfrin failure and recovery notes.
 - `hazard_output_profile_contract.md`: output profiles and reduced-output
   behavior.
 - `performance_ci_tracking.md`: CI benchmark trend publication.

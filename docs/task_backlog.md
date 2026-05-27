@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-648: Remove Or Merge Remaining Superseded Docs From The Docs Index
-
-Goal: Continue reducing repository documentation weight after the Balfrin diagnostic-doc consolidation.
-
-Capability gap reduced: Repository navigability and lower maintenance drag.
-
-Why this outranks alternatives: Simplification remains valuable only if it removes stale surfaces while preserving current measured facts.
-
-Inspect first:
-
-- `docs/README.md`
-- `docs/project_overview.md`
-- `docs/current_maturity_snapshot.md`
-- `scripts/check_repo_consistency.py`
-
-Deliverables:
-
-- A safe prune or merge of additional superseded top-level docs, with active references updated to current summary surfaces.
-
-Definition of done:
-
-- `docs/README.md` is shorter or clearer, no active references point at deleted docs, and repository consistency checks pass.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

@@ -10405,3 +10405,22 @@ completed history.
 - Metrics: focused test count `9`; generated checklist item count `8`; default checklist status `diagnostic_review_pending`; operational acceptance default `false`.
 - Boundaries: package-review surface only; no hazard-value change, no manual GIS/QGIS pass recorded, and no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-648`
+
+### TB-648: Remove Or Merge Remaining Superseded Docs From The Docs Index
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: reduce docs-index drag by routing readers to current summary surfaces instead of older low-level evidence and planning lists.
+- Files changed: `docs/README.md`, `docs/project_overview.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Shortened `docs/README.md` by removing lower-level Balfrin detail reports and one operational recovery note from the front index while keeping the current management package and feasibility projection as the evidence entrypoints.
+  - Replaced the long core-documentation list in `docs/project_overview.md` with the current reader path through `docs/README.md`, onboarding, AOI, model, validation, and scalability summary pages.
+  - Preserved the underlying evidence documents rather than deleting files with possible historical references.
+  - Removed TB-648 from the active backlog.
+- Checks run:
+  - `find docs -maxdepth 1 -type f -name '*.md' | sort`
+  - `rg -n "Historical status note:|Status: historical|Status: planning artifact|Status: legacy planning|Status: superseded|not authoritative" docs/*.md`
+- Result/status: implemented
+- Metrics: docs index active bullets reduced; no document deletion required; remaining active backlog task count `0`.
+- Boundaries: index simplification only; no evidence reinterpretation, no measured-result deletion, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: backlog empty

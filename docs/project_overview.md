@@ -150,29 +150,17 @@ Core algorithm references used by the current design include:
 - Crosta and Agliardi 2004, *Parametric evaluation of 3D dispersion of rockfall trajectories*
 - STONE / GRASS `r.stone` public documentation for point-like 3D rockfall modelling context
 
-Core documentation:
+Core documentation starts at `docs/README.md`. The usual path is:
 
-- `docs/literature_review.md`
-- `docs/model_design.md`
-- `docs/architecture_boundaries.md`
-- `docs/onboarding.md`
-- `docs/swisstopo_data_strategy.md`
-- `docs/dataset_strategy.md`
-- `docs/chant_sura_contact_validation.md`
-- `docs/hazard_layers.md`
-- `docs/verification_plan.md`
-- `docs/validation_plan.md`
-- `docs/validation_maturity_framework.md`
-- `docs/source_frequency_evidence_contract.md`
-- `docs/block_release_probability_evidence_contract.md`
-- `docs/physical_frequency_reducer_preconditions.md`
-- `docs/annual_physical_validation_calibration_review_gate.md`
-- `docs/annual_physical_prototype_preflight.md`
-- `docs/benchmark_catalog.md`
-- `docs/datasets.md`
-- `docs/validation_data_schema.md`
-- `docs/README.md`
-- `CHANGELOG.md`
+- `docs/onboarding.md` for local setup and checks;
+- `docs/aoi_user_manual.md` for the AOI workflow;
+- `docs/model_design.md`, `docs/hazard_layers.md`, and
+  `docs/hazard_map_semantics.md` for model and map semantics;
+- `docs/validation_plan.md` and `docs/validation_data_schema.md` for
+  verification/validation structure;
+- `docs/swiss_scale_feasibility_projection.md` and
+  `docs/balfrin_scale_demonstration_management_package.md` for the current
+  scalability evidence.
 
 ## Rust Crate Layout
 
