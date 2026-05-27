@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-660: Simplify The Balfrin Helper Surface
-
-Goal: Demote or remove stale Balfrin helper references so routine users see `run_balfrin_diagnostic.py` first.
-
-Capability gap reduced: Repository simplification and lower operational drag.
-
-Why this outranks alternatives: Old handoff/preflight/submit helper paths still make the Balfrin interface look more procedural than it needs to be.
-
-Inspect first:
-
-- `docs/script_inventory.md`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_skills.md`
-- `scripts/run_balfrin_diagnostic.py`
-
-Deliverables:
-
-- A smaller Balfrin command surface in docs and script inventory, with stale helper references demoted to forensic or compatibility use.
-
-Definition of done:
-
-- The routine Balfrin path is unambiguous and repository consistency checks pass.
-
 ### TB-661: Exercise A National Inventory Chunk Smoke
 
 Goal: Re-run the Swiss national inventory/chunk planning smoke and make the next data-cache blocker concrete.

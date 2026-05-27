@@ -17,7 +17,6 @@ Do not move these in cleanup passes without a focused compatibility task:
 
 - `scripts/build_hazard_layers.py`
 - `scripts/generate_pilot_command_plan.py`
-- `scripts/submit_balfrin_probe.py`
 - `scripts/check_repo_consistency.py`
 - `scripts/print_agent_task_context.py`
 
@@ -26,26 +25,17 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/audit_gis_cog_package_readiness.py`
 - `scripts/audit_multisite_source_scenario_contract.py`
 - `scripts/build_hazard_layers.py`
-- `scripts/build_management_aoi_balfrin_handoff.py`
 - `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/check_balfrin_tschamut_readiness.py`
 - `scripts/check_chant_sura_real_context_readiness_gate.py`
 - `scripts/check_hazard_output_profile.py`
 - `scripts/check_hazard_rebuild_output_profile.py`
 - `scripts/check_same_scale_artifact_readiness.py`
 - `scripts/check_second_site_public_geodata_preflight.py`
 - `scripts/bootstrap_aoi_manifest.py`
-- `scripts/collect_balfrin_probe_metrics.py`
 - `scripts/compare_hazard_map_convergence.py`
 - `scripts/convert_same_scale_package_to_cog.py`
 - `scripts/derive_hazard_rebuild_reduced_profile.py`
 - `scripts/download_tschamut_swisstlm3d_context.py`
-- `scripts/execute_management_aoi_balfrin_run.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/generate_balfrin_postproc_microbenchmark_package.py`
-- `scripts/generate_balfrin_regional_split_submission_package.py`
-- `scripts/generate_balfrin_target_area_demo_handoff.py`
-- `scripts/generate_balfrin_target_area_scenario_tables.py`
 - `scripts/generate_chant_sura_fluelapass_dry_run_case_skeleton.py`
 - `scripts/generate_pilot_command_plan.py`
 - `scripts/generate_tschamut_block_scenario_tables.py`
@@ -53,10 +43,8 @@ Do not move these in cleanup passes without a focused compatibility task:
 - `scripts/inspect_tschamut_public_context_layers.py`
 - `scripts/measure_hazard_context_overlap.py`
 - `scripts/generate_aoi_map_qa_review.py`
-- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
 - `scripts/plan_pragmatic_release_plan.py`
 - `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
 - `scripts/package_aoi_hazard_map.py`
 - `scripts/run_balfrin_diagnostic.py`
 - `scripts/run_aoi_hazard_workflow.py`
@@ -211,6 +199,29 @@ operator-facing until they get smoke tests or a documented replacement.
 
 These helpers remain as compatibility shims only. Prefer the canonical front
 doors or command-plan entries listed above.
+
+Routine Balfrin diagnostics should start with:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones <n> --manifest-mode compact --partition postproc --format text
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones <n> --manifest-mode compact --partition postproc --format text
+```
+
+Historical Balfrin package, handoff, submit, and collect helpers are retained
+for compatibility with preserved reproduction records and forensic inspection:
+
+- `scripts/build_management_aoi_balfrin_handoff.py`
+- `scripts/check_balfrin_tschamut_readiness.py`
+- `scripts/collect_balfrin_probe_metrics.py`
+- `scripts/execute_management_aoi_balfrin_run.py`
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/generate_balfrin_postproc_microbenchmark_package.py`
+- `scripts/generate_balfrin_regional_split_submission_package.py`
+- `scripts/generate_balfrin_target_area_demo_handoff.py`
+- `scripts/generate_balfrin_target_area_scenario_tables.py`
+- `scripts/plan_balfrin_single_release_zone_case_dry_run.py`
+- `scripts/preflight_balfrin_smallest_multi_zone_probe_authorization.py`
+- `scripts/submit_balfrin_probe.py`
 
 - `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
   Replacement: `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config <site-config> --format json`

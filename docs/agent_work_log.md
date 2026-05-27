@@ -10666,3 +10666,21 @@ completed history.
 - Metrics: `preview-cost` smoke status `ready`; delegated schema `aoi_scenario_cost_projection_v1`; focused AOI tests `33` passed.
 - Boundaries: command-surface simplification only; no scenario defaults, physics, output policy, Balfrin submission, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, Swiss-wide, distributed, or non-`postproc` claim changed.
 - Next task: `TB-660`
+
+### TB-660: Simplify The Balfrin Helper Surface
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: demote stale Balfrin helper references so routine users see `run_balfrin_diagnostic.py` first.
+- Files changed: `docs/script_inventory.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Kept `scripts/run_balfrin_diagnostic.py` as the routine Balfrin diagnostic front door.
+  - Removed historical Balfrin handoff/package/submit helpers from the user-facing script-inventory list.
+  - Added those helpers to the deprecated compatibility section for preserved reproduction records and forensic inspection.
+  - Removed TB-660 from the active backlog.
+- Checks run:
+  - `rg -n "balfrin|run_balfrin|handoff|submit|preflight|diagnostic" docs/script_inventory.md docs/balfrin_tschamut_pilot_runbook.md docs/balfrin_skills.md`
+- Result/status: implemented_simplification
+- Metrics: routine Balfrin path remains `run_balfrin_diagnostic.py plan` and `run`; `12` historical Balfrin helper references demoted from user-facing/high-risk lists to compatibility/forensic use.
+- Boundaries: documentation/inventory simplification only; no Balfrin code, run shape, partition policy, submission behavior, physics, output semantics, or claim boundary changed.
+- Next task: `TB-661`
