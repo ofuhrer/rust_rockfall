@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-643: Measure Reducer Metadata Pressure On Larger Hazard Outputs
-
-Goal: Identify whether reducer metadata, manifest size, or replay sidecars become the next practical bottleneck after a larger hazard-throughput run.
-
-Capability gap reduced: Scalability and output-profile control.
-
-Why this outranks alternatives: The scale matrix ranks reducer and replay metadata pressure as the next scaling blocker after measured regional split comparison.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/summarize_bounded_validation_output_profile.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A measured reducer/output-profile summary for the largest available hazard-throughput output root.
-
-Definition of done:
-
-- The summary reports file counts, byte counts, manifest bytes, sidecar families, first pressure driver, and a concrete recommended reducer/output-profile change if one is warranted.
-
 ### TB-644: Simplify The Balfrin User Command Path
 
 Goal: Reduce the number of user-facing Balfrin commands by routing routine diagnostic and bounded hazard runs through the smallest current command surface.

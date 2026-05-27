@@ -10304,3 +10304,25 @@ completed history.
 - Metrics: preflight ready for read-only/pre-submit checks; `postproc` snapshot had 10 idle nodes, 12 running jobs, 0 pending jobs, and 1 current-user job; decision gate status `defer`; eight-zone handoff output-budget status `blocked_threshold_exceeded`; manifest bytes `22,570` versus threshold `22,000`; output files `35` versus threshold `28`; replay-critical `trajectory_csv`, `deposition_csv`, and `impact_events_csv` counts `8` versus threshold `4`; generated hazard execution package still reports `release_zone_count=4`.
 - Boundaries: pre-submit blocker only; no new Balfrin job submitted, no larger hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-643`
+
+### TB-643: Measure Reducer Metadata Pressure On Larger Hazard Outputs
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: measure reducer metadata, manifest, sidecar, and output-profile pressure for the largest available hazard-throughput output root.
+- Files changed: `docs/balfrin_hazard_output_pressure_tb643.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Used TB-619 as the largest available hazard-throughput root because TB-642 found no supported larger hazard-throughput submit path.
+  - Collected the TB-619 metrics completeness report directly on Balfrin.
+  - Read the TB-619 hazard manifest directly on Balfrin and summarized family file counts, manifest bytes, sidecar bytes, primary output bytes, and missing paths.
+  - Recorded the first practical pressure driver as the >4-zone package generator's replay-family contract rather than the measured four-zone sidecar byte volume.
+  - Removed TB-643 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-643 --format json`
+  - `ssh balfrin 'cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/summarize_balfrin_probe_metrics_report.py --run-root /scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527 --format json'`
+  - remote Python manifest-family summarizer against `/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527/output/validation_balfrin_probe_manifest.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_bounded_validation_output_profile.py --format json`
+- Result/status: implemented_measured
+- Metrics: metrics contract `complete`; hazard workflow wall time `6.930015419959091` s; peak memory `379.14453125` MB; metrics-reported hazard output `57` files / `31,439,445` bytes; validation output `130` files / `34,565,323` bytes; conditional-curve rows `729,600`; hazard manifest size `99,598` bytes; manifest entries `50`; manifest-accounted files `50`; manifest-accounted bytes `17,416,952`; sidecar/metadata files `13`; sidecar/metadata bytes `213,126`; primary hazard files `37`; primary hazard bytes `17,203,826`; missing manifest paths `0`.
+- Boundaries: measured output-pressure summary for the current largest hazard-throughput root only; no new Balfrin job, no larger hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-644`
