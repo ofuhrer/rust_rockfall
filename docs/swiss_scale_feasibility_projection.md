@@ -6,6 +6,17 @@ risk, exposure, or vulnerability semantics.
 
 ## Recommendation
 
+- TB-678 current decision: do not submit a Swiss-wide or distributed run yet.
+  The concise readiness surface is
+  `docs/swiss_scale_demonstration_readiness_tb678.md`.
+- Measured support has improved locally and on Balfrin, but the Swiss-wide
+  phase-change status remains `deferred`.
+- First Swiss-wide phase-change blocker:
+  `distributed_execution_authorization`.
+- First data blocker: `national_public_geodata_inventory`.
+- First scientific blocker: accepted validation/calibration evidence; the
+  current selected calibration candidate is explicitly rejected by
+  `holdout_runout_abs_error_max_m`.
 - Current practical ceiling: 100 release zones have been measured on Balfrin as
   a single-node `postproc` diagnostic reducer-pressure workload. This is the
   current diagnostic ceiling, not a hazard-throughput, operational, or

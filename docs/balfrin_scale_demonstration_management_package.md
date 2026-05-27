@@ -8,8 +8,23 @@ toward a larger Balfrin demonstration?
 
 ## Current Answer
 
-- 10-zone work remains the current hazard-planning boundary under the
-  single-node/postproc evidence base.
+- TB-678 is the current concise decision surface:
+  `docs/swiss_scale_demonstration_readiness_tb678.md`.
+- Do not submit a Swiss-wide or distributed run yet.
+- The latest measured hazard-throughput support point is TB-669: 12 release
+  zones on Balfrin `postproc`, job `4378015`, `0.288979` s profile wall time,
+  `47.016` MB peak RSS, `29` hazard files, and `1,148,530` hazard bytes.
+- TB-671 measured three isolated concurrent 16-zone diagnostic run roots with
+  no contention detected.
+- TB-672 reconstructed the TB-669 metrics from a copied `$SCRATCH` run root
+  without rerunning.
+- TB-673 executed a national-chunk-shaped manifest/state smoke for three
+  representative chunks on Balfrin.
+- Scientific readiness remains the main blocker: TB-676 explicitly rejected
+  the selected calibration candidate on holdout residual quality, and TB-677
+  kept the physical-probability prototype fail-closed.
+- The 12-zone TB-669 run is the current hazard-throughput support point under
+  the single-node/postproc evidence base.
 - Diagnostic reducer pressure is measured through 100 release zones on Balfrin
   `postproc`; the consolidated series is in
   `balfrin_diagnostic_series_tb613.md`.
@@ -33,8 +48,8 @@ toward a larger Balfrin demonstration?
   diagnostic series through 100 release zones, TB-619 bounded hazard-throughput
   support, and TB-631 larger-output GIS/COG packaging.
 - Projection-only: Swiss-scale feasibility estimates beyond the current
-  10-zone hazard-planning boundary and measured diagnostic/hazard-throughput
-  support points.
+  12-zone hazard-throughput support point and measured diagnostic support
+  points.
 - Failed-closed: reviewed live-submit branches that stopped before `sbatch`.
   TB-362 failed closed on the explicit two-zone hazard path, and TB-386 keeps
   the current management-AOI decision blocked at `source_zone_footprint_overlap`

@@ -11029,3 +11029,28 @@ completed history.
 - First blocker: `accepted_validation_calibration_review`; concrete measured failure `holdout_runout_abs_error_max_m` (`55.111764` m observed vs `<= 30.0` m threshold).
 - Boundaries: no physical-probability, annual-frequency, return-period, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide claim changed.
 - Next task: `TB-678`
+
+### TB-678: Build A Swiss-Scale Demonstration Readiness Package From Measured Runs
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: combine the latest Balfrin diagnostic, hazard-throughput, concurrency, restartability, national-chunk, and scientific-readiness results into one go/no-go decision surface.
+- Files changed: `docs/swiss_scale_demonstration_readiness_tb678.md`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Regenerated the management package, scale readiness matrix, and Swiss-wide envelope JSON surfaces into `/tmp`.
+  - Wrote a concise TB-678 readiness package naming measured support points, Swiss-scale envelope blockers, and the current go/no-go decision.
+  - Linked the new decision surface from the existing management and feasibility docs.
+  - Removed TB-678 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json --json-output /tmp/tb678_management_package.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json --json-output /tmp/tb678_scale_matrix.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json --json-output /tmp/tb678_swiss_envelope.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_management_demo_package tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_go_no_go_surface
+- Metrics: latest hazard-throughput support TB-669, `12` release zones, job `4378015`, `0.288979` s profile wall, `47.016` MB peak RSS, `29` hazard files, `1,148,530` hazard bytes; diagnostic reducer-pressure through `100` zones; concurrent diagnostics TB-671 with all three jobs completed; restartability TB-672 reconstructed from copied artifacts; national chunk smoke TB-673 covered `3` chunks and `1516` tiles; Swiss planning case `26` AOIs, `260` release zones, `1560` trajectories, `165,140,000,000` estimated input bytes.
+- Decision: reject Swiss-wide or distributed submission now; first Swiss-wide blocker `distributed_execution_authorization`; first data blocker `national_public_geodata_inventory`; first scientific blocker accepted validation/calibration evidence after TB-676 residual-quality rejection.
+- Boundaries: decision surface only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: backlog empty

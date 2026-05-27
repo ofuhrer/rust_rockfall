@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-678: Build A Swiss-Scale Demonstration Readiness Package From Measured Runs
-
-Goal: Combine the latest Balfrin diagnostic, hazard-throughput, concurrency, restartability, chunk-smoke, and scientific-readiness results into one demonstration decision surface.
-
-Capability gap reduced: Clear go/no-go basis for a Swiss-scale feasibility demonstration on Balfrin.
-
-Why this outranks alternatives: After the measured pushes, the repo needs one concise surface that says what can be demonstrated now and what remains projection-only.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/balfrin_scale_demonstration_management_package.md`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A refreshed demonstration readiness package that names measured support points, projected Swiss-scale envelope, first missing input for a full Swiss-scale run, and the recommended next Balfrin demonstration command.
-
-Definition of done:
-
-- The package is generated from current measured outputs, focused tests pass, and the recommendation is concrete enough to execute or reject without adding more process artifacts.
-
-Scope: Favor one concise generated/readable surface over new scattered documentation.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:
