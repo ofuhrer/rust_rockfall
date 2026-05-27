@@ -295,6 +295,34 @@ TB619_HAZARD_THROUGHPUT_METRICS = {
     "output_family_status": "sufficient",
     "source_report": "docs/balfrin_four_zone_hazard_run_tb619.md",
 }
+TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
+    "task_id": "TB-652",
+    "job_id": "4377075",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "0:00.59",
+    "alloc_cpus": 16,
+    "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527",
+    "remote_git_head": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+    "release_zone_count": 8,
+    "scenario_count": 8,
+    "reducer_chunk_count": 2,
+    "reducer_worker_count": 2,
+    "manifest_mode": "compact",
+    "memory_peak_mb": 34.223,
+    "output_file_count": 28,
+    "output_bytes": 14_397,
+    "root_file_count": 33,
+    "manifest_bytes": 11_458,
+    "reducer_wall_time_seconds": 2.11,
+    "run_root_file_count": 41,
+    "run_root_bytes": 85_295,
+    "metrics_contract_status": "complete",
+    "metrics_report_measured_count": 14,
+    "metrics_report_blocked_count": 0,
+    "source_report": "docs/balfrin_hazard_throughput_probe_tb652.md",
+    "claim_boundary": "measured bounded postproc diagnostic evidence only; not hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc evidence",
+}
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "task_id": "TB-432",
     "submission_package_status": "failed_closed_preflight",
@@ -1165,6 +1193,60 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
     }
 
 
+def _tb652_diagnostic_probe_row() -> dict[str, Any]:
+    metrics = TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE
+    return {
+        "tier_id": "tb652_8_zone_diagnostic_probe",
+        "tier_label": "TB-652 8-zone compact postproc diagnostic",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_diagnostic_reducer_pressure",
+        "classification": "measured_bounded_diagnostic_probe",
+        "output_budget_status": "compact_single_run_record_complete",
+        "output_pressure_status": "measured_diagnostic_output_pressure",
+        "reducer_pressure_status": "measured_diagnostic_reducer_pressure",
+        "execution_efficiency_status": "measured_postproc_diagnostic_run",
+        "hazard_execution_status": "no_hazard_execution_reducer_diagnostic_only",
+        "file_count": metrics["output_file_count"],
+        "bytes": metrics["output_bytes"],
+        "diagnostic_output_file_count": metrics["output_file_count"],
+        "diagnostic_output_bytes": metrics["output_bytes"],
+        "manifest_bytes": metrics["manifest_bytes"],
+        "root_file_count": metrics["root_file_count"],
+        "runtime_seconds": metrics["reducer_wall_time_seconds"],
+        "memory_peak_mb": metrics["memory_peak_mb"],
+        "run_root_file_count": metrics["run_root_file_count"],
+        "run_root_bytes": metrics["run_root_bytes"],
+        "scenario_count": metrics["scenario_count"],
+        "run_root_preservation_status": "preserved_on_scratch",
+        "replayability_status": "single_run_record_complete",
+        "authorization_status": "standing_postproc_clearance_used",
+        "latest_measured_task": metrics["task_id"],
+        "comparison_anchor": "TB-619 remains latest bounded hazard-throughput support; TB-652 is diagnostic reducer-pressure evidence",
+        "next_evidence_field": "scale_surface_comparison",
+        "next_recommended_action": "compare_tb652_with_tb619_and_100_zone_diagnostic_series",
+        "next_blocker_category": "hazard_throughput_scaling_and_scientific_validation",
+        "metrics_contract_status": metrics["metrics_contract_status"],
+        "metrics_report_measured_count": metrics["metrics_report_measured_count"],
+        "metrics_report_blocked_count": metrics["metrics_report_blocked_count"],
+        "job_id": metrics["job_id"],
+        "slurm": {
+            "job_id": metrics["job_id"],
+            "state": metrics["slurm_state"],
+            "exit_code": metrics["exit_code"],
+            "elapsed": metrics["elapsed"],
+            "alloc_cpus": metrics["alloc_cpus"],
+        },
+        "run_root": metrics["run_root"],
+        "release_zone_count": metrics["release_zone_count"],
+        "source_report": metrics["source_report"],
+        "summary": (
+            "TB-652 completed an 8-zone compact postproc diagnostic on Balfrin with a preserved $SCRATCH run root and complete run-record metrics. "
+            "It strengthens the diagnostic reducer-pressure series but does not replace TB-619 as the latest bounded hazard-throughput support point."
+        ),
+        "claim_boundary": metrics["claim_boundary"],
+    }
+
+
 def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | None:
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
@@ -1541,6 +1623,7 @@ def build_report() -> dict[str, Any]:
         _management_aoi_failed_closed_row(),
         _regional_split_measured_row(),
         _hazard_throughput_measured_row(),
+        _tb652_diagnostic_probe_row(),
         *([diagnostic_row] if diagnostic_row is not None else []),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
@@ -1729,8 +1812,8 @@ def build_report() -> dict[str, Any]:
             },
             "hazard_throughput": {
                 "class": "measured_hazard_throughput_postproc",
-                "evidence": "completed bounded hazard-throughput run record",
-                "next_blocker": "scientific_validation_and_distributed_semantics",
+                "evidence": "TB-619 completed bounded hazard-throughput run record; TB-652 adds a smaller diagnostic reducer-pressure comparison point",
+                "next_blocker": "larger_hazard_throughput_scaling_and_scientific_validation",
             },
             "100_zone": {
                 "class": (
@@ -1782,7 +1865,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
-            "TB-619 is now the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, while TB-603 remains the previous comparison anchor, "
+            "TB-619 remains the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-603 remains the previous hazard-throughput comparison anchor, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."

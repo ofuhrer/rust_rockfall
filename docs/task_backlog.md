@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-653: Compare Hazard-Throughput Runs And Refresh Scale Surfaces
-
-Goal: Thread the newest hazard-throughput result or blocker through the scale projection and management summary.
-
-Capability gap reduced: Clear interpretation of hazard-throughput scaling evidence.
-
-Why this outranks alternatives: A new run or blocker is useful only if it updates the current scale boundary rather than becoming another isolated report.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- Updated existing scale surfaces that compare TB-619 with the new result or explain why TB-619 remains the current hazard-throughput anchor.
-
-Definition of done:
-
-- The scale surfaces state the current hazard-throughput ceiling, bottleneck, and next measurement without promoting diagnostic, distributed, operational, or physical-probability claims.
-
 ### TB-654: Stage Or Block Chant Sura Public Geodata Context
 
 Goal: Move the second-site path from fixture-backed blockers toward real public geodata staging, or record the exact unavailable products.

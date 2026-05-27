@@ -10511,3 +10511,27 @@ completed history.
 - Metrics: job id `4377075`; terminal state `COMPLETED`; run root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`; release zones `8`; reducer chunks `2`; reducer workers `2`; elapsed wall time `0:00.59`; peak RSS `34.223` MB; scenario count `8`; output files `28`; output bytes `14,397`; manifest bytes `11,458`; reducer wall time `2.11` seconds; run-root footprint `41` files / `85,295` bytes; corrected metrics report `14` measured / `0` blocked mandatory diagnostic metrics.
 - Boundaries: measured Balfrin `postproc` diagnostic only; remote checkout was clean but behind local `main`; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-653`
+
+### TB-653: Compare Hazard-Throughput Runs And Refresh Scale Surfaces
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: thread the completed TB-652 Balfrin run through the scale surfaces while keeping TB-619 as the current hazard-throughput support point.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_management_demo_package.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `tb652_8_zone_diagnostic_probe` measured tier to the scale-readiness matrix with job id, run root, output, manifest, runtime, memory, and claim-boundary fields.
+  - Updated the scale projection so TB-652 is treated as diagnostic reducer-pressure evidence and TB-619 remains the latest bounded hazard-throughput support point.
+  - Added TB-652 to the management demo diagnostic-performance section as the latest bounded diagnostic comparison point.
+  - Refreshed the Swiss-scale feasibility projection text with the TB-652 scheduler and output metrics.
+  - Updated focused tests for the new diagnostic comparison row and management package field.
+  - Removed TB-653 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-653 --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json --json-output /tmp/tb653_scale_matrix.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json --json-output /tmp/tb653_management_package.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json --json-output /tmp/tb653_swiss_envelope.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_balfrin_management_demo_package tests.test_swiss_wide_execution_envelope -v`
+- Result/status: implemented_measured
+- Metrics: scale matrix status `actionable_reducer_pressure`; new measured tier `tb652_8_zone_diagnostic_probe`; TB-652 job id `4377075`; release zones `8`; output files `28`; output bytes `14,397`; manifest bytes `11,458`; reducer wall time `2.11` seconds; peak RSS `34.223` MB; TB-619 still latest bounded hazard-throughput support; focused test count `26`.
+- Boundaries: scale-surface interpretation only; TB-652 remains diagnostic reducer-pressure evidence and does not promote operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claims.
+- Next task: `TB-654`

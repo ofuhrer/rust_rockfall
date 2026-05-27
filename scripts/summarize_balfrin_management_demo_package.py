@@ -1066,8 +1066,24 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
         "evidence_type": "measured",
         "summary": (
             "Balfrin now has measured single-node postproc diagnostic evidence through 100 zones plus a 24-zone same-size repeatability pair. "
-            "The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
+            "TB-652 adds a completed 8-zone compact diagnostic comparison point. The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
         ),
+        "latest_bounded_diagnostic_probe": {
+            "task_id": "TB-652",
+            "run_id": "tb652_8_zone_20260527",
+            "job_id": "4377075",
+            "git_head": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527",
+            "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527/run_record.json",
+            "release_zone_count": 8,
+            "scenario_count": 8,
+            "reducer_wall_time_seconds": 2.11,
+            "max_rss_mb": 34.223,
+            "output_file_count": 28,
+            "output_bytes": 14397,
+            "manifest_bytes": 11458,
+            "comparison_anchor": "diagnostic reducer-pressure only; TB-619 remains the latest bounded hazard-throughput support point",
+        },
         "latest_diagnostic": {
             "task_id": "TB-612",
             "run_id": "diagnostic_100_zone_tb611_20260526",
@@ -1231,7 +1247,8 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 100-zone is measured diagnostic postproc reducer-pressure evidence, "
             "and broader regional plus Swiss-wide workflows remain phase changes. "
-            "TB-619 now adds a measured four-zone hazard-throughput support point; the next blockers are scientific evidence for physical use and reducer/replay pressure before larger claims."
+            "TB-619 remains the measured four-zone hazard-throughput support point; TB-652 adds an 8-zone diagnostic comparison point, not a larger hazard-throughput support point. "
+            "The next blockers are scientific evidence for physical use, larger hazard-throughput scaling, and reducer/replay pressure before larger claims."
         ),
         "projection_classification": {
             "10_zone": "hazard_planning_boundary",
@@ -1268,6 +1285,12 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "diagnostic_output_file_count": 304,
             "diagnostic_output_bytes": 121172,
             "diagnostic_memory_peak_mb_bounds": {"min": 33.711, "max": 39.879},
+            "latest_bounded_diagnostic_task_id": "TB-652",
+            "latest_bounded_diagnostic_job_id": "4377075",
+            "latest_bounded_diagnostic_release_zone_count": 8,
+            "latest_bounded_diagnostic_reducer_wall_time_seconds": 2.11,
+            "latest_bounded_diagnostic_output_file_count": 28,
+            "latest_bounded_diagnostic_output_bytes": 14397,
             "hazard_throughput_latest_job_id": "4372656",
             "hazard_throughput_latest_task_id": "TB-619",
             "hazard_throughput_latest_wall_seconds": 6.930015419959091,

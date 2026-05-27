@@ -51,7 +51,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-565 and TB-566 now provide current measured regional split evidence", report["summary"])
-        self.assertIn("TB-619 is now the latest measured bounded hazard-throughput evidence", report["summary"])
+        self.assertIn("TB-619 remains the latest measured bounded hazard-throughput evidence", report["summary"])
+        self.assertIn("TB-652 adds a completed 8-zone compact diagnostic comparison point", report["summary"])
         self.assertIn("TB-450 now threads the measured regional split", report["summary"])
         self.assertIn("ranked next probe ladder now places reducer-pressure optimization first", report["summary"])
         self.assertEqual(
@@ -64,6 +65,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
                 "two_zone_preserved_hazard_run",
                 "regional_split_probe",
                 "hazard_throughput_probe",
+                "tb652_8_zone_diagnostic_probe",
             ],
         )
         self.assertEqual(report["blocked_tiers"], ["four_zone_hazard_probe"])
@@ -106,6 +108,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertIn("deterministic local reducer-pressure scratch roots", projection["next_measurable_step"])
         self.assertIn("regional_split_probe", projection["evidence_class_separation"]["measured"])
         self.assertIn("hazard_throughput_probe", projection["evidence_class_separation"]["measured"])
+        self.assertIn("tb652_8_zone_diagnostic_probe", projection["evidence_class_separation"]["measured"])
         self.assertIn("projected_larger_aoi", projection["evidence_class_separation"]["projection_only"])
         self.assertIn("management_aoi_multi_zone_run", projection["evidence_class_separation"]["failed_closed"])
         self.assertIn("swiss_wide_execution", projection["evidence_class_separation"]["deferred"])
@@ -158,6 +161,13 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_task_id"], "TB-603")
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_job_id"], "4372309")
         self.assertTrue(report["hazard_throughput_status"]["comparison_baseline"]["same_conditional_curve_rows"])
+        tb652_row = next(row for row in report["tiers"] if row["tier_id"] == "tb652_8_zone_diagnostic_probe")
+        self.assertEqual(tb652_row["job_id"], "4377075")
+        self.assertEqual(tb652_row["release_zone_count"], 8)
+        self.assertEqual(tb652_row["diagnostic_output_file_count"], 28)
+        self.assertEqual(tb652_row["diagnostic_output_bytes"], 14397)
+        self.assertEqual(tb652_row["runtime_seconds"], 2.11)
+        self.assertIn("TB-619 remains latest bounded hazard-throughput support", tb652_row["comparison_anchor"])
         delta_summary = report["regional_split_projection_delta_summary"]
         self.assertFalse(delta_summary["within_expected_pressure_bands"])
         self.assertEqual(delta_summary["next_probe_class"], "summarize_multi_zone_reducer_pressure")

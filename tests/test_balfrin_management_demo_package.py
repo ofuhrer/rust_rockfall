@@ -54,6 +54,11 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["claim_boundary_section"]["status"], "guarded")
         self.assertEqual(report["scaling_section"]["status"], "measured")
         self.assertEqual(report["diagnostic_performance_section"]["status"], "measured")
+        self.assertEqual(report["diagnostic_performance_section"]["latest_bounded_diagnostic_probe"]["job_id"], "4377075")
+        self.assertEqual(
+            report["diagnostic_performance_section"]["latest_bounded_diagnostic_probe"]["release_zone_count"],
+            8,
+        )
         self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["job_id"], "4372447")
         self.assertEqual(report["diagnostic_performance_section"]["latest_diagnostic"]["release_zone_count"], 100)
         self.assertEqual(report["diagnostic_performance_section"]["repeatability_pair"]["status"], "measured_repeatability_pair")

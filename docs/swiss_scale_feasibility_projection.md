@@ -33,6 +33,13 @@ risk, exposure, or vulnerability semantics.
   output, and conditional-curve metrics. TB-603 remains the previous comparison
   anchor. This is the current hazard-throughput support point, not a
   Swiss-wide, operational, distributed, or physical-probability claim.
+- Latest bounded diagnostic comparison: TB-652 completed an 8-zone compact
+  `postproc` diagnostic on Balfrin as job `4377075`, with preserved run root
+  `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`,
+  `0:00.59` elapsed wall time, `34.223` MB peak RSS, `28` output files,
+  `14,397` output bytes, `11,458` manifest bytes, and `2.11` reducer wall
+  seconds. This strengthens diagnostic reducer-pressure evidence but does not
+  replace TB-619 as the hazard-throughput support point.
 - Prior hazard-throughput probe: TB-603 measured the bounded hazard workflow on
   Balfrin `postproc` with complete mandatory runtime, memory, output, and
   conditional-curve metrics and remains the baseline for TB-619 comparison.
@@ -153,6 +160,13 @@ branches into measured capability:
   and `729,600` conditional-curve rows represented in summary-only mode. This
   supersedes TB-603 as the latest hazard-throughput support point while keeping
   TB-603 as the comparison baseline.
+- TB-652 measured a smaller 8-zone compact diagnostic run on Balfrin:
+  job `4377075`, run root
+  `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`,
+  terminal state `COMPLETED`, `/usr/bin/time` elapsed `0:00.59`, maximum RSS
+  `34.223` MB, `28` output files, `14,397` output bytes, `11,458` manifest
+  bytes, and `2.11` reducer wall seconds. The corrected metrics report recorded
+  `14` measured and `0` blocked mandatory diagnostic metrics.
 - TB-611 prepared the no-submit 100-zone diagnostic package at
   `/scratch/mch/olifu/rust_rockfall/diagnostics/diagnostic_100_zone_tb611_20260526`
   and measured the same reducer-pressure shape locally: `100` release zones,
