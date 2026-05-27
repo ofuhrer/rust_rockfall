@@ -27,6 +27,11 @@ toward a larger Balfrin demonstration?
 - The 24-zone TB-680/TB-681 repeat pair is the current hazard-throughput support
   point under the single-node/postproc evidence base; its first new blocker is
   manifest byte pressure above the current replay budget.
+- TB-682 measured larger single-node hazard-output pressure at `96`, `192`, and
+  `384` release zones. The largest measured size still below the current
+  reduced-output byte budget is `192` release zones; `384` release zones exceeds
+  the output-byte budget and all three larger runs exceed the manifest-byte
+  budget.
 - Diagnostic reducer pressure is measured through 100 release zones on Balfrin
   `postproc`; the consolidated series is in
   `balfrin_diagnostic_series_tb613.md`.
@@ -48,7 +53,8 @@ toward a larger Balfrin demonstration?
   boundaries, TB-312 four-zone postproc/reducer evidence, TB-407 smallest
   multi-zone evidence, current regional split comparison evidence, the
   diagnostic series through 100 release zones, TB-680/TB-681 bounded
-  hazard-throughput support, and TB-631 larger-output GIS/COG packaging.
+  hazard-throughput support, TB-682 larger hazard-output pressure ladder, and
+  TB-631 larger-output GIS/COG packaging.
 - Projection-only: Swiss-scale feasibility estimates beyond the current
   24-zone hazard-throughput support pair and measured diagnostic support
   points.

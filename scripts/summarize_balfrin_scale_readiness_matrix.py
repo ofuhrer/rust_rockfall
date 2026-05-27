@@ -394,6 +394,74 @@ TB681_HAZARD_THROUGHPUT_REPEAT_METRICS = {
     "output_family_status": "manifest_budget_exceeded",
     "source_report": "archive/task_reports/balfrin_24_zone_hazard_throughput_repeat_tb681.md",
 }
+TB682_HAZARD_OUTPUT_PRESSURE_RUNS = [
+    {
+        "release_zone_count": 96,
+        "task_id": "TB-682",
+        "job_id": "4379367",
+        "slurm_state": "COMPLETED",
+        "exit_code": "0:0",
+        "elapsed": "00:00:03",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb682_96_zone_hazard_output_pressure_20260527_153323",
+        "profile_wall_seconds": 0.396281588007696,
+        "batch_wall_seconds": 2.93,
+        "hazard_stage_seconds": 0.16563615296036005,
+        "memory_peak_mb": 44.515625,
+        "hazard_output_file_count": 29,
+        "hazard_output_bytes": 1_261_335,
+        "manifest_bytes": 134_632,
+        "run_root_file_count": None,
+        "run_root_bytes": 2_916_528,
+        "within_output_byte_budget": True,
+        "within_manifest_byte_budget": False,
+        "within_output_file_budget": True,
+        "status": "measured_output_bytes_safe_manifest_blocked",
+    },
+    {
+        "release_zone_count": 192,
+        "task_id": "TB-682",
+        "job_id": "4379388",
+        "slurm_state": "COMPLETED",
+        "exit_code": "0:0",
+        "elapsed": "00:00:03",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb682_192_zone_hazard_output_pressure_20260527_153459",
+        "profile_wall_seconds": 0.4413482559612021,
+        "batch_wall_seconds": 2.33,
+        "hazard_stage_seconds": 0.21222814603243023,
+        "memory_peak_mb": 48.4765625,
+        "hazard_output_file_count": 29,
+        "hazard_output_bytes": 1_353_399,
+        "manifest_bytes": 198_522,
+        "run_root_file_count": 452,
+        "run_root_bytes": 3_351_470,
+        "within_output_byte_budget": True,
+        "within_manifest_byte_budget": False,
+        "within_output_file_budget": True,
+        "status": "largest_measured_output_bytes_safe_manifest_blocked",
+    },
+    {
+        "release_zone_count": 384,
+        "task_id": "TB-682",
+        "job_id": "4379371",
+        "slurm_state": "COMPLETED",
+        "exit_code": "0:0",
+        "elapsed": "00:00:04",
+        "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb682_384_zone_hazard_output_pressure_20260527_153407",
+        "profile_wall_seconds": 0.5879617109894753,
+        "batch_wall_seconds": 4.04,
+        "hazard_stage_seconds": 0.3593194429995492,
+        "memory_peak_mb": 49.4140625,
+        "hazard_output_file_count": 29,
+        "hazard_output_bytes": 1_536_400,
+        "manifest_bytes": 325_518,
+        "run_root_file_count": 836,
+        "run_root_bytes": 4_223_821,
+        "within_output_byte_budget": False,
+        "within_manifest_byte_budget": False,
+        "within_output_file_budget": True,
+        "status": "measured_output_byte_budget_exceeded",
+    },
+]
 TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "task_id": "TB-652",
     "job_id": "4377075",
@@ -1281,6 +1349,33 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "planning_memory_peak_mb": max(metrics["memory_peak_mb"], repeat["memory_peak_mb"]),
         "remaining_blocker": "manifest_byte_budget_exceeded_in_both_runs",
     }
+    output_pressure_safe_runs = [
+        run for run in TB682_HAZARD_OUTPUT_PRESSURE_RUNS if run["within_output_byte_budget"]
+    ]
+    output_pressure_blocked_runs = [
+        run for run in TB682_HAZARD_OUTPUT_PRESSURE_RUNS if not run["within_output_byte_budget"]
+    ]
+    largest_output_safe_run = max(output_pressure_safe_runs, key=lambda run: run["release_zone_count"])
+    smallest_output_blocked_run = min(output_pressure_blocked_runs, key=lambda run: run["release_zone_count"])
+    output_pressure_ladder = {
+        "task_id": "TB-682",
+        "source_report": "archive/task_reports/balfrin_hazard_output_pressure_ladder_tb682.md",
+        "run_count": len(TB682_HAZARD_OUTPUT_PRESSURE_RUNS),
+        "release_zone_counts": [run["release_zone_count"] for run in TB682_HAZARD_OUTPUT_PRESSURE_RUNS],
+        "largest_measured_output_bytes_safe_release_zone_count": largest_output_safe_run["release_zone_count"],
+        "largest_measured_output_bytes_safe_job_id": largest_output_safe_run["job_id"],
+        "largest_measured_output_bytes_safe_run_root": largest_output_safe_run["run_root"],
+        "largest_measured_output_bytes_safe_hazard_output_bytes": largest_output_safe_run["hazard_output_bytes"],
+        "largest_measured_output_bytes_safe_manifest_bytes": largest_output_safe_run["manifest_bytes"],
+        "first_measured_output_byte_blocked_release_zone_count": smallest_output_blocked_run["release_zone_count"],
+        "first_measured_output_byte_blocked_job_id": smallest_output_blocked_run["job_id"],
+        "first_measured_output_byte_blocked_hazard_output_bytes": smallest_output_blocked_run["hazard_output_bytes"],
+        "first_measured_output_byte_blocked_manifest_bytes": smallest_output_blocked_run["manifest_bytes"],
+        "next_safe_size": "192 release zones under current reduced-output byte budget",
+        "next_larger_step": "reduce manifest bytes and hazard output bytes before attempting more than 192 release zones",
+        "status": "measured_ladder_bracketed_by_output_byte_budget",
+        "runs": TB682_HAZARD_OUTPUT_PRESSURE_RUNS,
+    }
     return {
         "tier_id": "hazard_throughput_probe",
         "tier_label": "bounded hazard-throughput postproc run",
@@ -1333,6 +1428,7 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "latest_measured_task": metrics["task_id"],
         "comparison_baseline": comparison,
         "repeatability_comparison": repeatability,
+        "hazard_output_pressure_ladder": output_pressure_ladder,
         "previous_support_source_report": baseline["source_report"],
         "job_id": metrics["job_id"],
         "slurm": {
@@ -1347,7 +1443,7 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "source_report": metrics["source_report"],
         "repeat_source_report": repeat["source_report"],
         "summary": (
-            "TB-680 and TB-681 completed repeat bounded 24-zone hazard-throughput Balfrin postproc runs with measured runtime, memory, output footprint, and replay-critical family coverage. TB-669 remains the previous hazard-throughput comparison anchor; both 24-zone runs expose manifest-byte pressure above the current replay budget."
+            "TB-680 and TB-681 completed repeat bounded 24-zone hazard-throughput Balfrin postproc runs with measured runtime, memory, output footprint, and replay-critical family coverage. TB-682 then bracketed hazard-output pressure at larger single-node sizes: 192 release zones remain within the reduced-output byte budget, while 384 release zones exceed it. TB-669 remains the previous hazard-throughput comparison anchor; all larger support runs expose manifest-byte pressure above the current replay budget."
         ),
         "claim_boundary": "measured bounded hazard-throughput evidence only; no operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc claim",
     }
@@ -2098,7 +2194,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
-            "TB-680 and TB-681 are the latest repeat measured bounded hazard-throughput evidence with runtime, memory, output, and replay-critical family metrics, TB-669 remains the previous hazard-throughput comparison anchor, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-665 adds a fresh 32-zone compact diagnostic point, "
+            "TB-680 and TB-681 are the latest repeat measured bounded hazard-throughput evidence with runtime, memory, output, and replay-critical family metrics, TB-682 brackets larger hazard-output pressure with 192 zones output-byte-safe and 384 zones output-byte-blocked, TB-669 remains the previous hazard-throughput comparison anchor, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-665 adds a fresh 32-zone compact diagnostic point, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
@@ -2212,6 +2308,7 @@ def build_report() -> dict[str, Any]:
             "preservation_status": hazard_throughput_row.get("preservation_status"),
             "comparison_baseline": hazard_throughput_row.get("comparison_baseline"),
             "repeatability_comparison": hazard_throughput_row.get("repeatability_comparison"),
+            "hazard_output_pressure_ladder": hazard_throughput_row.get("hazard_output_pressure_ladder"),
             "previous_support_source_report": hazard_throughput_row.get("previous_support_source_report"),
             "next_recommended_action": hazard_throughput_row.get("next_recommended_action"),
             "source_report": hazard_throughput_row.get("source_report"),

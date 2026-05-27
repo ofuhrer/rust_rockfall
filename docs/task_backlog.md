@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-682: Measure Hazard Reducer And Output Pressure At The Largest Safe Single-Node Size
-
-Goal: Find the largest safe single-node hazard-output footprint that still stays below the six-hour Balfrin limit.
-
-Capability gap reduced: Unknown reducer/output pressure for hazard-throughput workloads beyond the TB-669 profile.
-
-Why this outranks alternatives: Swiss-scale feasibility depends on hazard output and replay costs, not only diagnostic reducer pressure.
-
-Inspect first:
-
-- `scripts/build_hazard_layers.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A measured larger hazard-output run or failed-closed pre-submit package with projected and observed output files, bytes, manifest size, reducer time, and replay-critical coverage.
-
-Definition of done:
-
-- The largest attempted size has a concrete measured or blocked status, focused hazard-output tests pass, and the next safe size is explicit.
-
-Scope: Prefer summary-only/rebuildable outputs; do not enable full grid CSV or full conditional-curve fanout.
-
 ### TB-683: Exercise Concurrent Hazard-Throughput Jobs On Balfrin
 
 Goal: Use the empty `postproc` partition to test whether multiple bounded hazard-throughput jobs can run concurrently without run-root contention.

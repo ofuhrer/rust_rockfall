@@ -11116,3 +11116,25 @@ completed history.
 - Decision: use TB-680/TB-681 as the current repeat bounded 24-zone hazard-throughput support pair; planning should use `0.3176133460365236` s as the conservative profile wall coefficient until a larger support point exists. The same manifest-byte pressure blocker remains.
 - Boundaries: repeat bounded Balfrin `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: `TB-682`
+
+### TB-682: Measure Hazard Reducer And Output Pressure At The Largest Safe Single-Node Size
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: measure larger single-node hazard-output pressure on Balfrin and identify the largest currently safe reduced-output size before output-byte pressure blocks.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_hazard_output_pressure_ladder_tb682.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Submitted and monitored 96-, 192-, and 384-zone single-node hazard-output pressure jobs on Balfrin `postproc` under isolated `$SCRATCH` roots.
+  - Preserved scheduler state, `/usr/bin/time`, profile JSON, file listings, and byte metrics; removed the temporary copied profiler helper from the remote checkout.
+  - Added a TB-682 pressure ladder to the scale-readiness matrix and surfaced the bracket in the management and Swiss-scale projection documents.
+  - Classified `192` release zones as the current measured output-byte-safe size and `384` release zones as the first measured output-byte blocker under the current reduced-output profile.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package -v`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+- Result/status: implemented_measured
+- Metrics: 96-zone job `4379367`, `0.396281588007696` s profile wall, `44.515625` MB RSS, `1,261,335` hazard bytes, `134,632` manifest bytes; 192-zone job `4379388`, `0.4413482559612021` s profile wall, `48.4765625` MB RSS, `1,353,399` hazard bytes, `198,522` manifest bytes; 384-zone job `4379371`, `0.5879617109894753` s profile wall, `49.4140625` MB RSS, `1,536,400` hazard bytes, `325,518` manifest bytes. All three jobs completed with exit `0:0` and `29` hazard output files.
+- Decision: keep `192` release zones as the next safe measured size under the current reduced-output byte budget. Do not treat `384` zones as replay-ready support until hazard output bytes and manifest bytes are reduced.
+- Boundaries: single-node Balfrin `postproc` hazard-output pressure evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: `TB-683`

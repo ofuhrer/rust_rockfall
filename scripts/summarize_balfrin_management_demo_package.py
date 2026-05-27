@@ -1267,7 +1267,7 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 100-zone is measured diagnostic postproc reducer-pressure evidence, "
             "and broader regional plus Swiss-wide workflows remain phase changes. "
-            "TB-680 and TB-681 are repeat measured 24-zone hazard-throughput support points; TB-652 and TB-665 are diagnostic comparison points, not larger hazard-throughput support points. "
+            "TB-680 and TB-681 are repeat measured 24-zone hazard-throughput support points; TB-682 brackets larger hazard-output pressure with 192 zones output-byte-safe and 384 zones output-byte-blocked; TB-652 and TB-665 are diagnostic comparison points, not larger hazard-throughput support points. "
             "The next blockers are scientific evidence for physical use, manifest pressure, and reducer/replay pressure before larger claims."
         ),
         "projection_classification": {
@@ -1325,6 +1325,14 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "hazard_throughput_latest_hazard_output_bytes": 1169964,
             "hazard_throughput_repeat_hazard_output_bytes": 1169610,
             "hazard_throughput_latest_conditional_curve_rows": 36864,
+            "hazard_output_pressure_largest_safe_task_id": "TB-682",
+            "hazard_output_pressure_largest_safe_job_id": "4379388",
+            "hazard_output_pressure_largest_safe_release_zone_count": 192,
+            "hazard_output_pressure_largest_safe_hazard_output_bytes": 1353399,
+            "hazard_output_pressure_largest_safe_manifest_bytes": 198522,
+            "hazard_output_pressure_first_blocked_job_id": "4379371",
+            "hazard_output_pressure_first_blocked_release_zone_count": 384,
+            "hazard_output_pressure_first_blocked_hazard_output_bytes": 1536400,
             "hazard_throughput_previous_job_id": "4378015",
             "hazard_throughput_previous_task_id": "TB-669",
             "regional_split_job_id": "4367244",

@@ -481,6 +481,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
         "diagnostic reducer-pressure coefficients are anchored to the latest measured Balfrin diagnostic run record and kept separate from hazard-throughput projections",
         "hazard-throughput support is anchored to the repeat measured TB-680/TB-681 24-zone Balfrin postproc profiles and kept separate from diagnostic reducer-pressure evidence",
+        "hazard-output pressure is bracketed by TB-682 with 192 zones output-byte-safe and 384 zones output-byte-blocked under the current reduced-output profile",
     )
     measured_release_zone_count = max(
         10,
