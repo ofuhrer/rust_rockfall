@@ -1,6 +1,6 @@
 # Large AOI GIS/COG Stress TB-609
 
-Date: 2026-05-26
+Date: 2026-05-26; refreshed for TB-631 on 2026-05-27
 
 Status: measured local larger-output package and COG conversion stress test.
 
@@ -9,21 +9,27 @@ Artifact root:
 
 Scratch roots:
 
-- standard package: `/tmp/tb609_large_aoi_gis_cog/package`
-- converted package: `/tmp/tb609_large_aoi_gis_cog/converted`
+- TB-609 standard package: `/tmp/tb609_large_aoi_gis_cog/package`
+- TB-609 converted package: `/tmp/tb609_large_aoi_gis_cog/converted`
+- TB-631 standard package: `/tmp/tb631_large_aoi_gis_cog/package`
+- TB-631 converted package: `/tmp/tb631_large_aoi_gis_cog/converted`
 
 Report artifacts:
 
 - `/tmp/tb609_large_aoi_gis_cog/report.json`
 - `/tmp/tb609_large_aoi_gis_cog/report.md`
+- `/tmp/tb631_large_aoi_gis_cog/report.json`
+- `/tmp/tb631_large_aoi_gis_cog/report.md`
 
 ## Result
 
-The stress-test helper reported `stress_test_status: ready`.
+The TB-631 refresh confirmed `hazard/results/tschamut_public_pilot/target_gate_v1`
+is the largest currently available package-capable hazard output root and
+reported `stress_test_status: ready`.
 
 | Measure | Value |
 | --- | ---: |
-| Package generation seconds | `11.059617833001539` |
+| Package generation seconds | `10.16826254199259` |
 | Package file count | `39` |
 | Package byte count | `401,265` |
 | Raster count | `22` |
@@ -32,7 +38,7 @@ The stress-test helper reported `stress_test_status: ready`.
 | Manifest size bytes | `333,291` |
 | QA review HTML size bytes | `52,408` |
 | QA review manifest size bytes | `38,620` |
-| COG conversion seconds | `25.104302958003245` |
+| COG conversion seconds | `19.775688750029076` |
 | Converted package file count | `39` |
 | Converted package byte count | `403,419` |
 | Converted raster count | `22` |

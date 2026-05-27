@@ -10058,3 +10058,23 @@ completed history.
 - Metrics: metric status `measured`; line count `6`; held-out trajectory count `6`; mean endpoint distance `0.0 m`; maximum endpoint distance `0.0 m`; coverage within `0.5 m` tolerance `1.0`; model-selection overlap count `0`.
 - Boundaries: held-out runout-axis consistency metric only; no calibration acceptance, deposition polygon, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-631`
+
+### TB-631: Measure GIS/COG Output Packaging At Larger Hazard Size
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: verify that the largest available package-capable hazard output can still be packaged and COG-converted for GIS review.
+- Files changed: `docs/large_aoi_gis_cog_stress_tb609.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Identified `hazard/results/tschamut_public_pilot/target_gate_v1` as the largest currently available package-capable hazard output root.
+  - Reran the large-AOI GIS/COG stress helper into `/tmp/tb631_large_aoi_gis_cog`.
+  - Confirmed standard GIS package readiness, converted COG package readiness, and layer parity.
+  - Updated the existing large-AOI GIS/COG note instead of adding another task-specific report file.
+  - Removed TB-631 from the active backlog.
+- Checks run:
+  - `find hazard/results -maxdepth 3 -type d -print0 | xargs -0 du -sk 2>/dev/null | sort -nr | head -20`
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --packaged-package-root /tmp/tb631_large_aoi_gis_cog/package --converted-package-root /tmp/tb631_large_aoi_gis_cog/converted --format json --json-output /tmp/tb631_large_aoi_gis_cog/report.json --text-output /tmp/tb631_large_aoi_gis_cog/report.md`
+- Result/status: implemented_measured
+- Metrics: stress-test status `ready`; package generation `10.16826254199259 s`; package files `39`; package bytes `401265`; raster count `22`; vector count `2`; COG conversion `19.775688750029076 s`; converted files `39`; converted bytes `403419`; converted raster count `22`; layer parity `parity_match`; first GIS packaging bottleneck `no_blocker`.
+- Boundaries: local package/COG conversion measurement only; no new simulation, public geodata acquisition, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-632`

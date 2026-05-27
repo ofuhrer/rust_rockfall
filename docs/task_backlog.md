@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-631: Measure GIS/COG Output Packaging At Larger Hazard Size
-
-Goal: Verify that the larger hazard output remains practical to package for GIS review without ballooning file count or conversion time.
-
-Capability gap reduced: Feasibility of user-facing map review after larger Balfrin hazard runs.
-
-Why this outranks alternatives: Runtime evidence is incomplete if the resulting map package cannot be reviewed efficiently.
-
-Inspect first:
-
-- `scripts/convert_same_scale_package_to_cog.py`
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/large_aoi_gis_cog_stress_tb609.md`
-- `docs/hazard_layers.md`
-
-Deliverables:
-
-- A measured GIS/COG packaging result for the largest available hazard output root, including conversion time, raster count, byte count, and parity status.
-
-Definition of done:
-
-- Packaging completes or fails with a concrete output-family blocker, and the result is tied to the scale-readiness interpretation.
-
 ### TB-632: Simplify Obsolete Balfrin Evidence Surfaces
 
 Goal: Remove or consolidate old Balfrin documents that are superseded by current scale summaries while preserving measured run facts.
