@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-672: Exercise Restartability On A Larger Run Root
-
-Goal: Prove that a larger diagnostic or hazard-throughput run root can be recovered, copied, and summarized without rerunning the simulation.
-
-Capability gap reduced: Restartability and operational feasibility for long Swiss-scale chunk workflows.
-
-Why this outranks alternatives: Swiss-scale work must tolerate partial completion and recovery; output isolation alone is not enough.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/summarize_balfrin_probe_preservation_gate.py`
-- `tests/test_balfrin_restartability_recovery.py`
-
-Deliverables:
-
-- A restartability/recovery measurement for the latest larger run root, including copied-root size, mandatory artifact coverage, and whether metrics can be regenerated from preserved files.
-
-Definition of done:
-
-- The recovery path either reconstructs the measured summary from preserved artifacts or identifies the exact missing artifact family.
-
-Scope: Recovery should use `$SCRATCH` for large copied data and avoid persistent clutter outside the repo clone.
-
 ### TB-673: Run A Swiss National Chunk Execution Smoke
 
 Goal: Execute a tiny national-chunk-shaped sample rather than only estimating the national tile/chunk inventory.

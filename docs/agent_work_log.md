@@ -10904,3 +10904,23 @@ completed history.
 - Metrics: base root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb671_concurrent_20260527_131408`; jobs `4378322`, `4378358`, `4378359`; all terminal state `COMPLETED`; max observed concurrent top-level jobs `2`; run roots isolated `true`; per-job output files `52`; per-job output bytes `23,661`; per-job reducer wall time `3.07` seconds; peak RSS range `33.801` to `34.336` MB; aggregate output files `156`; aggregate output bytes `70,983`; aggregate run-root files `195`; aggregate run-root bytes `354,514`; contention status `no_contention_detected`.
 - Boundaries: concurrent single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, distributed, non-`postproc`, physical-probability, operational, risk/exposure/vulnerability, or Swiss-wide execution claim changed.
 - Next task: `TB-672`
+
+### TB-672: Exercise Restartability On A Larger Run Root
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: prove that the latest larger hazard-throughput run root can be copied and summarized from preserved files without rerunning.
+- Files changed: `docs/balfrin_larger_run_root_recovery_tb672.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Copied the TB-669 12-zone hazard-throughput run root into a fresh `$SCRATCH` restartability root.
+  - Checked mandatory preserved artifacts by SHA-256 between source and recovered roots.
+  - Reconstructed the measured profile summary from the copied profile and compared it to the original collected summary.
+  - Stored the recovery summary under the recovered root and removed TB-672 from the active backlog.
+- Checks run:
+  - `cp -a /scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917/. /scratch/mch/olifu/rust_rockfall/restartability/tb672_tb669_recovery_20260527_132017/`
+  - `sha256sum` over mandatory source/recovered artifacts
+  - local reconstruction of `/tmp/tb672_recovery_summary.json` from the copied `multi_zone_hazard_throughput_profile.json` and `tb669_collected_summary.json`
+- Result/status: implemented_measured
+- Metrics: source size `2,431,977` bytes; recovered size `2,446,580` bytes; mandatory artifacts checked `8`; missing mandatory artifacts `0`; checksum match `true`; metrics regenerated without rerun `true`; reconstructed summary matches source `true`; release zones `12`; output files `29`; output bytes `1,148,530`; hazard-layer seconds `0.078136`; total profile wall seconds `0.288979`.
+- Boundaries: copied-root recovery evidence only; no live interruption/resume, distributed execution, non-`postproc`, Swiss-wide execution, physical-probability, operational, or risk/exposure/vulnerability claim changed.
+- Next task: `TB-673`
