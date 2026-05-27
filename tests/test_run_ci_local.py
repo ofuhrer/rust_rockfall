@@ -16,7 +16,6 @@ class RunCiLocalTests(unittest.TestCase):
                 "verify",
                 "python-tests",
                 "repo-consistency",
-                "performance-standard",
             ],
         )
 

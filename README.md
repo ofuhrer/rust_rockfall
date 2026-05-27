@@ -139,7 +139,7 @@ the AOI front door. New users should start with this smaller command surface:
 - `cargo test`, `cargo run -- verify --all`, and `cargo run -- validate --all`
   for Rust model checks.
 - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci` for
-  the local CI-equivalent check path.
+  the local equivalent of the main CI workflow.
 - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py ...`
   for AOI status, preparation, candidate review, local smoke runs, and map
   packaging readiness.
@@ -191,7 +191,7 @@ not use the historical package helpers as a shortcut around that profile.
 ## Development Workflow
 
 Use the repository CI runner when changing code. This is the first-line local
-verification path and mirrors the GitHub Actions suite layout:
+verification path and mirrors `.github/workflows/ci.yml`:
 
 ```bash
 PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci
@@ -214,6 +214,12 @@ PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite python-full
 The Python test tiers are tracked in
 [`tests/python_test_tiers.toml`](tests/python_test_tiers.toml), so new test
 modules must be classified deliberately.
+
+Performance checks are separate from the main CI workflow:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite performance
+```
 
 ## Start Here
 

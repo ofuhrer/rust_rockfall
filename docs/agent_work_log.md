@@ -10720,3 +10720,23 @@ completed history.
 - Metrics: package status `map_package_ready`; package files `39`; package bytes `440,839`; package manifest bytes `165,220`; pilot GIS manifest bytes `82,313`; summary bytes `1,671`; QA checklist bytes `8,292`; checklist/package ratio `1.9%`; checklist/manifest ratio `5.0%`; checklist status `diagnostic_review_pending`; review surface `review_ready_with_warnings`.
 - Boundaries: package-footprint measurement only; no package semantics, hazard values, output policy, physical-probability, operational, annual-frequency, risk/exposure/vulnerability, Swiss-wide, distributed, Balfrin, or non-`postproc` claim changed.
 - Next task: `TB-663`
+
+### TB-663: Run A Local CI Front-Door Cleanup Pass
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: identify one confusing local CI path and simplify it without reducing coverage.
+- Files changed: `scripts/run_ci_local.py`, `tests/test_run_ci_local.py`, `README.md`, `docs/onboarding.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Changed `--suite ci` to mirror `.github/workflows/ci.yml` exactly.
+  - Kept performance monitoring as an explicit `--suite performance` path, matching the separate performance workflows.
+  - Updated tests and docs to make the main-CI versus performance split explicit.
+  - Removed TB-663 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite ci --dry-run`
+  - `PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite performance --dry-run`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_ci_local -v`
+- Result/status: implemented_simplification
+- Metrics: `ci` dry-run suites `lint`, `rust-tests`, `verify`, `python-tests`, `repo-consistency`; `ci` dry-run no longer includes `run_performance_benchmark.py`; `performance` dry-run includes `performance-standard`; focused tests `4` passed.
+- Boundaries: local CI command selection only; no GitHub workflow, coverage list, Python test tier, Rust command, performance benchmark logic, or scientific/runtime behavior changed.
+- Next task: backlog empty

@@ -172,6 +172,13 @@ The `verify` and full `ci` suites write ignored diagnostic outputs. Do not
 stage those generated files unless a tiny fixture is being intentionally added
 and documented.
 
+The local `ci` suite mirrors `.github/workflows/ci.yml`. Performance monitoring
+is a separate GitHub workflow and can be run locally with:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_ci_local.py --suite performance
+```
+
 ## Current Workflow Orientation
 
 The current mature path is a non-operational conditional diagnostic workflow,

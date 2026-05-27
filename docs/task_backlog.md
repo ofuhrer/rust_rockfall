@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-663: Run A Local CI Front-Door Cleanup Pass
-
-Goal: Identify one slow, redundant, or confusing local CI path and simplify it without reducing coverage.
-
-Capability gap reduced: Developer speed and drift prevention.
-
-Why this outranks alternatives: Faster local verification helps prevent another local-vs-GitHub Actions drift.
-
-Inspect first:
-
-- `scripts/run_ci_local.py`
-- `tests/python_test_tiers.toml`
-- `.github/workflows/ci.yml`
-- `tests/test_run_ci_local.py`
-
-Deliverables:
-
-- A small local CI runner or test-tier simplification with focused test coverage.
-
-Definition of done:
-
-- The documented local CI command remains aligned with GitHub Actions and the change removes duplication or confusion.
-
 ## Backlog Protocol
 
 Task headings must always be exactly:

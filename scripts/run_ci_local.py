@@ -129,7 +129,6 @@ SUITE_ALIASES = {
         "verify",
         "python-tests",
         "repo-consistency",
-        "performance-standard",
     ),
 }
 
