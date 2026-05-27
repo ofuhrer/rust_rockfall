@@ -122,6 +122,23 @@ Residual diagnostics in `summary.json` compare the selected candidate's ensemble
 
 These residuals show that the aggregate objective improvement does not remove important per-event errors. They are diagnostics for model development, not an acceptance threshold.
 
+## Hazard-Layer Smoke
+
+TB-637 ran a scratch-only 20-member Tschamut target-gate smoke comparing the target-gate baseline parameters with the selected `candidate_103` parameters. The scratch cases changed only the output root, ensemble size, and candidate parameters; no validation case, default parameter, or committed hazard output was mutated.
+
+Aggregate validation metrics moved in the expected direction for this bounded smoke:
+
+- simulated mean runout increased from `72.16 m` to `82.36 m`;
+- runout error decreased from `30.68 m` to `20.48 m`;
+- deposition centroid error decreased from `30.14 m` to `19.91 m`;
+- deposition-cloud mean nearest error decreased from `24.34 m` to `14.44 m`;
+- lateral spread error decreased from `16.85 m` to `14.97 m`;
+- deposition-cloud overlap increased from `0.795` to `0.985`.
+
+Hazard-layer comparison found `24` shared layers on the same explicit grid, no layer-shape mismatch, no threshold-set disagreement, and no reference-only or candidate-only layers. Outputs changed materially rather than only through metadata: all `48` comparable output checksums differed. Selected layer deltas included reach-probability `L1=15.345`, weighted reach-probability `L1=2.79`, max kinetic-energy `RMSE=3295.22 J`, max jump-height `RMSE=0.580 m`, and deposition-density nonzero Jaccard `0.0`.
+
+This confirms that the calibration-selected parameters materially affect map outputs in a controlled scratch run. It remains a bounded smoke, not a validation acceptance or operational hazard-map claim.
+
 ## Terrain Update Note
 
 After the terrain-focused update, validation includes both `validation_tschamut_proxy_plane` and `validation_tschamut_basic`. The calibration grid above was rerun as a bounded smoke in TB-627 from the explicit objective contract; this preserves the calibration/validation separation because the holdout partition remains excluded from fitting and selected parameters are not promoted into validation cases.

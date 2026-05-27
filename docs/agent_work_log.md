@@ -10175,3 +10175,26 @@ completed history.
 - Metrics: calibration residual count `18`, mean absolute runout error `24.42720089665323 m`, median `23.22971513458129 m`, max `70.40924878589854 m`, worst runout case `v107`; holdout residual count `18`, mean absolute runout error `18.217756883796667 m`, median `12.860482622919953 m`, max `55.111764172812286 m`, worst runout case `v086`.
 - Boundaries: residual diagnostics are research interpretation only; no acceptance threshold, validation promotion, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim is made.
 - Next task: `TB-637`
+
+### TB-637: Run A Calibration-Selected Hazard Smoke
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: check whether selected Tschamut calibration parameters materially change hazard-map outputs in a controlled scratch run.
+- Files changed: `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Created scratch baseline and calibrated Tschamut target-gate cases under `/tmp/tb637_calibration_hazard_smoke`.
+  - Ran both cases with the same inputs, seed, and 20-member ensemble; only selected parameters and scratch output paths differed.
+  - Built hazard layers for both outputs on the same explicit grid and compared the resulting manifests.
+  - Documented the measured aggregate validation deltas and selected hazard-layer deltas in the existing calibration document.
+  - Removed TB-637 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case /tmp/tb637_calibration_hazard_smoke/baseline_case.yaml`
+  - `PYENV_VERSION=system CARGO_TARGET_DIR=/tmp/rust-rockfall-target cargo run -- validate --case /tmp/tb637_calibration_hazard_smoke/calibrated_case.yaml`
+  - `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case /tmp/tb637_calibration_hazard_smoke/baseline_case.yaml --output-dir /tmp/tb637_calibration_hazard_smoke/baseline/hazard --grid-xmin 2696376 --grid-ymin 1167384 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2 --no-plots`
+  - `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py --case /tmp/tb637_calibration_hazard_smoke/calibrated_case.yaml --output-dir /tmp/tb637_calibration_hazard_smoke/calibrated/hazard --grid-xmin 2696376 --grid-ymin 1167384 --grid-ncols 300 --grid-nrows 304 --grid-cell-size 2 --no-plots`
+  - `PYENV_VERSION=system uv run python scripts/compare_hazard_map_convergence.py /tmp/tb637_calibration_hazard_smoke/baseline/hazard /tmp/tb637_calibration_hazard_smoke/calibrated/hazard --format json`
+- Result/status: implemented_measured
+- Metrics: calibrated runout error improved by `10.205165246645223 m`; centroid error improved by `10.224831509066512 m`; cloud mean-nearest error improved by `9.900244344188458 m`; lateral spread error improved by `1.8856842085460137 m`; deposition overlap increased by `0.19`; hazard comparison status `ok`; shared layers `24`; shape mismatches `0`; threshold disagreements `0`; output checksum mismatches `48`; reach-probability `L1=15.345000000000006`; weighted reach-probability `L1=2.7899999999984835`; max kinetic-energy `RMSE=3295.221414758502`; max jump-height `RMSE=0.5803971479025157`.
+- Boundaries: scratch-only 20-member hazard smoke; no committed hazard outputs, validation case mutation, default parameter mutation, validation acceptance, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-638`

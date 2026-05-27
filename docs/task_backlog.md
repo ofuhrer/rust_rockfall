@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-637: Run A Calibration-Selected Hazard Smoke
-
-Goal: Check whether the locally selected calibration candidate materially changes the Tschamut hazard layers in a controlled scratch run.
-
-Capability gap reduced: Connects calibration evidence to map-output behavior instead of leaving it isolated in a fitting report.
-
-Why this outranks alternatives: Calibration only matters if its selected parameters have understandable effects on hazard outputs.
-
-Inspect first:
-
-- `calibration/experiments/tschamut_v0_3/selected_parameters.yaml`
-- `scripts/build_hazard_layers.py`
-- `validation/private/tschamut_public_pilot/target_gate_v1/tschamut_public_target_gate_case.yaml`
-- `scripts/compare_hazard_map_convergence.py`
-
-Deliverables:
-
-- A scratch hazard build or concrete blocker comparing baseline and calibration-selected output layers.
-
-Definition of done:
-
-- The comparison reports changed/unchanged layer metrics, uses scratch outputs only, and does not mutate validation cases or default model parameters.
-
 ### TB-638: Make Calibration Readiness Report Actionable
 
 Goal: Convert the remaining calibration blocker from a generic `partial` state into specific missing/weak evidence fields.
