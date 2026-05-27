@@ -74,9 +74,9 @@ PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --describ
 
 ## Result
 
-The selected candidate is `candidate_011`:
+The selected candidate is `candidate_003`:
 
-- `normal_restitution = 0.40`
+- `normal_restitution = 0.25`
 - `tangential_restitution = 0.85`
 - `friction_coefficient = 0.35`
 - `roughness_model = stochastic_contact_v1`
@@ -86,29 +86,31 @@ The selected candidate is `candidate_011`:
 
 Calibration subset:
 
-- objective: `0.4598`
+- objective: `0.2702`
 - observed mean runout: `92.25 m`
-- simulated mean runout: `142.75 m`
-- runout error: `50.50 m`
-- deposition centroid error: `51.38 m`
-- deposition-cloud mean nearest error: `33.26 m`
-- lateral spread error: `1.90 m`
+- simulated mean runout: `122.42 m`
+- runout error: `30.17 m`
+- deposition centroid error: `31.08 m`
+- deposition-cloud mean nearest error: `16.69 m`
+- lateral spread error: `2.39 m`
 
 Held-out subset:
 
-- objective: `0.3660`
+- objective: `0.2839`
 - observed mean runout: `97.63 m`
-- simulated mean runout: `140.47 m`
-- runout error: `42.84 m`
-- deposition centroid error: `43.53 m`
-- deposition-cloud mean nearest error: `26.52 m`
-- lateral spread error: `2.70 m`
+- simulated mean runout: `131.17 m`
+- runout error: `33.54 m`
+- deposition centroid error: `34.22 m`
+- deposition-cloud mean nearest error: `17.62 m`
+- lateral spread error: `5.46 m`
 
-The held-out objective is lower than the calibration objective for this split. That does not prove predictive skill; it mostly shows that this small grid has not visibly overfit the calibration subset. The selected parameters still over-run both partitions substantially when the generated calibration cases use the unbounded analytic proxy plane.
+The held-out objective is close to the calibration objective for this split. That does not prove predictive skill; it mainly shows that this small grid has not visibly overfit the calibration subset. The selected parameters still over-run both partitions substantially.
+
+The measured sensitivity summary in `summary.json` identifies `friction_coefficient` as the strongest mean objective driver across the small grid. The calibration-objective span between the best and worst candidates is `2.3367`, so the smoke run confirms that parameter changes produce measurable runout/deposition metric deltas.
 
 ## Terrain Update Note
 
-After the terrain-focused update, validation includes both `validation_tschamut_proxy_plane` and `validation_tschamut_basic`. The calibration grid above has not been rerun or retuned; this preserves the calibration/validation separation and avoids silently changing selected parameters. The updated validation comparison should be read as a fixed-parameter terrain sensitivity experiment, not as a new calibration result.
+After the terrain-focused update, validation includes both `validation_tschamut_proxy_plane` and `validation_tschamut_basic`. The calibration grid above was rerun as a bounded smoke in TB-627 from the explicit objective contract; this preserves the calibration/validation separation because the holdout partition remains excluded from fitting and selected parameters are not promoted into validation cases.
 
 ## Interpretation
 

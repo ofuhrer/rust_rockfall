@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-627: Run A Calibration Smoke And Report Parameter Sensitivity
-
-Goal: Execute the minimal calibration objective on a small bounded case and measure whether parameter changes affect runout/deposition metrics in the expected direction.
-
-Capability gap reduced: Empirical calibration feasibility and scientific sensitivity evidence.
-
-Why this outranks alternatives: A calibration design only becomes useful when the workflow can actually run and produce interpretable metric deltas.
-
-Inspect first:
-
-- `scripts/run_tschamut_calibration.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `docs/tschamut_calibration.md`
-- `docs/holdout_runout_deposition_evidence_tb615.md`
-
-Deliverables:
-
-- A bounded calibration smoke result with parameter settings, metrics, excluded holdout identifiers, and a short sensitivity interpretation.
-
-Definition of done:
-
-- The smoke run completes locally or on Balfrin scratch, results are reproducible from the recorded command, and no holdout data are used for fitting.
-
 ### TB-628: Stage Second-Site Public Inputs For Transfer Testing
 
 Goal: Prepare the next public second-site input bundle needed to test whether the workflow generalizes beyond the Tschamut pilot.

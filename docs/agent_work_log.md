@@ -9969,3 +9969,27 @@ completed history.
 - Metrics: objective status `executable_smoke_ready`; calibration trajectory count `18`; excluded holdout trajectory count `18`; parameter candidate count `16`; separation preflight `passed`; evidence-gap calibration status `partial`; physical-probability first blocker remains `calibration_evidence`.
 - Boundaries: objective definition and dry-run only; no candidate grid smoke run, no selected-parameter promotion, no validation acceptance, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-627`
+
+### TB-627: Run A Calibration Smoke And Report Parameter Sensitivity
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: execute the Tschamut calibration objective and record whether the parameter grid produces interpretable runout/deposition metric deltas while keeping holdout data out of fitting.
+- Files changed: `scripts/run_tschamut_calibration.py`, `tests/test_calibration_failure_diagnostics.py`, `calibration/data/tschamut/calibration_release_points.csv`, `calibration/data/tschamut/calibration_observed_deposition.csv`, `calibration/data/tschamut/holdout_release_points.csv`, `calibration/data/tschamut/holdout_observed_deposition.csv`, `calibration/experiments/tschamut_v0_3/candidate_results.csv`, `calibration/experiments/tschamut_v0_3/selected_parameters.yaml`, `calibration/experiments/tschamut_v0_3/summary.json`, `calibration/experiments/tschamut_v0_3/report.html`, `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the full 16-candidate Tschamut calibration grid locally from `calibration/experiments/tschamut_v0_3/config.yaml`.
+  - Regenerated calibration and holdout partition CSVs from current processed Tschamut inputs.
+  - Added a compact parameter-sensitivity summary to generated `summary.json`.
+  - Updated the Tschamut calibration document with the measured selected candidate, calibration metrics, holdout metrics, and sensitivity interpretation.
+  - Kept validation cases free of selected-parameter references; holdout remains excluded from fitting.
+  - Removed TB-627 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --config calibration/experiments/tschamut_v0_3/config.yaml`
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_tschamut_calibration.py tests/test_calibration_failure_diagnostics.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_calibration_failure_diagnostics tests.test_calibration_separation_preflight -v`
+- Result/status: implemented_measured
+- Metrics: candidate count `16`; selected candidate `candidate_003`; calibration objective `0.2701970675601`; holdout objective `0.2839019844916597`; calibration runout error `30.172019784135742 m`; holdout runout error `33.53930915631956 m`; strongest mean effect parameter `friction_coefficient`; calibration objective span `2.33694228970566`; calibration/holdout overlap count `0`; separation preflight `passed`.
+- Boundaries: bounded local calibration smoke only; selected parameters are not project defaults and are not referenced by validation cases; no validation acceptance, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-628`

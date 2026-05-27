@@ -571,6 +571,7 @@ def write_summary(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]
         "generated_utc": None,
         "best_candidate": best,
         "top_candidates": rows[:5],
+        "parameter_sensitivity": summarize_parameter_sensitivity(rows),
         "interpretation": (
             "The selected set minimizes the calibration subset objective in a small explicit grid. "
             "Holdout performance must be interpreted as a research diagnostic, not predictive skill."
@@ -578,6 +579,70 @@ def write_summary(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def summarize_parameter_sensitivity(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not rows:
+        return {"status": "no_candidate_rows"}
+    parameter_names = [
+        "normal_restitution",
+        "tangential_restitution",
+        "friction_coefficient",
+        "roughness_profile",
+    ]
+    effects = []
+    for parameter in parameter_names:
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            groups.setdefault(str(row[parameter]), []).append(row)
+        levels = []
+        for value, group_rows in sorted(groups.items()):
+            levels.append(
+                {
+                    "value": value,
+                    "candidate_count": len(group_rows),
+                    "mean_calibration_objective": mean_float(group_rows, "calibration_objective"),
+                    "mean_holdout_objective": mean_float(group_rows, "holdout_objective"),
+                    "best_calibration_objective": min(float(row["calibration_objective"]) for row in group_rows),
+                    "best_candidate_id": min(
+                        group_rows,
+                        key=lambda row: (float(row["calibration_objective"]), float(row["holdout_objective"])),
+                    )["candidate_id"],
+                }
+            )
+        means = [float(level["mean_calibration_objective"]) for level in levels]
+        effects.append(
+            {
+                "parameter": parameter,
+                "levels": levels,
+                "mean_calibration_objective_range": max(means) - min(means) if means else 0.0,
+                "lower_is_better": True,
+            }
+        )
+    strongest = max(effects, key=lambda item: float(item["mean_calibration_objective_range"]))
+    best = rows[0]
+    worst = max(rows, key=lambda row: float(row["calibration_objective"]))
+    return {
+        "schema_version": "tschamut_calibration_parameter_sensitivity_v1",
+        "status": "measured",
+        "strongest_mean_effect_parameter": strongest["parameter"],
+        "strongest_mean_effect_range": strongest["mean_calibration_objective_range"],
+        "best_candidate_id": best["candidate_id"],
+        "best_calibration_objective": float(best["calibration_objective"]),
+        "best_holdout_objective": float(best["holdout_objective"]),
+        "worst_candidate_id": worst["candidate_id"],
+        "worst_calibration_objective": float(worst["calibration_objective"]),
+        "calibration_objective_span": float(worst["calibration_objective"]) - float(best["calibration_objective"]),
+        "effects": effects,
+        "interpretation": (
+            f"{strongest['parameter']} has the largest mean objective separation across the small grid. "
+            "The result is a bounded sensitivity smoke, not a validation acceptance claim."
+        ),
+    }
+
+
+def mean_float(rows: list[dict[str, Any]], field: str) -> float:
+    return sum(float(row[field]) for row in rows) / max(len(rows), 1)
 
 
 def write_html_report(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]) -> None:

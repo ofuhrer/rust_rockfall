@@ -267,6 +267,54 @@ class CalibrationFailureDiagnosticsTest(unittest.TestCase):
             self.assertIn("selected_parameters_yaml", contract["expected_output_artifacts"])
             self.assertFalse(contract["claim_boundary"]["selected_parameters_promoted_to_validation"])
 
+    def test_tschamut_parameter_sensitivity_reports_strongest_grid_effect(self) -> None:
+        rows = [
+            {
+                "candidate_id": "d",
+                "normal_restitution": 0.25,
+                "tangential_restitution": 0.95,
+                "friction_coefficient": 0.35,
+                "roughness_profile": "moderate",
+                "calibration_objective": 0.25,
+                "holdout_objective": 0.4,
+            },
+            {
+                "candidate_id": "b",
+                "normal_restitution": 0.4,
+                "tangential_restitution": 0.85,
+                "friction_coefficient": 0.35,
+                "roughness_profile": "low",
+                "calibration_objective": 0.5,
+                "holdout_objective": 0.6,
+            },
+            {
+                "candidate_id": "a",
+                "normal_restitution": 0.4,
+                "tangential_restitution": 0.85,
+                "friction_coefficient": 0.2,
+                "roughness_profile": "low",
+                "calibration_objective": 2.0,
+                "holdout_objective": 2.5,
+            },
+            {
+                "candidate_id": "c",
+                "normal_restitution": 0.25,
+                "tangential_restitution": 0.95,
+                "friction_coefficient": 0.2,
+                "roughness_profile": "moderate",
+                "calibration_objective": 2.0,
+                "holdout_objective": 2.1,
+            },
+        ]
+
+        summary = tschamut.summarize_parameter_sensitivity(rows)
+
+        self.assertEqual(summary["status"], "measured")
+        self.assertEqual(summary["best_candidate_id"], "d")
+        self.assertEqual(summary["worst_candidate_id"], "a")
+        self.assertEqual(summary["strongest_mean_effect_parameter"], "friction_coefficient")
+        self.assertGreater(summary["calibration_objective_span"], 0)
+
     def test_tschamut_wraps_failed_validation_subprocess(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
