@@ -222,7 +222,7 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
         self.assertEqual(report["measurement_status"], "measured_existing_artifacts")
         self.assertEqual(report["compact_manifest_recommendation"]["default_manifest_mode"], "compact")
         self.assertEqual(report["compact_manifest_recommendation"]["release_zone_count"], 12)
-        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -14018)
+        self.assertEqual(report["compact_manifest_recommendation"]["manifest_size_bytes_delta"], -16577)
         self.assertEqual(report["compact_manifest_recommendation"]["output_file_count_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_bytes_delta"], 0)
         self.assertEqual(report["compact_manifest_recommendation"]["reducer_manifest_file_count_delta"], 0)
@@ -364,11 +364,19 @@ class MultiZoneReducerPressureProbeTests(unittest.TestCase):
                 (probe_root / "output" / "merged" / "regional_split_merge_manifest.json").read_text(encoding="utf-8")
             )
 
-        self.assertEqual(merge_manifest["merged_output_summary"]["output_listing_mode"], "compact_kind_index_bytes")
+        self.assertEqual(merge_manifest["merged_output_summary"]["output_listing_mode"], "compact_family_index_summary")
+        self.assertEqual(
+            merge_manifest["merged_output_summary"]["rebuild_listing_source"],
+            "validation output manifest compact_v1",
+        )
         self.assertTrue(all("path" not in entry for entry in merge_manifest["outputs"]))
         trajectory_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "trajectory_csv"]
         reducer_entries = [entry for entry in merge_manifest["outputs"] if entry["kind"] == "reducer_chunk_manifest"]
-        self.assertEqual([entry["zone_index"] for entry in trajectory_entries], list(range(8)))
+        self.assertEqual(len(trajectory_entries), 1)
+        self.assertEqual(trajectory_entries[0]["zone_index_start"], 0)
+        self.assertEqual(trajectory_entries[0]["zone_index_end"], 7)
+        self.assertEqual(trajectory_entries[0]["zone_index_count"], 8)
+        self.assertEqual(trajectory_entries[0]["file_count"], 8)
         self.assertEqual(reducer_entries, [])
         self.assertTrue(all(entry["total_bytes"] > 0 for entry in merge_manifest["outputs"]))
 

@@ -1509,6 +1509,13 @@ def build_merge_manifest(
         family for family in expected_rebuild_families if family not in rebuild_compatible_families
     ]
     merge_outputs = build_compact_merge_output_entries(sorted_outputs) if compact_manifest_mode else build_full_merge_output_entries(sorted_outputs, probe_root)
+    merged_output_summary = {
+        "file_count": sum(number_or_zero(entry.get("file_count")) for entry in sorted_outputs),
+        "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in sorted_outputs),
+        "output_listing_mode": "compact_family_index_summary" if compact_manifest_mode else "full_path_listing",
+    }
+    if compact_manifest_mode:
+        merged_output_summary["rebuild_listing_source"] = "validation output manifest compact_v1"
     return {
         "schema_version": "regional_split_merge_manifest_v1",
         "status": "merged_fixture_outputs",
@@ -1519,11 +1526,7 @@ def build_merge_manifest(
         "merge_order": "sorted_chunk_id_then_output_family_then_path",
         "merge_order_independent": True,
         "chunk_order": sorted(str(chunk_id) for chunk_id in regional_split_plan.get("chunk_order") or []),
-        "merged_output_summary": {
-            "file_count": sum(number_or_zero(entry.get("file_count")) for entry in sorted_outputs),
-            "byte_count": sum(number_or_zero(entry.get("total_bytes")) for entry in sorted_outputs),
-            "output_listing_mode": "compact_kind_index_bytes" if compact_manifest_mode else "full_path_listing",
-        },
+        "merged_output_summary": merged_output_summary,
         "outputs": merge_outputs,
         "claim_boundaries": {
             "fixture_backed": True,
@@ -1549,23 +1552,61 @@ def build_full_merge_output_entries(outputs: list[dict[str, Any]], probe_root: P
 
 
 def build_compact_merge_output_entries(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    compact_outputs: list[dict[str, Any]] = []
+    grouped: dict[str, dict[str, Any]] = {}
     for entry in outputs:
-        compact_entry = {
-            "kind": str(entry.get("kind") or ""),
-            "total_bytes": number_or_zero(entry.get("total_bytes")),
-        }
+        kind = str(entry.get("kind") or "")
+        compact_entry = grouped.setdefault(
+            kind,
+            {
+                "kind": kind,
+                "file_count": 0,
+                "total_bytes": 0,
+                "row_count": 0,
+                "_zone_indices": [],
+                "_chunk_indices": [],
+            },
+        )
+        compact_entry["file_count"] += number_or_zero(entry.get("file_count")) or 1
+        compact_entry["total_bytes"] += number_or_zero(entry.get("total_bytes"))
         zone_index = source_zone_index_from_path(entry.get("path"))
         if zone_index is not None:
-            compact_entry["zone_index"] = zone_index
+            compact_entry["_zone_indices"].append(zone_index)
         chunk_index = reducer_chunk_index_from_path(entry.get("path"))
         if chunk_index is not None:
-            compact_entry["chunk_index"] = chunk_index
+            compact_entry["_chunk_indices"].append(chunk_index)
         row_count = number_or_zero(entry.get("row_count"))
         if row_count:
-            compact_entry["row_count"] = row_count
+            compact_entry["row_count"] += row_count
+    compact_outputs: list[dict[str, Any]] = []
+    for entry in grouped.values():
+        compact_entry = {
+            "kind": entry["kind"],
+            "file_count": entry["file_count"],
+            "total_bytes": entry["total_bytes"],
+        }
+        if entry["row_count"]:
+            compact_entry["row_count"] = entry["row_count"]
+        zone_indices = sorted(set(entry.pop("_zone_indices")))
+        if zone_indices:
+            compact_entry.update(compact_index_summary("zone_index", zone_indices))
+        chunk_indices = sorted(set(entry.pop("_chunk_indices")))
+        if chunk_indices:
+            compact_entry.update(compact_index_summary("chunk_index", chunk_indices))
         compact_outputs.append(compact_entry)
     return compact_outputs
+
+
+def compact_index_summary(prefix: str, indices: list[int]) -> dict[str, Any]:
+    if not indices:
+        return {}
+    summary: dict[str, Any] = {
+        f"{prefix}_count": len(indices),
+        f"{prefix}_start": indices[0],
+        f"{prefix}_end": indices[-1],
+    }
+    if indices != list(range(indices[0], indices[-1] + 1)):
+        summary[f"{prefix}_values"] = indices
+    return summary
 
 
 def source_zone_index_from_path(path: Any) -> int | None:

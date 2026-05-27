@@ -50,6 +50,23 @@ That report keeps the compact-manifest recommendation explicit, records the
 measured replay-critical family budgets from the regional split hazard manifest,
 and names `measure_scenario_storage_output_tier_pressure` as the next probe.
 
+## Compact Replay Metadata
+
+Compact reducer-pressure roots keep per-output rebuild paths in
+`validation_multi_zone_reducer_pressure_manifest.json` and now write
+`regional_split_merge_manifest.json` as a family/index summary instead of a
+second per-file listing. The merge manifest remains useful for comparison
+because it preserves family file counts, byte totals, row totals, contiguous
+zone/chunk index ranges, and the explicit rebuild-listing source.
+
+TB-621 measured the change on a rebuild-ready 100-zone compact probe with four
+reducer chunks:
+
+- Manifest bytes: `62333` before / `34695` after (`-27638`).
+- Merge-manifest bytes: `30140` before / `2508` after.
+- File counts: `316` root files and `311` output files before and after.
+- Rebuild status: `ready` before and after.
+
 ## Scenario Batching Contract
 
 The candidate scenario generator now also emits

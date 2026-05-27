@@ -9835,3 +9835,25 @@ completed history.
 - Metrics: scale matrix `hazard_throughput_status.job_id=4372656`, runtime `6.930015419959091 s`, memory `379.14453125 MB`, hazard output `31,439,445` bytes, baseline `TB-603`/job `4372309`; matrix remains `blocked_reducer_budget`; next recommended scale action remains `summarize_multi_zone_reducer_pressure`.
 - Boundaries: interpretation and helper integration only; TB-619 remains bounded `postproc` hazard-throughput evidence, not Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability evidence.
 - Next task: `TB-621`
+
+### TB-621: Reduce Replay Metadata Growth In Hazard Outputs
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: reduce replay-critical metadata growth for larger compact hazard-output batches while preserving rebuildability.
+- Files changed: `scripts/summarize_multi_zone_reducer_pressure.py`, `tests/test_multi_zone_reducer_pressure.py`, `docs/multi_zone_reducer_pressure_probe.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Changed compact regional-split merge manifests from a second per-output listing to one family/index summary per output family.
+  - Kept per-output rebuild paths in the compact validation output manifest, and made the compact merge summary name that manifest as the rebuild listing source.
+  - Preserved family file counts, total bytes, row totals, and contiguous zone/chunk index ranges for comparison.
+  - Updated reducer-pressure tests and documentation with before/after measurements.
+  - Removed TB-621 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/tb621_before_default_100_zone --release-zone-count 100 --reducer-workers 4 --reducer-chunk-count 4 --manifest-mode compact --format json --json-output /tmp/rust_rockfall/tb621_before_default_100_zone.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_reducer_pressure.py --materialize-root /tmp/rust_rockfall/tb621_after_default_100_zone --release-zone-count 100 --reducer-workers 4 --reducer-chunk-count 4 --manifest-mode compact --format json --json-output /tmp/rust_rockfall/tb621_after_default_100_zone.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_multi_zone_reducer_pressure.py tests/test_multi_zone_reducer_pressure.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_reducer_pressure tests.test_balfrin_multi_release_zone_demo_handoff tests.test_balfrin_run_root_output_budget_audit -v`
+- Result/status: implemented_measured
+- Metrics: rebuild-ready 100-zone compact probe manifest bytes `62333 -> 34695` (`-27638`); merge-manifest bytes `30140 -> 2508`; root file count `316 -> 316`; output file count `311 -> 311`; rebuild status `ready -> ready`.
+- Boundaries: local scratch-root reducer metadata improvement only; no new Balfrin job submitted, and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-622`

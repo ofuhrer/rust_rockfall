@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-621: Reduce Replay Metadata Growth In Hazard Outputs
-
-Goal: Shrink replay-critical metadata growth for larger hazard batches while preserving enough information to rebuild and compare outputs.
-
-Capability gap reduced: Reducer and replay pressure that currently limits larger hazard-output batches and regional/Swiss-scale planning.
-
-Why this outranks alternatives: The scale matrix already ranks reducer/replay metadata growth as the next scale blocker after measured regional split and TB-603 support.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `scripts/hazard_output_manifests.py`
-- `scripts/hazard_output_writers.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `docs/hazard_output_profile_contract.md`
-- `docs/multi_zone_reducer_pressure_probe.md`
-
-Deliverables:
-
-- A code change or measured output-profile adjustment that reduces replay-critical metadata bytes or file fanout for a representative larger hazard package without losing rebuildability.
-
-Definition of done:
-
-- Before/after file counts and bytes are measured, rebuildability remains explicit, and focused reducer/output-profile tests or checks pass.
-
 ### TB-622: Add A Partial-Rerun Smoke For Larger Hazard Batches
 
 Goal: Prove that a failed or interrupted larger hazard batch can resume from preserved partial state without rerunning everything.
