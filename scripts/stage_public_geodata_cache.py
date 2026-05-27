@@ -33,13 +33,20 @@ except ImportError as exc:  # pragma: no cover - environment setup.
 ROOT = Path(__file__).resolve().parents[1]
 PREFLIGHT_SCRIPT = ROOT / "scripts" / "check_second_site_public_geodata_preflight.py"
 STAGED_PRODUCT_CATEGORIES = {
+    "aoi_tile_catalog",
     "terrain_crop",
+    "terrain_metadata",
     "swissimage_context",
     "swisstlm3d_context",
+    "swisstlm3d_metadata",
     "swisssurface3d_context",
     "swisssurface3d_raster_context",
     "swissbuildings3d_context",
     "barrier_inventory",
+    "source_zone_metadata",
+    "scenario_table",
+    "source_scenario_policy",
+    "release_observation_evidence",
 }
 STAGING_WIZARD_SCHEMA_VERSION = "swiss_public_geodata_cache_stage_proposal_v1"
 ACQUISITION_MODES = {"dry-run", "local-copy", "download"}
@@ -183,7 +190,7 @@ def stage_public_geodata_cache(
             proposal_output=proposal_output,
             apply=apply,
         )
-    products = manifest.get("products") or []
+    products = PREFLIGHT.public_geodata_cache_products(manifest)
     staged_products: list[dict[str, Any]] = []
     overall_status = "verified"
     for record in products:
@@ -253,7 +260,7 @@ def build_download_blocked_report(
         "schema_version": "swiss_public_geodata_cache_download_report_v1",
         "staging_status": "blocked_missing_url",
         "cache_manifest_path": str(cache_manifest_path),
-        "product_count": len(manifest.get("products") or []),
+        "product_count": len(PREFLIGHT.public_geodata_cache_products(manifest)),
         "staged_product_count": 0,
         "optional_missing_product_count": 0,
         "missing_product_count": 0,
@@ -266,7 +273,7 @@ def build_download_blocked_report(
 
 
 def download_public_geodata_cache(cache_manifest_path: Path, manifest: dict[str, Any]) -> dict[str, Any]:
-    products = manifest.get("products") or []
+    products = PREFLIGHT.public_geodata_cache_products(manifest)
     required_missing_urls = missing_download_urls(products)
     if required_missing_urls:
         return build_download_blocked_report(
@@ -398,7 +405,7 @@ def build_public_geodata_cache_stage_proposal(
     manifest: dict[str, Any],
     candidate_roots: list[Path],
 ) -> dict[str, Any]:
-    products = manifest.get("products") or []
+    products = PREFLIGHT.public_geodata_cache_products(manifest)
     candidates = collect_public_geodata_stage_candidates(candidate_roots)
     proposed_products: list[dict[str, Any]] = []
     applied_products: list[dict[str, Any]] = []
@@ -463,6 +470,7 @@ def propose_public_geodata_cache_product(
             "observed_checksum_sha256": "",
             "observed_metadata_mismatches": [],
         }
+        preview_product = stage_public_geodata_cache_product(applied_record, manifest_base)
         return {
             "category": category or "unsupported_product",
             "required": required,
@@ -470,6 +478,7 @@ def propose_public_geodata_cache_product(
             "blocking_reasons": ["unsupported product"],
             "matched_candidate_paths": [],
             "matched_candidate_kinds": [],
+            "preview_product": preview_product,
             "applied_record": applied_record,
         }
 

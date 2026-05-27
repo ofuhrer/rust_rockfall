@@ -10535,3 +10535,26 @@ completed history.
 - Metrics: scale matrix status `actionable_reducer_pressure`; new measured tier `tb652_8_zone_diagnostic_probe`; TB-652 job id `4377075`; release zones `8`; output files `28`; output bytes `14,397`; manifest bytes `11,458`; reducer wall time `2.11` seconds; peak RSS `34.223` MB; TB-619 still latest bounded hazard-throughput support; focused test count `26`.
 - Boundaries: scale-surface interpretation only; TB-652 remains diagnostic reducer-pressure evidence and does not promote operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claims.
 - Next task: `TB-654`
+
+### TB-654: Stage Or Block Chant Sura Public Geodata Context
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: move the Chant Sura / Fluelapass second-site path from fixture-backed blockers toward real public-geodata staging, or record the exact product blockers.
+- Files changed: `scripts/check_second_site_public_geodata_preflight.py`, `scripts/stage_public_geodata_cache.py`, `tests/test_public_geodata_cache_stager.py`, `docs/chant_sura_public_geodata_cache_tb654.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Fixed the public-geodata cache stager/verifier to read acquisition manifests that use `expected_products`, not only cache manifests that already use `products`.
+  - Extended the staging wizard's supported product categories so Chant Sura metadata, tile-catalog, source/scenario, context, and optional-observation rows are reported as missing or optional rather than unsupported.
+  - Ran the Chant Sura preflight, dry-run staging proposal, and cache verifier.
+  - Recorded the product-by-product acquisition blocker in a new TB-654 evidence note.
+  - Removed TB-654 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-654 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json --json-output /tmp/tb654_chant_sura_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml --mode dry-run --proposal-output /tmp/tb654_chant_sura_stage_proposal.json --format json --json-output /tmp/tb654_chant_sura_stage_dry_run.json`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml --format json --json-output /tmp/tb654_chant_sura_verify.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_stager tests.test_second_site_public_geodata_preflight -v`
+- Result/status: implemented_blocked_product_by_product
+- Metrics: preflight status `deferred_public_context_inputs`; cache integrity `partial`; product count `14`; required products `12`; ready required products `1`; missing required products `11`; optional products `2`; fixture-backed required products `0`; unsupported products `0`; stage proposal `blocked_missing`; focused test count `21`.
+- Boundaries: second-site public-geodata cache verification only; no second-site prepared-pilot run and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-655`

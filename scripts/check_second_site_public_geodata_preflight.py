@@ -1674,7 +1674,7 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
         manifest = {}
     products = [
         verify_public_geodata_cache_product(record, manifest_path.parent)
-        for record in manifest.get("products") or []
+        for record in public_geodata_cache_products(manifest)
         if isinstance(record, dict)
     ]
     overall_status = "verified"
@@ -1716,6 +1716,38 @@ def verify_public_geodata_cache(manifest_path: Path) -> dict[str, Any]:
         )["verification_fields"],
         "products": products,
     }
+
+
+def public_geodata_cache_products(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    products = manifest.get("products")
+    if isinstance(products, list) and products:
+        return [record for record in products if isinstance(record, dict)]
+    expected_products = manifest.get("expected_products")
+    if not isinstance(expected_products, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for record in expected_products:
+        if not isinstance(record, dict):
+            continue
+        category = text_value(record.get("category"))
+        expected_staged_path = text_value(record.get("expected_staged_path"))
+        normalized.append(
+            {
+                **record,
+                "product_id": category or text_value(record.get("product")) or "unspecified",
+                "source_product_id": category or text_value(record.get("product")) or "unspecified",
+                "source_product_name": text_value(record.get("product")) or category or "unspecified",
+                "required": bool(record.get("required", True)),
+                "expected_staged_path": expected_staged_path,
+                "expected_metadata_path": text_value(record.get("expected_metadata_path"))
+                or (cache_template_metadata_path(category, expected_staged_path) if category and expected_staged_path else ""),
+                "source_url_or_download_record": text_value(record.get("source_url_or_download_record"))
+                or text_value(record.get("source_reference")),
+                "license_or_terms_reference": text_value(record.get("license_or_terms_reference"))
+                or "swisstopo public geodata terms; exact delivery record pending",
+            }
+        )
+    return normalized
 
 
 def build_public_geodata_cache_recovery_report(

@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-654: Stage Or Block Chant Sura Public Geodata Context
-
-Goal: Move the second-site path from fixture-backed blockers toward real public geodata staging, or record the exact unavailable products.
-
-Capability gap reduced: Second-site portability and scientific validation beyond Tschamut.
-
-Why this outranks alternatives: The next scientific credibility jump needs a second site with real context rather than more Tschamut-only evidence.
-
-Inspect first:
-
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- A local or scratch public-geodata cache verification result for Chant Sura / Fluelapass, or a product-by-product acquisition blocker.
-
-Definition of done:
-
-- The report distinguishes staged real products, fixture-only products, missing products, and the next acquisition command.
-
 ### TB-655: Run The Second-Site Prepared-Pilot Path If Inputs Are Ready
 
 Goal: Exercise the Chant Sura / Fluelapass prepared-pilot path with real staged inputs when available, or fail on a precise missing-input boundary.

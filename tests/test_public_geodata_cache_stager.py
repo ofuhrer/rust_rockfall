@@ -87,6 +87,71 @@ class PublicGeodataCacheStagerTests(unittest.TestCase):
         self.assertTrue(report["proposal_status"].startswith("blocked_"))
         self.assertNotIn("staging_status", yaml.safe_load(manifest_after))
 
+    def test_acquisition_manifest_expected_products_are_audited_product_by_product(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site_root = root / SITE_ROOT_RELATIVE
+            manifest_path = site_root / "public_geodata_acquisition.yaml"
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": "second_site_public_geodata_acquisition_v1",
+                        "candidate_site_id": SITE_ID,
+                        "candidate_site_name": "Demo Site",
+                        "expected_products": [
+                            {
+                                "category": "terrain_crop",
+                                "product": "swissALTI3D",
+                                "status": "missing",
+                                "required": True,
+                                "expected_staged_path": str(SITE_ROOT_RELATIVE / "input" / "terrain.asc"),
+                                "source_reference": "docs/swisstopo_data_strategy.md",
+                            },
+                            {
+                                "category": "swissimage_context",
+                                "product": "SWISSIMAGE",
+                                "status": "missing",
+                                "required": True,
+                                "expected_staged_path": str(SITE_ROOT_RELATIVE / "context" / "swissimage"),
+                                "source_reference": "docs/swisstopo_data_strategy.md",
+                            },
+                            {
+                                "category": "barrier_inventory",
+                                "product": "optional barrier inventory",
+                                "status": "optional",
+                                "required": False,
+                                "expected_staged_path": str(SITE_ROOT_RELATIVE / "context" / "barriers"),
+                                "source_reference": "docs/public_real_site_geodata_preparation.md",
+                            },
+                        ],
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
+            )
+
+            original_stage_root = stager.PREFLIGHT.ROOT
+            original_verify_root = verifier.PREFLIGHT.ROOT
+            stager.PREFLIGHT.ROOT = root
+            verifier.PREFLIGHT.ROOT = root
+            try:
+                stage_report = stager.acquire_public_geodata_cache(manifest_path, mode="dry-run")
+                verify_report = verifier.PREFLIGHT.verify_public_geodata_cache(manifest_path)
+            finally:
+                stager.PREFLIGHT.ROOT = original_stage_root
+                verifier.PREFLIGHT.ROOT = original_verify_root
+
+        self.assertEqual(stage_report["product_count"], 3)
+        self.assertEqual(stage_report["proposal_status"], "blocked_missing")
+        self.assertEqual(stage_report["missing_product_count"], 2)
+        self.assertEqual(stage_report["optional_missing_product_count"], 1)
+        self.assertEqual(stage_report["unsupported_product_count"], 0)
+        self.assertEqual(verify_report["product_count"], 3)
+        self.assertEqual(verify_report["cache_audit_status"], "missing")
+        self.assertEqual(verify_report["cache_audit_summary"]["missing_required_product_count"], 2)
+        self.assertEqual(verify_report["cache_audit_summary"]["optional_product_count"], 1)
+
     def test_local_copy_mode_stages_from_local_roots_without_network(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
