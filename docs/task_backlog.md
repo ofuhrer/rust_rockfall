@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-628: Stage Second-Site Public Inputs For Transfer Testing
-
-Goal: Prepare the next public second-site input bundle needed to test whether the workflow generalizes beyond the Tschamut pilot.
-
-Capability gap reduced: Single-site scientific credibility and portability limitations.
-
-Why this outranks alternatives: Scientific confidence improves materially when the same workflow can be staged for a second public site without bespoke manual repair.
-
-Inspect first:
-
-- `scripts/inventory_second_site_local_blockers.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/plan_aoi_terrain_preprocessing.py`
-- `docs/public_real_site_geodata_preparation.md`
-- `docs/chant_sura_fluelapass_management_aoi_acquisition_manifest.yaml`
-
-Deliverables:
-
-- A staged second-site input bundle or acquisition command plan with explicit missing public inputs and a selected next AOI.
-
-Definition of done:
-
-- The second-site blocker inventory improves from its current state or reports one concrete external data blocker that cannot be solved locally.
-
 ### TB-629: Run A Second-Site AOI Workflow Smoke
 
 Goal: Execute the smallest useful AOI candidate or hazard-workflow smoke on the staged second site.

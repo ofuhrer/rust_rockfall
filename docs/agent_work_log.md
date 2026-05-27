@@ -9993,3 +9993,25 @@ completed history.
 - Metrics: candidate count `16`; selected candidate `candidate_003`; calibration objective `0.2701970675601`; holdout objective `0.2839019844916597`; calibration runout error `30.172019784135742 m`; holdout runout error `33.53930915631956 m`; strongest mean effect parameter `friction_coefficient`; calibration objective span `2.33694228970566`; calibration/holdout overlap count `0`; separation preflight `passed`.
 - Boundaries: bounded local calibration smoke only; selected parameters are not project defaults and are not referenced by validation cases; no validation acceptance, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-628`
+
+### TB-628: Stage Second-Site Public Inputs For Transfer Testing
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: make the Chant Sura / Flüelapass second-site input state actionable for the next local smoke while preserving the external public-context blocker.
+- Files changed: `scripts/inventory_second_site_local_blockers.py`, `tests/test_second_site_local_blockers.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Split local prepared-pilot blockers from deferred public-context acquisition blockers in the second-site inventory.
+  - Reported the current inventory as `ready_with_deferred_public_context` when terrain, source-zone, and scenario inputs are ready but public context is still missing.
+  - Added `first_external_data_blocker` and `next_external_acquisition_command` so the missing public-context products remain explicit.
+  - Kept the local next command pointed at `run_aoi_hazard_workflow.py prepare`, enabling TB-629 to attempt the second-site smoke rather than stop at a generic setup blocker.
+  - Removed TB-628 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/inventory_second_site_local_blockers.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --mode explicit-acquire --output-root /tmp/rust_rockfall_tb628_acquisition_package --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/inventory_second_site_local_blockers.py tests/test_second_site_local_blockers.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_local_blockers -v`
+- Result/status: implemented_measured
+- Metrics: inventory status `ready_with_deferred_public_context`; first external data blocker `public_context_inputs`; terrain/source-zone/scenario groups `ready`; prepared-pilot group `ready_with_deferred_public_context`; deferred public-context blocker count `5`; explicit-acquire package status `materialized`; unresolved acquisition decisions `6`.
+- Boundaries: local inventory and acquisition-plan packaging only; no public geodata download, no Balfrin job, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-629`

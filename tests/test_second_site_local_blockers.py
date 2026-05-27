@@ -12,14 +12,17 @@ class SecondSiteLocalBlockerTests(unittest.TestCase):
         report = blockers.build_report()
 
         self.assertEqual(report["schema_version"], blockers.SCHEMA_VERSION)
-        self.assertEqual(report["inventory_status"], "blocked_local_inputs")
+        self.assertEqual(report["inventory_status"], "ready_with_deferred_public_context")
         groups = {group["group_id"]: group for group in report["blocker_groups"]}
         self.assertEqual(groups["terrain_inputs"]["status"], "ready")
         self.assertEqual(groups["public_context_inputs"]["status"], "blocked_deferred_public_context")
-        self.assertEqual(groups["prepared_pilot_inputs"]["status"], "blocked_by_local_inputs")
+        self.assertEqual(groups["prepared_pilot_inputs"]["status"], "ready_with_deferred_public_context")
         self.assertEqual(groups["source_zone_inputs"]["status"], "ready")
         self.assertEqual(groups["scenario_inputs"]["status"], "ready")
-        self.assertIn("plan_swisstopo_aoi_acquisition.py", report["next_local_unblock_command"])
+        self.assertEqual(report["first_blocking_group"], "public_context_inputs")
+        self.assertEqual(report["first_external_data_blocker"], "public_context_inputs")
+        self.assertIn("run_aoi_hazard_workflow.py prepare", report["next_local_unblock_command"])
+        self.assertIn("plan_swisstopo_aoi_acquisition.py", report["next_external_acquisition_command"])
         self.assertFalse(report["claim_boundaries"]["balfrin_required"])
         self.assertFalse(report["claim_boundaries"]["downloads_authorized"])
 
@@ -142,6 +145,7 @@ class SecondSiteLocalBlockerTests(unittest.TestCase):
         self.assertIn("public_context_inputs", text)
         self.assertIn("prepared_pilot_inputs", text)
         self.assertIn("plan_swisstopo_aoi_acquisition.py", text)
+        self.assertIn("first_external_data_blocker", text)
         self.assertIn("balfrin_required: False", text)
 
 

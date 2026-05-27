@@ -44,6 +44,7 @@ GROUP_CATEGORIES = {
     ),
     "prepared_pilot_inputs": ("validation_case_root", "hazard_results_root", "processed_input_root", "processed_context_root"),
 }
+LOCAL_PREPARED_PILOT_GROUPS = {"terrain_inputs", "source_zone_inputs", "scenario_inputs"}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -95,17 +96,29 @@ def build_report(site_config: Path = DEFAULT_SITE_CONFIG) -> dict[str, Any]:
     prepared_group["blockers"] = prepared_pilot_blockers(blocker_groups)
     prepared_group["next_local_command"] = prepared_pilot_next_command(site_config, blocker_groups)
 
-    blocking_groups = [group for group in blocker_groups if group["status"] != "ready"]
+    local_blocking_groups = [
+        group for group in blocker_groups if group["group_id"] in LOCAL_PREPARED_PILOT_GROUPS and group["status"] != "ready"
+    ]
+    external_blocking_groups = [
+        group for group in blocker_groups if group["group_id"] == "public_context_inputs" and group["status"] != "ready"
+    ]
+    blocking_groups = local_blocking_groups + external_blocking_groups
     first_blocking_group = blocking_groups[0]["group_id"] if blocking_groups else ""
+    inventory_status = "ready"
+    if local_blocking_groups:
+        inventory_status = "blocked_local_inputs"
+    elif external_blocking_groups:
+        inventory_status = "ready_with_deferred_public_context"
     return {
         "schema_version": SCHEMA_VERSION,
-        "inventory_status": "ready" if not blocking_groups else "blocked_local_inputs",
+        "inventory_status": inventory_status,
         "candidate_site_id": preflight_report.get("candidate_site_id", ""),
         "candidate_site_name": preflight_report.get("candidate_site_name", ""),
         "preflight_status": preflight_report.get("portability_preflight_status", ""),
         "core_input_status": preflight_report.get("core_input_status", ""),
         "deferred_public_context_status": preflight_report.get("deferred_public_context_status", ""),
         "first_blocking_group": first_blocking_group,
+        "first_external_data_blocker": external_blocking_groups[0]["group_id"] if external_blocking_groups else "",
         "blocker_groups": blocker_groups,
         "claim_boundaries": {
             "downloads_authorized": False,
@@ -117,7 +130,14 @@ def build_report(site_config: Path = DEFAULT_SITE_CONFIG) -> dict[str, Any]:
             "risk_exposure_vulnerability_claims_allowed": False,
             "scale_up_authorized": False,
         },
-        "next_local_unblock_command": blocking_groups[0]["next_local_command"] if blocking_groups else prepared_pilot_next_command(site_config, blocker_groups),
+        "next_local_unblock_command": (
+            local_blocking_groups[0]["next_local_command"]
+            if local_blocking_groups
+            else prepared_pilot_next_command(site_config, blocker_groups)
+        ),
+        "next_external_acquisition_command": (
+            external_blocking_groups[0]["next_local_command"] if external_blocking_groups else ""
+        ),
     }
 
 
@@ -383,18 +403,20 @@ def prepared_pilot_status(blocker_groups: list[dict[str, Any]]) -> str:
     blocking = [
         group
         for group in blocker_groups
-        if group["group_id"] in {"terrain_inputs", "source_zone_inputs", "scenario_inputs", "public_context_inputs"}
-        and group["status"] != "ready"
+        if group["group_id"] in LOCAL_PREPARED_PILOT_GROUPS and group["status"] != "ready"
     ]
     if blocking:
         return "blocked_by_local_inputs"
+    public_context = next((group for group in blocker_groups if group["group_id"] == "public_context_inputs"), None)
+    if public_context and public_context["status"] != "ready":
+        return "ready_with_deferred_public_context"
     return "ready"
 
 
 def prepared_pilot_blockers(blocker_groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
     blockers = []
     for group in blocker_groups:
-        if group["group_id"] in {"terrain_inputs", "source_zone_inputs", "scenario_inputs", "public_context_inputs"} and group["status"] != "ready":
+        if group["group_id"] in LOCAL_PREPARED_PILOT_GROUPS and group["status"] != "ready":
             blockers.append(
                 {
                     "category": group["group_id"],
@@ -408,7 +430,7 @@ def prepared_pilot_blockers(blocker_groups: list[dict[str, Any]]) -> list[dict[s
 
 def prepared_pilot_next_command(site_config: Path, blocker_groups: list[dict[str, Any]]) -> str:
     for group in blocker_groups:
-        if group["group_id"] in {"terrain_inputs", "source_zone_inputs", "scenario_inputs", "public_context_inputs"} and group["status"] != "ready":
+        if group["group_id"] in LOCAL_PREPARED_PILOT_GROUPS and group["status"] != "ready":
             return group["next_local_command"]
     return f"PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config {site_config} --repo-root . --format json"
 
@@ -427,6 +449,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"candidate_site_id: {report['candidate_site_id']}",
         f"preflight_status: {report['preflight_status']}",
         f"first_blocking_group: {report['first_blocking_group']}",
+        f"first_external_data_blocker: {report['first_external_data_blocker']}",
         "claim_boundaries:",
     ]
     for key, value in report["claim_boundaries"].items():
@@ -441,6 +464,7 @@ def render_text_report(report: dict[str, Any]) -> str:
                 lines.append(f"      next_local_action: {blocker['next_local_action']}")
         lines.append(f"    next_local_command: {group['next_local_command']}")
     lines.append(f"next_local_unblock_command: {report['next_local_unblock_command']}")
+    lines.append(f"next_external_acquisition_command: {report['next_external_acquisition_command']}")
     return "\n".join(lines)
 
 
