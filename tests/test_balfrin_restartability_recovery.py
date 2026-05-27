@@ -28,6 +28,9 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
         self.assertEqual(report["numerical_artifact_stability"]["classification"], "pass_hash_stable")
         self.assertEqual(report["numerical_artifact_stability"]["changed_artifact_count"], 0)
         self.assertEqual(report["artifact_hygiene"]["classification"], "pass_clean")
+        self.assertEqual(report["rerun_fraction_summary"]["total_chunks"], 4)
+        self.assertEqual(report["rerun_fraction_summary"]["rerun_fraction"], 0.5)
+        self.assertEqual(report["preserved_artifact_summary"]["changed_artifact_count"], 0)
         self.assertIn("fixture-backed recovery evidence only", report["explicit_limits"][0])
 
     def test_measured_override_classifies_as_measured(self) -> None:
@@ -41,6 +44,8 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
                     "resumed_job_id": 4326021,
                     "resumed_started_at": "2026-05-17T01:17:26",
                     "resume_gap_seconds": 530,
+                    "recovered_job_elapsed": "00:00:06",
+                    "merge_job_elapsed": "00:01:01",
                 },
                 "resume_commands": ["resume"],
                 "recovery_outcome": {
@@ -48,7 +53,13 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
                     "executed_chunks": ["trajectory/chunk_000001"],
                     "reused_chunk_counts": {"trajectory": 1},
                     "executed_chunk_counts": {"trajectory": 1},
-                    "numerical_artifact_stability": {"classification": "pass_hash_stable", "changed_artifact_count": 0, "changed_paths": []},
+                    "numerical_artifact_stability": {
+                        "classification": "pass_hash_stable",
+                        "baseline_file_count": 37,
+                        "recovered_file_count": 37,
+                        "changed_artifact_count": 0,
+                        "changed_paths": [],
+                    },
                 },
                 "artifact_continuity": {
                     "trajectory_merge_state": "ready",
@@ -62,10 +73,14 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
         self.assertEqual(report["reused_chunks"], ["trajectory/chunk_000000"])
         self.assertEqual(report["executed_chunks"], ["trajectory/chunk_000001"])
         self.assertEqual(report["recovery_timing"]["interrupted_job_id"], 4325958)
+        self.assertEqual(report["rerun_fraction_summary"]["rerun_fraction"], 0.5)
+        self.assertEqual(report["recovery_elapsed_summary"]["total_elapsed_seconds"], 67)
+        self.assertEqual(report["preserved_artifact_summary"]["stable_artifact_count"], 37)
         self.assertEqual(report["artifact_continuity"]["reducer_merge_state"], "ready")
         rendered = recovery.render_text_report(report)
         self.assertIn("Recovery Timing", rendered)
         self.assertIn("Artifact Continuity", rendered)
+        self.assertIn("Rerun fraction summary", rendered)
 
     def test_missing_inputs_are_reported_as_blocked_missing_inputs(self) -> None:
         report = recovery.build_report({"missing_inputs": ["partial_state", "resume_commands"]})

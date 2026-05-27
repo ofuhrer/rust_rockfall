@@ -127,6 +127,9 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
             "classification": str(numerical_artifacts.get("classification") or "unknown"),
             "changed_artifact_count": safe_int(numerical_artifacts.get("changed_artifact_count")),
             "changed_paths": list_of_strings(numerical_artifacts.get("changed_paths")),
+            "baseline_file_count": safe_int(numerical_artifacts.get("baseline_file_count")),
+            "recovered_file_count": safe_int(numerical_artifacts.get("recovered_file_count")),
+            "stable_artifact_count": safe_int(numerical_artifacts.get("stable_artifact_count")),
         },
         "artifact_hygiene": {
             "classification": str(artifact_hygiene.get("classification") or "unknown"),
@@ -139,6 +142,12 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
             "fixture": str(DEFAULT_EVIDENCE_JSON),
         },
     }
+    report["rerun_fraction_summary"] = build_rerun_fraction_summary(
+        reused_chunk_counts=report["reused_chunk_counts"],
+        executed_chunk_counts=report["executed_chunk_counts"],
+    )
+    report["recovery_elapsed_summary"] = build_recovery_elapsed_summary(report["recovery_timing"])
+    report["preserved_artifact_summary"] = build_preserved_artifact_summary(report)
     if not report["explicit_limits"]:
         if recovery_status == "measured":
             report["explicit_limits"] = [
@@ -153,6 +162,99 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
                 "no physics, sampling, or output-profile changes are introduced by this report.",
             ]
     return report
+
+
+def build_rerun_fraction_summary(
+    *,
+    reused_chunk_counts: dict[str, Any],
+    executed_chunk_counts: dict[str, Any],
+) -> dict[str, Any]:
+    families = sorted(set(reused_chunk_counts) | set(executed_chunk_counts))
+    by_family: dict[str, dict[str, Any]] = {}
+    total_reused = 0
+    total_executed = 0
+    for family in families:
+        reused = safe_int(reused_chunk_counts.get(family)) or 0
+        executed = safe_int(executed_chunk_counts.get(family)) or 0
+        total = reused + executed
+        total_reused += reused
+        total_executed += executed
+        by_family[family] = {
+            "reused_chunks": reused,
+            "executed_chunks": executed,
+            "total_chunks": total,
+            "rerun_fraction": round(executed / total, 6) if total else None,
+            "reuse_fraction": round(reused / total, 6) if total else None,
+        }
+    total_chunks = total_reused + total_executed
+    return {
+        "status": "measured" if total_chunks else "blocked_missing_chunk_counts",
+        "reused_chunks": total_reused,
+        "executed_chunks": total_executed,
+        "total_chunks": total_chunks,
+        "rerun_fraction": round(total_executed / total_chunks, 6) if total_chunks else None,
+        "reuse_fraction": round(total_reused / total_chunks, 6) if total_chunks else None,
+        "by_family": by_family,
+    }
+
+
+def build_recovery_elapsed_summary(recovery_timing: dict[str, Any]) -> dict[str, Any]:
+    elapsed_fields = {
+        key: parse_slurm_elapsed(value)
+        for key, value in recovery_timing.items()
+        if key.endswith("_elapsed")
+    }
+    measured = {key: value for key, value in elapsed_fields.items() if value is not None}
+    return {
+        "status": "measured" if measured else "blocked_missing_elapsed_fields",
+        "elapsed_seconds_by_field": measured,
+        "total_elapsed_seconds": sum(measured.values()) if measured else None,
+    }
+
+
+def parse_slurm_elapsed(value: Any) -> int | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    day_count = 0
+    if "-" in text:
+        day_text, text = text.split("-", 1)
+        try:
+            day_count = int(day_text)
+        except ValueError:
+            return None
+    parts = text.split(":")
+    try:
+        if len(parts) == 3:
+            hours, minutes, seconds = (int(part) for part in parts)
+        elif len(parts) == 2:
+            hours = 0
+            minutes, seconds = (int(part) for part in parts)
+        else:
+            return None
+    except ValueError:
+        return None
+    return day_count * 86400 + hours * 3600 + minutes * 60 + seconds
+
+
+def build_preserved_artifact_summary(report: dict[str, Any]) -> dict[str, Any]:
+    numerical_artifacts = as_mapping(report.get("numerical_artifact_stability"))
+    artifact_continuity = as_mapping(report.get("artifact_continuity"))
+    artifact_hygiene = as_mapping(report.get("artifact_hygiene"))
+    stable_artifact_count = safe_int(numerical_artifacts.get("stable_artifact_count"))
+    baseline_file_count = safe_int(numerical_artifacts.get("baseline_file_count"))
+    recovered_file_count = safe_int(numerical_artifacts.get("recovered_file_count"))
+    if stable_artifact_count is None and baseline_file_count is not None and safe_int(numerical_artifacts.get("changed_artifact_count")) == 0:
+        stable_artifact_count = baseline_file_count
+    return {
+        "status": "measured" if artifact_continuity or stable_artifact_count is not None else "partial",
+        "stable_artifact_count": stable_artifact_count,
+        "baseline_file_count": baseline_file_count,
+        "recovered_file_count": recovered_file_count,
+        "changed_artifact_count": safe_int(numerical_artifacts.get("changed_artifact_count")),
+        "continuity_fields": sorted(artifact_continuity),
+        "generated_roots": list_of_strings(artifact_hygiene.get("generated_roots")),
+    }
 
 
 def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
@@ -241,6 +343,9 @@ def render_text_report(report: dict[str, Any]) -> str:
             f"- Executed chunks: `{report['executed_chunks']}`",
             f"- Reused chunk counts: `{report['reused_chunk_counts']}`",
             f"- Executed chunk counts: `{report['executed_chunk_counts']}`",
+            f"- Rerun fraction summary: `{json.dumps(report.get('rerun_fraction_summary') or {}, sort_keys=True)}`",
+            f"- Recovery elapsed summary: `{json.dumps(report.get('recovery_elapsed_summary') or {}, sort_keys=True)}`",
+            f"- Preserved artifact summary: `{json.dumps(report.get('preserved_artifact_summary') or {}, sort_keys=True)}`",
             "",
             "## Numerical Stability",
             "",

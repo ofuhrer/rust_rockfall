@@ -9857,3 +9857,26 @@ completed history.
 - Metrics: rebuild-ready 100-zone compact probe manifest bytes `62333 -> 34695` (`-27638`); merge-manifest bytes `30140 -> 2508`; root file count `316 -> 316`; output file count `311 -> 311`; rebuild status `ready -> ready`.
 - Boundaries: local scratch-root reducer metadata improvement only; no new Balfrin job submitted, and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-622`
+
+### TB-622: Add A Partial-Rerun Smoke For Larger Hazard Batches
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: make measured Balfrin partial-rerun evidence report the rerun fraction, elapsed recovery time, and preserved artifacts for a larger chunked hazard batch.
+- Files changed: `scripts/summarize_balfrin_restartability_recovery.py`, `tests/test_balfrin_restartability_recovery.py`, `docs/balfrin_restartability_recovery_report.md`, `docs/balfrin_restartability_recovery_tb606.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the restartability reporter with `rerun_fraction_summary`, `recovery_elapsed_summary`, and `preserved_artifact_summary`.
+  - Reused the measured TB-606 Balfrin `$SCRATCH` recovery smoke, which copied the TB-605 chunked run root, removed one reducer partial state, reran only the missing reducer chunk, and then ran the merge job.
+  - Preserved per-family reused/executed counts, parsed SLURM elapsed fields, and exposed stable artifact counts from the hash comparison.
+  - Updated the canonical restartability docs with the measured rerun fraction and elapsed recovery time.
+  - Removed TB-622 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `scp balfrin:/scratch/mch/olifu/rust_rockfall/restartability/tb606_20260526_v2/tb606_restartability_evidence.json /tmp/rust_rockfall/tb622_restartability_evidence.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_restartability_recovery.py --evidence-json /tmp/rust_rockfall/tb622_restartability_evidence.json --format json --json-output /tmp/rust_rockfall/tb622_restartability_report.json --text-output /tmp/rust_rockfall/tb622_restartability_report.md`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_restartability_recovery.py tests/test_balfrin_restartability_recovery.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_restartability_recovery tests.test_balfrin_evidence_bundle -v`
+- Result/status: implemented_measured
+- Metrics: TB-606 recovery status `measured`; reused reducer chunks `3`; executed reducer chunks `1`; rerun fraction `0.25`; reuse fraction `0.75`; recovery job `4372418` elapsed `6` seconds; merge job `4372419` elapsed `61` seconds; total recovery-plus-merge elapsed `67` seconds; stable artifacts `37/37`; changed artifacts `0`.
+- Boundaries: measured bounded `postproc` chunk-recovery evidence from preserved `$SCRATCH` roots only; no new job submitted for TB-622 and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-623`

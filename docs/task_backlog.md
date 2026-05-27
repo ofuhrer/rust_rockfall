@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-622: Add A Partial-Rerun Smoke For Larger Hazard Batches
-
-Goal: Prove that a failed or interrupted larger hazard batch can resume from preserved partial state without rerunning everything.
-
-Capability gap reduced: Feasibility of long-running Balfrin jobs where restart cost and rerun explosion would otherwise block larger runs.
-
-Why this outranks alternatives: Larger jobs become practical only if failures can be recovered cheaply from `$SCRATCH` run roots.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `scripts/summarize_balfrin_demonstration_replay_smoke.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `docs/balfrin_restartability_recovery_report.md`
-- `docs/balfrin_failure_recovery_playbook.md`
-
-Deliverables:
-
-- A local or Balfrin scratch smoke that creates partial outputs, resumes or replays only the missing pieces, and reports rerun fraction, elapsed time, and preserved artifacts.
-
-Definition of done:
-
-- Restart behavior is measured on a representative larger package and any remaining non-resumable stage is named as the next implementation bottleneck.
-
 ### TB-623: Tighten The One-Command Balfrin Run Path
 
 Goal: Make the common Balfrin path for preparing, submitting, monitoring, and collecting a bounded hazard run easier to invoke without navigating many helper scripts.

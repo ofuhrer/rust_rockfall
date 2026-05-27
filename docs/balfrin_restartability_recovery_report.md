@@ -21,6 +21,9 @@ Measured result:
 - recovery job `4372418`: `COMPLETED`, elapsed `00:00:06`
 - merge job `4372419`: `COMPLETED`, elapsed `00:01:01`
 - recovered chunk decision: `completed_state_reset_for_rerun`
+- rerun fraction: `0.25` (`1` executed reducer chunk of `4` total)
+- reuse fraction: `0.75` (`3` preserved reducer chunks)
+- recovery-plus-merge elapsed time: `67` seconds
 - final execution plan: `completed`
 - reducer merge state: `ready`
 - completed chunks: `3`

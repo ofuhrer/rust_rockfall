@@ -45,6 +45,11 @@ The after-recovery execution plan recorded:
 - target chunk decision: `completed_state_reset_for_rerun`
 - target chunk attempt count: `2`
 - non-target chunks: `not_scheduled`
+- reused reducer chunks: `3`
+- executed reducer chunks: `1`
+- rerun fraction: `0.25`
+- reuse fraction: `0.75`
+- recovery-plus-merge elapsed time: `67` seconds
 
 The final merge recorded:
 
