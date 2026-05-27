@@ -295,6 +295,39 @@ TB619_HAZARD_THROUGHPUT_METRICS = {
     "output_family_status": "sufficient",
     "source_report": "docs/balfrin_four_zone_hazard_run_tb619.md",
 }
+TB669_HAZARD_THROUGHPUT_METRICS = {
+    "task_id": "TB-669",
+    "job_id": "4378015",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:03",
+    "alloc_cpus": 16,
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917",
+    "metrics_contract_status": "complete",
+    "wall_time_seconds": 0.288978714030236,
+    "batch_wall_seconds": 2.15,
+    "hazard_stage_seconds": 0.0781356020597741,
+    "memory_peak_mb": 47.016,
+    "release_zone_count": 12,
+    "validation_output_file_count": None,
+    "validation_output_bytes": None,
+    "hazard_output_file_count": 29,
+    "hazard_output_bytes": 1_148_530,
+    "hazard_manifest_output_file_count": 5,
+    "hazard_manifest_output_bytes": 47_971,
+    "conditional_curve_rows": 36_864,
+    "run_root_file_count": 93,
+    "run_root_bytes": 2_373_626,
+    "trajectory_decision_counts": {"executed": 12},
+    "reducer_decision_counts": {"executed": 2},
+    "merge_order": "sorted_chunk_id",
+    "merge_order_independent": True,
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "preservation_status": "preserved_on_scratch",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "source_report": "docs/balfrin_12_zone_hazard_throughput_probe_tb669.md",
+}
 TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "task_id": "TB-652",
     "job_id": "4377075",
@@ -1134,8 +1167,14 @@ def _regional_split_measured_row() -> dict[str, Any]:
 
 
 def _hazard_throughput_measured_row() -> dict[str, Any]:
-    metrics = TB619_HAZARD_THROUGHPUT_METRICS
-    baseline = TB603_HAZARD_THROUGHPUT_METRICS
+    metrics = TB669_HAZARD_THROUGHPUT_METRICS
+    baseline = TB619_HAZARD_THROUGHPUT_METRICS
+    validation_delta = (
+        metrics["validation_output_bytes"] - baseline["validation_output_bytes"]
+        if isinstance(metrics.get("validation_output_bytes"), (int, float))
+        and isinstance(baseline.get("validation_output_bytes"), (int, float))
+        else None
+    )
     comparison = {
         "baseline_task_id": baseline["task_id"],
         "baseline_job_id": baseline["job_id"],
@@ -1145,9 +1184,13 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "runtime_delta_seconds": metrics["wall_time_seconds"] - baseline["wall_time_seconds"],
         "memory_delta_mb": metrics["memory_peak_mb"] - baseline["memory_peak_mb"],
         "hazard_output_byte_delta": metrics["hazard_output_bytes"] - baseline["hazard_output_bytes"],
-        "validation_output_byte_delta": metrics["validation_output_bytes"] - baseline["validation_output_bytes"],
+        "validation_output_byte_delta": validation_delta,
         "same_hazard_file_count": metrics["hazard_output_file_count"] == baseline["hazard_output_file_count"],
-        "same_validation_file_count": metrics["validation_output_file_count"] == baseline["validation_output_file_count"],
+        "same_validation_file_count": (
+            metrics["validation_output_file_count"] == baseline["validation_output_file_count"]
+            if metrics.get("validation_output_file_count") is not None
+            else None
+        ),
         "same_conditional_curve_rows": metrics["conditional_curve_rows"] == baseline["conditional_curve_rows"],
     }
     return {
@@ -1169,7 +1212,7 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "hazard_output_bytes": metrics["hazard_output_bytes"],
         "hazard_manifest_output_file_count": metrics.get("hazard_manifest_output_file_count"),
         "hazard_manifest_output_bytes": metrics.get("hazard_manifest_output_bytes"),
-        "manifest_bytes": None,
+        "manifest_bytes": metrics.get("hazard_manifest_output_bytes"),
         "reducer_sidecars": None,
         "runtime_seconds": metrics["wall_time_seconds"],
         "batch_wall_seconds": metrics.get("batch_wall_seconds"),
@@ -1179,10 +1222,10 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "replayability_status": "preservation_gate_ready",
         "authorization_status": "standing_postproc_clearance_used",
         "next_evidence_field": "hazard_throughput_evidence",
-        "next_recommended_action": "promote_hazard_throughput_evidence_into_scale_surfaces",
+        "next_recommended_action": "use_tb669_hazard_throughput_support_for_next_scale_projection",
         "next_recommended_action_reason": (
-            "TB-603 supplies measured hazard-throughput runtime, memory, output, conditional-curve, and chunk-decision evidence; "
-            "the next larger step should improve scale planning without treating this as operational or physical-probability evidence."
+            "TB-669 supplies measured 12-zone hazard-throughput runtime, memory, output, and replay-critical family evidence; "
+            "the next larger step should improve scale planning and scientific validation without treating this as operational or physical-probability evidence."
         ),
         "next_blocker_category": "scientific_validation_and_distributed_semantics",
         "blocker": None,
@@ -1211,9 +1254,10 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
             "alloc_cpus": metrics["alloc_cpus"],
         },
         "run_root": metrics["run_root"],
+        "release_zone_count": metrics["release_zone_count"],
         "source_report": metrics["source_report"],
         "summary": (
-            "TB-619 completed the next bounded four-zone hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, no full grid CSV, no plots, and a fresh preserved $SCRATCH run root. TB-603 remains the previous comparison anchor."
+            "TB-669 completed a bounded 12-zone hazard-throughput Balfrin postproc run with measured runtime, memory, output footprint, and replay-critical family coverage. TB-619 remains the previous hazard-throughput comparison anchor."
         ),
         "claim_boundary": "measured bounded hazard-throughput evidence only; no operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc claim",
     }
@@ -1247,7 +1291,7 @@ def _tb652_diagnostic_probe_row() -> dict[str, Any]:
         "replayability_status": "single_run_record_complete",
         "authorization_status": "standing_postproc_clearance_used",
         "latest_measured_task": metrics["task_id"],
-        "comparison_anchor": "TB-619 remains latest bounded hazard-throughput support; TB-652 is diagnostic reducer-pressure evidence",
+        "comparison_anchor": "TB-669 is latest bounded hazard-throughput support; TB-652 is diagnostic reducer-pressure evidence",
         "next_evidence_field": "scale_surface_comparison",
         "next_recommended_action": "compare_tb652_with_tb619_and_100_zone_diagnostic_series",
         "next_blocker_category": "hazard_throughput_scaling_and_scientific_validation",
@@ -1267,7 +1311,7 @@ def _tb652_diagnostic_probe_row() -> dict[str, Any]:
         "source_report": metrics["source_report"],
         "summary": (
             "TB-652 completed an 8-zone compact postproc diagnostic on Balfrin with a preserved $SCRATCH run root and complete run-record metrics. "
-            "It strengthens the diagnostic reducer-pressure series but does not replace TB-619 as the latest bounded hazard-throughput support point."
+            "It strengthens the diagnostic reducer-pressure series but does not replace TB-669 as the latest bounded hazard-throughput support point."
         ),
         "claim_boundary": metrics["claim_boundary"],
     }
@@ -1303,7 +1347,7 @@ def _tb665_diagnostic_probe_row() -> dict[str, Any]:
         "latest_measured_task": metrics["task_id"],
         "comparison_anchor": (
             "TB-665 repeats the 32-zone diagnostic scale with the simplified runner; "
-            "TB-619 remains latest bounded hazard-throughput support"
+            "TB-669 is latest bounded hazard-throughput support"
         ),
         "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
         "next_recommended_action": "run_balfrin_diagnostic_40_zone_or_measure_larger_hazard_throughput",
@@ -1911,7 +1955,7 @@ def build_report() -> dict[str, Any]:
             },
             "hazard_throughput": {
                 "class": "measured_hazard_throughput_postproc",
-                "evidence": "TB-619 completed bounded hazard-throughput run record; TB-652 adds a smaller diagnostic reducer-pressure comparison point",
+                "evidence": "TB-669 completed bounded 12-zone hazard-throughput run record; TB-652 adds a smaller diagnostic reducer-pressure comparison point",
                 "next_blocker": "larger_hazard_throughput_scaling_and_scientific_validation",
             },
             "100_zone": {
@@ -1964,7 +2008,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
-            "TB-619 remains the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, TB-652 adds a completed 8-zone compact diagnostic comparison point, TB-665 adds a fresh 32-zone compact diagnostic point, and TB-603 remains the previous hazard-throughput comparison anchor, "
+            "TB-669 is the latest measured bounded hazard-throughput evidence with runtime, memory, output, and replay-critical family metrics, TB-652 adds a completed 8-zone compact diagnostic comparison point, TB-665 adds a fresh 32-zone compact diagnostic point, and TB-619 remains the previous hazard-throughput comparison anchor, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
@@ -2066,6 +2110,7 @@ def build_report() -> dict[str, Any]:
             "measurement_status": hazard_throughput_row.get("measurement_status"),
             "job_id": hazard_throughput_row.get("job_id"),
             "run_root": hazard_throughput_row.get("run_root"),
+            "release_zone_count": hazard_throughput_row.get("release_zone_count"),
             "runtime_seconds": hazard_throughput_row.get("runtime_seconds"),
             "memory_peak_mb": hazard_throughput_row.get("memory_peak_mb"),
             "validation_output_file_count": hazard_throughput_row.get("validation_output_file_count"),
@@ -2077,6 +2122,7 @@ def build_report() -> dict[str, Any]:
             "preservation_status": hazard_throughput_row.get("preservation_status"),
             "comparison_baseline": hazard_throughput_row.get("comparison_baseline"),
             "previous_support_source_report": hazard_throughput_row.get("previous_support_source_report"),
+            "next_recommended_action": hazard_throughput_row.get("next_recommended_action"),
             "source_report": hazard_throughput_row.get("source_report"),
             "claim_boundary": hazard_throughput_row.get("claim_boundary"),
         },

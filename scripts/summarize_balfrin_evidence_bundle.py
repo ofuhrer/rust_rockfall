@@ -362,6 +362,68 @@ TB619_HAZARD_THROUGHPUT_PROBE = {
         "TB-619 completed the next bounded four-zone hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, and a fresh preserved $SCRATCH run root."
     ),
 }
+TB669_HAZARD_THROUGHPUT_PROBE = {
+    "task_id": "TB-669",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_hazard_throughput_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917",
+    "run_id": "tb669_12_zone_hazard_throughput_20260527_123917",
+    "source_paths": ["docs/balfrin_12_zone_hazard_throughput_probe_tb669.md"],
+    "git_commit": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+    "slurm_job_id": "4378015",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:03",
+    "alloc_cpus": 16,
+    "batch_max_rss": "5584K",
+    "memory_peak_mb": 47.016,
+    "total_wall_seconds": 0.288978714030236,
+    "time_elapsed": "02.15",
+    "hazard_stage_seconds": 0.0781356020597741,
+    "release_zone_count": 12,
+    "trajectory_file_count": 12,
+    "impact_event_file_count": 12,
+    "validation_output_file_count": None,
+    "validation_output_bytes": None,
+    "hazard_output_file_count": 29,
+    "hazard_output_bytes": 1_148_530,
+    "hazard_manifest_output_file_count": 5,
+    "hazard_manifest_output_bytes": 47_971,
+    "conditional_curve_row_count": 36_864,
+    "run_root_file_count": 93,
+    "run_root_bytes": 2_373_626,
+    "file_family_counts": {"geotiff": 11, "esri_ascii_grid": 11, "json": 6, "geojson": 1},
+    "file_family_bytes": {"geotiff": 813_890, "esri_ascii_grid": 280_720, "json": 50_420, "geojson": 3_500},
+    "replay_critical_families": {
+        "trajectory_csv": {"observed_count": 12, "expected_count": 12},
+        "impact_events_csv": {"observed_count": 12, "expected_count": 12},
+        "deposition_csv": {"observed_count": 1, "expected_count": 1},
+        "diagnostics_json": {"observed_count": 1, "expected_count": 1},
+    },
+    "trajectory_decision_counts": {"executed": 12},
+    "reducer_decision_counts": {"executed": 2},
+    "merge_order": "sorted_chunk_id",
+    "merge_order_independent": True,
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "preserved_on_scratch",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "sufficient",
+    "metrics_contract_status": "complete",
+    "authorization_status": "standing_postproc_clearance_used",
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "previous_hazard_throughput_task_id": "TB-619",
+    "previous_hazard_throughput_job_id": "4372656",
+    "previous_hazard_throughput_runtime_seconds": 6.930015419959091,
+    "previous_hazard_throughput_hazard_output_bytes": 31_439_445,
+    "claim_boundary": "measured bounded hazard-throughput runtime/output evidence only; no operational, physical-probability, distributed, Swiss-wide, risk, or non-postproc claim",
+    "summary": (
+        "TB-669 completed one bounded 12-zone hazard-throughput Balfrin postproc run with measured runtime, memory, output footprint, and replay-critical family coverage."
+    ),
+}
 TB665_DIAGNOSTIC_PROBE = {
     "task_id": "TB-665",
     "status": "measured",
@@ -488,8 +550,8 @@ def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
 
 
 def build_latest_hazard_throughput_evidence() -> dict[str, Any]:
-    evidence = dict(TB619_HAZARD_THROUGHPUT_PROBE)
-    evidence["comparison_baseline"] = dict(TB603_HAZARD_THROUGHPUT_PROBE)
+    evidence = dict(TB669_HAZARD_THROUGHPUT_PROBE)
+    evidence["comparison_baseline"] = dict(TB619_HAZARD_THROUGHPUT_PROBE)
     return evidence
 
 

@@ -10862,3 +10862,24 @@ completed history.
 - Metrics: run root `/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917`; SLURM job id `4378015`; terminal state `COMPLETED`; exit code `0:0`; SLURM elapsed `00:00:03`; `/usr/bin/time` elapsed `02.15`; peak RSS `47.016` MB; release zones `12`; trajectory files `12`; impact-event files `12`; hazard-layer seconds `0.078136`; total profile wall seconds `0.288979`; output files `29`; output bytes `1,148,530`; run-root files `93`; run-root bytes `2,373,626`; file families `geotiff=11`, `esri_ascii_grid=11`, `json=6`, `geojson=1`; replay-critical coverage complete for `trajectory_csv=12/12`, `impact_events_csv=12/12`, `deposition_csv=1/1`, `diagnostics_json=1/1`.
 - Boundaries: measured single-node `postproc` hazard-throughput evidence only; no diagnostic reducer-pressure, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-670`
+
+### TB-670: Promote The Larger Hazard-Throughput Metrics Into Swiss-Scale Planning
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: replace stale hazard-throughput anchors with the measured TB-669 12-zone Balfrin result in the planning surfaces.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Promoted TB-669 as the latest hazard-throughput support point in the evidence bundle with TB-619 as the comparison baseline.
+  - Updated the Swiss-wide envelope to expose TB-669 runtime, memory, file-count, byte-count, run-root footprint, and release-zone support while keeping diagnostic reducer-pressure support separate.
+  - Updated the scale readiness matrix and management package to name TB-669 as the current hazard-throughput evidence.
+  - Refreshed the Swiss-scale projection document and tests, then removed TB-670 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb670_scale.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json > /tmp/tb670_envelope.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json > /tmp/tb670_management.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_promoted
+- Metrics: latest hazard-throughput task `TB-669`; job id `4378015`; release zones `12`; runtime seconds `0.288979`; hazard-stage seconds `0.078136`; memory peak `47.016` MB; hazard output files `29`; hazard output bytes `1,148,530`; run-root files `93`; run-root bytes `2,373,626`; comparison baseline `TB-619`; focused tests `26` passed.
+- Boundaries: planning-surface promotion only; Swiss-wide execution remains projection-only and no operational, physical-probability, annual-frequency, risk/exposure/vulnerability, distributed, or non-`postproc` claim changed.
+- Next task: `TB-671`

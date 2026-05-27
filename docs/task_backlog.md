@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-670: Promote The Larger Hazard-Throughput Metrics Into Swiss-Scale Planning
-
-Goal: Replace stale hazard-throughput anchors with the latest measured >4-zone result in the Swiss-scale feasibility projection.
-
-Capability gap reduced: Feasibility estimates based on directly relevant hazard execution evidence.
-
-Why this outranks alternatives: Without updating the envelope, successful Balfrin runs do not move the Swiss-scale decision frontier.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `docs/swiss_scale_feasibility_projection.md`
-- `tests/test_swiss_wide_execution_envelope.py`
-
-Deliverables:
-
-- Updated projection inputs and tests showing how the new hazard-throughput result changes runtime, storage, memory, file-count, and next-run recommendations.
-
-Definition of done:
-
-- Focused tests pass and the planning output names the new measured hazard-throughput support point.
-
-Scope: Keep Swiss-wide execution as a projection unless a later task explicitly runs a bounded Swiss-scale sample.
-
 ### TB-671: Measure Safe Concurrent Postproc Diagnostics
 
 Goal: Run a small concurrent set of bounded diagnostics on Balfrin to test scheduler behavior and shared `$SCRATCH` output isolation.

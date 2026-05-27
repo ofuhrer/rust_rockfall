@@ -450,6 +450,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         "single_job_summary.memory_evidence.reproduction_hazard_memory_peak_bytes_on_darwin",
     ) / 1_000_000.0
     diagnostic_evidence = load_latest_diagnostic_evidence()
+    hazard_throughput_evidence = load_latest_hazard_throughput_evidence()
     repeatability = load_diagnostic_repeatability_summary()
     diagnostic_release_zone_count = diagnostic_evidence.get("release_zone_count")
     diagnostic_runtime_seconds_per_zone = build_ratio(
@@ -479,11 +480,18 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         "job-count capacity is anchored to the measured 10-release-zone by 6-trajectory pilot footprint",
         "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
         "diagnostic reducer-pressure coefficients are anchored to the latest measured Balfrin diagnostic run record and kept separate from hazard-throughput projections",
+        "hazard-throughput support is anchored to the measured TB-669 12-zone Balfrin postproc profile and kept separate from diagnostic reducer-pressure evidence",
+    )
+    measured_release_zone_count = max(
+        10,
+        int(hazard_throughput_evidence.get("release_zone_count"))
+        if isinstance(hazard_throughput_evidence.get("release_zone_count"), int)
+        else 10,
     )
 
     return MeasuredCoefficients(
         measured_aoi_count=1,
-        measured_release_zone_count=10,
+        measured_release_zone_count=measured_release_zone_count,
         measured_trajectory_count=6,
         measured_units_per_job=measured_units_per_job,
         runtime_seconds_per_unit_low=require_numeric_metric(
@@ -1391,12 +1399,16 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
             "task_id": hazard_throughput_evidence.get("task_id"),
             "job_id": hazard_throughput_evidence.get("slurm_job_id"),
             "run_root": hazard_throughput_evidence.get("run_root"),
+            "release_zone_count": hazard_throughput_evidence.get("release_zone_count"),
             "runtime_seconds": hazard_throughput_evidence.get("total_wall_seconds"),
+            "hazard_stage_seconds": hazard_throughput_evidence.get("hazard_stage_seconds"),
             "memory_peak_mb": hazard_throughput_evidence.get("memory_peak_mb"),
             "validation_output_file_count": hazard_throughput_evidence.get("validation_output_file_count"),
             "validation_output_bytes": hazard_throughput_evidence.get("validation_output_bytes"),
             "hazard_output_file_count": hazard_throughput_evidence.get("hazard_output_file_count"),
             "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
+            "run_root_file_count": hazard_throughput_evidence.get("run_root_file_count"),
+            "run_root_bytes": hazard_throughput_evidence.get("run_root_bytes"),
             "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
             "comparison_baseline_task_id": hazard_throughput_baseline.get("task_id"),
             "comparison_baseline_job_id": hazard_throughput_baseline.get("slurm_job_id"),
@@ -1460,9 +1472,14 @@ def build_report(inputs: ProjectionInputs, *, coefficients: MeasuredCoefficients
                 "task_id": hazard_throughput_evidence.get("task_id"),
                 "job_id": hazard_throughput_evidence.get("slurm_job_id"),
                 "run_root": hazard_throughput_evidence.get("run_root"),
+                "release_zone_count": hazard_throughput_evidence.get("release_zone_count"),
                 "runtime_seconds": hazard_throughput_evidence.get("total_wall_seconds"),
+                "hazard_stage_seconds": hazard_throughput_evidence.get("hazard_stage_seconds"),
                 "memory_peak_mb": hazard_throughput_evidence.get("memory_peak_mb"),
+                "hazard_output_file_count": hazard_throughput_evidence.get("hazard_output_file_count"),
                 "hazard_output_bytes": hazard_throughput_evidence.get("hazard_output_bytes"),
+                "run_root_file_count": hazard_throughput_evidence.get("run_root_file_count"),
+                "run_root_bytes": hazard_throughput_evidence.get("run_root_bytes"),
                 "conditional_curve_row_count": hazard_throughput_evidence.get("conditional_curve_row_count"),
                 "comparison_baseline_task_id": hazard_throughput_baseline.get("task_id"),
                 "comparison_baseline_job_id": hazard_throughput_baseline.get("slurm_job_id"),

@@ -9,8 +9,8 @@ risk, exposure, or vulnerability semantics.
 - Current practical ceiling: 100 release zones have been measured on Balfrin as
   a single-node `postproc` diagnostic reducer-pressure workload. This is the
   current diagnostic ceiling, not a hazard-throughput, operational, or
-  physical-probability ceiling. The older 10-zone single-AOI boundary remains
-  the current hazard-planning boundary.
+  physical-probability ceiling. TB-669 is now the current measured 12-zone
+  hazard-throughput support point.
 - First bottleneck: scientific evidence remains first for physical or
   operational claims. For further scale work, the next practical blocker is no
   longer a larger diagnostic by default; it is hazard-throughput scaling and
@@ -28,9 +28,9 @@ risk, exposure, or vulnerability semantics.
 - 40-zone: measured as Balfrin diagnostic reducer-pressure evidence.
 - 100-zone: measured as Balfrin diagnostic reducer-pressure evidence; this is
   the current diagnostic performance ceiling.
-- Hazard-throughput probe: TB-619 measured the next bounded four-zone hazard
-  workflow on Balfrin `postproc` with complete mandatory runtime, memory,
-  output, and conditional-curve metrics. TB-603 remains the previous comparison
+- Hazard-throughput probe: TB-669 measured a bounded 12-zone hazard-throughput
+  profile on Balfrin `postproc` with runtime, memory, output footprint, and
+  replay-critical family coverage. TB-619 remains the previous comparison
   anchor. This is the current hazard-throughput support point, not a
   Swiss-wide, operational, distributed, or physical-probability claim.
 - Latest bounded diagnostic comparison: TB-652 completed an 8-zone compact
@@ -39,7 +39,7 @@ risk, exposure, or vulnerability semantics.
   `0:00.59` elapsed wall time, `34.223` MB peak RSS, `28` output files,
   `14,397` output bytes, `11,458` manifest bytes, and `2.11` reducer wall
   seconds. This strengthens diagnostic reducer-pressure evidence but does not
-  replace TB-619 as the hazard-throughput support point.
+  replace TB-669 as the hazard-throughput support point.
 - Prior hazard-throughput probe: TB-603 measured the bounded hazard workflow on
   Balfrin `postproc` with complete mandatory runtime, memory, output, and
   conditional-curve metrics and remains the baseline for TB-619 comparison.
@@ -88,12 +88,12 @@ The adjacent-candidate branch moved the first blocker away from source-zone
 automation and onto the remaining planning bottlenecks:
 
 1. Missing scientific evidence for physical probability and operational use.
-1. Hazard-throughput scaling beyond the bounded TB-619 support point.
+1. Hazard-throughput scaling beyond the bounded TB-669 support point.
 1. Reducer pressure and replay/metadata growth for larger hazard-output
    batches.
 1. Output-byte and file-count growth when moving beyond diagnostic postproc.
-1. Scaling beyond the measured TB-619 hazard-throughput run, because the
-   100-zone evidence is diagnostic and TB-619 remains a bounded single-node
+1. Scaling beyond the measured TB-669 hazard-throughput run, because the
+   100-zone evidence is diagnostic and TB-669 remains a bounded single-node
    hazard-throughput support point.
 1. Distributed and non-`postproc` execution, which remain explicit phase
    changes.
@@ -114,7 +114,7 @@ branches into measured capability:
   - `scripts/summarize_balfrin_scale_readiness_matrix.py` records the measured
     single-job boundary, TB-307 target-area metrics-completion rerun, TB-312
     four-zone postproc/reducer package, TB-368 preserved two-zone evidence,
-    TB-407 smallest multi-zone probe, TB-619 bounded hazard-throughput run, and
+    TB-407 smallest multi-zone probe, TB-669 bounded hazard-throughput run, and
     the current claim boundaries.
 - `scripts/summarize_balfrin_management_demo_package.py` keeps runtime,
   restartability, GIS scope, uncertainty, and claim boundaries in the measured
@@ -160,6 +160,16 @@ branches into measured capability:
   and `729,600` conditional-curve rows represented in summary-only mode. This
   supersedes TB-603 as the latest hazard-throughput support point while keeping
   TB-603 as the comparison baseline.
+- TB-669 measured the next bounded 12-zone hazard-throughput run on Balfrin:
+  job `4378015`, run root
+  `/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917`,
+  profile wall time `0.288978714030236` s, hazard-layer time
+  `0.0781356020597741` s, peak memory `47.016` MB, `29` hazard output files,
+  `1,148,530` hazard output bytes, `93` run-root files, `2,373,626`
+  run-root bytes, and complete replay-critical coverage for `12` trajectory
+  CSVs, `12` impact-event CSVs, one deposition CSV, and one diagnostics JSON.
+  This supersedes TB-619 as the latest hazard-throughput support point while
+  keeping TB-619 as the comparison baseline.
 - TB-652 measured a smaller 8-zone compact diagnostic run on Balfrin:
   job `4377075`, run root
   `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`,
