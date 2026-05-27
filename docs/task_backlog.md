@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-668: Prove The Larger Hazard Package Locally Before Submission
-
-Goal: Exercise the >4-zone hazard-throughput package locally enough to catch output-budget, manifest, and replayability failures before Balfrin submission.
-
-Capability gap reduced: Pre-submit confidence for the next real hazard-throughput run.
-
-Why this outranks alternatives: The previous larger hazard-throughput attempt failed before submission on package/output-profile mismatch.
-
-Inspect first:
-
-- `scripts/check_hazard_output_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `scripts/audit_balfrin_run_root_output_budget.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `tests/test_hazard_output_profile.py`
-
-Deliverables:
-
-- A local smoke or dry-run result for the larger hazard-throughput package, including file-family counts, manifest size, replay-critical output coverage, and the exact first blocker if it is not submit-ready.
-
-Definition of done:
-
-- The result is either `ready_for_submit` with measured local output pressure or a concrete blocker that can be fixed without guessing.
-
-Scope: Do not submit to Balfrin in this task.
-
 ### TB-669: Run The First Greater-Than-Four-Zone Hazard-Throughput Probe On Balfrin
 
 Goal: Execute the first true >4-zone hazard-throughput probe on Balfrin `postproc` once the package is locally submit-ready.

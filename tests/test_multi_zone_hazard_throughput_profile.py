@@ -110,6 +110,7 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertEqual(larger_profile["impact_file_count"], 12)
             self.assertEqual(larger_profile["blockers"], [])
             self.assertIn("--profile multi_zone", larger_profile["command_plan"]["materialize_and_profile"])
+            self.assertIn("scripts/build_hazard_layers.py", larger_profile["command_plan"]["hazard_build_tokens"])
             budget = larger_profile["replayable_output_budget"]
             self.assertTrue(budget["within_budget"])
             self.assertLessEqual(budget["observed_output_file_count"], budget["max_output_file_count"])
@@ -118,6 +119,25 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertTrue(budget["summary_only_curve_export_required"])
             self.assertTrue(budget["conditional_curve_table_suppressed_for_output_budget"])
             self.assertFalse(budget["conditional_curve_table_written"])
+            proof = larger_profile["local_pre_submit_proof"]
+            self.assertEqual(proof["schema_version"], "larger_hazard_local_pre_submit_proof_v1")
+            self.assertEqual(proof["status"], "ready_for_submit")
+            self.assertIsNone(proof["first_blocker"])
+            self.assertEqual(proof["release_zone_count"], 12)
+            self.assertEqual(proof["hazard_output_profile"]["profile"], "provenance_audit")
+            self.assertEqual(proof["hazard_output_profile"]["classification"], "scalable_default")
+            self.assertIn("--conditional-curve-export summary-only", proof["hazard_output_profile"]["matched_controls"])
+            self.assertIn("--grid-csv-export none", proof["hazard_output_profile"]["matched_controls"])
+            self.assertEqual(proof["hazard_output_profile"]["missing_controls"], [])
+            self.assertEqual(proof["hazard_output_profile"]["unsupported_or_ambiguous_controls"], [])
+            self.assertGreater(proof["manifest_size_bytes"], 0)
+            self.assertEqual(proof["file_family_counts"]["geotiff"], 11)
+            self.assertTrue(proof["replay_critical_coverage"]["complete"])
+            coverage = proof["replay_critical_coverage"]["families"]
+            self.assertEqual(coverage["trajectory_csv"]["observed_count"], 12)
+            self.assertEqual(coverage["impact_events_csv"]["observed_count"], 12)
+            self.assertEqual(coverage["deposition_csv"]["observed_count"], 1)
+            self.assertEqual(coverage["diagnostics_json"]["observed_count"], 1)
 
     def test_profile_report_schema_stability_across_modes(self) -> None:
         expected_report_keys = {

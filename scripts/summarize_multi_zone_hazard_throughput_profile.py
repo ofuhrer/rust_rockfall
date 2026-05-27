@@ -31,6 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts import build_hazard_layers as hazard
+from scripts import check_hazard_output_profile as hazard_output_profile
 from scripts import summarize_multi_zone_reducer_pressure as reducer_pressure
 
 
@@ -105,6 +106,7 @@ class ProfileSpec:
 class ProfileRunResult:
     mode: str
     output_dir: Path
+    command_tokens: list[str]
     hazard_manifest_path: Path
     hazard_manifest: dict[str, Any]
     performance: dict[str, Any]
@@ -619,8 +621,16 @@ def build_larger_than_four_zone_package_profile(
                 "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py "
                 "--profile-root /tmp/rust_rockfall/multi_zone_hazard_throughput_profile_v2 --format json"
             ),
+            "hazard_build_tokens": explicit_run.command_tokens,
         },
         "replayable_output_budget": replayable_output_budget,
+        "local_pre_submit_proof": build_local_pre_submit_proof(
+            fixture_manifest=fixture_manifest,
+            explicit_run=explicit_run,
+            output_pressure=output_pressure,
+            replayable_output_budget=replayable_output_budget,
+            inherited_blockers=blockers,
+        ),
         "profile_scale": {
             "output_file_count": observed_output_files,
             "output_bytes": observed_output_bytes,
@@ -629,6 +639,87 @@ def build_larger_than_four_zone_package_profile(
             "largest_phase": timing_breakdown["largest_phase"],
         },
         "blockers": blockers,
+    }
+
+
+def build_local_pre_submit_proof(
+    *,
+    fixture_manifest: dict[str, Any],
+    explicit_run: ProfileRunResult,
+    output_pressure: dict[str, Any],
+    replayable_output_budget: dict[str, Any],
+    inherited_blockers: list[str],
+) -> dict[str, Any]:
+    release_zone_count = int(number_or_zero(fixture_manifest.get("release_zone_count")))
+    command_profile = hazard_output_profile.classify_profile(command=explicit_run.command_tokens)
+    replay_critical_coverage = build_replay_critical_coverage(fixture_manifest)
+    manifest_size_bytes = sum(int(value) for value in output_pressure.get("manifest_family_bytes", {}).values())
+    blockers = list(inherited_blockers)
+    if command_profile["profile"] not in {"scalable_conditional", "provenance_audit"}:
+        blockers.append("hazard_command_not_scalable_conditional")
+    if command_profile.get("missing_controls"):
+        blockers.append("hazard_command_missing_controls")
+    if command_profile.get("unsupported_or_ambiguous_controls"):
+        blockers.append("hazard_command_unsupported_or_ambiguous_controls")
+    if not replay_critical_coverage["complete"]:
+        blockers.append("replay_critical_coverage_incomplete")
+    if not replayable_output_budget["within_budget"]:
+        blockers.append("replayable_output_budget_exceeded")
+
+    return {
+        "schema_version": "larger_hazard_local_pre_submit_proof_v1",
+        "status": "ready_for_submit" if not blockers else "blocked",
+        "first_blocker": blockers[0] if blockers else None,
+        "release_zone_count": release_zone_count,
+        "hazard_output_profile": {
+            "profile": command_profile["profile"],
+            "classification": command_profile["output_profile_policy"]["classification"],
+            "matched_controls": command_profile["matched_controls"],
+            "missing_controls": command_profile["missing_controls"],
+            "unsupported_or_ambiguous_controls": command_profile["unsupported_or_ambiguous_controls"],
+            "recommendations": command_profile["recommendations"],
+        },
+        "file_family_counts": output_pressure.get("file_family_file_counts", {}),
+        "file_family_bytes": output_pressure.get("file_family_bytes", {}),
+        "manifest_family_counts": output_pressure.get("manifest_family_file_counts", {}),
+        "manifest_family_bytes": output_pressure.get("manifest_family_bytes", {}),
+        "manifest_size_bytes": manifest_size_bytes,
+        "replay_critical_coverage": replay_critical_coverage,
+        "blockers": blockers,
+    }
+
+
+def build_replay_critical_coverage(fixture_manifest: dict[str, Any]) -> dict[str, Any]:
+    release_zone_count = int(number_or_zero(fixture_manifest.get("release_zone_count")))
+    deposition_row_count = int(number_or_zero(fixture_manifest.get("deposition_row_count")))
+    families = {
+        "trajectory_csv": {
+            "expected_count": release_zone_count,
+            "observed_count": int(number_or_zero(fixture_manifest.get("trajectory_file_count"))),
+            "builder_input": "--ensemble-trajectories-dir",
+        },
+        "deposition_csv": {
+            "expected_count": 1,
+            "observed_count": 1 if deposition_row_count > 0 else 0,
+            "builder_input": "--deposition",
+        },
+        "impact_events_csv": {
+            "expected_count": release_zone_count,
+            "observed_count": int(number_or_zero(fixture_manifest.get("impact_file_count"))),
+            "builder_input": "--ensemble-impact-events-dir",
+        },
+        "diagnostics_json": {
+            "expected_count": 1,
+            "observed_count": 1,
+            "builder_input": "--diagnostics",
+        },
+    }
+    for family in families.values():
+        family["complete"] = family["observed_count"] >= family["expected_count"]
+    return {
+        "schema_version": "hazard_replay_critical_coverage_v1",
+        "complete": all(bool(family["complete"]) for family in families.values()),
+        "families": families,
     }
 
 
@@ -793,6 +884,7 @@ def run_profiled_hazard_build(
     return ProfileRunResult(
         mode=mode,
         output_dir=profile_output_root / "hazard",
+        command_tokens=["PYENV_VERSION=system", "uv", "run", "python", "scripts/build_hazard_layers.py", *args],
         hazard_manifest_path=hazard_manifest_path,
         hazard_manifest=hazard_manifest,
         performance=performance,

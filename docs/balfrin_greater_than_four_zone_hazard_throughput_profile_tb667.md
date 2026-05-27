@@ -29,6 +29,7 @@ TB-619 package.
 - Summary-only curve export: required and active
 - Conditional curve CSV table: suppressed for output budget
 - Budget status: `within_budget`
+- Local pre-submit proof: `ready_for_submit` as of TB-668
 
 ## Reproduction
 

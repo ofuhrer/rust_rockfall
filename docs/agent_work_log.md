@@ -10822,3 +10822,22 @@ completed history.
 - Metrics: larger-package status `ready_for_pre_submit`; release zones `12`; trajectory files `12`; impact-event files `12`; output files `29` of `40`; output bytes `1,145,440` of `1,500,000`; manifest bytes `45,106` of `60,000`; conditional curve CSV table suppressed for output budget; focused tests `9` passed.
 - Boundaries: local pre-submit hazard-throughput evidence only; no live Balfrin hazard-throughput measurement, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-668`
+
+### TB-668: Prove The Larger Hazard Package Locally Before Submission
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: exercise the 12-zone hazard-throughput package locally enough to catch command-profile, output-budget, manifest, and replayability failures before Balfrin submission.
+- Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/balfrin_larger_hazard_local_pre_submit_tb668.md`, `docs/balfrin_greater_than_four_zone_hazard_throughput_profile_tb667.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `local_pre_submit_proof` to the larger hazard-throughput profile.
+  - Classified the generated hazard build command with the existing hazard output-profile checker.
+  - Reported file-family counts, manifest-family bytes, replay-critical input coverage, status, and the first blocker field.
+  - Materialized and profiled a fresh 12-zone local package, then removed TB-668 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/tb668_hazard_pre_submit --profile multi_zone --format json --json-output /tmp/tb668_hazard_pre_submit.json --markdown-output /tmp/tb668_hazard_pre_submit.md`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile tests.test_hazard_output_profile -v`
+- Result/status: implemented_ready_for_submit
+- Metrics: local pre-submit status `ready_for_submit`; first blocker `none`; release zones `12`; hazard output profile `provenance_audit`; output-profile classification `scalable_default`; file families `geotiff=11`, `esri_ascii_grid=11`, `json=6`, `geojson=1`; output files `29`; output bytes `1,144,485`; manifest bytes `44,221`; replay-critical coverage complete for `trajectory_csv=12/12`, `impact_events_csv=12/12`, `deposition_csv=1/1`, `diagnostics_json=1/1`; focused tests `17` passed.
+- Boundaries: local dry-run/pre-submit proof only; no live Balfrin hazard-throughput measurement, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-669`
