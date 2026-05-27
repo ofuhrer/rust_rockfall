@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-623: Tighten The One-Command Balfrin Run Path
-
-Goal: Make the common Balfrin path for preparing, submitting, monitoring, and collecting a bounded hazard run easier to invoke without navigating many helper scripts.
-
-Capability gap reduced: User-facing execution simplicity for repeatable Balfrin scale demonstrations.
-
-Why this outranks alternatives: The repo has many useful helpers, but a clean run interface is needed to turn them into a practical demonstration workflow.
-
-Inspect first:
-
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/rehearse_balfrin_post_run_evidence_collector.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/aoi_user_manual.md`
-
-Deliverables:
-
-- A simplified command path, wrapper mode, or concise runbook reduction that executes the selected hazard-throughput workflow with fewer manual decisions while keeping existing low-level helpers reusable.
-
-Definition of done:
-
-- A fresh operator can identify one primary command sequence for the next Balfrin hazard run, and focused checks confirm the existing helpers still work.
-
 ### TB-624: Stage Real Release-Probability Evidence
 
 Goal: Replace the current design-review-only release-probability state with a real candidate evidence record for the active public pilot source zone.

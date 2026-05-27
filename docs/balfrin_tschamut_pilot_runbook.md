@@ -53,6 +53,30 @@ Minimal demo success means the contract helper and dry-run planner are bounded
 and explicit; scientific closure still belongs to the post-run gate and
 measured evidence.
 
+## Primary Command Path
+
+For the next bounded Balfrin hazard run, generate the submission package first
+and use its `primary_operator_sequence` as the normal path. The detailed
+sections below remain available for stop/resume, failure handoff, and manual
+inspection.
+
+```bash
+PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
+  "$RUN_MANIFEST" \
+  --generate-only \
+  --run-root "$RUN_ROOT" \
+  --run-id "$RUN_ID" \
+  --partition postproc \
+  --time 00:30:00 \
+  --nodes 1 \
+  --ntasks 1 \
+  --cpus-per-task 16
+```
+
+The generated `balfrin_submission_package.md` then shows the shortest normal
+sequence: preflight, generate-only, submit, and collect. Keep the same
+`RUN_ROOT` and `RUN_ID` throughout.
+
 ## 2) Bring the repo and manifest to a known state
 
 ```bash

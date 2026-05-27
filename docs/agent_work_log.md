@@ -9880,3 +9880,23 @@ completed history.
 - Metrics: TB-606 recovery status `measured`; reused reducer chunks `3`; executed reducer chunks `1`; rerun fraction `0.25`; reuse fraction `0.75`; recovery job `4372418` elapsed `6` seconds; merge job `4372419` elapsed `61` seconds; total recovery-plus-merge elapsed `67` seconds; stable artifacts `37/37`; changed artifacts `0`.
 - Boundaries: measured bounded `postproc` chunk-recovery evidence from preserved `$SCRATCH` roots only; no new job submitted for TB-622 and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-623`
+
+### TB-623: Tighten The One-Command Balfrin Run Path
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: make the normal Balfrin hazard run path obvious from the generated submission package while preserving detailed helper reuse.
+- Files changed: `scripts/submit_balfrin_probe.py`, `tests/test_balfrin_probe_driver.py`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `primary_operator_sequence` to generated Balfrin submission packages.
+  - Rendered a primary operator sequence at the top of `balfrin_submission_package.md`, followed by the detailed stop/resume/failure sequence.
+  - Kept the low-level `--generate-only`, `--submit`, and `--collect` modes unchanged.
+  - Updated the Balfrin runbook to point fresh operators to the generated primary sequence as the normal path.
+  - Removed TB-623 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/submit_balfrin_probe.py tests/test_balfrin_probe_driver.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_probe_driver -v`
+- Result/status: implemented_measured
+- Metrics: the generated primary sequence contains six commands: set `RUN_MANIFEST`, run readiness preflight, generate-only package, submit, collect through the submission helper, and collect metrics directly; stop/resume/failure commands remain in the detailed sequence only.
+- Boundaries: user-facing execution simplification only; no Balfrin job submitted and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-624`

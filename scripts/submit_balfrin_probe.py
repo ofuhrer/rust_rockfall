@@ -593,6 +593,15 @@ def _build_operator_sequence(
     }
 
 
+def _build_primary_operator_sequence(operator_sequence: dict[str, list[str]]) -> list[str]:
+    """Return the shortest normal submit/collect path from the detailed sequence."""
+    primary_steps = ("preflight", "generate_only", "submit", "collect")
+    commands: list[str] = []
+    for step in primary_steps:
+        commands.extend(operator_sequence.get(step, []))
+    return commands
+
+
 def _build_submission_package_report(
     *,
     run_root: Path,
@@ -705,6 +714,7 @@ def _build_submission_package_report(
             str((run_root / "logs").resolve()),
         ],
         "operator_sequence": operator_sequence,
+        "primary_operator_sequence": _build_primary_operator_sequence(operator_sequence),
         "expected_outputs": _build_expected_outputs(run_root),
         "collection_instructions": _build_collection_instructions(run_root),
     }
@@ -857,6 +867,23 @@ def _build_submission_package_markdown(package: dict[str, Any]) -> str:
         [
             "",
             "## Operator Sequence",
+            "",
+            "### Primary",
+            "",
+        ]
+    )
+    primary_sequence = list(package.get("primary_operator_sequence") or [])
+    if primary_sequence:
+        for command in primary_sequence:
+            lines.append("```bash")
+            lines.append(command)
+            lines.append("```")
+    else:
+        lines.append("- Primary sequence was not generated; use the detailed operator sequence below.")
+    lines.extend(
+        [
+            "",
+            "### Detailed",
             "",
         ]
     )

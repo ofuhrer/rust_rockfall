@@ -564,11 +564,33 @@ class BalfrinProbeDriverTests(unittest.TestCase):
                 self.assertIn("## Reduced Output Settings", markdown)
                 self.assertIn("## Launch Boundary", markdown)
                 self.assertIn("## Operator Sequence", markdown)
+                self.assertIn("### Primary", markdown)
                 self.assertIn("scancel \"${JOB_ID}\"", markdown)
                 self.assertIn("## Do Not Commit", markdown)
                 self.assertIn("balfrin_probe_full_time.txt", markdown)
                 self.assertIn("Metrics collection command", markdown)
                 self.assertIn("run_root=", buf.getvalue())
+
+    def test_primary_operator_sequence_keeps_normal_path_short(self) -> None:
+        sequence = submit_driver._build_operator_sequence(
+            run_root=Path("/scratch/rust_rockfall/probes/scale-test/001"),
+            run_id="probe_fixed",
+            probe_manifest=Path("validation/pilot_runs/probe.yaml"),
+            partition="postproc",
+            time_budget="00:30:00",
+            nodes=1,
+            ntasks=1,
+            cpus_per_task=16,
+        )
+        primary = submit_driver._build_primary_operator_sequence(sequence)
+
+        self.assertEqual(len(primary), 6)
+        self.assertIn("check_balfrin_tschamut_readiness.py", primary[1])
+        self.assertIn("--generate-only", primary[2])
+        self.assertIn("--submit", primary[3])
+        self.assertIn("--collect", primary[4])
+        self.assertIn("collect_balfrin_probe_metrics.py", primary[5])
+        self.assertFalse(any("scancel" in command for command in primary))
 
     def test_generate_only_preserves_two_zone_run_root_contract(self) -> None:
         command_plan = {
