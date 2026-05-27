@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-624: Stage Real Release-Probability Evidence
-
-Goal: Replace the current design-review-only release-probability state with a real candidate evidence record for the active public pilot source zone.
-
-Capability gap reduced: Missing release-probability evidence, one of the remaining blockers for physical-probability credibility.
-
-Why this outranks alternatives: The validation gap helper now reports release probability as a critical missing input after source frequency and holdout runout evidence were staged.
-
-Inspect first:
-
-- `scripts/validate_block_release_probability_evidence.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/block_release_probability_evidence_contract.md`
-- `validation/templates/block_release_probability_evidence_v1.yaml`
-- `validation/data/processed/tschamut/release_points.csv`
-- `validation/data/processed/chant_sura_2020/release_points_contact.csv`
-
-Deliverables:
-
-- A real candidate release-probability evidence YAML for the pilot source zone, or a narrowly documented reason why current public inputs are insufficient and exactly which field input is missing.
-
-Definition of done:
-
-- The validator accepts the record shape, the evidence-gap report changes accordingly if accepted, and sampling weights are not mislabeled as physical probability.
-
 ### TB-625: Stage Block-Population Evidence For The Pilot Zone
 
 Goal: Add a first real block-population or block-size distribution candidate for the pilot source zone from available processed inputs.

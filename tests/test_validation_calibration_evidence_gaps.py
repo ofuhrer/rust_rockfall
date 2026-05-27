@@ -67,8 +67,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "partial_evidence_missing_critical_inputs",
         })
         self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "release_probability_model")
+        self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "block_population_evidence")
         self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "present")
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
         report = assessment.build_report()
@@ -141,9 +143,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_gap_categories"]}
         self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "present")
+        self.assertEqual(categories["release_zone_evidence"]["classification"], "present")
         self.assertEqual(
             categories["release_zone_evidence"]["first_missing_input"],
-            "site_specific_release_zone_geometry_package",
+            "",
         )
         self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
@@ -375,7 +378,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
         readiness = report["physical_probability_readiness_check"]
         self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "release_probability_model")
+        self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "block_population_evidence")
 
 
 if __name__ == "__main__":  # pragma: no cover

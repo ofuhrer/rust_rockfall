@@ -40,6 +40,7 @@ import audit_conditional_denominator_provenance as denominator_provenance  # noq
 import check_calibration_separation_preflight as calibration_separation  # noqa: E402
 import audit_trajectory_deposition_traceability as deposition_traceability  # noqa: E402
 import validate_source_frequency_evidence as source_frequency_evidence  # noqa: E402
+import validate_block_release_probability_evidence as block_release_probability_evidence  # noqa: E402
 
 BLOCK_POPULATION_ACQUISITION_BLOCKERS: tuple[dict[str, Any], ...] = (
     {
@@ -89,6 +90,9 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
     },
 )
 DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml"
+DEFAULT_BLOCK_RELEASE_PROBABILITY_EVIDENCE_PATH = (
+    ROOT / "validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml"
+)
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST = DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "manifest.json"
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY = (
@@ -253,7 +257,13 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         chant_contact_heldout,
         observed_intake_report,
     )
-    release_zone = release_zone_gap(datasets, tschamut_manifest, candidate_portability)
+    block_release_probability_intake = load_block_release_probability_intake()
+    release_zone = release_zone_gap(
+        datasets,
+        tschamut_manifest,
+        candidate_portability,
+        block_release_probability_intake,
+    )
     block_population = block_population_gap(datasets, tschamut_gate, chant_model_selection)
     source_frequency_intake = load_source_frequency_intake(source_frequency_evidence_path)
     source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection, source_frequency_intake)
@@ -362,6 +372,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         "second_site_portability_status": candidate_portability["second_site_portability_status"],
         "post_diagnostic_scale_context": post_diagnostic_scale_context(),
         "source_frequency_intake": source_frequency_intake,
+        "block_release_probability_intake": block_release_probability_intake,
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
         "physical_probability_claims_allowed": False,
         "physical_probability_readiness_check": build_physical_probability_readiness_check(
@@ -838,12 +849,15 @@ def release_zone_gap(
     datasets: dict[str, dict[str, Any]],
     tschamut_manifest: dict[str, Any],
     candidate_portability: dict[str, Any],
+    block_release_probability_intake: dict[str, Any],
 ) -> dict[str, Any]:
+    intake_classification = str(block_release_probability_intake.get("intake_classification") or "missing")
+    candidate_present = intake_classification == "present"
     return {
         "category": "release_zone_evidence",
-        "classification": "partial",
-        "first_missing_input": "site_specific_release_zone_geometry_package",
-        "acquisition_blockers": [
+        "classification": "present" if candidate_present else "partial",
+        "first_missing_input": "" if candidate_present else "site_specific_release_zone_geometry_package",
+        "acquisition_blockers": [] if candidate_present else [
             {
                 "blocker_id": "site_specific_release_zone_geometry_missing",
                 "first_missing_input": "site_specific_release_zone_geometry_package",
@@ -868,23 +882,28 @@ def release_zone_gap(
             dataset_summary(datasets, "tschamut2014"),
             tschamut_manifest.get("selected_domain", {}),
             candidate_portability["candidate_site"],
+            block_release_probability_intake,
         ],
         "what_exists": [
             "Tschamut source-zone metadata and policy are frozen and deterministic",
             "Release-zone provenance intake bridge labels workflow_generated, field_supported, mixed_provenance, and blocked_missing_provenance records without converting sampling weights into probabilities",
             "The candidate Chant Sura / Flüelapass manifest declares a source-zone contract shape",
+            "A Tschamut public block/release probability candidate is staged for design review from observed release-point inventory counts",
         ],
-        "what_is_missing": [
+        "what_is_missing": [] if candidate_present else [
             "A second-site release-zone geometry with staged public geodata and provenance",
             "Independent field justification that can be tested against holdout data",
         ],
         "minimum_additional_evidence_needed": (
-            "A field-supported site-specific release-zone geometry package with documented derivation rules and "
+            "The staged candidate is enough to make the release-probability evidence class inspectable for design review; "
+            "block-population evidence, calibration evidence, and final review remain separate blockers."
+            if candidate_present
+            else "A field-supported site-specific release-zone geometry package with documented derivation rules and "
             "comparison data that can be validated independently of the current pilot."
         ),
-        "support_role": "diagnostic_and_portability_only",
+        "support_role": "design_review_candidate_only" if candidate_present else "diagnostic_and_portability_only",
         "claim_boundary": "conditional_diagnostic_only",
-        "physical_probability_relevance": "partial",
+        "physical_probability_relevance": "present" if candidate_present else "partial",
         "holdout_validation_relevance": "partial",
     }
 
@@ -1287,6 +1306,46 @@ def load_source_frequency_intake(path: Path | None = None) -> dict[str, Any]:
     return {
         "schema_version": "source_frequency_intake_summary_v1",
         "record_path": str(record_path),
+        **summary,
+        "claim_boundary": {
+            "annual_frequency_supported": False,
+            "physical_probability_supported": False,
+            "operational_hazard_map_supported": False,
+        },
+    }
+
+
+def load_block_release_probability_intake(path: Path | None = None) -> dict[str, Any]:
+    record_path = path or DEFAULT_BLOCK_RELEASE_PROBABILITY_EVIDENCE_PATH
+    try:
+        summary = block_release_probability_evidence.validate_block_release_probability_evidence(record_path)
+    except Exception as exc:
+        return {
+            "schema_version": "block_release_probability_intake_summary_v1",
+            "record_path": str(record_path),
+            "record_status": "invalid_or_missing",
+            "intake_classification": "missing",
+            "missing_or_invalid_reason": str(exc),
+            "block_scenario_count": 0,
+            "release_cell_count": 0,
+            "claim_boundary": {
+                "annual_frequency_supported": False,
+                "physical_probability_supported": False,
+                "operational_hazard_map_supported": False,
+            },
+        }
+    record_status = str(summary.get("record_status") or "")
+    intake_classification = (
+        "present"
+        if record_status == "accepted_for_design_review"
+        else "partial"
+        if record_status == "candidate_not_authorized"
+        else "missing"
+    )
+    return {
+        "schema_version": "block_release_probability_intake_summary_v1",
+        "record_path": str(record_path),
+        "intake_classification": intake_classification,
         **summary,
         "claim_boundary": {
             "annual_frequency_supported": False,

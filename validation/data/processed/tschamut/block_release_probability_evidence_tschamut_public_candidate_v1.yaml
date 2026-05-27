@@ -1,0 +1,105 @@
+schema_version: block_release_probability_evidence_v1
+record_id: tschamut_public_block_release_probability_candidate_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+probability_model_id: tschamut_public_observed_release_inventory_candidate_v1
+probability_mode: block_release_probability_evidence_only
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class_id: tschamut2014_observed_lps_release_samples
+block_scenario_distribution:
+  denominator: conditional_probability_given_source_event
+  total_probability: 1.0
+  scenarios:
+    - block_scenario_id: tschamut2014_observed_block_1
+      block_size_class: radius_0_176667m_mass_69kg
+      block_shape_class: observed_radius_sphere_proxy
+      probability: 0.5
+      evidence_basis: 5 of 10 observed Tschamut 2014 public release samples reference block_id 1.
+    - block_scenario_id: tschamut2014_observed_block_2
+      block_size_class: radius_0_198333m_mass_79kg
+      block_shape_class: observed_radius_sphere_proxy
+      probability: 0.2
+      evidence_basis: 2 of 10 observed Tschamut 2014 public release samples reference block_id 2.
+    - block_scenario_id: tschamut2014_observed_block_4
+      block_size_class: radius_0_160000m_mass_40kg
+      block_shape_class: observed_radius_sphere_proxy
+      probability: 0.3
+      evidence_basis: 3 of 10 observed Tschamut 2014 public release samples reference block_id 4.
+release_cell_distribution:
+  denominator: conditional_probability_given_source_event_and_block_scenario
+  total_probability_by_block_scenario:
+    - block_scenario_id: tschamut2014_observed_block_1
+      total_probability: 1.0
+    - block_scenario_id: tschamut2014_observed_block_2
+      total_probability: 1.0
+    - block_scenario_id: tschamut2014_observed_block_4
+      total_probability: 1.0
+  release_cells:
+    - block_scenario_id: tschamut2014_observed_block_1
+      release_cell_id: v004
+      probability: 0.2
+      evidence_basis: observed release sample v004 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_1
+      release_cell_id: v011
+      probability: 0.2
+      evidence_basis: observed release sample v011 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_1
+      release_cell_id: v006
+      probability: 0.2
+      evidence_basis: observed release sample v006 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_1
+      release_cell_id: v015
+      probability: 0.2
+      evidence_basis: observed release sample v015 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_1
+      release_cell_id: v018
+      probability: 0.2
+      evidence_basis: observed release sample v018 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_2
+      release_cell_id: v005
+      probability: 0.5
+      evidence_basis: observed release sample v005 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_2
+      release_cell_id: v019
+      probability: 0.5
+      evidence_basis: observed release sample v019 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_4
+      release_cell_id: v007
+      probability: 0.3333333333333333
+      evidence_basis: observed release sample v007 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_4
+      release_cell_id: v014
+      probability: 0.3333333333333333
+      evidence_basis: observed release sample v014 in validation/data/processed/tschamut/release_points.csv
+    - block_scenario_id: tschamut2014_observed_block_4
+      release_cell_id: v017
+      probability: 0.3333333333333333
+      evidence_basis: observed release sample v017 in validation/data/processed/tschamut/release_points.csv
+sampling_weight_boundary:
+  sampling_weights_are_physical_probability: false
+  sampling_weight_column_allowed_as_probability: false
+uncertainty:
+  type: expert_range
+  required_before_prototype: true
+  notes: Candidate uncertainty is limited by the small 10-sample public release inventory; no runtime prototype may use this without later review.
+evidence_basis:
+  block_distribution: inventory_measurement
+  release_cell_distribution: inventory_measurement
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - Candidate design-review record derived only from the public Tschamut 2014 processed release-point inventory.
+  - The probabilities are conditional empirical allocations within the observed release samples, not annual source frequency.
+  - The record does not reuse scenario sampling weights.
+  - Runtime physical products and prototype authorization remain false.

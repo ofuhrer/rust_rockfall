@@ -95,3 +95,9 @@ block/release probability schema blocker is closed at the inactive contract
 level, but the annual or physical prototype remains blocked by missing accepted
 evidence, missing overlap-adjusted reducers, missing uncertainty propagation,
 and missing validation/calibration review for frequency products.
+
+The current Tschamut public candidate record is
+`validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml`.
+It is accepted for design review only from the observed public release-point
+inventory. It does not authorize runtime physical products, does not reuse
+scenario sampling weights, and does not provide annual source frequency.

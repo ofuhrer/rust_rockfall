@@ -9900,3 +9900,26 @@ completed history.
 - Metrics: the generated primary sequence contains six commands: set `RUN_MANIFEST`, run readiness preflight, generate-only package, submit, collect through the submission helper, and collect metrics directly; stop/resume/failure commands remain in the detailed sequence only.
 - Boundaries: user-facing execution simplification only; no Balfrin job submitted and no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-624`
+
+### TB-624: Stage Real Release-Probability Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: stage real candidate block/release probability evidence for the Tschamut public pilot from available processed release-point inputs.
+- Files changed: `validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_block_release_probability_evidence.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/block_release_probability_evidence_contract.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a Tschamut public candidate record accepted for design review only, derived from `validation/data/processed/tschamut/release_points.csv`.
+  - Recorded three observed block scenarios and ten observed release cells, with conditional probabilities normalized within the observed inventory.
+  - Kept sampling weights explicitly out of the probability record and left prototype/physical/runtime claim fields false.
+  - Wired the validation/calibration gap helper to validate and report the staged candidate.
+  - Updated tests so the readiness report now advances past `release_probability_model`.
+  - Removed TB-624 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/validate_block_release_probability_evidence.py validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/validate_block_release_probability_evidence.py scripts/assess_validation_calibration_evidence_gaps.py tests/test_block_release_probability_evidence.py tests/test_validation_calibration_evidence_gaps.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_block_release_probability_evidence tests.test_validation_calibration_evidence_gaps -v`
+- Result/status: implemented_measured
+- Metrics: candidate record validates with `record_status=accepted_for_design_review`, `block_scenario_count=3`, `release_cell_count=10`; evidence-gap release-zone classification is now `present`; physical-probability first blocker moves to `block_population_evidence`; remaining failing classes are `block_population_evidence` and `calibration_evidence`.
+- Boundaries: candidate design-review evidence only; no runtime prototype authorization, annual frequency, physical-probability product, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-625`
