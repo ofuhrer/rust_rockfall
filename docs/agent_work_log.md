@@ -10603,3 +10603,26 @@ completed history.
 - Metrics: release-probability record status `accepted_for_design_review`; source zone `tschamut_public_lps_release_bbox`; block scenarios `3`; release cells `10`; physical-probability readiness `partial_evidence_missing_critical_inputs`; passing evidence classes `6/7`; first blocking evidence class `calibration_evidence`.
 - Boundaries: design-review evidence summary only; `physical_probability_claims_allowed`, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, and non-`postproc` claims remain false.
 - Next task: `TB-657`
+
+### TB-657: Strengthen Block-Population Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: summarize current block-size, block-shape, and scenario-weight evidence from scenario tables and staged records.
+- Files changed: `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `tests/test_balfrin_management_demo_package.py`, `docs/block_population_evidence_tb657.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Re-ran the observed-row and policy block-family scenario table generators.
+  - Confirmed the staged Tschamut block-population candidate is present as design-review evidence.
+  - Updated the physical-credibility surface so `block_size_and_block_population_evidence` is a `design_review_candidate_only` requirement rather than a generic missing physical input.
+  - Recorded a compact block-population evidence note and removed TB-657 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/generate_tschamut_block_scenario_tables.py --template policy_block_family_v1 --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_tschamut_block_scenario_tables.py --template observed_rows_summary_v1 --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb657_validation_gaps.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_physical_credibility_evidence_gaps.py --format json --json-output /tmp/tb657_physical_gaps.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json --json-output /tmp/tb657_management_package.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_tschamut_block_scenario_table_generation tests.test_validation_calibration_evidence_gaps tests.test_balfrin_physical_credibility_evidence_gaps tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_checked_evidence_summary
+- Metrics: block-population record status `accepted_for_design_review`; block population classes `3`; observed inventory total count `3`; observed-row summary rows `1`; observed release samples `10`; policy block-family rows `9`; policy sampling-weight total `30.0`; normalized sampling-share total `1.0`; physical-probability readiness remains `partial_evidence_missing_critical_inputs`; first blocking evidence class `calibration_evidence`.
+- Boundaries: design-review evidence summary only; no simulation defaults changed, scenario sampling weights remain conditional only, and `physical_probability_claims_allowed`, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, and non-`postproc` claims remain false.
+- Next task: `TB-658`

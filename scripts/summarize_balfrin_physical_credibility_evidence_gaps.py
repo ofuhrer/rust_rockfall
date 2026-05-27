@@ -263,7 +263,7 @@ def balfrin_evidence_state_for_requirement(
     validation_category: dict[str, Any],
 ) -> str:
     if (
-        requirement_key == "release_zone_evidence"
+        requirement_key in {"release_zone_evidence", "block_size_and_block_population_evidence"}
         and validation_category.get("classification") == "present"
         and validation_category.get("support_role") == "design_review_candidate_only"
     ):

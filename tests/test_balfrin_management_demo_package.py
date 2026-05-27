@@ -67,7 +67,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["physical_credibility_section"]["physical_credibility_state"], "no_physical_evidence")
         self.assertEqual(
             [row["requirement_key"] for row in report["physical_credibility_section"]["design_review_candidate_requirements"]],
-            ["release_zone_evidence"],
+            ["release_zone_evidence", "block_size_and_block_population_evidence"],
         )
         self.assertEqual(report["swiss_wide_extension_section"]["status"], "no_go_extrapolated_beyond_measured_evidence")
         self.assertEqual(

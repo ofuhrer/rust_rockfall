@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-657: Strengthen Block-Population Evidence
-
-Goal: Summarize current block-size, block-shape, and scenario-weight evidence from scenario tables and staged records.
-
-Capability gap reduced: Physical-probability and intensity credibility for block scenarios.
-
-Why this outranks alternatives: Block-population evidence is a separate scientific blocker and can be improved from existing scenario/candidate data before new field work.
-
-Inspect first:
-
-- `scripts/generate_tschamut_block_scenario_tables.py`
-- `scripts/validate_block_release_probability_evidence.py`
-- `docs/probabilistic_scenario_model_design.md`
-- `tests/test_tschamut_block_scenario_table_generation.py`
-
-Deliverables:
-
-- A compact block-population evidence summary or blocker tied to current scenario tables and validation tests.
-
-Definition of done:
-
-- The summary identifies usable empirical inputs, design assumptions, and the next data gap without changing simulation defaults.
-
 ### TB-658: Refresh Calibration And Holdout Separation Evidence
 
 Goal: Re-run the calibration/holdout separation checks against the latest staged evidence and identify the first unresolved scientific blocker.
