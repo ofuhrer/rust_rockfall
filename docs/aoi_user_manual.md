@@ -69,6 +69,19 @@ the local AOI inputs and diagnostics are explicit.
    read-only and does not download public data unless you later opt into the
    explicit staging driver.
 
+   Current Chant Sura / Flüelapass status: the core prepared inputs are staged,
+   but the prepared-pilot compiler is blocked on public context roots:
+   `swissimage`, `swisstlm3d`, `swisssurface3d`,
+   `swisssurface3d_raster`, and `swissbuildings3d` under
+   `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/`.
+   The next command is:
+
+   ```bash
+   PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py \
+     --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml \
+     --format text
+   ```
+
 3. Review candidate release zones.
 
    ```bash

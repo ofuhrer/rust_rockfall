@@ -60,6 +60,32 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
     def _run_main(self, args: list[str]) -> tuple[int, str]:
         return self._run_module_main(workflow, args)
 
+    def test_prepared_pilot_acquisition_blocker_names_missing_public_context_products(self) -> None:
+        report = workflow.build_prepared_pilot_acquisition_blocker(
+            [
+                "/repo/data/processed/swisstopo/site/context/swissimage",
+                "/repo/data/processed/swisstopo/site/context/swisstlm3d",
+                "/repo/data/processed/swisstopo/site/context/swisssurface3d",
+                "/repo/data/processed/swisstopo/site/context/swisssurface3d_raster",
+                "/repo/data/processed/swisstopo/site/context/swissbuildings3d",
+            ]
+        )
+
+        self.assertEqual(report["status"], "blocked_missing_public_context_inputs")
+        self.assertEqual(report["missing_product_count"], 5)
+        categories = [item["category"] for item in report["missing_products"]]
+        self.assertEqual(
+            categories,
+            [
+                "swissimage_context",
+                "swisstlm3d_context",
+                "swisssurface3d_context",
+                "swisssurface3d_raster_context",
+                "swissbuildings3d_context",
+            ],
+        )
+        self.assertIn("plan_swisstopo_aoi_acquisition.py", report["next_command"])
+
     def test_command_dispatch_routes_to_the_expected_backend_view(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo_root = Path(tmp)

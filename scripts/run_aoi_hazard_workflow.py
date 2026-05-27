@@ -2023,11 +2023,13 @@ def build_prepared_pilot_local_execution_failure_report(
         prepared_pilot_output_root=resolved_output_root,
         validation_case_path=validation_case_path,
     )
+    acquisition_blocker = build_prepared_pilot_acquisition_blocker(missing_inputs)
     report = {
         "schema_version": PREPARED_PILOT_LOCAL_EXECUTION_SCHEMA_VERSION,
         "command": "run-prepared-pilot-local",
         "status": "blocked_local_execution",
-        "next_action": "fix first failure and rerun",
+        "next_action": acquisition_blocker.get("next_command") or "fix first failure and rerun",
+        "acquisition_blocker": acquisition_blocker,
         "prepared_pilot_report_path": execution_paths["expected_paths"]["prepared_pilot_report_path"],
         "prepared_pilot_classification": classification,
         "prepared_pilot_execution_hints": execution_hints or {},
@@ -2071,6 +2073,47 @@ def build_prepared_pilot_local_execution_failure_report(
     if review_report is not None:
         report["review_report"] = review_report
     return report
+
+
+def build_prepared_pilot_acquisition_blocker(missing_inputs: list[str]) -> dict[str, Any]:
+    context_products = [
+        ("swisssurface3d_raster", "swissSURFACE3D raster context"),
+        ("swisssurface3d", "swissSURFACE3D point-cloud context"),
+        ("swissimage", "SWISSIMAGE context imagery"),
+        ("swisstlm3d", "swissTLM3D context vectors"),
+        ("swissbuildings3d", "swissBUILDINGS3D context"),
+    ]
+    missing_context = []
+    for path in missing_inputs:
+        normalized = str(path).replace("\\", "/")
+        for category, product in context_products:
+            if f"/context/{category}" in normalized or normalized.endswith(f"/context/{category}"):
+                missing_context.append(
+                    {
+                        "category": f"{category}_context",
+                        "product": product,
+                        "expected_path": path,
+                    }
+                )
+                break
+    if not missing_context:
+        return {}
+    return {
+        "status": "blocked_missing_public_context_inputs",
+        "missing_product_count": len(missing_context),
+        "missing_products": missing_context,
+        "next_command": (
+            "PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py "
+            "--site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml "
+            "--format text"
+        ),
+        "rerun_command": (
+            "PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local "
+            "--site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml "
+            "--repo-root . --prepared-pilot-report-path <prepared-pilot-report.json> "
+            "--prepared-pilot-output-root /tmp/chant_sura_prepared_pilot --format json"
+        ),
+    }
 
 
 def summarize_prepared_pilot_readiness(report: dict[str, Any]) -> tuple[str, dict[str, Any], dict[str, Any]]:

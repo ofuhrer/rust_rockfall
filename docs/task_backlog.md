@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-639: Stage Second-Site Public Context Inputs If Available
-
-Goal: Move Chant Sura / Flüelapass from prepared-core readiness to an actual second-site smoke by resolving public-context inputs where local source data are available.
-
-Capability gap reduced: Multi-site transfer and portability beyond Tschamut.
-
-Why this outranks alternatives: The second-site workflow now has terrain/source/scenario readiness, but execution stops on public-context roots.
-
-Inspect first:
-
-- `scripts/inventory_second_site_local_blockers.py`
-- `scripts/plan_swisstopo_aoi_acquisition.py`
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-
-Deliverables:
-
-- Either staged public-context roots for the second-site fixture from available local/public inputs, or a concrete acquisition blocker with exact missing products and commands.
-
-Definition of done:
-
-- `run_aoi_hazard_workflow.py prepare` remains ready, `run-prepared-pilot-local` advances past the prior missing public-context-root blocker or reports the next concrete blocker.
-
 ### TB-640: Run The First Real Second-Site Prepared Pilot
 
 Goal: Execute the smallest useful Chant Sura / Flüelapass prepared pilot once public-context inputs are available.

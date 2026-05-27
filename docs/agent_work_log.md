@@ -10219,3 +10219,28 @@ completed history.
 - Metrics: physical-probability readiness `partial_evidence_missing_critical_inputs`; first blocking evidence class `calibration_evidence`; calibration support role `measured_fit_pending_acceptance_threshold`; present sub-blockers `fitted_parameter_provenance`, `holdout_scoring_completeness`; blocking sub-blockers `residual_quality_review`, `acceptance_threshold`; first missing calibration input `accepted_residual_quality_threshold_or_review_decision`.
 - Boundaries: reporting/actionability change only; no validation acceptance, selected-parameter promotion, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-639`
+
+### TB-639: Stage Second-Site Public Context Inputs If Available
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: determine whether local/public inputs can stage Chant Sura / Flüelapass public context roots, or report the exact acquisition blocker.
+- Files changed: `scripts/plan_aoi_to_prepared_pilot_dry_run.py`, `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed core second-site inputs remain staged and `run_aoi_hazard_workflow.py prepare` reports `ready_for_planning`.
+  - Fixed the prepared-pilot dry-run JSON-output path so reports containing date values can be written with `--json-output`.
+  - Improved `run-prepared-pilot-local` failure reports so missing public context roots become an explicit acquisition blocker with product names and the next acquisition-planning command.
+  - Confirmed no local Chant Sura public-context products are available for SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, or swissBUILDINGS3D.
+  - Documented the current second-site acquisition blocker in the AOI user manual.
+  - Removed TB-639 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/inventory_second_site_local_blockers.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --mode dry-run --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --format json`
+  - `PYENV_VERSION=system uv run python scripts/plan_aoi_to_prepared_pilot_dry_run.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --output-root /tmp/tb639_prepared_pilot_skeleton --format json --json-output /tmp/tb639_prepared_pilot_report.json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --prepared-pilot-report-path /tmp/tb639_prepared_pilot_report.json --prepared-pilot-output-root /tmp/tb639_prepared_pilot --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_acquisition_blocker_names_missing_public_context_products -v`
+- Result/status: implemented_waiting_report
+- Metrics: inventory status `ready_with_deferred_public_context`; prepare status `ready_for_planning`; prepared-pilot compiler classification `blocked_missing_inputs`; missing public context product count `5`; missing categories `swissimage_context`, `swisstlm3d_context`, `swisssurface3d_context`, `swisssurface3d_raster_context`, `swissbuildings3d_context`; next acquisition command `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format text`.
+- Boundaries: acquisition blocker and interface fix only; no download, staged real public-context root, second-site run, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-640`
