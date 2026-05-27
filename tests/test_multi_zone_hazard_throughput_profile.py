@@ -100,6 +100,24 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertIn("proposal", report["recommendation"])
             self.assertIn("required_tests", report["recommendation"]["proposal"])
             self.assertIn("reason", report["recommendation"])
+            larger_profile = report["larger_than_four_zone_package_profile"]
+            self.assertEqual(larger_profile["schema_version"], "larger_than_four_zone_hazard_package_profile_v1")
+            self.assertEqual(larger_profile["status"], "ready_for_pre_submit")
+            self.assertTrue(larger_profile["targets_greater_than_four_zones"])
+            self.assertTrue(larger_profile["not_four_zone_package"])
+            self.assertEqual(larger_profile["release_zone_count"], 12)
+            self.assertEqual(larger_profile["trajectory_file_count"], 12)
+            self.assertEqual(larger_profile["impact_file_count"], 12)
+            self.assertEqual(larger_profile["blockers"], [])
+            self.assertIn("--profile multi_zone", larger_profile["command_plan"]["materialize_and_profile"])
+            budget = larger_profile["replayable_output_budget"]
+            self.assertTrue(budget["within_budget"])
+            self.assertLessEqual(budget["observed_output_file_count"], budget["max_output_file_count"])
+            self.assertLessEqual(budget["observed_output_bytes"], budget["max_output_bytes"])
+            self.assertLessEqual(budget["observed_manifest_bytes"], budget["max_manifest_bytes"])
+            self.assertTrue(budget["summary_only_curve_export_required"])
+            self.assertTrue(budget["conditional_curve_table_suppressed_for_output_budget"])
+            self.assertFalse(budget["conditional_curve_table_written"])
 
     def test_profile_report_schema_stability_across_modes(self) -> None:
         expected_report_keys = {
@@ -109,6 +127,7 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             "fixture",
             "hazard_manifest",
             "hazard_manifest_path",
+            "larger_than_four_zone_package_profile",
             "output_pressure",
             "profile_id",
             "profile_root",

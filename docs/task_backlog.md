@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-667: Build A Real Greater-Than-Four-Zone Hazard-Throughput Profile
-
-Goal: Add an executable hazard-throughput profile that targets more than four release zones rather than rerunning the old four-zone package shape.
-
-Capability gap reduced: Larger measured hazard-throughput capability on Balfrin.
-
-Why this outranks alternatives: TB-642 identified the lack of a true >4-zone hazard-throughput package as the blocker to stronger feasibility evidence.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `docs/balfrin_hazard_throughput_probe_tb642.md`
-- `tests/test_multi_zone_hazard_throughput_profile.py`
-
-Deliverables:
-
-- A generated >4-zone hazard-throughput package or profile whose command plan actually targets the larger release-zone count and whose reduced-output profile stays within an explicit replayable budget.
-
-Definition of done:
-
-- The package/profile is executable in dry-run or pre-submit mode, focused tests pass, and the result is not just a resized contract around a four-zone command.
-
-Scope: Prefer reducing duplicated package machinery or reusing the simplified runner where possible.
-
 ### TB-668: Prove The Larger Hazard Package Locally Before Submission
 
 Goal: Exercise the >4-zone hazard-throughput package locally enough to catch output-budget, manifest, and replayability failures before Balfrin submission.

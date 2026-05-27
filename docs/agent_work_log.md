@@ -10803,3 +10803,22 @@ completed history.
 - Metrics: scale measured tiers now include `tb665_32_zone_diagnostic_probe` and `diagnostic_32_zone_reducer_pressure`; diagnostic ceiling job id `4377419`; diagnostic ceiling release zones `32`; envelope diagnostic runtime per zone `0.168437` seconds; envelope diagnostic output bytes per zone `1318.375`; envelope diagnostic file count per zone `3.125`; management latest current diagnostic job id `4377419`; focused tests `26` passed.
 - Boundaries: TB-665 remains single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-667`
+
+### TB-667: Build A Real Greater-Than-Four-Zone Hazard-Throughput Profile
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: create an executable hazard-throughput pre-submit profile that targets more than four release zones instead of reusing the four-zone package.
+- Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `docs/balfrin_greater_than_four_zone_hazard_throughput_profile_tb667.md`, `docs/balfrin_hazard_throughput_probe_tb642.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `larger_than_four_zone_package_profile` section to the multi-zone hazard-throughput profiler.
+  - Made the default 12-zone profile report whether it is actually greater than four zones, whether it is a four-zone package reuse, the exact materialize/replay commands, and its replayable output budget.
+  - Recorded the TB-667 profile result and updated the TB-642 note to point at local pre-submit proof as the next step before a live Balfrin hazard-throughput run.
+  - Removed TB-667 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/tb667_hazard_throughput_profile_after --profile multi_zone --format json --json-output /tmp/tb667_hazard_profile_after.json --markdown-output /tmp/tb667_hazard_profile_after.md`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_multi_zone_hazard_throughput_profile -v`
+- Result/status: implemented_pre_submit_profile
+- Metrics: larger-package status `ready_for_pre_submit`; release zones `12`; trajectory files `12`; impact-event files `12`; output files `29` of `40`; output bytes `1,145,440` of `1,500,000`; manifest bytes `45,106` of `60,000`; conditional curve CSV table suppressed for output budget; focused tests `9` passed.
+- Boundaries: local pre-submit hazard-throughput evidence only; no live Balfrin hazard-throughput measurement, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-668`

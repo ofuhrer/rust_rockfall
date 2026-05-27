@@ -36,15 +36,16 @@ This is a concrete pre-submit blocker for TB-642. Submitting another run through
 the existing hazard-throughput path would rerun the four-zone shape rather than
 measure hazard throughput beyond TB-619.
 
+TB-667 added a separate 12-zone hazard-throughput profile with an explicit
+replayable output budget and a command plan that actually targets the larger
+release-zone count. The older eight-zone handoff path remains a useful record of
+why the four-zone package should not be reused for the larger run.
+
 ## Next Useful Work
 
-Before a larger hazard-throughput run can be submitted, one of these changes is
-needed:
-
-- add a real >4-zone hazard-throughput package profile with accepted replay
-  family limits and a generated command plan that actually targets that size; or
-- reduce/merge replay-critical per-zone outputs for >4-zone hazard-throughput
-  runs while preserving enough artifacts to replay and compare the result.
+Before a larger hazard-throughput run is submitted, exercise the TB-667 profile
+locally through the output and rebuild checks so the first live Balfrin attempt
+starts from measured pre-submit evidence.
 
 The existing 24/32/100-zone diagnostic runner remains useful reducer-pressure
 evidence, but it is not hazard-throughput evidence.

@@ -59,6 +59,9 @@ DEFAULT_THRESHOLD_MPS = (0.75,)
 DEFAULT_OUTPUT_BYTES_NO_CHANGE_LIMIT = 250_000
 DEFAULT_OUTPUT_FILES_NO_CHANGE_LIMIT = 40
 DEFAULT_PHASE_NO_CHANGE_LIMIT_SECONDS = 0.5
+DEFAULT_REPLAYABLE_OUTPUT_BYTES_LIMIT = 1_500_000
+DEFAULT_REPLAYABLE_OUTPUT_FILES_LIMIT = 40
+DEFAULT_REPLAYABLE_MANIFEST_BYTES_LIMIT = 60_000
 
 
 class MultiZoneHazardThroughputProfileError(ValueError):
@@ -408,6 +411,13 @@ def build_report(profile_root: Path) -> dict[str, Any]:
         timing_breakdown,
         profile_spec=profile_spec,
     )
+    larger_package_profile = build_larger_than_four_zone_package_profile(
+        profile_root=profile_root,
+        fixture_manifest=fixture_manifest,
+        explicit_run=explicit_run,
+        timing_breakdown=timing_breakdown,
+        output_pressure=output_pressure,
+    )
 
     run_summaries = {
         mode: {
@@ -525,6 +535,7 @@ def build_report(profile_root: Path) -> dict[str, Any]:
             "hazard_layer_seconds": number_or_zero(explicit_run.performance.get("hazard_layer_seconds")),
             "total_wall_seconds": number_or_zero(explicit_run.performance.get("total_wall_seconds")),
         },
+        "larger_than_four_zone_package_profile": larger_package_profile,
         "analysis_notes": [
             "The representative fixture uses explicit-grid output to isolate trajectory accumulation from bounds discovery.",
             "The smoke profile is smaller and omits report rendering to keep routine tests fast.",
@@ -532,6 +543,93 @@ def build_report(profile_root: Path) -> dict[str, Any]:
         ],
     }
     return report
+
+
+def build_larger_than_four_zone_package_profile(
+    *,
+    profile_root: Path,
+    fixture_manifest: dict[str, Any],
+    explicit_run: ProfileRunResult,
+    timing_breakdown: dict[str, Any],
+    output_pressure: dict[str, Any],
+) -> dict[str, Any]:
+    release_zone_count = int(number_or_zero(fixture_manifest.get("release_zone_count")))
+    conditional_execution = explicit_run.hazard_manifest.get("conditional_execution") or {}
+    curve_export = conditional_execution.get("conditional_curve_export") or {}
+    output_budget = conditional_execution.get("output_budget") or {}
+    manifest_bytes = sum(int(value) for value in output_pressure.get("manifest_family_bytes", {}).values())
+    observed_output_files = int(number_or_zero(explicit_run.performance.get("output_file_count")))
+    observed_output_bytes = int(number_or_zero(explicit_run.performance.get("output_bytes")))
+    targets_greater_than_four_zones = release_zone_count > 4
+    replayable_output_budget = {
+        "max_output_file_count": DEFAULT_REPLAYABLE_OUTPUT_FILES_LIMIT,
+        "max_output_bytes": DEFAULT_REPLAYABLE_OUTPUT_BYTES_LIMIT,
+        "max_manifest_bytes": DEFAULT_REPLAYABLE_MANIFEST_BYTES_LIMIT,
+        "observed_output_file_count": observed_output_files,
+        "observed_output_bytes": observed_output_bytes,
+        "observed_manifest_bytes": manifest_bytes,
+        "within_output_file_budget": observed_output_files <= DEFAULT_REPLAYABLE_OUTPUT_FILES_LIMIT,
+        "within_output_byte_budget": observed_output_bytes <= DEFAULT_REPLAYABLE_OUTPUT_BYTES_LIMIT,
+        "within_manifest_byte_budget": manifest_bytes <= DEFAULT_REPLAYABLE_MANIFEST_BYTES_LIMIT,
+        "summary_only_curve_export_required": bool(output_budget.get("summary_only_curve_export_required_for_scale_up")),
+        "conditional_curve_table_written": bool(curve_export.get("csv_table_written")),
+        "conditional_curve_table_suppressed_for_output_budget": bool(curve_export.get("table_suppressed_for_output_budget")),
+    }
+    replayable_output_budget["within_budget"] = (
+        replayable_output_budget["within_output_file_budget"]
+        and replayable_output_budget["within_output_byte_budget"]
+        and replayable_output_budget["within_manifest_byte_budget"]
+        and replayable_output_budget["summary_only_curve_export_required"]
+        and not replayable_output_budget["conditional_curve_table_written"]
+        and replayable_output_budget["conditional_curve_table_suppressed_for_output_budget"]
+    )
+    blockers: list[str] = []
+    if not targets_greater_than_four_zones:
+        blockers.append("release_zone_count_not_greater_than_four")
+    for key in (
+        "within_output_file_budget",
+        "within_output_byte_budget",
+        "within_manifest_byte_budget",
+        "summary_only_curve_export_required",
+        "conditional_curve_table_suppressed_for_output_budget",
+    ):
+        if not replayable_output_budget[key]:
+            blockers.append(key)
+    if replayable_output_budget["conditional_curve_table_written"]:
+        blockers.append("conditional_curve_table_written")
+
+    status = "ready_for_pre_submit" if targets_greater_than_four_zones and replayable_output_budget["within_budget"] else "blocked"
+    return {
+        "schema_version": "larger_than_four_zone_hazard_package_profile_v1",
+        "status": status,
+        "profile_root": str(profile_root),
+        "targets_greater_than_four_zones": targets_greater_than_four_zones,
+        "not_four_zone_package": targets_greater_than_four_zones,
+        "release_zone_count": release_zone_count,
+        "trajectory_file_count": fixture_manifest.get("trajectory_file_count"),
+        "impact_file_count": fixture_manifest.get("impact_file_count"),
+        "hazard_manifest_path": str(explicit_run.hazard_manifest_path),
+        "command_plan": {
+            "materialize_and_profile": (
+                "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py "
+                "--materialize-root /tmp/rust_rockfall/multi_zone_hazard_throughput_profile_v2 "
+                "--profile multi_zone --format json"
+            ),
+            "replay_existing_profile_root": (
+                "PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py "
+                "--profile-root /tmp/rust_rockfall/multi_zone_hazard_throughput_profile_v2 --format json"
+            ),
+        },
+        "replayable_output_budget": replayable_output_budget,
+        "profile_scale": {
+            "output_file_count": observed_output_files,
+            "output_bytes": observed_output_bytes,
+            "hazard_layer_seconds": number_or_zero(explicit_run.performance.get("hazard_layer_seconds")),
+            "total_wall_seconds": number_or_zero(explicit_run.performance.get("total_wall_seconds")),
+            "largest_phase": timing_breakdown["largest_phase"],
+        },
+        "blockers": blockers,
+    }
 
 
 def run_profiled_hazard_build(
@@ -1147,10 +1245,14 @@ def render_text(report: dict[str, Any]) -> str:
     recommendation = report["recommendation"]
     proposal = recommendation.get("proposal") or {}
     runs = report.get("runs") or {}
+    larger_profile = report.get("larger_than_four_zone_package_profile") or {}
+    replay_budget = larger_profile.get("replayable_output_budget") or {}
     lines = [
         f"profile_status: {report['profile_status']}",
         f"profile_id: {report.get('profile_id')}",
         f"release_zone_count: {report['fixture']['release_zone_count']}",
+        f"larger_than_four_zone_status: {larger_profile.get('status')}",
+        f"replayable_output_budget_within_budget: {replay_budget.get('within_budget')}",
         f"trajectory_file_count: {report['fixture']['trajectory_file_count']}",
         f"impact_file_count: {report['fixture']['impact_file_count']}",
         f"trajectory_read_seconds: {timings['trajectory_read_seconds']}",
@@ -1194,12 +1296,16 @@ def render_markdown(report: dict[str, Any]) -> str:
     recommendation = report["recommendation"]
     proposal = recommendation.get("proposal") or {}
     runs = report.get("runs") or {}
+    larger_profile = report.get("larger_than_four_zone_package_profile") or {}
+    replay_budget = larger_profile.get("replayable_output_budget") or {}
     lines = [
         "# Multi-Zone Hazard Throughput Profile",
         "",
         f"- profile_status: `{report['profile_status']}`",
         f"- profile_id: `{report.get('profile_id')}`",
         f"- release_zone_count: `{report['fixture']['release_zone_count']}`",
+        f"- larger_than_four_zone_status: `{larger_profile.get('status')}`",
+        f"- replayable_output_budget_within_budget: `{replay_budget.get('within_budget')}`",
         f"- trajectory_read_seconds: `{timings['trajectory_read_seconds']}`",
         f"- bounds_discovery_seconds: `{timings['bounds_discovery_seconds']}`",
         f"- accumulation_seconds: `{timings['accumulation_seconds']}`",
