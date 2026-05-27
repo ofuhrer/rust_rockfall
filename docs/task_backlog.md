@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-673: Run A Swiss National Chunk Execution Smoke
-
-Goal: Execute a tiny national-chunk-shaped sample rather than only estimating the national tile/chunk inventory.
-
-Capability gap reduced: First executable bridge from national tiling inventory to chunked processing behavior.
-
-Why this outranks alternatives: TB-661 showed the national inventory shape, but Swiss-scale feasibility needs at least one runnable chunk-shaped sample.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/estimate_large_scale_execution.py`
-- `docs/swiss_national_tiling_inventory_tb607.json`
-- `docs/swiss_national_tile_chunk_mapping_tb608.json`
-- `tests/test_swiss_wide_execution_envelope.py`
-
-Deliverables:
-
-- A local or Balfrin smoke that processes a tiny representative subset of national chunks, records runtime/output footprint, and compares it with the inventory projection.
-
-Definition of done:
-
-- The smoke produces measured chunk-shaped outputs or a concrete missing-data blocker tied to specific inventory products.
-
-Scope: Do not attempt a full Swiss-wide run in this task.
-
 ### TB-674: Stage The Minimum Real Public Geodata Cache For A Second Site
 
 Goal: Move the Chant Sura second-site path from missing context inputs toward a runnable real-input prepared pilot.

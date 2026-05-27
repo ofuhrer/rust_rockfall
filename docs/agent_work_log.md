@@ -10924,3 +10924,24 @@ completed history.
 - Metrics: source size `2,431,977` bytes; recovered size `2,446,580` bytes; mandatory artifacts checked `8`; missing mandatory artifacts `0`; checksum match `true`; metrics regenerated without rerun `true`; reconstructed summary matches source `true`; release zones `12`; output files `29`; output bytes `1,148,530`; hazard-layer seconds `0.078136`; total profile wall seconds `0.288979`.
 - Boundaries: copied-root recovery evidence only; no live interruption/resume, distributed execution, non-`postproc`, Swiss-wide execution, physical-probability, operational, or risk/exposure/vulnerability claim changed.
 - Next task: `TB-673`
+
+### TB-673: Run A Swiss National Chunk Execution Smoke
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: execute a tiny national-chunk-shaped Balfrin smoke from the Swiss national tile/chunk mapping.
+- Files changed: `docs/balfrin_national_chunk_execution_smoke_tb673.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Copied the national tiling inventory and chunk mapping to a fresh Balfrin `$SCRATCH` run root.
+  - Submitted a small `postproc` job that selected first, middle, and last national chunks and wrote restartable manifest/state outputs for each chunk.
+  - Recorded scheduler accounting, output footprint, inventory comparison, and the concrete missing data family for real payload processing.
+  - Removed TB-673 from the active backlog.
+- Checks run:
+  - `sbatch --export=ALL,RUN_ROOT=<run_root> tb673_national_chunk_smoke.sbatch`
+  - `sacct -j 4378565 --format=JobID,State,ExitCode,Elapsed,MaxRSS -P`
+  - local inspection of `/tmp/tb673_national_chunk_smoke_summary.json`
+- Result/status: implemented_measured_with_payload_blocker
+- Metrics: run root `/scratch/mch/olifu/rust_rockfall/swiss_wide_smokes/tb673_national_chunk_smoke_20260527_152950_pycompat`; job `4378565`; state `COMPLETED`; exit `0:0`; SLURM elapsed `00:00:02`; `/usr/bin/time` elapsed `0:00.07`; peak RSS `10668` KB; national chunks `85`; merge groups `11`; sampled chunks `3`; sampled tiles `1516` of `43500`; worker wall `0.011102` seconds; output files `13`; output bytes `134,092`; represented required `swissALTI3D` bytes `1,516,000,000`.
+- Missing payload blocker: `swissALTI3D national 2 m chunk payloads` (`swissalti3d_2m_raw_float32`); optional richer context families `SWISSIMAGE` and `swissSURFACE3D Raster`.
+- Boundaries: national chunk manifest/state orchestration smoke only; no Swiss-wide DEM cell processing, hazard simulation, distributed execution, physical-probability, operational, or risk/exposure/vulnerability claim changed.
+- Next task: `TB-674`
