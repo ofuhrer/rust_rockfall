@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-674: Stage The Minimum Real Public Geodata Cache For A Second Site
-
-Goal: Move the Chant Sura second-site path from missing context inputs toward a runnable real-input prepared pilot.
-
-Capability gap reduced: Scientific validation beyond the Tschamut-only path.
-
-Why this outranks alternatives: Swiss-scale feasibility is weak if the workflow only works for one site with incomplete second-site validation.
-
-Inspect first:
-
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/verify_public_geodata_cache.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml`
-- `docs/chant_sura_public_geodata_cache_tb654.md`
-
-Deliverables:
-
-- A staged or precisely blocked minimum real public-geodata cache for Chant Sura, with required products classified as ready, missing, or intentionally deferred.
-
-Definition of done:
-
-- The second-site preflight moves measurably closer to real-input execution or reports a product-by-product acquisition blocker that can be acted on directly.
-
-Scope: Do not count fixture-backed smoke inputs as real second-site validation.
-
 ### TB-675: Run The Second-Site Prepared Pilot When The Cache Is Ready
 
 Goal: Execute the Chant Sura prepared-pilot path with real staged inputs, or fail on the first still-missing real product.

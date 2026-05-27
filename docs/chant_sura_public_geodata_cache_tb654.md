@@ -76,6 +76,30 @@ PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py \
   --format json
 ```
 
+## TB-674 Update
+
+The dedicated minimum cache manifest now verifies the real staged terrain crop
+as ready:
+
+```bash
+PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py \
+  --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml \
+  --format json
+```
+
+Result:
+
+- `cache_integrity_status`: `ready`
+- Required products: `1`
+- Ready required products: `1`
+- Fixture-backed required products: `0`
+- Product: `terrain_crop`
+- Provenance: `real_staged`
+
+The broader acquisition manifest still lists the public context products as
+deferred, and the source/scenario records remain staged regression records
+rather than real validation evidence.
+
 ## Interpretation
 
 This is a concrete acquisition blocker, not a second-site validation result.

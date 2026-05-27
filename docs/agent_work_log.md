@@ -10945,3 +10945,24 @@ completed history.
 - Missing payload blocker: `swissALTI3D national 2 m chunk payloads` (`swissalti3d_2m_raw_float32`); optional richer context families `SWISSIMAGE` and `swissSURFACE3D Raster`.
 - Boundaries: national chunk manifest/state orchestration smoke only; no Swiss-wide DEM cell processing, hazard simulation, distributed execution, physical-probability, operational, or risk/exposure/vulnerability claim changed.
 - Next task: `TB-674`
+
+### TB-674: Stage The Minimum Real Public Geodata Cache For A Second Site
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: classify and verify the minimum real Chant Sura public-geodata cache without counting fixture-backed inputs as validation evidence.
+- Files changed: `docs/chant_sura_minimum_public_geodata_cache_tb674.md`, `docs/chant_sura_public_geodata_cache_tb654.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified the dedicated Chant Sura public-geodata cache manifest for the staged terrain product.
+  - Re-ran the second-site preflight and acquisition/staging checks to separate real terrain readiness from deferred context and regression source/scenario records.
+  - Recorded the product-by-product ready, deferred, and not-real-validation status in a compact TB-674 evidence note.
+  - Removed TB-674 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json --json-output /tmp/tb674_preflight_before.json`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json --json-output /tmp/tb674_minimum_cache_verify.json`
+  - `PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_public_geodata_acquisition.yaml --mode dry-run --scan-root data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1 --local-path validation/policies/chant_sura_fluelapass_portability_example_v1_source_scenario_policy_v1.yaml --proposal-output /tmp/tb674_stage_proposal.json --format json --json-output /tmp/tb674_stage_dry_run.json`
+- Result/status: implemented_verified_minimum_cache
+- Metrics: minimum cache `cache_integrity_status` `ready`; product `terrain_crop`; verification `verified`; provenance `real_staged`; required products `1`; ready required products `1`; missing required products `0`; fixture-backed required products `0`; broader preflight `core_input_status` `ready`; `terrain_manifest_status` `ready`; `source_zone_manifest_status` `ready`; `scenario_manifest_status` `ready`; public context boundary `deferred_public_context_inputs`.
+- Remaining blockers: real public context staging for SWISSIMAGE, swissTLM3D, swissSURFACE3D, swissSURFACE3D Raster, and swissBUILDINGS3D; source-zone metadata, scenario table, and policy are staged regression records, not real second-site validation evidence.
+- Boundaries: minimum terrain-cache readiness only; no real second-site validation, physical-probability, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide execution claim changed.
+- Next task: `TB-675`
