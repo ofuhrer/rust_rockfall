@@ -10326,3 +10326,22 @@ completed history.
 - Metrics: metrics contract `complete`; hazard workflow wall time `6.930015419959091` s; peak memory `379.14453125` MB; metrics-reported hazard output `57` files / `31,439,445` bytes; validation output `130` files / `34,565,323` bytes; conditional-curve rows `729,600`; hazard manifest size `99,598` bytes; manifest entries `50`; manifest-accounted files `50`; manifest-accounted bytes `17,416,952`; sidecar/metadata files `13`; sidecar/metadata bytes `213,126`; primary hazard files `37`; primary hazard bytes `17,203,826`; missing manifest paths `0`.
 - Boundaries: measured output-pressure summary for the current largest hazard-throughput root only; no new Balfrin job, no larger hazard-throughput measurement, no Swiss-wide, distributed, non-`postproc`, operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-644`
+
+### TB-644: Simplify The Balfrin User Command Path
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: reduce the user-facing Balfrin command surface while preserving compatibility helpers.
+- Files changed: `README.md`, `docs/balfrin_tschamut_pilot_runbook.md`, `docs/balfrin_skills.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Made `scripts/run_balfrin_diagnostic.py plan/run` the primary documented path for routine bounded `postproc` diagnostics.
+  - Demoted older handoff, authorization, submit, collect, and post-run helper chains to compatibility/forensic context in the Tschamut runbook and Balfrin skills file.
+  - Kept the README advanced-scaling section aligned with the single-runner path and added the TB-642 guardrail that >4-zone hazard-throughput runs need a real package profile before submission.
+  - Removed TB-644 from the active backlog without deleting executable helpers.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-644 --format json`
+  - `PYENV_VERSION=system uv run python scripts/generate_pilot_command_plan.py --format json`
+- Result/status: implemented
+- Metrics: public docs now expose one routine Balfrin runner for diagnostics; legacy helper path is retained only for historical hazard-package replay and forensic debugging.
+- Boundaries: documentation simplification only; no helper removed, no Balfrin job submitted, and no scientific or operational claim changed.
+- Next task: `TB-645`

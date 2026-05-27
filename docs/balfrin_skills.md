@@ -29,6 +29,20 @@ Connect:
 ssh balfrin
 ```
 
+Repository command path:
+
+```bash
+cd /users/olifu/work/rust_rockfall
+PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 24 --manifest-mode compact --partition postproc --format text
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 24 --manifest-mode compact --partition postproc --format text
+```
+
+That is the routine path for bounded `postproc` diagnostic runs. Historical
+handoff, authorization, submit, and collect helpers are compatibility and
+forensic tools; do not start with them unless a task explicitly names a
+historical hazard-throughput package.
+
 Useful first checks:
 
 ```bash

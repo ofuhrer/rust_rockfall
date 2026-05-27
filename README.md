@@ -184,7 +184,9 @@ point, reproduction commands, run roots, and boundaries. These are performance
 and feasibility results, not operational or physical-probability claims. The
 older Balfrin handoff, preflight, submit, and collect scripts remain
 compatibility and forensic helpers; routine diagnostic runs should use the
-single runner above.
+single runner above. Larger hazard-throughput runs beyond the current TB-619
+support point need a real >4-zone hazard package profile before submission; do
+not use the historical package helpers as a shortcut around that profile.
 
 ## Development Workflow
 

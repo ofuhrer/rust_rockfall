@@ -1,9 +1,11 @@
 # Balfrin Tschamut Pilot Runbook
 
-This runbook is a reusable operational procedure for a local Tschamut conditional
-pilot on balfrin. It assumes the shared local workflow contract is already in
-place (`validation/pilot_runs/tschamut_public_conditional_pilot_gate_v1.yaml` by
-default) and keeps the process read-only where possible.
+This runbook is the short Balfrin operating path for Tschamut scaling checks.
+Routine diagnostic runs use one runner: `scripts/run_balfrin_diagnostic.py`.
+
+The older handoff, authorization, submit, collect, and post-run helpers remain
+available for forensic review and historical hazard-throughput packages, but
+they are not the normal command surface for a fresh bounded diagnostic run.
 
 For cluster rules, filesystem guidance, partition boundaries, and operational
 queue exclusions, read [`docs/balfrin_skills.md`](./balfrin_skills.md) first.
@@ -55,27 +57,46 @@ measured evidence.
 
 ## Primary Command Path
 
-For the next bounded Balfrin hazard run, generate the submission package first
-and use its `primary_operator_sequence` as the normal path. The detailed
-sections below remain available for stop/resume, failure handoff, and manual
-inspection.
+Use this path for routine bounded `postproc` diagnostics. It plans, prepares,
+submits, monitors, collects, and writes one `run_record.json` under `$SCRATCH`.
 
 ```bash
-PYENV_VERSION=system uv run python scripts/submit_balfrin_probe.py \
-  "$RUN_MANIFEST" \
-  --generate-only \
-  --run-root "$RUN_ROOT" \
-  --run-id "$RUN_ID" \
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan \
+  --release-zones 24 \
+  --manifest-mode compact \
   --partition postproc \
-  --time 00:30:00 \
-  --nodes 1 \
-  --ntasks 1 \
-  --cpus-per-task 16
+  --format text
 ```
 
-The generated `balfrin_submission_package.md` then shows the shortest normal
-sequence: preflight, generate-only, submit, and collect. Keep the same
-`RUN_ROOT` and `RUN_ID` throughout.
+If the plan points at the intended `$SCRATCH` root, run it:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run \
+  --release-zones 24 \
+  --manifest-mode compact \
+  --partition postproc \
+  --format text
+```
+
+For a named run root, add `--run-id <name>` or `--run-root
+/scratch/mch/olifu/rust_rockfall/diagnostics/<name>` to both commands.
+
+Use the access preflight before submitting when the SSH session, checkout, or
+queue state may have changed:
+
+```bash
+PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json
+```
+
+The generated run record contains the scheduler state, reducer-pressure
+summary, paths, timing, and claim boundary. Keep bulky generated roots under
+`$SCRATCH`.
+
+## Compatibility Hazard-Package Path
+
+Use the sections below only when replaying an older bounded hazard package or
+debugging a historical submission. For fresh diagnostic scale checks, prefer
+the primary command path above.
 
 ## 2) Bring the repo and manifest to a known state
 

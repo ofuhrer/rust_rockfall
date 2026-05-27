@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-644: Simplify The Balfrin User Command Path
-
-Goal: Reduce the number of user-facing Balfrin commands by routing routine diagnostic and bounded hazard runs through the smallest current command surface.
-
-Capability gap reduced: Operational usability and repository simplicity.
-
-Why this outranks alternatives: The repo still has many Balfrin helpers, and users need a clear path that does not require knowing historical task scripts.
-
-Inspect first:
-
-- `README.md`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_skills.md`
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/run_balfrin_diagnostic.py`
-
-Deliverables:
-
-- A shorter documented Balfrin command path that points routine work at current runners and demotes obsolete helper entry points to developer/forensic context.
-
-Definition of done:
-
-- Public docs expose fewer top-level Balfrin commands, existing tests still pass, and no executable capability is removed.
-
 ### TB-645: Add A Swiss National Data Inventory Smoke
 
 Goal: Check whether the existing national tiling and data-inventory surfaces can produce a current, small, share-safe planning summary.
