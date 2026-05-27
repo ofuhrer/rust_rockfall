@@ -1,6 +1,6 @@
 # Tschamut Calibration Experiment
 
-This historical document describes `calibration/experiments/tschamut_v0_3`, a first controlled calibration experiment for the public Tschamut 2014 dataset. It is explicitly separate from validation. It does not modify `validation/cases/tschamut_basic.yaml`, does not claim predictive skill, and does not produce operational hazard parameters. It is not operational calibration. The experiment remains a v0.3.0 calibration artifact and does not use the v0.4.0 `scarring_contact_v1` soil interaction model.
+This historical document describes `calibration/experiments/tschamut_v0_3`, a controlled calibration experiment for the public Tschamut 2014 dataset. It is explicitly separate from validation. It does not modify `validation/cases/tschamut_basic.yaml`, does not claim predictive skill, and does not produce operational hazard parameters. It is not operational calibration. The experiment remains a v0.3.0 calibration artifact and does not use the v0.4.0 `scarring_contact_v1` soil interaction model.
 
 ## Dataset Split
 
@@ -18,16 +18,17 @@ This gives 18 calibration runs and 18 held-out runs, with no overlap. The split 
 
 ## Parameter Space
 
-The experiment evaluates a small explicit grid defined in `calibration/experiments/tschamut_v0_3/config.yaml`:
+The experiment evaluates an explicit local grid defined in `calibration/experiments/tschamut_v0_3/config.yaml`:
 
-- `normal_restitution`: `0.25`, `0.40`
-- `tangential_restitution`: `0.85`, `0.95`
-- `friction_coefficient`: `0.20`, `0.35`
+- `normal_restitution`: `0.20`, `0.25`, `0.35`, `0.40`
+- `tangential_restitution`: `0.80`, `0.85`, `0.90`
+- `friction_coefficient`: `0.30`, `0.35`, `0.40`, `0.45`
 - roughness profile:
   - `low`: normal `0.04`, tangent `0.04`, angle `0.04 rad`
   - `moderate`: normal `0.08`, tangent `0.06`, angle `0.08 rad`
+  - `high`: normal `0.12`, tangent `0.08`, angle `0.12 rad`
 
-The grid is intentionally small enough to inspect by hand. It calibrates only exposed v0.3.0 parameters and keeps `contact_model: translational_v0` with opt-in `roughness_model: stochastic_contact_v1`. It does not introduce new physics.
+The grid is intentionally local around the prior edge optimum while broadening friction, restitution, and roughness enough to test whether the earlier result was grid-limited. It calibrates only exposed v0.3.0 parameters and keeps `contact_model: translational_v0` with opt-in `roughness_model: stochastic_contact_v1`. It does not introduce new physics.
 
 ## Objective Function
 
@@ -74,11 +75,11 @@ PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --describ
 
 ## Result
 
-The selected candidate is `candidate_003`:
+The expanded local run completed with 144 candidates and no calibration/holdout ID overlap. The selected candidate is `candidate_103`:
 
-- `normal_restitution = 0.25`
-- `tangential_restitution = 0.85`
-- `friction_coefficient = 0.35`
+- `normal_restitution = 0.35`
+- `tangential_restitution = 0.90`
+- `friction_coefficient = 0.40`
 - `roughness_model = stochastic_contact_v1`
 - `roughness_std_normal = 0.08`
 - `roughness_std_tangent = 0.06`
@@ -86,27 +87,27 @@ The selected candidate is `candidate_003`:
 
 Calibration subset:
 
-- objective: `0.2702`
+- objective: `0.0464`
 - observed mean runout: `92.25 m`
-- simulated mean runout: `122.42 m`
-- runout error: `30.17 m`
-- deposition centroid error: `31.08 m`
-- deposition-cloud mean nearest error: `16.69 m`
-- lateral spread error: `2.39 m`
+- simulated mean runout: `90.63 m`
+- runout error: `1.62 m`
+- deposition centroid error: `3.65 m`
+- deposition-cloud mean nearest error: `11.46 m`
+- lateral spread error: `3.48 m`
 
 Held-out subset:
 
-- objective: `0.2839`
+- objective: `0.0857`
 - observed mean runout: `97.63 m`
-- simulated mean runout: `131.17 m`
-- runout error: `33.54 m`
-- deposition centroid error: `34.22 m`
-- deposition-cloud mean nearest error: `17.62 m`
-- lateral spread error: `5.46 m`
+- simulated mean runout: `105.51 m`
+- runout error: `7.88 m`
+- deposition centroid error: `8.99 m`
+- deposition-cloud mean nearest error: `8.09 m`
+- lateral spread error: `9.50 m`
 
-The held-out objective is close to the calibration objective for this split. That does not prove predictive skill; it mainly shows that this small grid has not visibly overfit the calibration subset. The selected parameters still over-run both partitions substantially.
+The held-out objective remains close to the calibration objective for this split. That does not prove predictive skill; it mainly shows that this expanded local grid has not visibly overfit the calibration subset. The selected parameters improve runout and centroid errors substantially compared with the prior 16-candidate smoke, while lateral spread remains weaker on the held-out subset.
 
-The measured sensitivity summary in `summary.json` identifies `friction_coefficient` as the strongest mean objective driver across the small grid. The calibration-objective span between the best and worst candidates is `2.3367`, so the smoke run confirms that parameter changes produce measurable runout/deposition metric deltas.
+The measured sensitivity summary in `summary.json` identifies `friction_coefficient` as the strongest mean objective driver across the explicit grid. The calibration-objective span between the best and worst candidates is `1.4124`, so the run confirms that parameter changes produce measurable runout/deposition metric deltas.
 
 ## Terrain Update Note
 

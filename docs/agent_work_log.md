@@ -10137,3 +10137,22 @@ completed history.
 - Metrics: matrix status `actionable_reducer_pressure`; blocked reason `reducer_pressure_and_replay_metadata_growth`; next recommended scaling task `summarize_multi_zone_reducer_pressure`; latest hazard-throughput job `4372656`.
 - Boundaries: interpretation/reporting fix only; no new Balfrin run, scale-up authorization, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-635`
+
+### TB-635: Expand Tschamut Calibration Candidate Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: strengthen the partial Tschamut calibration evidence with a broader local grid while preserving calibration/holdout separation.
+- Files changed: `scripts/run_tschamut_calibration.py`, `calibration/experiments/tschamut_v0_3/config.yaml`, `calibration/experiments/tschamut_v0_3/objective_contract.json`, `calibration/experiments/tschamut_v0_3/candidate_results.csv`, `calibration/experiments/tschamut_v0_3/selected_parameters.yaml`, `calibration/experiments/tschamut_v0_3/summary.json`, `calibration/experiments/tschamut_v0_3/report.html`, `calibration/data/tschamut/*.csv`, `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Expanded the local v0.3.0 grid from 16 to 144 candidates around the prior edge optimum.
+  - Reran the full calibration workflow locally against both calibration and held-out partitions.
+  - Kept the deterministic split unchanged, with zero calibration/holdout trajectory overlap.
+  - Updated the calibration documentation with the measured expanded-grid result without promoting the selected parameters to defaults.
+  - Removed TB-635 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --config calibration/experiments/tschamut_v0_3/config.yaml`
+- Result/status: implemented_measured
+- Metrics: candidate count `144`; selected candidate `candidate_103`; calibration objective `0.0464107283231083`; holdout objective `0.0856601395687338`; calibration runout error `1.618199965915906 m`; holdout runout error `7.879923350207235 m`; strongest mean effect parameter `friction_coefficient`; calibration objective span `1.4124407087855544`; calibration/holdout overlap count `0`.
+- Boundaries: research calibration evidence only; no selected parameter was promoted to defaults or validation cases, and no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim is made.
+- Next task: `TB-636`

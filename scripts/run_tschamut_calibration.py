@@ -635,7 +635,7 @@ def summarize_parameter_sensitivity(rows: list[dict[str, Any]]) -> dict[str, Any
         "calibration_objective_span": float(worst["calibration_objective"]) - float(best["calibration_objective"]),
         "effects": effects,
         "interpretation": (
-            f"{strongest['parameter']} has the largest mean objective separation across the small grid. "
+            f"{strongest['parameter']} has the largest mean objective separation across the explicit grid. "
             "The result is a bounded sensitivity smoke, not a validation acceptance claim."
         ),
     }

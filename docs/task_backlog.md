@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-635: Expand Tschamut Calibration Candidate Evidence
-
-Goal: Strengthen the partial calibration evidence with a broader but still local parameter search and holdout-preserving comparison.
-
-Capability gap reduced: The physical-probability readiness check currently fails on `calibration_evidence`.
-
-Why this outranks alternatives: Calibration is now the only failing physical-probability evidence class in the readiness check, so improving it has the highest scientific leverage.
-
-Inspect first:
-
-- `scripts/run_tschamut_calibration.py`
-- `calibration/experiments/tschamut_v0_3/config.yaml`
-- `calibration/experiments/tschamut_v0_3/summary.json`
-- `docs/tschamut_calibration.md`
-
-Deliverables:
-
-- A measured expanded local calibration run or a concrete blocker, with candidate count, selected candidate, calibration objective, holdout objective, and sensitivity summary.
-
-Definition of done:
-
-- The run completes or fails with a concrete data/objective blocker, holdout IDs remain excluded from fitting, and calibration docs summarize the result without promoting selected parameters to defaults.
-
 ### TB-636: Add Calibration Residual Diagnostics
 
 Goal: Make calibration quality easier to evaluate by reporting residual distribution and outlier cases rather than a single objective value.
