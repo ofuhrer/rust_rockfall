@@ -82,6 +82,12 @@ the local AOI inputs and diagnostics are explicit.
      --format text
    ```
 
+   Because that blocker prevents a real second-site hazard run, there is not
+   yet a second-site package shape to compare with Tschamut. The current
+   Tschamut package anchor has `39` files, `22` rasters, and `2` vector layers;
+   the Chant Sura hazard root is missing the map-package and pilot-GIS package
+   manifests.
+
 3. Review candidate release zones.
 
    ```bash

@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-641: Compare Second-Site Outputs Against Tschamut Output Shape
-
-Goal: Verify whether the second-site run produces comparable layer families, file counts, byte counts, and package readiness.
-
-Capability gap reduced: Multi-site feasibility and output-interface stability.
-
-Why this outranks alternatives: Portability is not useful if the second-site outputs cannot be reviewed with the same map/package tools.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/summarize_large_aoi_gis_cog_stress_test.py`
-- `docs/hazard_layers.md`
-- `docs/aoi_user_manual.md`
-
-Deliverables:
-
-- A compact comparison between Tschamut and second-site output/package shape, including missing layer families or review blockers.
-
-Definition of done:
-
-- The comparison uses real output roots when available, reports concrete parity or blockers, and does not add a new long-lived report unless needed by a current workflow.
-
 ### TB-642: Run A Larger Bounded Hazard-Throughput Probe On Balfrin
 
 Goal: Measure hazard-throughput beyond the current bounded four-zone support point while staying inside the existing `postproc` standing clearance.

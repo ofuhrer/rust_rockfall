@@ -10262,3 +10262,23 @@ completed history.
 - Metrics: status `blocked_local_execution`; prepared-pilot classification `blocked_missing_inputs`; first blocker step `prepared_pilot_inputs`; missing public context root count `5`; acquisition blocker status `blocked_missing_public_context_inputs`.
 - Boundaries: execution blocker only; no fixture-backed local smoke counted as second-site evidence, no real second-site hazard/review output, no download, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-641`
+
+### TB-641: Compare Second-Site Outputs Against Tschamut Output Shape
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: compare the second-site output/package shape with the Tschamut package anchor when real second-site outputs are available, otherwise report the concrete output-shape blocker.
+- Files changed: `docs/aoi_user_manual.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed the Chant Sura / Flüelapass hazard root exists but contains no real hazard outputs.
+  - Ran package-map against the second-site hazard root and captured the missing map-package manifest blocker.
+  - Rechecked the Tschamut package-shape anchor from the existing target-gate hazard root.
+  - Documented the current second-site shape blocker in the AOI user manual.
+  - Removed TB-641 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --artifact-root hazard/results/chant_sura_fluelapass_portability_example_v1 --package-output-root /tmp/tb641_second_site_package --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_large_aoi_gis_cog_stress_test.py --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --format json`
+- Result/status: implemented_waiting_report
+- Metrics: second-site package-map status `blocked_missing_hazard_outputs`; missing outputs `hazard/results/chant_sura_fluelapass_portability_example_v1/*map_package_manifest*.json` and `hazard/results/chant_sura_fluelapass_portability_example_v1/*pilot_gis_package_manifest*.json`; Tschamut package status `ready`; Tschamut package files `39`; Tschamut package bytes `413305`; raster count `22`; vector count `2`.
+- Boundaries: output-shape blocker only; no second-site run, no second-site package parity, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-642`
