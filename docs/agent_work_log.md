@@ -10465,3 +10465,25 @@ completed history.
 - Metrics: package status `map_package_ready`; package files `39`; package bytes `447,853`; raster count `22`; vector overlay count `2`; layer inventory `parity_match`; review surface `review_ready_with_warnings`; checklist status `diagnostic_review_pending`; checklist item count `8`; checklist ready count `5`; accepted for operational use `false`.
 - Boundaries: local package/front-door smoke only; no new simulation, Balfrin job, scale-up authorization, operational claim, physical-probability claim, annual-frequency claim, risk, exposure, or vulnerability claim.
 - Next task: `TB-651`
+
+### TB-651: Build A Larger Hazard-Throughput Package Profile
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: create or fail closed on a >4-zone hazard-throughput package profile before attempting the next Balfrin probe.
+- Files changed: `docs/balfrin_hazard_throughput_package_profile_tb651.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Materialized the representative local `multi_zone` hazard-throughput profile into `/tmp/tb651_multi_zone_profile`.
+  - Generated an 8-zone, 2-chunk, 2-worker Balfrin handoff package into `/tmp/tb651_handoff_8`.
+  - Checked the hazard rebuild output profile to keep the rebuild-compatible reduced-output boundary visible.
+  - Recorded the package/profile metrics and decision in a new TB-651 evidence note.
+  - Removed TB-651 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-651 --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --materialize-root /tmp/tb651_multi_zone_profile --profile multi_zone --format json --json-output /tmp/tb651_multi_zone_profile.json --markdown-output /tmp/tb651_multi_zone_profile.md`
+  - `PYENV_VERSION=system uv run python scripts/generate_balfrin_multi_release_zone_demo_handoff.py --artifact-dir /tmp/tb651_handoff_8 --requested-release-zone-batch-size 8 --requested-reducer-chunk-count 2 --requested-reducer-worker-count 2 --format json --json-output /tmp/tb651_handoff_8.json`
+  - `PYENV_VERSION=system uv run python scripts/check_hazard_rebuild_output_profile.py --format json`
+- Result/status: implemented_measured
+- Metrics: local profile release zones `12`; local profile output files `29`; local profile output bytes `1,144,550`; dominant phase `accumulation_seconds`; 8-zone handoff review readiness `ready_for_review`; scenario count `24`; output-budget gate `fixture_backed_ready`; projection status `acceptable`; projected output files `35`; projected output bytes `26,422`; projected manifest bytes `22,570`; replay-critical families retained `5`; constraint pressure `warning`.
+- Boundaries: package/profile measurement only; no Balfrin submission in this task, no scale-up claim, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-652`

@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-651: Build A Larger Hazard-Throughput Package Profile
-
-Goal: Create or fail closed on a real hazard-throughput package profile beyond the current four-zone TB-619 support point.
-
-Capability gap reduced: Hazard-throughput scaling beyond the current bounded support point.
-
-Why this outranks alternatives: The 100-zone evidence is diagnostic reducer-pressure only; the next scale gap is a true larger hazard-throughput package profile.
-
-Inspect first:
-
-- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/check_hazard_rebuild_output_profile.py`
-- `docs/balfrin_hazard_throughput_probe_tb642.md`
-
-Deliverables:
-
-- A scratch package/profile for a >4-zone hazard-throughput candidate, or a measured blocker identifying the exact output, manifest, replay, or package constraint.
-
-Definition of done:
-
-- The profile reports zone count, scenario count, output family counts, manifest bytes, replay-critical families, and whether it is safe to submit.
-
 ### TB-652: Run The Next Bounded Hazard-Throughput Probe On Balfrin
 
 Goal: If TB-651 produces a safe package profile, submit and monitor the next bounded `postproc` hazard-throughput probe on Balfrin.
