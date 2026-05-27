@@ -1,0 +1,73 @@
+schema_version: block_population_evidence_v1
+record_id: tschamut_public_block_population_candidate_v1
+record_status: accepted_for_design_review
+prototype_authorized: false
+operational_status: research_diagnostic
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+population_basis: observed_tschamut2014_block_metadata_inventory
+source_table: validation/data/processed/tschamut/block_metadata.csv
+block_population_distribution:
+  denominator: conditional_block_population_within_processed_inventory
+  total_count: 3
+  total_probability: 1.0
+  classes:
+    - block_population_class_id: tschamut2014_block_1
+      source_block_id: "1"
+      block_size_class: radius_0_176667m_mass_69kg
+      block_shape_class: measured_dimensions_sphere_proxy
+      mass_kg: 69.0
+      radius_m: 0.176667
+      size_x_m: 0.37
+      size_y_m: 0.32
+      size_z_m: 0.37
+      count: 1
+      probability: 0.3333333333333333
+      evidence_basis: one measured St. Leonard block row in validation/data/processed/tschamut/block_metadata.csv
+    - block_population_class_id: tschamut2014_block_2
+      source_block_id: "2"
+      block_size_class: radius_0_198333m_mass_79kg
+      block_shape_class: measured_dimensions_sphere_proxy
+      mass_kg: 79.0
+      radius_m: 0.198333
+      size_x_m: 0.5
+      size_y_m: 0.3
+      size_z_m: 0.39
+      count: 1
+      probability: 0.3333333333333333
+      evidence_basis: one measured Most heavy block row in validation/data/processed/tschamut/block_metadata.csv
+    - block_population_class_id: tschamut2014_block_4
+      source_block_id: "4"
+      block_size_class: radius_0_160000m_mass_40kg
+      block_shape_class: measured_dimensions_sphere_proxy
+      mass_kg: 40.0
+      radius_m: 0.16
+      size_x_m: 0.46
+      size_y_m: 0.3
+      size_z_m: 0.2
+      count: 1
+      probability: 0.3333333333333333
+      evidence_basis: one measured Plate block row in validation/data/processed/tschamut/block_metadata.csv
+uncertainty:
+  type: expert_range
+  required_before_prototype: true
+  notes: Candidate is limited to the three public Tschamut processed block metadata rows; it is not a field census of all detachable blocks.
+evidence_basis:
+  block_population: inventory_measurement
+  block_size_distribution: inventory_measurement
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - Candidate design-review record derived only from processed public Tschamut block metadata.
+  - The distribution is conditional within the observed metadata inventory and is not a source-frequency or event-rate model.
+  - Representative scenario sampling weights remain separate from this candidate population distribution.
+  - Runtime physical products and prototype authorization remain false.

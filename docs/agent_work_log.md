@@ -9923,3 +9923,25 @@ completed history.
 - Metrics: candidate record validates with `record_status=accepted_for_design_review`, `block_scenario_count=3`, `release_cell_count=10`; evidence-gap release-zone classification is now `present`; physical-probability first blocker moves to `block_population_evidence`; remaining failing classes are `block_population_evidence` and `calibration_evidence`.
 - Boundaries: candidate design-review evidence only; no runtime prototype authorization, annual frequency, physical-probability product, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-625`
+
+### TB-625: Stage Block-Population Evidence For The Pilot Zone
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: stage a first block-population candidate for the Tschamut public pilot from available processed block metadata.
+- Files changed: `validation/data/processed/tschamut/block_population_evidence_tschamut_public_candidate_v1.yaml`, `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `tests/test_physical_credibility_evidence_requirements.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a Tschamut public block-population evidence candidate accepted for design review only, derived from `validation/data/processed/tschamut/block_metadata.csv`.
+  - Represented the three processed blocks as conditional inventory classes with normalized probabilities and explicit evidence basis fields.
+  - Kept prototype, annual-frequency, physical-probability, return-period, operational, risk, and exposure claim fields false.
+  - Wired the validation/calibration evidence-gap helper to validate and report the block-population intake.
+  - Updated physical-credibility expectations so block-population is no longer a current blocker while source frequency remains blocked.
+  - Removed TB-625 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/assess_validation_calibration_evidence_gaps.py tests/test_validation_calibration_evidence_gaps.py tests/test_physical_credibility_evidence_requirements.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps tests.test_physical_credibility_evidence_requirements -v`
+- Result/status: implemented_measured
+- Metrics: block-population candidate validates with `record_status=accepted_for_design_review`, `block_population_class_count=3`, and `total_count=3`; evidence-gap block-population classification is now `present`; physical-probability first blocker moves to `calibration_evidence`; remaining failing classes are `calibration_evidence`.
+- Boundaries: candidate design-review evidence only; no runtime prototype authorization, annual frequency, physical-probability product, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-626`

@@ -22,6 +22,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "scale_up_authorized",
             "post_diagnostic_scale_context",
             "source_frequency_intake",
+            "block_population_intake",
             "evidence_gap_categories",
             "claim_boundary_matrix",
             "validation_leakage_guardrails",
@@ -68,9 +69,23 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         })
         self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
         self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "block_population_evidence")
+        self.assertNotIn("block_population_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "calibration_evidence")
         self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
         self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "present")
+        self.assertEqual(report["block_population_intake"]["intake_classification"], "present")
+
+    def test_block_population_candidate_validates_as_design_review_evidence(self) -> None:
+        summary = assessment.validate_block_population_evidence_record(
+            assessment.DEFAULT_BLOCK_POPULATION_EVIDENCE_PATH
+        )
+
+        self.assertEqual(summary["record_id"], "tschamut_public_block_population_candidate_v1")
+        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["source_zone_id"], "tschamut_public_lps_release_bbox")
+        self.assertEqual(summary["block_population_class_count"], 3)
+        self.assertEqual(summary["total_count"], 3)
+        self.assertFalse(summary["prototype_authorized"])
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
         report = assessment.build_report()
@@ -150,9 +165,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         )
         self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
+        self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "present")
         self.assertEqual(
             categories["block_size_and_block_population_evidence"]["first_missing_input"],
-            "block_size_survey_or_photogrammetry_census",
+            "",
         )
         self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["classification"], "present")
         self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "")
@@ -302,11 +318,11 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         tasks = report["next_concrete_scientific_tasks"]
 
-        self.assertEqual(tasks[0]["task_id"], "stage_block_population_survey")
-        self.assertEqual(tasks[1]["task_id"], "define_calibration_dataset_and_objective")
-        self.assertEqual(tasks[2]["task_id"], "stage_second_site_public_geodata_inputs")
+        self.assertEqual(tasks[0]["task_id"], "define_calibration_dataset_and_objective")
+        self.assertEqual(tasks[1]["task_id"], "stage_second_site_public_geodata_inputs")
         self.assertNotIn("stage_independent_holdout_deposition_runout_evidence", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
+        self.assertNotIn("stage_block_population_survey", [task["task_id"] for task in tasks])
         self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
         self.assertIn("scientific evidence", tasks[0]["why_now"])
 
@@ -379,7 +395,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         readiness = report["physical_probability_readiness_check"]
         self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
         self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "block_population_evidence")
+        self.assertNotIn("block_population_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(readiness["first_blocking_evidence_class"], "calibration_evidence")
 
 
 if __name__ == "__main__":  # pragma: no cover

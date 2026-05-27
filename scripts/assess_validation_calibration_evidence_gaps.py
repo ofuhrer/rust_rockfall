@@ -93,6 +93,9 @@ DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/private/source_frequ
 DEFAULT_BLOCK_RELEASE_PROBABILITY_EVIDENCE_PATH = (
     ROOT / "validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml"
 )
+DEFAULT_BLOCK_POPULATION_EVIDENCE_PATH = (
+    ROOT / "validation/data/processed/tschamut/block_population_evidence_tschamut_public_candidate_v1.yaml"
+)
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST = DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "manifest.json"
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY = (
@@ -264,7 +267,13 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         candidate_portability,
         block_release_probability_intake,
     )
-    block_population = block_population_gap(datasets, tschamut_gate, chant_model_selection)
+    block_population_intake = load_block_population_intake()
+    block_population = block_population_gap(
+        datasets,
+        tschamut_gate,
+        chant_model_selection,
+        block_population_intake,
+    )
     source_frequency_intake = load_source_frequency_intake(source_frequency_evidence_path)
     source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection, source_frequency_intake)
     terrain_context = terrain_context_gap(tschamut_manifest, tschamut_gate, tschamut_target, candidate_portability)
@@ -373,6 +382,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         "post_diagnostic_scale_context": post_diagnostic_scale_context(),
         "source_frequency_intake": source_frequency_intake,
         "block_release_probability_intake": block_release_probability_intake,
+        "block_population_intake": block_population_intake,
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
         "physical_probability_claims_allowed": False,
         "physical_probability_readiness_check": build_physical_probability_readiness_check(
@@ -912,36 +922,43 @@ def block_population_gap(
     datasets: dict[str, dict[str, Any]],
     tschamut_gate: dict[str, Any],
     chant_model_selection: dict[str, Any],
+    block_population_intake: dict[str, Any],
 ) -> dict[str, Any]:
+    intake_classification = str(block_population_intake.get("intake_classification") or "missing")
+    candidate_present = intake_classification == "present"
     return {
         "category": "block_size_and_block_population_evidence",
-        "classification": "missing",
-        "first_missing_input": "block_size_survey_or_photogrammetry_census",
-        "acquisition_blockers": [dict(item) for item in BLOCK_POPULATION_ACQUISITION_BLOCKERS],
+        "classification": "present" if candidate_present else "missing",
+        "first_missing_input": "" if candidate_present else "block_size_survey_or_photogrammetry_census",
+        "acquisition_blockers": [] if candidate_present else [dict(item) for item in BLOCK_POPULATION_ACQUISITION_BLOCKERS],
         "future_gate_prerequisites": [dict(item) for item in BLOCK_POPULATION_FUTURE_GATE_PREREQUISITES],
         "current_evidence": [
             dataset_summary(datasets, "tschamut2014"),
             dataset_summary(datasets, "chant_sura_2020"),
             tschamut_gate.get("sampling_plan", {}),
             chant_model_selection.get("shape_source", {}),
+            block_population_intake,
         ],
         "what_exists": [
             "Tschamut uses conditional sampling only",
             "Chant Sura contact fixtures carry block mass / radius and shape proxies for contact comparisons",
             "Conditional scenario weights remain conditional only and are not frequency evidence",
+            "A Tschamut public block-population candidate is staged for design review from processed block metadata",
         ],
-        "what_is_missing": [
+        "what_is_missing": [] if candidate_present else [
             "A block-size survey or photogrammetry census with survey-frame provenance",
             "A block-count or size-class record that is separate from source-frequency catalogues",
             "A benchmark that explicitly separates representative scenarios from population semantics",
         ],
         "minimum_additional_evidence_needed": (
-            "Observed block-population evidence with survey provenance, block counts or size classes, and an explicit "
+            "The staged candidate is enough to make block-population evidence inspectable for design review; calibration evidence and final review remain separate blockers."
+            if candidate_present
+            else "Observed block-population evidence with survey provenance, block counts or size classes, and an explicit "
             "boundary showing the record is not a source-frequency catalogue before any physical probability claim."
         ),
-        "support_role": "conditional_scenario_only",
+        "support_role": "design_review_candidate_only" if candidate_present else "conditional_scenario_only",
         "claim_boundary": "conditional_only",
-        "physical_probability_relevance": "missing",
+        "physical_probability_relevance": "present" if candidate_present else "missing",
         "holdout_validation_relevance": "missing",
     }
 
@@ -1352,6 +1369,88 @@ def load_block_release_probability_intake(path: Path | None = None) -> dict[str,
             "physical_probability_supported": False,
             "operational_hazard_map_supported": False,
         },
+    }
+
+
+def load_block_population_intake(path: Path | None = None) -> dict[str, Any]:
+    record_path = path or DEFAULT_BLOCK_POPULATION_EVIDENCE_PATH
+    try:
+        summary = validate_block_population_evidence_record(record_path)
+    except Exception as exc:
+        return {
+            "schema_version": "block_population_intake_summary_v1",
+            "record_path": str(record_path),
+            "record_status": "invalid_or_missing",
+            "intake_classification": "missing",
+            "missing_or_invalid_reason": str(exc),
+            "block_population_class_count": 0,
+            "total_count": 0,
+            "claim_boundary": {
+                "annual_frequency_supported": False,
+                "physical_probability_supported": False,
+                "operational_hazard_map_supported": False,
+            },
+        }
+    return {
+        "schema_version": "block_population_intake_summary_v1",
+        "record_path": str(record_path),
+        "intake_classification": "present",
+        **summary,
+        "claim_boundary": {
+            "annual_frequency_supported": False,
+            "physical_probability_supported": False,
+            "operational_hazard_map_supported": False,
+        },
+    }
+
+
+def validate_block_population_evidence_record(record_path: Path) -> dict[str, Any]:
+    record = load_yaml(record_path)
+    require(record.get("schema_version") == "block_population_evidence_v1", "block population schema mismatch")
+    require(str(record.get("record_status") or "") == "accepted_for_design_review", "block population candidate must be accepted_for_design_review")
+    require(record.get("prototype_authorized") is False, "block population prototype_authorized must be false")
+    require(record.get("operational_status") == "research_diagnostic", "block population operational_status must be research_diagnostic")
+    distribution = record.get("block_population_distribution")
+    require(isinstance(distribution, dict), "block_population_distribution must be a mapping")
+    classes = distribution.get("classes")
+    require(isinstance(classes, list) and classes, "block population classes must be nonempty")
+    total_count = distribution.get("total_count")
+    require(isinstance(total_count, int | float) and int(total_count) > 0, "block population total_count must be positive")
+    probability_sum = 0.0
+    counted = 0
+    seen: set[str] = set()
+    for index, item in enumerate(classes):
+        require(isinstance(item, dict), f"block population class {index} must be a mapping")
+        class_id = str(item.get("block_population_class_id") or "")
+        require(class_id, f"block population class {index} requires block_population_class_id")
+        require(class_id not in seen, f"duplicate block population class id: {class_id}")
+        seen.add(class_id)
+        count = item.get("count")
+        require(isinstance(count, int | float) and int(count) > 0, f"{class_id}.count must be positive")
+        counted += int(count)
+        probability = item.get("probability")
+        require(isinstance(probability, int | float) and float(probability) > 0, f"{class_id}.probability must be positive")
+        probability_sum += float(probability)
+        require(str(item.get("evidence_basis") or ""), f"{class_id}.evidence_basis is required")
+    require(counted == int(total_count), "block population class counts must equal total_count")
+    require(abs(probability_sum - 1.0) <= 1e-9, "block population probabilities must sum to 1.0")
+    claim_boundary = record.get("claim_boundary")
+    require(isinstance(claim_boundary, dict), "block population claim_boundary must be a mapping")
+    for field in (
+        "annual_frequency_supported",
+        "physical_probability_supported",
+        "return_period_supported",
+        "operational_hazard_map_supported",
+        "risk_or_exposure_supported",
+    ):
+        require(claim_boundary.get(field) is False, f"block population {field} must be false")
+    return {
+        "record_id": str(record.get("record_id") or ""),
+        "record_status": str(record.get("record_status") or ""),
+        "source_zone_id": str(record.get("source_zone_id") or ""),
+        "block_population_class_count": len(classes),
+        "total_count": int(total_count),
+        "prototype_authorized": False,
     }
 
 

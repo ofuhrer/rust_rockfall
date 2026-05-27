@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-625: Stage Block-Population Evidence For The Pilot Zone
-
-Goal: Add a first real block-population or block-size distribution candidate for the pilot source zone from available processed inputs.
-
-Capability gap reduced: Missing block-population evidence for physical probability and scenario credibility.
-
-Why this outranks alternatives: Without a block-population basis, larger simulations remain conditional intensity demonstrations rather than physically interpretable probability evidence.
-
-Inspect first:
-
-- `scripts/validate_block_release_probability_evidence.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `validation/templates/block_release_probability_evidence_v1.yaml`
-- `validation/data/processed/tschamut/block_metadata.csv`
-- `validation/data/processed/chant_sura_2020/block_metadata.csv`
-- `docs/source_zone_block_scenario_policy_v1.md`
-
-Deliverables:
-
-- A candidate block-population distribution tied to current pilot data, with uncertainty bounds and clear separation from validation evidence.
-
-Definition of done:
-
-- The candidate validates or fails for a concrete missing-data reason, and the evidence-gap helper reports the new state without weakening calibration/validation separation.
-
 ### TB-626: Define A Minimal Calibration Objective Using Existing Data
 
 Goal: Turn the current calibration gap into an executable objective that uses available public/processed evidence while keeping holdout validation separate.
