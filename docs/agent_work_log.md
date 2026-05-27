@@ -10424,3 +10424,24 @@ completed history.
 - Metrics: docs index active bullets reduced; no document deletion required; remaining active backlog task count `0`.
 - Boundaries: index simplification only; no evidence reinterpretation, no measured-result deletion, and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: backlog empty
+
+### TB-649: Regenerate Adjacent-Candidate Scenario Inputs
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: refresh the adjacent-candidate scenario table and storage-pressure evidence before the next AOI/hazard-throughput steps.
+- Files changed: `docs/task_backlog.md`, `docs/management_aoi_scenario_pressure_tb610.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Refilled the active backlog with TB-649 through TB-663, then worked the first task in numeric order.
+  - Regenerated the management-AOI scenario-pressure report into `/tmp/tb649_management_aoi_scenario_pressure.json`.
+  - Regenerated the accepted-candidate scenario table into `/tmp/tb649_management_aoi_scenario_table`.
+  - Refreshed the storage-tier pressure report into `/tmp/tb649_scenario_storage_pressure.json`.
+  - Recorded the refreshed values in the existing management-AOI scenario-pressure note and removed TB-649 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-649 --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_management_aoi_scenario_pressure.py --output-root /tmp/tb649_management_aoi_scenario_pressure --scenario-output-root /tmp/tb649_management_aoi_scenario_table --format json --json-output /tmp/tb649_management_aoi_scenario_pressure.json`
+  - `PYENV_VERSION=system uv run python scripts/measure_scenario_storage_output_tier_pressure.py --format json --json-output /tmp/tb649_scenario_storage_pressure.json`
+- Result/status: implemented_measured
+- Metrics: scenario pressure status `ready`; accepted candidate count `1`; scenario rows `3`; scenario-table files `5`; scenario-table CSV bytes `2,282`; manifest bytes `4,626`; total scenario-table bytes `14,996`; storage-tier status `ready`; compact batch cap `3` repeats / `30` candidate records / `300` scenario rows; cap manifest bytes `211,277`; cap total bytes `595,867`; replay recommendation `rebuildable_reduced`; next bottleneck `gis_and_research_full_output_growth`.
+- Boundaries: local scenario-table and storage-pressure refresh only; no hazard run, Balfrin submission, scale-up authorization, operational claim, physical-probability claim, annual-frequency claim, risk, exposure, or vulnerability claim.
+- Next task: `TB-650`

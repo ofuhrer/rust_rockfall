@@ -30,6 +30,328 @@ and compare the result.
 
 ## Active Tasks
 
+### TB-650: Exercise The AOI Front Door With Regenerated Scenarios
+
+Goal: Prove the current AOI front door can consume the refreshed scenario inputs and produce a reviewable package with the new QA checklist.
+
+Capability gap reduced: Clean user-facing AOI workflow from scenario inputs to package review.
+
+Why this outranks alternatives: The package checklist is now implemented, so the next useful check is whether the user-facing command path exposes it without specialist script hopping.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/package_aoi_hazard_map.py`
+- `scripts/generate_aoi_map_qa_review.py`
+- `docs/aoi_user_manual.md`
+
+Deliverables:
+
+- A local scratch AOI package/review output using the refreshed scenario inputs, or a concrete front-door blocker with the exact command that fails.
+
+Definition of done:
+
+- The package contains `operational_qa_checklist`, review HTML, layer inventory, and accepted-for-operational-use remains false by default.
+
+### TB-651: Build A Larger Hazard-Throughput Package Profile
+
+Goal: Create or fail closed on a real hazard-throughput package profile beyond the current four-zone TB-619 support point.
+
+Capability gap reduced: Hazard-throughput scaling beyond the current bounded support point.
+
+Why this outranks alternatives: The 100-zone evidence is diagnostic reducer-pressure only; the next scale gap is a true larger hazard-throughput package profile.
+
+Inspect first:
+
+- `scripts/generate_balfrin_multi_release_zone_demo_handoff.py`
+- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
+- `scripts/check_hazard_rebuild_output_profile.py`
+- `docs/balfrin_hazard_throughput_probe_tb642.md`
+
+Deliverables:
+
+- A scratch package/profile for a >4-zone hazard-throughput candidate, or a measured blocker identifying the exact output, manifest, replay, or package constraint.
+
+Definition of done:
+
+- The profile reports zone count, scenario count, output family counts, manifest bytes, replay-critical families, and whether it is safe to submit.
+
+### TB-652: Run The Next Bounded Hazard-Throughput Probe On Balfrin
+
+Goal: If TB-651 produces a safe package profile, submit and monitor the next bounded `postproc` hazard-throughput probe on Balfrin.
+
+Capability gap reduced: Measured Balfrin hazard-throughput scaling beyond TB-619.
+
+Why this outranks alternatives: A successful larger hazard-throughput run would replace speculation with the next measured feasibility point while Balfrin capacity is available.
+
+Inspect first:
+
+- `scripts/run_balfrin_diagnostic.py`
+- `scripts/check_balfrin_remote_access_preflight.py`
+- `scripts/summarize_balfrin_probe_metrics_report.py`
+- `docs/balfrin_skills.md`
+
+Deliverables:
+
+- A preserved `$SCRATCH` run root with run record and collected metrics, or a concrete no-submit blocker if access, profile, queue, or output gates fail.
+
+Definition of done:
+
+- The run is completed and summarized, or the no-submit reason is explicit enough to make the next corrective task obvious.
+
+### TB-653: Compare Hazard-Throughput Runs And Refresh Scale Surfaces
+
+Goal: Thread the newest hazard-throughput result or blocker through the scale projection and management summary.
+
+Capability gap reduced: Clear interpretation of hazard-throughput scaling evidence.
+
+Why this outranks alternatives: A new run or blocker is useful only if it updates the current scale boundary rather than becoming another isolated report.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_scale_readiness_matrix.py`
+- `scripts/summarize_balfrin_management_demo_package.py`
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- Updated existing scale surfaces that compare TB-619 with the new result or explain why TB-619 remains the current hazard-throughput anchor.
+
+Definition of done:
+
+- The scale surfaces state the current hazard-throughput ceiling, bottleneck, and next measurement without promoting diagnostic, distributed, operational, or physical-probability claims.
+
+### TB-654: Stage Or Block Chant Sura Public Geodata Context
+
+Goal: Move the second-site path from fixture-backed blockers toward real public geodata staging, or record the exact unavailable products.
+
+Capability gap reduced: Second-site portability and scientific validation beyond Tschamut.
+
+Why this outranks alternatives: The next scientific credibility jump needs a second site with real context rather than more Tschamut-only evidence.
+
+Inspect first:
+
+- `scripts/check_second_site_public_geodata_preflight.py`
+- `scripts/stage_public_geodata_cache.py`
+- `scripts/verify_public_geodata_cache.py`
+- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
+
+Deliverables:
+
+- A local or scratch public-geodata cache verification result for Chant Sura / Fluelapass, or a product-by-product acquisition blocker.
+
+Definition of done:
+
+- The report distinguishes staged real products, fixture-only products, missing products, and the next acquisition command.
+
+### TB-655: Run The Second-Site Prepared-Pilot Path If Inputs Are Ready
+
+Goal: Exercise the Chant Sura / Fluelapass prepared-pilot path with real staged inputs when available, or fail on a precise missing-input boundary.
+
+Capability gap reduced: Second-site AOI execution and package parity.
+
+Why this outranks alternatives: Once public geodata staging improves, the next proof is whether the same AOI path runs on a second site.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/inventory_second_site_local_blockers.py`
+- `scripts/audit_multisite_source_scenario_contract.py`
+- `tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml`
+
+Deliverables:
+
+- A second-site prepared-pilot scratch run/package, or a precise blocker that names the first missing real input family.
+
+Definition of done:
+
+- The result is clearly labelled as real-input, fixture-backed, or blocked, and no Tschamut-only evidence is counted as second-site validation.
+
+### TB-656: Strengthen Release-Probability Evidence
+
+Goal: Convert the current release-probability gap into a concrete empirical or design-review evidence summary from existing source-zone and candidate records.
+
+Capability gap reduced: Physical-probability scientific credibility.
+
+Why this outranks alternatives: Release-probability evidence is one of the remaining blockers for physical-probability readiness.
+
+Inspect first:
+
+- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
+- `scripts/validate_block_release_probability_evidence.py`
+- `docs/block_release_probability_evidence_contract.md`
+- `docs/source_zone_block_scenario_policy_v1.md`
+
+Deliverables:
+
+- A checked evidence summary or blocker that states what release-probability information is present, absent, and needed next.
+
+Definition of done:
+
+- The physical-credibility gap report moves forward with real evidence or a smaller blocker, without enabling physical-probability map labels.
+
+### TB-657: Strengthen Block-Population Evidence
+
+Goal: Summarize current block-size, block-shape, and scenario-weight evidence from scenario tables and staged records.
+
+Capability gap reduced: Physical-probability and intensity credibility for block scenarios.
+
+Why this outranks alternatives: Block-population evidence is a separate scientific blocker and can be improved from existing scenario/candidate data before new field work.
+
+Inspect first:
+
+- `scripts/generate_tschamut_block_scenario_tables.py`
+- `scripts/validate_block_release_probability_evidence.py`
+- `docs/probabilistic_scenario_model_design.md`
+- `tests/test_tschamut_block_scenario_table_generation.py`
+
+Deliverables:
+
+- A compact block-population evidence summary or blocker tied to current scenario tables and validation tests.
+
+Definition of done:
+
+- The summary identifies usable empirical inputs, design assumptions, and the next data gap without changing simulation defaults.
+
+### TB-658: Refresh Calibration And Holdout Separation Evidence
+
+Goal: Re-run the calibration/holdout separation checks against the latest staged evidence and identify the first unresolved scientific blocker.
+
+Capability gap reduced: Validation credibility and calibration discipline.
+
+Why this outranks alternatives: Stronger scale evidence is not persuasive without clear calibration and holdout separation.
+
+Inspect first:
+
+- `scripts/assess_validation_calibration_evidence_gaps.py`
+- `scripts/check_calibration_separation_preflight.py`
+- `scripts/audit_chant_sura_holdout_split.py`
+- `docs/holdout_runout_deposition_evidence_tb615.md`
+
+Deliverables:
+
+- A refreshed local evidence-gap result that ranks the next scientific action and states whether holdout/calibration separation still passes.
+
+Definition of done:
+
+- The first unresolved blocker is explicit and the result does not promote validation acceptance beyond the evidence.
+
+### TB-659: Collapse One Specialist AOI Command Into The Front Door
+
+Goal: Reduce user-facing complexity by routing one commonly needed specialist AOI helper through `run_aoi_hazard_workflow.py`.
+
+Capability gap reduced: Clean user-facing AOI interface.
+
+Why this outranks alternatives: The repository already has many helper scripts; simplifying the command surface directly improves usability.
+
+Inspect first:
+
+- `scripts/run_aoi_hazard_workflow.py`
+- `scripts/preview_aoi_scenario_cost_estimate.py`
+- `scripts/package_aoi_hazard_map.py`
+- `tests/test_run_aoi_hazard_workflow.py`
+
+Deliverables:
+
+- A new or improved front-door subcommand that delegates to an existing helper without duplicating logic, plus focused tests.
+
+Definition of done:
+
+- Users can perform the selected AOI action through `run_aoi_hazard_workflow.py`, and the specialist helper remains internal or compatibility-level.
+
+### TB-660: Simplify The Balfrin Helper Surface
+
+Goal: Demote or remove stale Balfrin helper references so routine users see `run_balfrin_diagnostic.py` first.
+
+Capability gap reduced: Repository simplification and lower operational drag.
+
+Why this outranks alternatives: Old handoff/preflight/submit helper paths still make the Balfrin interface look more procedural than it needs to be.
+
+Inspect first:
+
+- `docs/script_inventory.md`
+- `docs/balfrin_tschamut_pilot_runbook.md`
+- `docs/balfrin_skills.md`
+- `scripts/run_balfrin_diagnostic.py`
+
+Deliverables:
+
+- A smaller Balfrin command surface in docs and script inventory, with stale helper references demoted to forensic or compatibility use.
+
+Definition of done:
+
+- The routine Balfrin path is unambiguous and repository consistency checks pass.
+
+### TB-661: Exercise A National Inventory Chunk Smoke
+
+Goal: Re-run the Swiss national inventory/chunk planning smoke and make the next data-cache blocker concrete.
+
+Capability gap reduced: Swiss-wide feasibility preparation without claiming Swiss-wide execution.
+
+Why this outranks alternatives: Swiss-scale work is deferred, but national inventory and chunk planning can still expose concrete data/cache gaps.
+
+Inspect first:
+
+- `scripts/estimate_swiss_wide_execution_envelope.py`
+- `docs/swiss_national_tiling_inventory_tb607.md`
+- `docs/swiss_national_tile_chunk_mapping_tb608.md`
+- `docs/swiss_scale_feasibility_projection.md`
+
+Deliverables:
+
+- A fresh national inventory/chunk smoke output with tile count, chunk count, estimated input bytes, missing products, and cache readiness.
+
+Definition of done:
+
+- The Swiss-scale projection or inventory note names the current data-cache blocker while leaving Swiss-wide execution deferred.
+
+### TB-662: Measure Output Pressure After QA Checklist Packaging
+
+Goal: Quantify whether the new package QA checklist materially changes package file count, byte count, or manifest pressure.
+
+Capability gap reduced: Output-footprint control for larger AOI and Balfrin packages.
+
+Why this outranks alternatives: Review usability improved, but larger runs still depend on keeping package and manifest growth bounded.
+
+Inspect first:
+
+- `scripts/package_aoi_hazard_map.py`
+- `scripts/summarize_balfrin_output_tier_audit.py`
+- `scripts/audit_balfrin_run_root_output_budget.py`
+- `docs/hazard_output_profile_contract.md`
+
+Deliverables:
+
+- A before/after or current-package pressure measurement that includes checklist manifest bytes and package file counts.
+
+Definition of done:
+
+- The result states whether checklist packaging is negligible, acceptable, or a scaling concern for larger packages.
+
+### TB-663: Run A Local CI Front-Door Cleanup Pass
+
+Goal: Identify one slow, redundant, or confusing local CI path and simplify it without reducing coverage.
+
+Capability gap reduced: Developer speed and drift prevention.
+
+Why this outranks alternatives: Faster local verification helps prevent another local-vs-GitHub Actions drift.
+
+Inspect first:
+
+- `scripts/run_ci_local.py`
+- `tests/python_test_tiers.toml`
+- `.github/workflows/ci.yml`
+- `tests/test_run_ci_local.py`
+
+Deliverables:
+
+- A small local CI runner or test-tier simplification with focused test coverage.
+
+Definition of done:
+
+- The documented local CI command remains aligned with GitHub Actions and the change removes duplication or confusion.
+
 ## Backlog Protocol
 
 Task headings must always be exactly:

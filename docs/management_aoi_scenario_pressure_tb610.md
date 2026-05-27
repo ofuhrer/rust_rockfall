@@ -88,6 +88,32 @@ The active scenario table itself is small; the scaling pressure comes from
 manifest growth in expanded candidate batches and from optional GIS/research
 output families.
 
+## TB-649 Refresh
+
+Date: 2026-05-27
+
+The adjacent-candidate scenario inputs were regenerated into scratch roots:
+
+- scenario pressure report: `/tmp/tb649_management_aoi_scenario_pressure.json`
+- storage-tier report: `/tmp/tb649_scenario_storage_pressure.json`
+- scenario pressure root: `/tmp/tb649_management_aoi_scenario_pressure`
+- scenario table root: `/tmp/tb649_management_aoi_scenario_table`
+
+The current accepted candidate remains
+`tschamut_adjacent_prau_mulins_candidate_v1`. The regenerated prepared-pilot
+handoff is `ready` with `3` scenario rows, `1` accepted candidate, `5`
+scenario-table files, `2,282` scenario-table CSV bytes, `4,626` manifest bytes,
+and `14,996` total scenario-table bytes. The next AOI action is still to
+inspect or consume the generated scenario table through the prepared-pilot /
+AOI front-door path.
+
+The storage-tier refresh remains `ready`: the active real-AOI table is `3`
+rows and the compact batch cap remains `3` repeats / `30` candidate records /
+`300` scenario rows with `211,277` manifest bytes and `595,867` total bytes.
+The replay recommendation remains `rebuildable_reduced`; the first storage
+bottleneck remains GIS and research-full output growth rather than the active
+scenario table.
+
 ## Boundary
 
 This is local scenario-table and storage-pressure evidence only. It does not
