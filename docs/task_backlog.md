@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-671: Measure Safe Concurrent Postproc Diagnostics
-
-Goal: Run a small concurrent set of bounded diagnostics on Balfrin to test scheduler behavior and shared `$SCRATCH` output isolation.
-
-Capability gap reduced: Practical scalability evidence for running many independent chunks on an underused `postproc` partition.
-
-Why this outranks alternatives: Swiss-scale feasibility depends on independent chunk throughput, not only a single larger job.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_restartability_recovery_tb606.md`
-
-Deliverables:
-
-- A bounded concurrent run set, with one run root per job under `$SCRATCH`, terminal scheduler states, per-job metrics, and an aggregate contention summary.
-
-Definition of done:
-
-- All submitted jobs are terminal, run roots are isolated, and the aggregate report shows whether concurrent diagnostics scale cleanly or reveal contention.
-
-Scope: Use only as many jobs as current `postproc` capacity makes reasonable and stay below the 6-hour partition-occupation boundary.
-
 ### TB-672: Exercise Restartability On A Larger Run Root
 
 Goal: Prove that a larger diagnostic or hazard-throughput run root can be recovered, copied, and summarized without rerunning the simulation.

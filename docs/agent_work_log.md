@@ -10883,3 +10883,24 @@ completed history.
 - Metrics: latest hazard-throughput task `TB-669`; job id `4378015`; release zones `12`; runtime seconds `0.288979`; hazard-stage seconds `0.078136`; memory peak `47.016` MB; hazard output files `29`; hazard output bytes `1,148,530`; run-root files `93`; run-root bytes `2,373,626`; comparison baseline `TB-619`; focused tests `26` passed.
 - Boundaries: planning-surface promotion only; Swiss-wide execution remains projection-only and no operational, physical-probability, annual-frequency, risk/exposure/vulnerability, distributed, or non-`postproc` claim changed.
 - Next task: `TB-671`
+
+### TB-671: Measure Safe Concurrent Postproc Diagnostics
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: measure a small concurrent set of bounded diagnostics on Balfrin `postproc` with isolated `$SCRATCH` roots.
+- Files changed: `docs/balfrin_concurrent_postproc_diagnostics_tb671.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Submitted three 16-zone compact diagnostic jobs into separate run roots under one TB-671 `$SCRATCH` base root.
+  - Monitored and collected all three jobs with `scripts/run_balfrin_diagnostic.py`.
+  - Collected scheduler accounting, per-job timing/memory/output metrics, run-root footprints, and an aggregate contention summary.
+  - Stored the aggregate JSON at the Balfrin base root and removed TB-671 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py submit --release-zones 16 --reducer-chunks 2 --reducer-workers 2 --manifest-mode compact --partition postproc --time 00:20:00 --run-root <job_root> --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py monitor --run-root <job_root> --poll-seconds 5 --monitor-timeout-seconds 1800 --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py collect --run-root <job_root> --format json`
+  - `sacct -j 4378322,4378358,4378359 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,Start,End,MaxRSS,ReqCPUS,AllocCPUS -P`
+- Result/status: implemented_measured
+- Metrics: base root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb671_concurrent_20260527_131408`; jobs `4378322`, `4378358`, `4378359`; all terminal state `COMPLETED`; max observed concurrent top-level jobs `2`; run roots isolated `true`; per-job output files `52`; per-job output bytes `23,661`; per-job reducer wall time `3.07` seconds; peak RSS range `33.801` to `34.336` MB; aggregate output files `156`; aggregate output bytes `70,983`; aggregate run-root files `195`; aggregate run-root bytes `354,514`; contention status `no_contention_detected`.
+- Boundaries: concurrent single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, distributed, non-`postproc`, physical-probability, operational, risk/exposure/vulnerability, or Swiss-wide execution claim changed.
+- Next task: `TB-672`
