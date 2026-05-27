@@ -11007,3 +11007,25 @@ completed history.
 - Metrics: selected candidate `candidate_103`; calibration readiness `rejected_residual_quality`; support role `measured_fit_rejected_by_acceptance_review`; first failed criterion `holdout_runout_abs_error_max_m`; threshold `<= 30.0` m; observed `55.111764` m; holdout mean runout absolute error threshold `<= 15.0` m; observed `18.217757` m; holdout deposition-cloud overlap threshold `>= 0.7`; observed `0.777778`; calibration separation preflight `passed`; prohibited crossings `0`.
 - Boundaries: selected calibration parameters remain diagnostic only; no validation acceptance, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide claim changed.
 - Next task: `TB-677`
+
+### TB-677: Run A Conditional Physical-Probability Prototype For One AOI
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: run a bounded one-AOI physical-probability prototype or fail closed on the exact missing evidence item.
+- Files changed: `docs/conditional_physical_probability_prototype_preflight_tb677.md`, `docs/physical_frequency_reducer_preconditions.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Re-ran the Balfrin physical-credibility evidence gap summary.
+  - Validated the inactive reducer precondition template and the design-review fixture.
+  - Validated the annual/physical prototype preflight template.
+  - Recorded a fail-closed prototype decision tied to the rejected calibration review and removed TB-677 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_physical_credibility_evidence_gaps.py --format json --json-output /tmp/tb677_physical_gaps.json`
+  - `PYENV_VERSION=system uv run python scripts/validate_physical_frequency_reducer_preconditions.py validation/templates/physical_frequency_reducer_preconditions_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/validate_physical_frequency_reducer_preconditions.py tests/fixtures/frequency/physical_frequency_reducer_preconditions_design_review_fixture_v1.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/validate_annual_physical_prototype_preflight.py validation/templates/annual_physical_prototype_preflight_v1.yaml --format json`
+- Result/status: implemented_fail_closed_preflight
+- Metrics: physical gap status `measured_diagnostic_only`; physical credibility state `no_physical_evidence`; annual/physical preflight status `blocked_by_design_gate`; prototype authorized `false`; design gate decision `deferred`; reducer template status `preconditions_not_satisfied`; design-review fixture status `accepted_for_design_review` but runtime authorized `false`.
+- First blocker: `accepted_validation_calibration_review`; concrete measured failure `holdout_runout_abs_error_max_m` (`55.111764` m observed vs `<= 30.0` m threshold).
+- Boundaries: no physical-probability, annual-frequency, return-period, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide claim changed.
+- Next task: `TB-678`

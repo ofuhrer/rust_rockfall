@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-677: Run A Conditional Physical-Probability Prototype For One AOI
-
-Goal: Produce a bounded physical-probability prototype for one AOI using accepted source-frequency, release-probability, block-population, and calibration evidence.
-
-Capability gap reduced: Transition from conditional hazard layers toward scientifically interpretable physical probabilities.
-
-Why this outranks alternatives: Swiss-scale feasibility needs a scientifically credible per-AOI probability path before multiplying the workflow across Switzerland.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
-- `scripts/validate_physical_frequency_reducer_preconditions.py`
-- `scripts/validate_annual_physical_prototype_preflight.py`
-- `docs/physical_frequency_reducer_preconditions.md`
-- `tests/test_physical_frequency_reducer_preconditions.py`
-
-Deliverables:
-
-- A bounded one-AOI physical-probability prototype or fail-closed preflight, with all required evidence inputs named and the generated probability semantics separated from operational return-period claims.
-
-Definition of done:
-
-- The prototype either runs and produces a reviewable probability output or reports the exact missing evidence item preventing the run.
-
-Scope: Keep operational, return-period, risk, exposure, vulnerability, and Swiss-wide claims out of scope.
-
 ### TB-678: Build A Swiss-Scale Demonstration Readiness Package From Measured Runs
 
 Goal: Combine the latest Balfrin diagnostic, hazard-throughput, concurrency, restartability, chunk-smoke, and scientific-readiness results into one demonstration decision surface.

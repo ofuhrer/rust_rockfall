@@ -83,3 +83,17 @@ inactive contract level. The annual or physical prototype remains blocked by
 missing accepted evidence, missing implemented overlap-adjusted reducers,
 missing implemented uncertainty propagation, and missing validation/calibration
 review for frequency products.
+
+## TB-677 Update
+
+The one-AOI physical-probability prototype preflight remains fail-closed. The
+annual/physical prototype preflight validates as `blocked_by_design_gate`, and
+the first actionable blocker is now the rejected calibration review:
+
+```text
+accepted_validation_calibration_review
+holdout_runout_abs_error_max_m observed 55.111764 m > 30.0 m
+```
+
+The reducer precondition design-review fixture still validates, but it remains
+non-runtime evidence and does not authorize physical or annual outputs.
