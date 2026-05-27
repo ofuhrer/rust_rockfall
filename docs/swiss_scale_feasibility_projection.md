@@ -299,22 +299,13 @@ Measured:
   terrain, which is useful for downstream scenario pressure work but remains a
   heuristic candidate-generation result rather than validated release-zone
   evidence.
-- The largest current real output in this checkout (`target_gate_v1`) packages
-  to a 29-file scratch bundle, converts to a 29-file COG-ready scratch bundle,
-  and matches layer inventory parity; that is demonstration evidence only and
-  does not authorize operational GIS claims.
-- The current regional GIS/COG pressure measurement adds a committed-root
-  split: `target_gate_v1` is measured and COG-blocked at `56` files /
-  `79,160,991` bytes / `22` rasters, while `gate_v1_cog_export` is ready at
-  `52` files / `55,873,028` bytes / `20` rasters. The pressure is therefore
-  measured and blocked at the standard root rather than being operationally
-  ready, and the next unblock action is the conversion helper on the standard
-  root.
-- TB-609 provides the current refreshed local package-and-convert measurement:
-  `target_gate_v1` packages to `39` files / `401,265` bytes, converts to a
-  COG-ready scratch root with `39` files / `403,419` bytes, keeps all `22`
-  raster layers in parity, and takes `25.104302958003245` seconds for COG
-  conversion on the local machine.
+- The largest current package-capable output in this checkout (`target_gate_v1`)
+  is no longer blocked at the GIS/COG conversion layer. TB-631 measured a
+  `39`-file / `401,265` byte scratch package, converted it to a COG-ready
+  `39`-file / `403,419` byte scratch package, kept all `22` raster layers in
+  parity, and measured `19.775688750029076` seconds of COG conversion on the
+  local machine. This is demonstration packaging evidence only and does not
+  authorize operational GIS claims.
 - `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
   current real-AOI candidate scenario table at 3 rows, the fixture scenario
   table at 3 rows, and an expanded candidate-repeat ladder at 1 / 3 / 8
@@ -345,11 +336,10 @@ Extrapolated:
 
 ## Bottom Line
 
-The current evidence supports a 10-zone hazard-planning boundary and a
-32-zone Balfrin diagnostic reducer-pressure boundary, with 24-zone
-repeatability evidence below it. It does not yet
-support 100-zone, regional-workflow, Swiss-wide, operational,
-physical-probability, distributed, or non-`postproc` claims. The next useful
-scale action is another bounded diagnostic step only if queue policy allows it;
-the next useful scientific action is to close calibration, holdout,
-source-frequency, and physical-probability evidence gaps.
+The current evidence supports a 10-zone hazard-planning boundary, a measured
+100-zone Balfrin diagnostic reducer-pressure ceiling, and a bounded four-zone
+hazard-throughput support point from TB-619. It does not yet support broader
+regional-workflow, Swiss-wide, operational, physical-probability, distributed,
+or non-`postproc` claims. The next useful scale action is a larger bounded
+hazard-throughput run if queue policy allows it; the next useful scientific
+action is to close the remaining calibration-evidence gap.

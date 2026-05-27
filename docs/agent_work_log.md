@@ -10097,3 +10097,22 @@ completed history.
 - Metrics: deleted superseded top-level docs `13`; active references to deleted docs outside historical work log `0`; docs front-door current evidence list now points to the consolidated diagnostic series and TB-619 as current hazard-throughput evidence.
 - Boundaries: documentation consolidation only; no evidence reinterpretation beyond existing measured summaries and no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: backlog refill needed
+
+### TB-633: Refresh Public Status Surfaces After Latest Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: refresh reader-facing status surfaces after TB-619 and TB-631 so they no longer point at stale throughput or GIS/COG blockers.
+- Files changed: `README.md`, `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Updated the root README to identify TB-619/job `4372656` as the current bounded hazard-throughput anchor, with TB-603 retained only as the comparison baseline.
+  - Added the TB-631 larger-output GIS/COG result to the root README snapshot.
+  - Updated the Swiss-scale feasibility bottom line and GIS/COG evidence paragraph to reflect the measured 100-zone diagnostic ceiling, TB-619 hazard-throughput support point, TB-631 package parity, and calibration evidence as the remaining physical-probability blocker.
+  - Removed TB-633 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `rg -n "current hazard-throughput|4372309|GIS/COG.*blocked|COG-blocked|blocked at the standard root|32-zone Balfrin diagnostic|does not yet support 100-zone|release-probability,\\s*block-population, and calibration" README.md docs/README.md docs/swiss_scale_feasibility_projection.md docs/balfrin_scale_demonstration_management_package.md`
+- Result/status: implemented_measured
+- Metrics: readiness report first blocking evidence class `calibration_evidence`; physical-probability readiness `partial_evidence_missing_critical_inputs`; public snapshot now names TB-619/job `4372656` and TB-631 package parity.
+- Boundaries: documentation/status refresh only; no new run, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-634`

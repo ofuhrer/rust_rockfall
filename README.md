@@ -28,14 +28,18 @@ The strongest current performance evidence is diagnostic, not operational:
   `34.16 MB` maximum RSS, `0:01.26` `/usr/bin/time` elapsed time, `304` output
   files, `121,172` output bytes, `61,119` manifest bytes, and `448,376`
   run-root bytes.
-- A bounded Balfrin hazard-throughput support run completed as job `4372309`
-  with `7.04 s` workflow wall time, `357.8 MB` peak process memory, `57`
-  hazard output files, and `31.4 MB` of hazard output. This is the current
-  hazard-throughput anchor.
+- The current bounded Balfrin hazard-throughput support run completed as job
+  `4372656` with `6.93 s` workflow wall time, `379.1 MB` peak process memory,
+  `57` hazard output files, and `31.4 MB` of hazard output. TB-603 remains the
+  comparison baseline, but TB-619 is the current hazard-throughput anchor.
+- The current larger-output GIS package stress path is COG-ready for the
+  largest package-capable checked-in output: TB-631 packaged `39` files with
+  `22` rasters, converted all `22` rasters, and preserved layer parity.
 - The scientific evidence base has improved: source-frequency design-review
   evidence and a Chant Sura held-out runout-axis benchmark intake are staged.
-  The remaining physical-probability blockers are release-probability,
-  block-population, and calibration evidence.
+  The current physical-probability readiness check now fails on calibration
+  evidence; release-probability, block-population, source-frequency, and
+  holdout evidence are staged as reviewable design evidence.
 
 What this means: the code path is feasible for bounded Swiss-terrain
 experiments on Balfrin, and the output footprint is small enough to keep

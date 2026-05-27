@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-633: Refresh Public Status Surfaces After Latest Evidence
-
-Goal: Remove stale front-door and summary wording that still points at older Balfrin or GIS blockers.
-
-Capability gap reduced: Reader-facing clarity about the actual current evidence base and next blockers.
-
-Why this outranks alternatives: The root README still names TB-603 as the current hazard-throughput anchor even though TB-619 supersedes it, and stale status wording can steer implementation toward solved blockers.
-
-Inspect first:
-
-- `README.md`
-- `docs/README.md`
-- `docs/swiss_scale_feasibility_projection.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-
-Deliverables:
-
-- Updated public/status docs that identify TB-619 as the current bounded hazard-throughput support point, TB-631 as the current GIS/COG packaging result, and calibration evidence as the main physical-probability blocker.
-
-Definition of done:
-
-- Docs no longer describe TB-603 or GIS/COG packaging as current blockers, focused docs checks pass, and no new standalone report file is added.
-
 ### TB-634: Reconcile Scale Matrix With Latest Hazard Evidence
 
 Goal: Make the scale readiness matrix agree with the latest measured hazard-throughput and packaging evidence.
