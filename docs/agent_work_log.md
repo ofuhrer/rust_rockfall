@@ -10780,3 +10780,26 @@ completed history.
 - Metrics: job id `4377419`; terminal state `COMPLETED`; scheduler elapsed `00:00:01`; exit code `0:0`; `/usr/bin/time` elapsed `0:01.46`; peak RSS `33.531` MB; reducer wall time `5.39` seconds; scenario count `32`; output files `100`; output bytes `42,188`; root files `105`; manifest bytes `24,426`; pressure-root footprint `105` files / `73,471` bytes; run-root footprint `113` files / `177,458` bytes; next diagnostic recommendation `40` release zones.
 - Boundaries: measured single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-666`
+
+### TB-666: Integrate The Larger Diagnostic Into Scale Surfaces
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: thread the TB-665 32-zone diagnostic result into the scale readiness matrix, Swiss-wide envelope, and management package.
+- Files changed: `scripts/summarize_balfrin_evidence_bundle.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `scripts/summarize_balfrin_management_demo_package.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_management_demo_package.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added TB-665 as measured static diagnostic reducer-pressure evidence so local surfaces no longer miss it when the remote `$SCRATCH` run record is not mounted locally.
+  - Exposed TB-665 in the scale matrix as `tb665_32_zone_diagnostic_probe` and as the current `diagnostic_32_zone_reducer_pressure` ceiling row.
+  - Updated the Swiss-wide envelope diagnostic support coefficients to use the TB-665 32-zone run.
+  - Added a `latest_current_diagnostic_probe` section to the management package while leaving the older 100-zone diagnostic and 24-zone repeatability evidence distinct.
+  - Updated tests to preserve the diagnostic-only boundary and the new 40-zone next diagnostic recommendation.
+  - Removed TB-666 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json > /tmp/tb666_scale_after3.json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --format json > /tmp/tb666_envelope_after3.json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_management_demo_package.py --format json > /tmp/tb666_management_after3.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package -v`
+- Result/status: implemented_measured
+- Metrics: scale measured tiers now include `tb665_32_zone_diagnostic_probe` and `diagnostic_32_zone_reducer_pressure`; diagnostic ceiling job id `4377419`; diagnostic ceiling release zones `32`; envelope diagnostic runtime per zone `0.168437` seconds; envelope diagnostic output bytes per zone `1318.375`; envelope diagnostic file count per zone `3.125`; management latest current diagnostic job id `4377419`; focused tests `26` passed.
+- Boundaries: TB-665 remains single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-667`

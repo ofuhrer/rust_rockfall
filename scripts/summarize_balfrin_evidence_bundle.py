@@ -362,6 +362,56 @@ TB619_HAZARD_THROUGHPUT_PROBE = {
         "TB-619 completed the next bounded four-zone hazard-throughput Balfrin postproc run with complete mandatory metrics, summary-only conditional curves, and a fresh preserved $SCRATCH run root."
     ),
 }
+TB665_DIAGNOSTIC_PROBE = {
+    "task_id": "TB-665",
+    "status": "measured",
+    "evidence_type": "measured",
+    "root_class": "measured_multi_zone_balfrin_root",
+    "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527",
+    "run_id": "tb665_32_zone_20260527",
+    "source_paths": ["docs/balfrin_32_zone_diagnostic_tb665.md"],
+    "git_commit": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+    "slurm_job_id": "4377419",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "0:01.46",
+    "memory_peak_mb": 33.531,
+    "total_wall_seconds": 5.39,
+    "release_zone_count": 32,
+    "diagnostic_output_file_count": 100,
+    "diagnostic_output_bytes": 42_188,
+    "diagnostic_manifest_size_bytes": 24_426,
+    "diagnostic_root_file_count": 105,
+    "reducer_wall_time_seconds": 5.39,
+    "recommended_reducer_constraints": {
+        "simultaneous_release_zone_batch_max": 32,
+        "simultaneous_release_zone_batch_max_source": "diagnostic_single_node_postproc",
+        "reducer_chunk_count_max": 4,
+        "reducer_worker_count_max": 4,
+        "next_diagnostic_release_zone_count": 40,
+        "recommendation": (
+            "use the measured 32-zone diagnostic single-node postproc point for diagnostic planning; "
+            "the next diagnostic step is 40 zones with fixed reducer fan-out"
+        ),
+    },
+    "metrics_json_promoted": True,
+    "preservation_checked": True,
+    "preservation_gate_promoted": True,
+    "post_run_collector_promoted": True,
+    "preservation_gate_status": "single_run_record_complete",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "diagnostic_reducer_outputs_measured",
+    "authorization_status": "standing_postproc_clearance_used",
+    "output_mode": "diagnostic_reducer_pressure",
+    "claim_boundary": (
+        "measured reducer-pressure diagnostic evidence only; no hazard-throughput, operational, "
+        "physical-probability, distributed, Swiss-wide, risk, or non-postproc claim"
+    ),
+    "summary": (
+        "TB-665 completed one 32-zone Balfrin postproc reducer-pressure diagnostic with the simplified runner "
+        "and stored the run record under $SCRATCH."
+    ),
+}
 
 
 class BalfrinEvidenceBundleError(ValueError):
@@ -434,7 +484,7 @@ def build_latest_multi_zone_balfrin_evidence() -> dict[str, Any]:
             evidence = build_multi_zone_balfrin_evidence(record)
             evidence["source_paths"] = [str(path)]
             return evidence
-    return dict(TB565_REGIONAL_SPLIT_PROBE)
+    return dict(TB665_DIAGNOSTIC_PROBE)
 
 
 def build_latest_hazard_throughput_evidence() -> dict[str, Any]:

@@ -1066,8 +1066,25 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
         "evidence_type": "measured",
         "summary": (
             "Balfrin now has measured single-node postproc diagnostic evidence through 100 zones plus a 24-zone same-size repeatability pair. "
-            "TB-652 adds a completed 8-zone compact diagnostic comparison point. The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
+            "TB-652 adds a completed 8-zone compact diagnostic comparison point and TB-665 adds a fresh 32-zone compact diagnostic point from the simplified runner. "
+            "The measurements bound reducer wall time, memory, output footprint, and manifest footprint for diagnostic reducer pressure only."
         ),
+        "latest_current_diagnostic_probe": {
+            "task_id": "TB-665",
+            "run_id": "tb665_32_zone_20260527",
+            "job_id": "4377419",
+            "git_head": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+            "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527",
+            "run_record": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527/run_record.json",
+            "release_zone_count": 32,
+            "scenario_count": 32,
+            "reducer_wall_time_seconds": 5.39,
+            "max_rss_mb": 33.531,
+            "output_file_count": 100,
+            "output_bytes": 42188,
+            "manifest_bytes": 24426,
+            "comparison_anchor": "diagnostic reducer-pressure only; TB-619 remains the latest bounded hazard-throughput support point",
+        },
         "latest_bounded_diagnostic_probe": {
             "task_id": "TB-652",
             "run_id": "tb652_8_zone_20260527",

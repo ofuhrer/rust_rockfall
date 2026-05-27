@@ -54,6 +54,11 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         self.assertEqual(report["claim_boundary_section"]["status"], "guarded")
         self.assertEqual(report["scaling_section"]["status"], "measured")
         self.assertEqual(report["diagnostic_performance_section"]["status"], "measured")
+        self.assertEqual(report["diagnostic_performance_section"]["latest_current_diagnostic_probe"]["job_id"], "4377419")
+        self.assertEqual(
+            report["diagnostic_performance_section"]["latest_current_diagnostic_probe"]["release_zone_count"],
+            32,
+        )
         self.assertEqual(report["diagnostic_performance_section"]["latest_bounded_diagnostic_probe"]["job_id"], "4377075")
         self.assertEqual(
             report["diagnostic_performance_section"]["latest_bounded_diagnostic_probe"]["release_zone_count"],
@@ -195,6 +200,7 @@ class BalfrinManagementDemoPackageTests(unittest.TestCase):
         diagnostic_row = next(row for row in matrix["rows"] if row["gate"] == "diagnostic_performance_repeatability")
         self.assertEqual(diagnostic_row["status"], "measured")
         self.assertEqual(diagnostic_row["gate_status"], "measured_repeatability_pair")
+        self.assertEqual(diagnostic_row["current_evidence"]["latest_current_diagnostic_probe"]["job_id"], "4377419")
         self.assertEqual(diagnostic_row["current_evidence"]["latest_diagnostic"]["job_id"], "4372447")
         self.assertEqual(
             diagnostic_row["current_evidence"]["repeatability_pair"]["bounds"]["output_bytes"]["spread"],

@@ -323,6 +323,32 @@ TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "source_report": "docs/balfrin_hazard_throughput_probe_tb652.md",
     "claim_boundary": "measured bounded postproc diagnostic evidence only; not hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc evidence",
 }
+TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE = {
+    "task_id": "TB-665",
+    "job_id": "4377419",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "0:01.46",
+    "alloc_cpus": 16,
+    "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527",
+    "remote_git_head": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
+    "release_zone_count": 32,
+    "scenario_count": 32,
+    "reducer_chunk_count": 4,
+    "reducer_worker_count": 4,
+    "manifest_mode": "compact",
+    "memory_peak_mb": 33.531,
+    "output_file_count": 100,
+    "output_bytes": 42_188,
+    "root_file_count": 105,
+    "manifest_bytes": 24_426,
+    "reducer_wall_time_seconds": 5.39,
+    "run_root_file_count": 113,
+    "run_root_bytes": 177_458,
+    "metrics_contract_status": "single_run_record_complete",
+    "source_report": "docs/balfrin_32_zone_diagnostic_tb665.md",
+    "claim_boundary": "measured bounded postproc diagnostic evidence only; not hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc evidence",
+}
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "task_id": "TB-432",
     "submission_package_status": "failed_closed_preflight",
@@ -1247,6 +1273,61 @@ def _tb652_diagnostic_probe_row() -> dict[str, Any]:
     }
 
 
+def _tb665_diagnostic_probe_row() -> dict[str, Any]:
+    metrics = TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE
+    return {
+        "tier_id": "tb665_32_zone_diagnostic_probe",
+        "tier_label": "TB-665 32-zone compact postproc diagnostic",
+        "evidence_label": "measured_on_balfrin",
+        "measurement_status": "measured_diagnostic_reducer_pressure",
+        "classification": "measured_bounded_diagnostic_probe",
+        "output_budget_status": "compact_single_run_record_complete",
+        "output_pressure_status": "measured_diagnostic_output_pressure",
+        "reducer_pressure_status": "measured_diagnostic_reducer_pressure",
+        "execution_efficiency_status": "measured_postproc_diagnostic_run",
+        "hazard_execution_status": "no_hazard_execution_reducer_diagnostic_only",
+        "file_count": metrics["output_file_count"],
+        "bytes": metrics["output_bytes"],
+        "diagnostic_output_file_count": metrics["output_file_count"],
+        "diagnostic_output_bytes": metrics["output_bytes"],
+        "manifest_bytes": metrics["manifest_bytes"],
+        "root_file_count": metrics["root_file_count"],
+        "runtime_seconds": metrics["reducer_wall_time_seconds"],
+        "memory_peak_mb": metrics["memory_peak_mb"],
+        "run_root_file_count": metrics["run_root_file_count"],
+        "run_root_bytes": metrics["run_root_bytes"],
+        "scenario_count": metrics["scenario_count"],
+        "run_root_preservation_status": "preserved_on_scratch",
+        "replayability_status": "single_run_record_complete",
+        "authorization_status": "standing_postproc_clearance_used",
+        "latest_measured_task": metrics["task_id"],
+        "comparison_anchor": (
+            "TB-665 repeats the 32-zone diagnostic scale with the simplified runner; "
+            "TB-619 remains latest bounded hazard-throughput support"
+        ),
+        "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
+        "next_recommended_action": "run_balfrin_diagnostic_40_zone_or_measure_larger_hazard_throughput",
+        "next_blocker_category": "hazard_throughput_scaling_and_scientific_validation",
+        "metrics_contract_status": metrics["metrics_contract_status"],
+        "job_id": metrics["job_id"],
+        "slurm": {
+            "job_id": metrics["job_id"],
+            "state": metrics["slurm_state"],
+            "exit_code": metrics["exit_code"],
+            "elapsed": metrics["elapsed"],
+            "alloc_cpus": metrics["alloc_cpus"],
+        },
+        "run_root": metrics["run_root"],
+        "release_zone_count": metrics["release_zone_count"],
+        "source_report": metrics["source_report"],
+        "summary": (
+            "TB-665 completed a 32-zone compact postproc diagnostic on Balfrin through the simplified runner. "
+            "It confirms low reducer/output pressure at 32 zones but remains diagnostic-only evidence."
+        ),
+        "claim_boundary": metrics["claim_boundary"],
+    }
+
+
 def _diagnostic_run_record_row(evidence: dict[str, Any]) -> dict[str, Any] | None:
     if evidence.get("status") != "measured" or evidence.get("output_mode") != "diagnostic_reducer_pressure":
         return None
@@ -1377,6 +1458,23 @@ def build_diagnostic_performance_comparison() -> dict[str, Any]:
         for row in (_diagnostic_record_performance_row(path) for path in diagnostic_paths)
         if row is not None
     ]
+    diagnostic_rows.append(
+        {
+            "tier_id": "tb665_32_zone_diagnostic_probe",
+            "evidence_label": "measured_on_balfrin",
+            "measurement_status": "measured_diagnostic_reducer_pressure",
+            "release_zone_count": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["release_zone_count"],
+            "job_id": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["job_id"],
+            "run_root": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["run_root"],
+            "runtime_seconds": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["reducer_wall_time_seconds"],
+            "memory_peak_mb": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["memory_peak_mb"],
+            "output_file_count": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["output_file_count"],
+            "output_bytes": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["output_bytes"],
+            "manifest_bytes": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["manifest_bytes"],
+            "source_path": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["source_report"],
+            "claim_boundary": TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE["claim_boundary"],
+        }
+    )
     diagnostic_rows.sort(key=lambda row: int(row.get("release_zone_count") or 0))
     comparison_rows = [
         {
@@ -1624,6 +1722,7 @@ def build_report() -> dict[str, Any]:
         _regional_split_measured_row(),
         _hazard_throughput_measured_row(),
         _tb652_diagnostic_probe_row(),
+        _tb665_diagnostic_probe_row(),
         *([diagnostic_row] if diagnostic_row is not None else []),
         _postproc_microbenchmark_row(),
         _fixture_budget_gate_row(),
@@ -1865,7 +1964,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
-            "TB-619 remains the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-603 remains the previous hazard-throughput comparison anchor, "
+            "TB-619 remains the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, TB-652 adds a completed 8-zone compact diagnostic comparison point, TB-665 adds a fresh 32-zone compact diagnostic point, and TB-603 remains the previous hazard-throughput comparison anchor, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."

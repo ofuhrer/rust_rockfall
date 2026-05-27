@@ -583,6 +583,7 @@ def load_latest_diagnostic_evidence() -> dict[str, Any]:
         evidence = EVIDENCE_BUNDLE.build_multi_zone_balfrin_evidence(record)
         if evidence.get("status") == "measured" and evidence.get("output_mode") == "diagnostic_reducer_pressure":
             rows.append(evidence)
+    rows.append(dict(EVIDENCE_BUNDLE.TB665_DIAGNOSTIC_PROBE))
     rows.sort(key=lambda row: int(row.get("release_zone_count") or 0))
     return rows[-1] if rows else {}
 

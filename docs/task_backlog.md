@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-666: Integrate The Larger Diagnostic Into Scale Surfaces
-
-Goal: Thread the latest Balfrin diagnostic result into the scale readiness matrix, Swiss-wide envelope, and management package.
-
-Capability gap reduced: Current measured evidence for Swiss-scale feasibility planning.
-
-Why this outranks alternatives: Measured runs only help decisions if the planning surfaces use them instead of stale anchors.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `scripts/summarize_balfrin_management_demo_package.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `tests/test_swiss_wide_execution_envelope.py`
-
-Deliverables:
-
-- Updated summaries/tests that surface the new diagnostic run, preserve its diagnostic-only boundary, and revise the next recommended scale step.
-
-Definition of done:
-
-- Focused tests pass and the latest run changes at least one measured metric, ranked next action, or Swiss-scale projection input.
-
-Scope: Do not promote diagnostic reducer-pressure evidence into hazard-throughput, physical-probability, operational, distributed, or non-`postproc` claims.
-
 ### TB-667: Build A Real Greater-Than-Four-Zone Hazard-Throughput Profile
 
 Goal: Add an executable hazard-throughput profile that targets more than four release zones rather than rerunning the old four-zone package shape.
