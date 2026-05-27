@@ -111,7 +111,7 @@ The runner measured `0.6338623960000405` wall seconds,
 scan, `0.2482742709980812` seconds for manifest scan,
 `0.17694826799925067` seconds for reducer merge, and
 `0.08144542599984561` seconds for package assembly. See
-`docs/balfrin_postproc_microbenchmark_tb305.md` for checksums, logs, scheduler
+`archive/task_reports/balfrin_postproc_microbenchmark_tb305.md` for checksums, logs, scheduler
 accounting, and the non-operational evidence boundary.
 
 TB-306 integrates that outcome into the worker-facing scale dashboard as

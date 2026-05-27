@@ -456,7 +456,7 @@ The attempt failed closed before `sbatch`: the reviewed submit command supplies
 `public_real_site_conditional_pilot_run_v1` probe manifest. No job id, run root,
 metrics JSON, preservation gate, or measured result was produced. The next safe
 action is submit-contract repair or package regeneration, not a live scale step.
-See `docs/balfrin_two_zone_probe_tb309.md` for the checksums and exact error
+See `archive/task_reports/balfrin_two_zone_probe_tb309.md` for the checksums and exact error
 block.
 
 ## TB-320 Submit-Contract Repair

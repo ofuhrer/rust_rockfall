@@ -122,7 +122,7 @@ TB332_FOUR_ZONE_HAZARD_PROBE_GATE = {
     "expected_file_count": 21,
     "reviewed_handoff_package_path": "/private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_release_zone_demo_package_v1.json",
     "authorization_record_path": "/private/tmp/rust_rockfall/balfrin_multi_release_zone_demo_v1/balfrin_multi_zone_live_authorization_record_v1.yaml",
-    "source_report": "docs/balfrin_four_zone_hazard_probe_tb332.md",
+    "source_report": "archive/task_reports/balfrin_four_zone_hazard_probe_tb332.md",
 }
 TB333_FOUR_ZONE_HAZARD_NEXT_ACTION = "defer_eight_zone_probe_until_measured_hazard_execution"
 TB362_TWO_ZONE_HAZARD_FAILED_CLOSED = {
@@ -140,7 +140,7 @@ TB362_TWO_ZONE_HAZARD_FAILED_CLOSED = {
     "run_root": None,
     "artifact_count": 7,
     "artifact_bytes": 1_362_459,
-    "source_report": "docs/balfrin_two_zone_hazard_run_tb362.md",
+    "source_report": "archive/task_reports/balfrin_two_zone_hazard_run_tb362.md",
 }
 TB368_TWO_ZONE_HAZARD_PRESERVED = {
     "task_id": "TB-368",
@@ -162,7 +162,7 @@ TB368_TWO_ZONE_HAZARD_PRESERVED = {
     "missing_metrics": [],
     "missing_run_root_entries": [],
     "missing_output_families": [],
-    "source_report": "docs/balfrin_two_zone_hazard_run_tb368.md",
+    "source_report": "archive/task_reports/balfrin_two_zone_hazard_run_tb368.md",
 }
 TB407_SMALL_MULTI_ZONE_PROBE = {
     "task_id": "TB-407",
@@ -180,7 +180,7 @@ TB407_SMALL_MULTI_ZONE_PROBE = {
     "preservation_status": "ready_for_demonstration_evidence",
     "metrics_contract_status": "complete",
     "threshold_profile_id": "smallest_live_two_zone_probe",
-    "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
+    "source_report": "archive/task_reports/balfrin_multi_zone_hazard_run_tb407.md",
 }
 TB447_REGIONAL_SPLIT_RUN = {
     "task_id": "TB-447",
@@ -189,7 +189,7 @@ TB447_REGIONAL_SPLIT_RUN = {
     "exit_code": "0:0",
     "elapsed": "00:00:24",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
-    "source_report": "docs/balfrin_regional_split_probe_gate_tb432.md",
+    "source_report": "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
 }
 TB448_REGIONAL_SPLIT_METRICS = {
     "task_id": "TB-448",
@@ -205,7 +205,7 @@ TB448_REGIONAL_SPLIT_METRICS = {
     "collector_wall_seconds": 6.738646155004972,
     "collector_peak_memory_mb": 172.921875,
     "preservation_status": "ready_for_demonstration_evidence",
-    "source_report": "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+    "source_report": "archive/task_reports/balfrin_regional_split_run_root_metrics_tb448.md",
 }
 TB448_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 92458
 TB565_REGIONAL_SPLIT_RUN = {
@@ -215,7 +215,7 @@ TB565_REGIONAL_SPLIT_RUN = {
     "exit_code": "0:0",
     "elapsed": "00:00:24",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
-    "source_report": "docs/balfrin_regional_split_postproc_run_tb565.md",
+    "source_report": "archive/task_reports/balfrin_regional_split_postproc_run_tb565.md",
 }
 TB566_REGIONAL_SPLIT_METRICS = {
     "task_id": "TB-566",
@@ -234,7 +234,7 @@ TB566_REGIONAL_SPLIT_METRICS = {
     "output_family_status": "sufficient",
     "output_budget_audit_status": "blocked_missing_replay_artifacts",
     "output_budget_blocker_category": "replay_critical_budget_template",
-    "source_report": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+    "source_report": "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md",
 }
 TB566_REGIONAL_SPLIT_HAZARD_MANIFEST_BYTES = 205049
 TB603_HAZARD_THROUGHPUT_METRICS = {
@@ -265,7 +265,7 @@ TB603_HAZARD_THROUGHPUT_METRICS = {
     "preservation_status": "ready_for_demonstration_evidence",
     "required_run_root_entries_status": "complete",
     "output_family_status": "sufficient",
-    "source_report": "docs/balfrin_hazard_throughput_run_tb603.md",
+    "source_report": "archive/task_reports/balfrin_hazard_throughput_run_tb603.md",
 }
 TB619_HAZARD_THROUGHPUT_METRICS = {
     "task_id": "TB-619",
@@ -293,7 +293,7 @@ TB619_HAZARD_THROUGHPUT_METRICS = {
     "preservation_status": "ready_for_demonstration_evidence",
     "required_run_root_entries_status": "complete",
     "output_family_status": "sufficient",
-    "source_report": "docs/balfrin_four_zone_hazard_run_tb619.md",
+    "source_report": "archive/task_reports/balfrin_four_zone_hazard_run_tb619.md",
 }
 TB669_HAZARD_THROUGHPUT_METRICS = {
     "task_id": "TB-669",
@@ -326,7 +326,7 @@ TB669_HAZARD_THROUGHPUT_METRICS = {
     "preservation_status": "preserved_on_scratch",
     "required_run_root_entries_status": "complete",
     "output_family_status": "sufficient",
-    "source_report": "docs/balfrin_12_zone_hazard_throughput_probe_tb669.md",
+    "source_report": "archive/task_reports/balfrin_12_zone_hazard_throughput_probe_tb669.md",
 }
 TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "task_id": "TB-652",
@@ -353,7 +353,7 @@ TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "metrics_contract_status": "complete",
     "metrics_report_measured_count": 14,
     "metrics_report_blocked_count": 0,
-    "source_report": "docs/balfrin_hazard_throughput_probe_tb652.md",
+    "source_report": "archive/task_reports/balfrin_hazard_throughput_probe_tb652.md",
     "claim_boundary": "measured bounded postproc diagnostic evidence only; not hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc evidence",
 }
 TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE = {
@@ -379,7 +379,7 @@ TB665_THIRTY_TWO_ZONE_DIAGNOSTIC_PROBE = {
     "run_root_file_count": 113,
     "run_root_bytes": 177_458,
     "metrics_contract_status": "single_run_record_complete",
-    "source_report": "docs/balfrin_32_zone_diagnostic_tb665.md",
+    "source_report": "archive/task_reports/balfrin_32_zone_diagnostic_tb665.md",
     "claim_boundary": "measured bounded postproc diagnostic evidence only; not hazard-throughput, operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc evidence",
 }
 TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
@@ -404,7 +404,7 @@ TB432_REGIONAL_SPLIT_FAILED_CLOSED = {
     "next_blocker_category": "evidence_collection",
     "next_recommended_action": "regenerate_ready_regional_split_package_and_retry_bounded_postproc_probe",
     "next_evidence_field": "regional_split_bounded_postproc_probe_run_root",
-    "source_report": "docs/balfrin_regional_split_probe_gate_tb432.md",
+    "source_report": "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
 }
 TB405_ADJACENT_CANDIDATE_SCENARIO_PATH = {
     "task_id": "TB-405",
@@ -2056,7 +2056,7 @@ def build_report() -> dict[str, Any]:
             "files_touched": TB305_POSTPROC_MICROBENCHMARK["files_touched"],
             "bytes_touched": TB305_POSTPROC_MICROBENCHMARK["bytes_touched"],
             "hazard_execution_promoted": False,
-            "source_document": "docs/balfrin_postproc_microbenchmark_tb305.md",
+            "source_document": "archive/task_reports/balfrin_postproc_microbenchmark_tb305.md",
         },
         "diagnostic_single_node_postproc_ceiling": diagnostic_ceiling,
         "diagnostic_performance_comparison": diagnostic_performance_comparison,
@@ -2147,11 +2147,11 @@ def build_report() -> dict[str, Any]:
             "scripts/estimate_swiss_wide_execution_envelope.py",
             "scripts/measure_scenario_storage_output_tier_pressure.py",
             "scripts/summarize_multi_zone_reducer_pressure.py",
-            "docs/balfrin_postproc_microbenchmark_tb305.md",
-            "docs/balfrin_two_zone_hazard_run_tb368.md",
-            "docs/balfrin_multi_zone_hazard_run_tb407.md",
-            "docs/balfrin_regional_split_probe_gate_tb432.md",
-            "docs/balfrin_regional_split_run_root_metrics_tb448.md",
+            "archive/task_reports/balfrin_postproc_microbenchmark_tb305.md",
+            "archive/task_reports/balfrin_two_zone_hazard_run_tb368.md",
+            "archive/task_reports/balfrin_multi_zone_hazard_run_tb407.md",
+            "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
+            "archive/task_reports/balfrin_regional_split_run_root_metrics_tb448.md",
             "docs/swiss_scale_feasibility_projection.md",
             "docs/multi_zone_reducer_pressure_probe.md",
             "scripts/execute_management_aoi_balfrin_run.py",

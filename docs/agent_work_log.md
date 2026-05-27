@@ -11054,3 +11054,27 @@ completed history.
 - Decision: reject Swiss-wide or distributed submission now; first Swiss-wide blocker `distributed_execution_authorization`; first data blocker `national_public_geodata_inventory`; first scientific blocker accepted validation/calibration evidence after TB-676 residual-quality rejection.
 - Boundaries: decision surface only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: backlog empty
+
+### TB-679: Land The Simplified Docs And Fast Consistency Gate
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: finish the repo simplification so workers start from a compact docs surface and a fast default consistency check.
+- Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_module_split.py`, `AGENTS.md`, `docs/onboarding.md`, `docs/README.md`, `docs/task_backlog.md`, `archive/task_reports/README.md`, `archive/reference_notes/README.md`, task report archives, reference-note archives, active script/test/doc references
+- Implementation summary:
+  - Moved TB-numbered historical reports from top-level `docs/` to `archive/task_reports/` and added an archive README.
+  - Moved unreferenced standalone notes from top-level `docs/` to `archive/reference_notes/` and added an archive README.
+  - Updated active scripts, tests, docs, and validation YAML references from old `docs/` task-report paths to archive paths.
+  - Added a fast default mode to `scripts/check_repo_consistency.py`; the expensive generated command-plan reference audit now runs only with `--full`.
+  - Added the next execution-first backlog tasks for Balfrin scale, scientific validation, national data, distributed mechanics, and further consolidation, then removed TB-679 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_module_split tests.test_repo_consistency_claim_hygiene tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_repo_consistency_module_split tests.test_repo_consistency_claim_hygiene tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package -v`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py --full`
+  - `git diff --check`
+  - `scripts/git-hooks/pre-commit`
+- Result/status: implemented_measured
+- Metrics: top-level `docs/` reduced from `168` files to `94`; TB-numbered files in top-level `docs/` reduced to `0`; default consistency check measured at about `5.9` seconds; full consistency check with generated command-plan reference audit measured at about `84` seconds.
+- Boundaries: simplification and gate-tiering only; no scientific, operational, Swiss-wide, distributed, physical-probability, annual-frequency, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: `TB-680`

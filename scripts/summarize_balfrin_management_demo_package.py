@@ -60,7 +60,7 @@ TB407_SMALL_MULTI_ZONE_PROBE = {
     "preservation_status": "ready_for_demonstration_evidence",
     "metrics_contract_status": "complete",
     "threshold_profile_id": "smallest_live_two_zone_probe",
-    "source_report": "docs/balfrin_multi_zone_hazard_run_tb407.md",
+    "source_report": "archive/task_reports/balfrin_multi_zone_hazard_run_tb407.md",
 }
 
 
@@ -551,7 +551,7 @@ def build_readiness_matrix(
                 "this remains bounded diagnostic evidence and does not authorize scale-up or operational hazard claims."
             ),
             helper_sources=[
-                "docs/balfrin_multi_zone_hazard_run_tb407.md",
+                "archive/task_reports/balfrin_multi_zone_hazard_run_tb407.md",
                 "scripts/generate_balfrin_multi_release_zone_demo_handoff.py",
             ],
             current_evidence={
@@ -584,8 +584,8 @@ def build_readiness_matrix(
             ),
             helper_sources=[
                 "scripts/summarize_balfrin_scale_readiness_matrix.py",
-                "docs/balfrin_regional_split_run_root_metrics_tb566.md",
-                "docs/balfrin_regional_split_probe_gate_tb432.md",
+                "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md",
+                "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
             ],
             current_evidence={
                 "classification": "measured_regional_split_probe",
@@ -597,7 +597,7 @@ def build_readiness_matrix(
                 "preservation_status": "ready_for_demonstration_evidence",
                 "next_recommended_action": "compare_measured_regional_split_against_scenario_and_output_projections",
                 "supersedes_failed_closed_task": "TB-432",
-                "source_report": "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+                "source_report": "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md",
             },
         ),
         matrix_row(
@@ -612,7 +612,7 @@ def build_readiness_matrix(
             helper_sources=[
                 "scripts/run_balfrin_diagnostic.py",
                 "scripts/summarize_balfrin_scale_readiness_matrix.py",
-                "docs/balfrin_diagnostic_series_tb613.md",
+                "archive/task_reports/balfrin_diagnostic_series_tb613.md",
             ],
             current_evidence=build_diagnostic_performance_section(),
         ),
@@ -1162,7 +1162,7 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             "diagnostic reducer-pressure performance only; no operational, physical-probability, Swiss-wide, distributed, or non-postproc claim"
         ),
         "source_paths": [
-            "docs/balfrin_diagnostic_series_tb613.md",
+            "archive/task_reports/balfrin_diagnostic_series_tb613.md",
             "scripts/run_balfrin_diagnostic.py",
             "scripts/summarize_balfrin_scale_readiness_matrix.py",
         ],
@@ -1332,10 +1332,10 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "scripts/summarize_balfrin_scale_readiness_matrix.py",
             "docs/swiss_scale_feasibility_projection.md",
             "docs/current_maturity_snapshot.md",
-            "docs/balfrin_multi_zone_hazard_run_tb407.md",
-            "docs/balfrin_diagnostic_series_tb613.md",
-            "docs/balfrin_regional_split_run_root_metrics_tb566.md",
-            "docs/balfrin_regional_split_probe_gate_tb432.md",
+            "archive/task_reports/balfrin_multi_zone_hazard_run_tb407.md",
+            "archive/task_reports/balfrin_diagnostic_series_tb613.md",
+            "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md",
+            "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
             "docs/balfrin_scale_demonstration_management_package.md",
         ],
     }
@@ -1360,7 +1360,7 @@ def build_failed_closed_section() -> dict[str, Any]:
                 "reducer_budget_status": "ready",
                 "submit_contract_status": "ready",
                 "output_budget_acceptance_status": "accepted",
-                "source_report": "docs/balfrin_two_zone_hazard_run_tb362.md",
+                "source_report": "archive/task_reports/balfrin_two_zone_hazard_run_tb362.md",
             },
             {
                 "task": "TB-352",
@@ -1392,7 +1392,7 @@ def build_failed_closed_section() -> dict[str, Any]:
                 "failure_point": "remote checkout hygiene stopped the live gate before sbatch",
                 "classification": "failed_closed",
                 "preflight_status": "blocked_dirty_remote_checkout",
-                "source_report": "docs/balfrin_regional_split_probe_gate_tb432.md",
+                "source_report": "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
             },
         ],
         "top_blockers": [
@@ -1404,10 +1404,10 @@ def build_failed_closed_section() -> dict[str, Any]:
         ],
         "source_paths": [
             "docs/current_maturity_snapshot.md",
-            "docs/balfrin_two_zone_hazard_run_tb362.md",
+            "archive/task_reports/balfrin_two_zone_hazard_run_tb362.md",
             "docs/multi_zone_reducer_pressure_probe.md",
             "docs/balfrin_single_job_execution_sufficiency.md",
-            "docs/balfrin_regional_split_probe_gate_tb432.md",
+            "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md",
         ],
     }
 

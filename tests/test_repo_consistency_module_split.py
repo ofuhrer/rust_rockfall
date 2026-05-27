@@ -175,6 +175,37 @@ class RepoConsistencyModuleSplitTests(unittest.TestCase):
             for name, original in originals.items():
                 setattr(check_repo_consistency, name, original)
 
+    def test_main_runs_expensive_command_plan_check_only_in_full_mode(self) -> None:
+        check_names = [
+            name
+            for name, value in vars(check_repo_consistency).items()
+            if name.startswith("check_") and callable(value)
+        ]
+        originals = {name: getattr(check_repo_consistency, name) for name in check_names}
+        calls: list[str] = []
+        try:
+            for name in check_names:
+                setattr(check_repo_consistency, name, lambda: [])
+
+            def expensive_check() -> list[str]:
+                calls.append("command_plan")
+                return []
+
+            setattr(
+                check_repo_consistency,
+                "check_command_plan_reference_integrity",
+                expensive_check,
+            )
+
+            self.assertEqual(check_repo_consistency.main(), 0)
+            self.assertEqual(calls, [])
+
+            self.assertEqual(check_repo_consistency.main(["--full"]), 0)
+            self.assertEqual(calls, ["command_plan"])
+        finally:
+            for name, original in originals.items():
+                setattr(check_repo_consistency, name, original)
+
 
 if __name__ == "__main__":
     unittest.main()

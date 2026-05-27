@@ -65,7 +65,7 @@ evidence:
   reviewed_artifacts:
     - validation/pilot_runs/tschamut_public_scalable_conditional_target_gate_v1.yaml
     - docs/tschamut_public_scalable_conditional_target_gate.md
-    - docs/tschamut_public_ensemble_feasibility.md
+    - archive/reference_notes/tschamut_public_ensemble_feasibility.md
     - hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_pilot_gis_package_manifest.json
     - hazard/results/tschamut_public_pilot/target_gate_v1/validation_tschamut_public_target_gate_v1_manifest.json
     - hazard/results/tschamut_public_pilot/target_gate_v1/tschamut_public_scalable_conditional_target_gate_v1_map_package_manifest.json

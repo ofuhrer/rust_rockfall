@@ -33,11 +33,6 @@ Current project version: `v0.6.1`.
 
 - `balfrin_scale_demonstration_management_package.md`: concise Balfrin evidence
   synthesis.
-- `source_frequency_evidence_tb614.md`: staged source-frequency design-review
-  evidence.
-- `holdout_runout_deposition_evidence_tb615.md`: staged held-out runout-axis
-  benchmark intake.
-- `large_aoi_gis_cog_stress_tb609.md`: larger-output GIS/COG pressure evidence.
 - `current_maturity_snapshot.md`: detailed capability and gap assessment.
 
 ## Operational References
@@ -54,5 +49,5 @@ Current project version: `v0.6.1`.
 
 Keep this guide short. Prefer improving one of the current documents above over
 adding another standalone report. Historical planning notes and superseded
-reviews should be deleted unless a current workflow or test still depends on
-them.
+reviews belong outside `docs/` unless a current workflow or test still depends
+on them.

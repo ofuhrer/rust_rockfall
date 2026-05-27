@@ -137,8 +137,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["regional_split_status"]["output_budget_audit_status"], "blocked_missing_replay_artifacts")
         self.assertEqual(report["regional_split_status"]["output_budget_blocker_category"], "replay_critical_budget_template")
         self.assertEqual(report["regional_split_status"]["supersedes_failed_closed_task"], "TB-432")
-        self.assertEqual(report["regional_split_status"]["source_report"], "docs/balfrin_regional_split_run_root_metrics_tb566.md")
-        self.assertEqual(report["regional_split_status"]["supersedes_regional_split_source_report"], "docs/balfrin_regional_split_run_root_metrics_tb448.md")
+        self.assertEqual(report["regional_split_status"]["source_report"], "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md")
+        self.assertEqual(report["regional_split_status"]["supersedes_regional_split_source_report"], "archive/task_reports/balfrin_regional_split_run_root_metrics_tb448.md")
         self.assertEqual(
             report["hazard_throughput_status"]["classification"],
             "measured_hazard_throughput_probe",
@@ -164,8 +164,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["hazard_throughput_status"]["conditional_curve_rows"], 36864)
         self.assertEqual(report["hazard_throughput_status"]["metrics_contract_status"], "complete")
         self.assertEqual(report["hazard_throughput_status"]["preservation_status"], "preserved_on_scratch")
-        self.assertEqual(report["hazard_throughput_status"]["source_report"], "docs/balfrin_12_zone_hazard_throughput_probe_tb669.md")
-        self.assertEqual(report["hazard_throughput_status"]["previous_support_source_report"], "docs/balfrin_four_zone_hazard_run_tb619.md")
+        self.assertEqual(report["hazard_throughput_status"]["source_report"], "archive/task_reports/balfrin_12_zone_hazard_throughput_probe_tb669.md")
+        self.assertEqual(report["hazard_throughput_status"]["previous_support_source_report"], "archive/task_reports/balfrin_four_zone_hazard_run_tb619.md")
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_task_id"], "TB-619")
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_job_id"], "4372656")
         self.assertFalse(report["hazard_throughput_status"]["comparison_baseline"]["same_conditional_curve_rows"])
@@ -382,8 +382,8 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(tiers["regional_split_probe"]["next_recommended_action"], "compare_measured_regional_split_against_scenario_and_output_projections")
         self.assertEqual(tiers["regional_split_probe"]["next_evidence_field"], "regional_split_projection_delta_summary")
         self.assertEqual(tiers["regional_split_probe"]["supersedes_failed_closed_task"], "TB-432")
-        self.assertEqual(tiers["regional_split_probe"]["superseded_failed_closed_source_report"], "docs/balfrin_regional_split_probe_gate_tb432.md")
-        self.assertEqual(tiers["regional_split_probe"]["supersedes_regional_split_source_report"], "docs/balfrin_regional_split_run_root_metrics_tb448.md")
+        self.assertEqual(tiers["regional_split_probe"]["superseded_failed_closed_source_report"], "archive/task_reports/balfrin_regional_split_probe_gate_tb432.md")
+        self.assertEqual(tiers["regional_split_probe"]["supersedes_regional_split_source_report"], "archive/task_reports/balfrin_regional_split_run_root_metrics_tb448.md")
         self.assertIn("replay-critical budget blockers", tiers["regional_split_probe"]["next_recommended_action_reason"])
 
         self.assertEqual(tiers["management_aoi_multi_zone_run"]["classification"], "failed_closed")

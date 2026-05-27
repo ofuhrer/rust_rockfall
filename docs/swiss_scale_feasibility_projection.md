@@ -8,7 +8,7 @@ risk, exposure, or vulnerability semantics.
 
 - TB-678 current decision: do not submit a Swiss-wide or distributed run yet.
   The concise readiness surface is
-  `docs/swiss_scale_demonstration_readiness_tb678.md`.
+  `archive/task_reports/swiss_scale_demonstration_readiness_tb678.md`.
 - Measured support has improved locally and on Balfrin, but the Swiss-wide
   phase-change status remains `deferred`.
 - First Swiss-wide phase-change blocker:

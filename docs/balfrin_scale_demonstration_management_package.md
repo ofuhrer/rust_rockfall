@@ -9,7 +9,7 @@ toward a larger Balfrin demonstration?
 ## Current Answer
 
 - TB-678 is the current concise decision surface:
-  `docs/swiss_scale_demonstration_readiness_tb678.md`.
+  `archive/task_reports/swiss_scale_demonstration_readiness_tb678.md`.
 - Do not submit a Swiss-wide or distributed run yet.
 - The latest measured hazard-throughput support point is TB-669: 12 release
   zones on Balfrin `postproc`, job `4378015`, `0.288979` s profile wall time,

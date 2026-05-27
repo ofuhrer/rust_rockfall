@@ -98,6 +98,13 @@ automatically:
 PYENV_VERSION=system UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py
 ```
 
+That command is the fast local safety gate. Add `--full` when changing command
+plan generators or script-reference wiring:
+
+```bash
+PYENV_VERSION=system UV_CACHE_DIR=/tmp/uv-cache uv run --with PyYAML python scripts/check_repo_consistency.py --full
+```
+
 GitHub Actions is the exception: CI may install `requirements-tools.txt` into
 its system Python. `pyproject.toml` and `requirements-tools.txt` are checked for
 synchronization and should not drift into competing dependency sources.

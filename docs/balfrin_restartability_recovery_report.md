@@ -31,7 +31,7 @@ Measured result:
 - stable hazard-product hash comparison: `37` baseline files, `37` recovered
   files, `0` changed artifacts
 
-Detailed evidence: `docs/balfrin_restartability_recovery_tb606.md`.
+Detailed evidence: `archive/task_reports/balfrin_restartability_recovery_tb606.md`.
 
 ## Partial State
 

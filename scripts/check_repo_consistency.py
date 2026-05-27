@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import re
@@ -272,7 +273,20 @@ KNOWN_METRICS = {
 }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run repository consistency checks for fast local agent handoffs."
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help=(
+            "Also run expensive generated command-plan reference checks. "
+            "Default is the fast safety gate used before local commits."
+        ),
+    )
+    args = parser.parse_args([] if argv is None else argv)
+
     errors: list[str] = []
     errors.extend(check_staged_generated_outputs())
     errors.extend(check_tracked_copy_suffix_docs())
@@ -286,7 +300,8 @@ def main() -> int:
     errors.extend(check_script_inventory_coverage())
     errors.extend(check_task_backlog_and_work_log_hygiene())
     errors.extend(check_active_backlog_inspect_first_paths())
-    errors.extend(check_command_plan_reference_integrity())
+    if args.full:
+        errors.extend(check_command_plan_reference_integrity())
     errors.extend(check_worker_output_compression_guidance())
     errors.extend(check_strict_case_schema_audit())
     errors.extend(check_yaml_cases())
@@ -3648,4 +3663,4 @@ def check_calibration_metadata() -> list[str]:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

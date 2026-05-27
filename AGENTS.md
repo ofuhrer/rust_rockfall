@@ -154,6 +154,10 @@ find data/processed/swisstopo validation/private hazard/results validation/polic
   \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print
 ```
 
+The default consistency check is the fast local safety gate. Use
+`PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py --full`
+when changing generated command-plan helpers or their script references.
+
 There is no repository pre-push hook. Before pushing, confirm task-specific
 checks passed and inspect `git status --short --branch` plus the committed diff.
 

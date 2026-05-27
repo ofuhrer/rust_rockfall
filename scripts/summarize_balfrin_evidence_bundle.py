@@ -99,7 +99,7 @@ TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE = {
     "output_profile_status": "blocked_output_profile",
     "ready_for_authorized_submission": False,
     "run_root": None,
-    "source_paths": ["docs/balfrin_two_zone_hazard_run_tb362.md", "docs/agent_work_log.md"],
+    "source_paths": ["archive/task_reports/balfrin_two_zone_hazard_run_tb362.md", "docs/agent_work_log.md"],
     "summary": (
         "TB-362 failed closed before sbatch: the explicit two-zone hazard package passed authorization, reducer-budget, "
         "submit-contract, and output-budget gates, but the remote pre-submit gate returned output_profile_status="
@@ -121,7 +121,7 @@ TB352_MULTI_ZONE_FAILED_CLOSED_EVIDENCE = {
     "preservation_gate_promoted": False,
     "post_run_collector_promoted": False,
     "release_zone_count": 2,
-    "source_paths": ["docs/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
+    "source_paths": ["archive/task_reports/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
     "summary": (
         "TB-352 failed closed before scheduler submission: the smallest multi-zone hazard path stayed behind the task-specific "
         "preflight, so it remains separate from measured evidence and does not authorize scale-up."
@@ -141,7 +141,7 @@ TB309_TWO_ZONE_FAILED_CLOSED_EVIDENCE = {
     "preservation_gate_promoted": False,
     "post_run_collector_promoted": False,
     "release_zone_count": 2,
-    "source_paths": ["docs/balfrin_two_zone_probe_tb309.md", "docs/agent_work_log.md"],
+    "source_paths": ["archive/task_reports/balfrin_two_zone_probe_tb309.md", "docs/agent_work_log.md"],
     "summary": (
         "TB-309 reached ready_for_authorization_review, but the reviewed smallest two-zone submit command failed closed before sbatch because the submit helper expected a public_real_site_conditional_pilot_run_v1 manifest and the reviewed command supplied the target-area wrapper manifest instead."
     ),
@@ -160,7 +160,7 @@ TB352_MULTI_ZONE_PARTIAL_EVIDENCE = {
     "preservation_gate_promoted": False,
     "post_run_collector_promoted": False,
     "release_zone_count": 2,
-    "source_paths": ["docs/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
+    "source_paths": ["archive/task_reports/balfrin_smallest_multi_zone_hazard_run_tb352.md", "docs/agent_work_log.md"],
     "summary": (
         "Partial multi-zone evidence remains incomplete and must not be treated as measured or failed-closed evidence."
     ),
@@ -202,7 +202,7 @@ TB557_BOUNDED_REDUCED_OUTPUT_PROBE = {
     "root_class": "measured_multi_zone_balfrin_root",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tb557_bounded_reduced_output_probe_v1",
     "run_id": "tb557_bounded_reduced_output_probe_v1",
-    "source_paths": ["docs/balfrin_bounded_reduced_output_run_tb557.md"],
+    "source_paths": ["archive/task_reports/balfrin_bounded_reduced_output_run_tb557.md"],
     "git_commit": "6a49586",
     "slurm_job_id": "4366534",
     "slurm_state": "COMPLETED",
@@ -239,8 +239,8 @@ TB565_REGIONAL_SPLIT_PROBE = {
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_v1",
     "run_id": "tschamut_public_balfrin_multi_release_zone_v1",
     "source_paths": [
-        "docs/balfrin_regional_split_postproc_run_tb565.md",
-        "docs/balfrin_regional_split_run_root_metrics_tb566.md",
+        "archive/task_reports/balfrin_regional_split_postproc_run_tb565.md",
+        "archive/task_reports/balfrin_regional_split_run_root_metrics_tb566.md",
     ],
     "git_commit": "0008dcc",
     "slurm_job_id": "4367244",
@@ -279,7 +279,7 @@ TB603_HAZARD_THROUGHPUT_PROBE = {
     "root_class": "measured_hazard_throughput_balfrin_root",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_multi_release_zone_tb603_20260526",
     "run_id": "tschamut_public_balfrin_multi_release_zone_tb603_20260526",
-    "source_paths": ["docs/balfrin_hazard_throughput_run_tb603.md"],
+    "source_paths": ["archive/task_reports/balfrin_hazard_throughput_run_tb603.md"],
     "git_commit": "71e4296",
     "slurm_job_id": "4372309",
     "slurm_state": "COMPLETED",
@@ -325,7 +325,7 @@ TB619_HAZARD_THROUGHPUT_PROBE = {
     "root_class": "measured_hazard_throughput_balfrin_root",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/balfrin-demo/tschamut_public_balfrin_four_zone_hazard_tb619_20260527",
     "run_id": "tschamut_public_balfrin_four_zone_hazard_tb619_20260527",
-    "source_paths": ["docs/balfrin_four_zone_hazard_run_tb619.md"],
+    "source_paths": ["archive/task_reports/balfrin_four_zone_hazard_run_tb619.md"],
     "git_commit": "4b335c0",
     "slurm_job_id": "4372656",
     "slurm_state": "COMPLETED",
@@ -369,7 +369,7 @@ TB669_HAZARD_THROUGHPUT_PROBE = {
     "root_class": "measured_hazard_throughput_balfrin_root",
     "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917",
     "run_id": "tb669_12_zone_hazard_throughput_20260527_123917",
-    "source_paths": ["docs/balfrin_12_zone_hazard_throughput_probe_tb669.md"],
+    "source_paths": ["archive/task_reports/balfrin_12_zone_hazard_throughput_probe_tb669.md"],
     "git_commit": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
     "slurm_job_id": "4378015",
     "slurm_state": "COMPLETED",
@@ -431,7 +431,7 @@ TB665_DIAGNOSTIC_PROBE = {
     "root_class": "measured_multi_zone_balfrin_root",
     "run_root": "/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527",
     "run_id": "tb665_32_zone_20260527",
-    "source_paths": ["docs/balfrin_32_zone_diagnostic_tb665.md"],
+    "source_paths": ["archive/task_reports/balfrin_32_zone_diagnostic_tb665.md"],
     "git_commit": "4b335c03e02e7d2e65704a3ae74e9662a3f2d42f",
     "slurm_job_id": "4377419",
     "slurm_state": "COMPLETED",
@@ -886,13 +886,13 @@ def build_multi_zone_balfrin_evidence(evidence: Any = None) -> dict[str, Any]:
         use_tb352_template = (
             evidence.get("task_id") == "TB-352"
             or "manifest_size_bytes" == str(evidence.get("first_bottleneck_label") or "")
-            or "docs/balfrin_smallest_multi_zone_hazard_run_tb352.md" in evidence_source_paths
+            or "archive/task_reports/balfrin_smallest_multi_zone_hazard_run_tb352.md" in evidence_source_paths
         )
         use_tb362_template = (
             evidence.get("task_id") == "TB-362"
             or evidence.get("output_profile_status") == "blocked_output_profile"
             or "blocked_output_profile" == str(evidence.get("first_bottleneck_label") or "")
-            or "docs/balfrin_two_zone_hazard_run_tb362.md" in evidence_source_paths
+            or "archive/task_reports/balfrin_two_zone_hazard_run_tb362.md" in evidence_source_paths
         )
         payload = dict(
             TB362_MULTI_ZONE_FAILED_CLOSED_EVIDENCE
@@ -1004,7 +1004,7 @@ def build_latest_bounded_probe_interpretation_gate(evidence: Any = None) -> dict
     interpretation_evidence = {
         "pilot_id": DEFAULT_PILOT_ID,
         "run_id": evidence.get("run_id") or "latest_bounded_balfrin_probe",
-        "contract_path": first_source_path(evidence, "docs/balfrin_bounded_reduced_output_run_tb557.md"),
+        "contract_path": first_source_path(evidence, "archive/task_reports/balfrin_bounded_reduced_output_run_tb557.md"),
         "readiness_check": {
             "status": "ready" if measured else "blocked_missing_inputs",
             "summary": evidence.get("summary") or "Latest bounded Balfrin probe evidence is available.",

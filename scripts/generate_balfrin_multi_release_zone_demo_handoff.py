@@ -72,7 +72,7 @@ TB368_TWO_ZONE_PRESERVED_EVIDENCE = {
     "status": "measured_on_balfrin",
     "classification": "measured_two_zone_preservation_ready",
     "source_task": "TB-368",
-    "source_report": "docs/balfrin_two_zone_hazard_run_tb368.md",
+    "source_report": "archive/task_reports/balfrin_two_zone_hazard_run_tb368.md",
     "job_id": "4344114",
     "run_root": str(SMALLEST_MULTI_ZONE_REVIEW_RUN_ROOT),
     "partition": "postproc",

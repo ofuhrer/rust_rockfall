@@ -450,7 +450,7 @@ def post_diagnostic_scale_context() -> dict[str, Any]:
             "evidence_type": "single_node_postproc_reducer_pressure",
             "repeatability_status": "measured_repeatability_pair",
             "source_documents": [
-                "docs/balfrin_diagnostic_series_tb613.md",
+                "archive/task_reports/balfrin_diagnostic_series_tb613.md",
                 "docs/balfrin_scale_demonstration_management_package.md",
             ],
         },

@@ -55,8 +55,8 @@ SWISS_WIDE_PLANNING_ASSUMPTIONS = {
     "release_zones_per_aoi": 10,
     "trajectories_per_release_zone": 6,
 }
-DEFAULT_NATIONAL_TILING_INVENTORY = ROOT / "docs/swiss_national_tiling_inventory_tb607.json"
-DEFAULT_NATIONAL_TILE_CHUNK_MAPPING = ROOT / "docs/swiss_national_tile_chunk_mapping_tb608.json"
+DEFAULT_NATIONAL_TILING_INVENTORY = ROOT / "archive/task_reports/swiss_national_tiling_inventory_tb607.json"
+DEFAULT_NATIONAL_TILE_CHUNK_MAPPING = ROOT / "archive/task_reports/swiss_national_tile_chunk_mapping_tb608.json"
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
