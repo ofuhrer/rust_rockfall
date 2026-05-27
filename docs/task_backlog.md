@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-665: Run The Next Larger Balfrin Diagnostic
-
-Goal: Measure the next larger single-node `postproc` diagnostic run from the simplified Balfrin front door.
-
-Capability gap reduced: Measured performance and output-pressure evidence beyond the current small diagnostic support points.
-
-Why this outranks alternatives: A fresh larger diagnostic establishes the current checkout's scaling behavior before trying larger hazard-throughput or Swiss-scale planning.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/summarize_multi_zone_reducer_pressure.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_hazard_throughput_probe_tb652.md`
-
-Deliverables:
-
-- One completed or clearly failed Balfrin diagnostic run under `$SCRATCH`, with `run_record.json`, scheduler accounting, wall time, peak RSS, output bytes, file counts, manifest bytes, and reducer wall time collected.
-
-Definition of done:
-
-- The run reaches a terminal state, its metrics are readable locally or on Balfrin, and the result identifies the next larger feasible diagnostic size or the first bottleneck.
-
-Scope: Keep the run on `postproc`, single-node, and under the 6-hour standing-clearance boundary.
-
 ### TB-666: Integrate The Larger Diagnostic Into Scale Surfaces
 
 Goal: Thread the latest Balfrin diagnostic result into the scale readiness matrix, Swiss-wide envelope, and management package.

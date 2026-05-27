@@ -10761,3 +10761,22 @@ completed history.
 - Metrics: preflight status `ready_for_read_only_collection`; ready for pre-submit `true`; remote checkout hygiene `pass`; remote head `4b335c03e02e7d2e65704a3ae74e9662a3f2d42f`; local head `c11917e207e6f6b36fb1d40449f31ee8cb2d8c8b`; scheduler node states `mixed|4|1-00:00:00`, `idle|9|1-00:00:00`; running jobs `180`; pending jobs `1`; current-user jobs `1`; next planned diagnostic `32` release zones, `4` reducer chunks, `4` reducer workers, `00:45:00` time limit, run root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527`.
 - Boundaries: readiness and plan record only; no job submitted and no operational, physical-probability, annual-frequency, hazard-throughput, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-665`
+
+### TB-665: Run The Next Larger Balfrin Diagnostic
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: measure the next larger single-node `postproc` diagnostic run from the simplified Balfrin front door.
+- Files changed: `docs/balfrin_32_zone_diagnostic_tb665.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Submitted and monitored the planned 32-zone diagnostic through `scripts/run_balfrin_diagnostic.py` on Balfrin.
+  - Collected the single `run_record.json`, scheduler accounting, timing, pressure report, and preserved-file list from `$SCRATCH`.
+  - Recorded the measured output pressure, timing, memory, and next diagnostic recommendation.
+  - Removed TB-665 from the active backlog.
+- Checks run:
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin "cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py run --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --partition postproc --time 00:45:00 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527 --poll-seconds 10 --monitor-timeout-seconds 3600 --format json" > /tmp/tb665_balfrin_run.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin "find /scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527 -maxdepth 2 -type f | sort | sed -n '1,80p'" > /tmp/tb665_remote_files.txt`
+- Result/status: implemented_measured
+- Metrics: job id `4377419`; terminal state `COMPLETED`; scheduler elapsed `00:00:01`; exit code `0:0`; `/usr/bin/time` elapsed `0:01.46`; peak RSS `33.531` MB; reducer wall time `5.39` seconds; scenario count `32`; output files `100`; output bytes `42,188`; root files `105`; manifest bytes `24,426`; pressure-root footprint `105` files / `73,471` bytes; run-root footprint `113` files / `177,458` bytes; next diagnostic recommendation `40` release zones.
+- Boundaries: measured single-node `postproc` diagnostic reducer-pressure evidence only; no hazard-throughput, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-666`
