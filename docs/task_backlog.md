@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-636: Add Calibration Residual Diagnostics
-
-Goal: Make calibration quality easier to evaluate by reporting residual distribution and outlier cases rather than a single objective value.
-
-Capability gap reduced: Scientific credibility of calibration and holdout interpretation.
-
-Why this outranks alternatives: A selected calibration candidate is hard to interpret without per-event residuals and worst-case behavior.
-
-Inspect first:
-
-- `scripts/run_tschamut_calibration.py`
-- `calibration/experiments/tschamut_v0_3/candidate_results.csv`
-- `calibration/experiments/tschamut_v0_3/summary.json`
-- `tests/test_calibration_failure_diagnostics.py`
-
-Deliverables:
-
-- Calibration and holdout residual summaries with mean, median, max, count, and worst-case records in the generated calibration summary.
-
-Definition of done:
-
-- Residual diagnostics are generated from existing calibration outputs, tests cover the new fields, and the summary still separates calibration from holdout.
-
 ### TB-637: Run A Calibration-Selected Hazard Smoke
 
 Goal: Check whether the locally selected calibration candidate materially changes the Tschamut hazard layers in a controlled scratch run.

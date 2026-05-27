@@ -36,7 +36,7 @@
   },
   "experiment_id": "tschamut_v0_3",
   "generated_utc": null,
-  "interpretation": "The selected set minimizes the calibration subset objective in a small explicit grid. Holdout performance must be interpreted as a research diagnostic, not predictive skill.",
+  "interpretation": "The selected set minimizes the calibration subset objective in an explicit local grid. Holdout performance must be interpreted as a research diagnostic, not predictive skill.",
   "model_version": "0.3.0",
   "objective": {
     "description": "Weighted normalized distribution-level mismatch; lower is better.",
@@ -202,6 +202,265 @@
     "strongest_mean_effect_range": 0.5595789209350798,
     "worst_calibration_objective": 1.4588514371086627,
     "worst_candidate_id": "candidate_132"
+  },
+  "residual_diagnostics": {
+    "calibration": {
+      "candidate_id": "candidate_103",
+      "ensemble_member_count": 72,
+      "missing_observed_ids": [],
+      "partition": "calibration",
+      "status": "measured",
+      "summaries": {
+        "endpoint_distance_m": {
+          "count": 18,
+          "max": 76.86080043678305,
+          "mean": 29.27315484611212,
+          "median": 27.393345025894927,
+          "min": 14.303138897209829
+        },
+        "runout_abs_error_m": {
+          "count": 18,
+          "max": 70.40924878589854,
+          "mean": 24.42720089665323,
+          "median": 23.22971513458129,
+          "min": 4.51134140433237
+        },
+        "runout_residual_m": {
+          "count": 18,
+          "max": 70.40924878589854,
+          "mean": -1.6181999659159014,
+          "median": -9.4850106885224,
+          "min": -35.78325269122719
+        }
+      },
+      "trajectory_count": 18,
+      "worst_cases": {
+        "endpoint_distance_m": [
+          {
+            "endpoint_distance_m": 76.86080043678305,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 30.639598,
+            "runout_abs_error_m": 70.40924878589854,
+            "runout_residual_m": 70.40924878589854,
+            "simulated_mean_runout_m": 101.04884678589855,
+            "trajectory_id": "v107"
+          },
+          {
+            "endpoint_distance_m": 49.66154413651313,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 46.086591,
+            "runout_abs_error_m": 48.04087764066303,
+            "runout_residual_m": 48.04087764066303,
+            "simulated_mean_runout_m": 94.12746864066303,
+            "trajectory_id": "v023"
+          },
+          {
+            "endpoint_distance_m": 42.21442166692303,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 100.451696,
+            "runout_abs_error_m": 35.78325269122719,
+            "runout_residual_m": -35.78325269122719,
+            "simulated_mean_runout_m": 64.66844330877281,
+            "trajectory_id": "v032"
+          },
+          {
+            "endpoint_distance_m": 35.0987123945679,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 70.898723,
+            "runout_abs_error_m": 33.91868103922715,
+            "runout_residual_m": 33.91868103922715,
+            "simulated_mean_runout_m": 104.81740403922716,
+            "trajectory_id": "v055"
+          },
+          {
+            "endpoint_distance_m": 31.92331137289886,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 107.030432,
+            "runout_abs_error_m": 30.378940823651448,
+            "runout_residual_m": -30.378940823651448,
+            "simulated_mean_runout_m": 76.65149117634856,
+            "trajectory_id": "v033"
+          }
+        ],
+        "runout_abs_error_m": [
+          {
+            "endpoint_distance_m": 76.86080043678305,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 30.639598,
+            "runout_abs_error_m": 70.40924878589854,
+            "runout_residual_m": 70.40924878589854,
+            "simulated_mean_runout_m": 101.04884678589855,
+            "trajectory_id": "v107"
+          },
+          {
+            "endpoint_distance_m": 49.66154413651313,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 46.086591,
+            "runout_abs_error_m": 48.04087764066303,
+            "runout_residual_m": 48.04087764066303,
+            "simulated_mean_runout_m": 94.12746864066303,
+            "trajectory_id": "v023"
+          },
+          {
+            "endpoint_distance_m": 42.21442166692303,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 100.451696,
+            "runout_abs_error_m": 35.78325269122719,
+            "runout_residual_m": -35.78325269122719,
+            "simulated_mean_runout_m": 64.66844330877281,
+            "trajectory_id": "v032"
+          },
+          {
+            "endpoint_distance_m": 35.0987123945679,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 70.898723,
+            "runout_abs_error_m": 33.91868103922715,
+            "runout_residual_m": 33.91868103922715,
+            "simulated_mean_runout_m": 104.81740403922716,
+            "trajectory_id": "v055"
+          },
+          {
+            "endpoint_distance_m": 31.92331137289886,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 107.030432,
+            "runout_abs_error_m": 30.378940823651448,
+            "runout_residual_m": -30.378940823651448,
+            "simulated_mean_runout_m": 76.65149117634856,
+            "trajectory_id": "v033"
+          }
+        ]
+      }
+    },
+    "candidate_id": "candidate_103",
+    "holdout": {
+      "candidate_id": "candidate_103",
+      "ensemble_member_count": 72,
+      "missing_observed_ids": [],
+      "partition": "holdout",
+      "status": "measured",
+      "summaries": {
+        "endpoint_distance_m": {
+          "count": 18,
+          "max": 62.34600206438988,
+          "mean": 25.538074921069832,
+          "median": 22.606117562874488,
+          "min": 10.7613600926921
+        },
+        "runout_abs_error_m": {
+          "count": 18,
+          "max": 55.111764172812286,
+          "mean": 18.217756883796667,
+          "median": 12.860482622919953,
+          "min": 0.23125741272778555
+        },
+        "runout_residual_m": {
+          "count": 18,
+          "max": 46.57306697811709,
+          "mean": 7.879923350207262,
+          "median": 8.93808827687296,
+          "min": -55.111764172812286
+        }
+      },
+      "trajectory_count": 18,
+      "worst_cases": {
+        "endpoint_distance_m": [
+          {
+            "endpoint_distance_m": 62.34600206438988,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 94.446812,
+            "runout_abs_error_m": 55.111764172812286,
+            "runout_residual_m": -55.111764172812286,
+            "simulated_mean_runout_m": 39.33504782718771,
+            "trajectory_id": "v086"
+          },
+          {
+            "endpoint_distance_m": 50.22950924833861,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 81.572401,
+            "runout_abs_error_m": 45.44370944439595,
+            "runout_residual_m": 45.44370944439595,
+            "simulated_mean_runout_m": 127.01611044439595,
+            "trajectory_id": "v066"
+          },
+          {
+            "endpoint_distance_m": 49.0317546662701,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 42.904059,
+            "runout_abs_error_m": 46.57306697811709,
+            "runout_residual_m": 46.57306697811709,
+            "simulated_mean_runout_m": 89.47712597811709,
+            "trajectory_id": "v017"
+          },
+          {
+            "endpoint_distance_m": 29.805506480234843,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 101.178869,
+            "runout_abs_error_m": 20.503507846624856,
+            "runout_residual_m": 20.503507846624856,
+            "simulated_mean_runout_m": 121.68237684662486,
+            "trajectory_id": "v053"
+          },
+          {
+            "endpoint_distance_m": 27.720105087273023,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 92.448932,
+            "runout_abs_error_m": 24.727200727095962,
+            "runout_residual_m": 24.727200727095962,
+            "simulated_mean_runout_m": 117.17613272709596,
+            "trajectory_id": "v041"
+          }
+        ],
+        "runout_abs_error_m": [
+          {
+            "endpoint_distance_m": 62.34600206438988,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 94.446812,
+            "runout_abs_error_m": 55.111764172812286,
+            "runout_residual_m": -55.111764172812286,
+            "simulated_mean_runout_m": 39.33504782718771,
+            "trajectory_id": "v086"
+          },
+          {
+            "endpoint_distance_m": 49.0317546662701,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 42.904059,
+            "runout_abs_error_m": 46.57306697811709,
+            "runout_residual_m": 46.57306697811709,
+            "simulated_mean_runout_m": 89.47712597811709,
+            "trajectory_id": "v017"
+          },
+          {
+            "endpoint_distance_m": 50.22950924833861,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 81.572401,
+            "runout_abs_error_m": 45.44370944439595,
+            "runout_residual_m": 45.44370944439595,
+            "simulated_mean_runout_m": 127.01611044439595,
+            "trajectory_id": "v066"
+          },
+          {
+            "endpoint_distance_m": 27.720105087273023,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 92.448932,
+            "runout_abs_error_m": 24.727200727095962,
+            "runout_residual_m": 24.727200727095962,
+            "simulated_mean_runout_m": 117.17613272709596,
+            "trajectory_id": "v041"
+          },
+          {
+            "endpoint_distance_m": 24.833077392738424,
+            "ensemble_member_count": 4,
+            "observed_runout_m": 110.274631,
+            "runout_abs_error_m": 23.985834195400685,
+            "runout_residual_m": -23.985834195400685,
+            "simulated_mean_runout_m": 86.28879680459931,
+            "trajectory_id": "v021"
+          }
+        ]
+      }
+    },
+    "interpretation": "Residual diagnostics compare per-trajectory observed deposition/runout rows with the selected candidate's ensemble mean endpoint for the same release_id.",
+    "schema_version": "tschamut_calibration_residual_diagnostics_v1"
   },
   "seed": 43030,
   "split": {

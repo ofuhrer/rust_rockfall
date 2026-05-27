@@ -10156,3 +10156,22 @@ completed history.
 - Metrics: candidate count `144`; selected candidate `candidate_103`; calibration objective `0.0464107283231083`; holdout objective `0.0856601395687338`; calibration runout error `1.618199965915906 m`; holdout runout error `7.879923350207235 m`; strongest mean effect parameter `friction_coefficient`; calibration objective span `1.4124407087855544`; calibration/holdout overlap count `0`.
 - Boundaries: research calibration evidence only; no selected parameter was promoted to defaults or validation cases, and no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim is made.
 - Next task: `TB-636`
+
+### TB-636: Add Calibration Residual Diagnostics
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: make the selected calibration candidate interpretable through per-trajectory residual distributions and worst cases instead of only aggregate objectives.
+- Files changed: `scripts/run_tschamut_calibration.py`, `tests/test_calibration_failure_diagnostics.py`, `calibration/experiments/tschamut_v0_3/summary.json`, `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added residual diagnostics that join selected-candidate ensemble deposition rows back to observed deposition rows per trajectory.
+  - Added summary-refresh mode so residual diagnostics can be regenerated from existing candidate and ensemble outputs without rerunning the full grid.
+  - Recorded calibration and holdout residual summaries plus worst-case trajectory records in `summary.json`.
+  - Added unit coverage for residual distributions, medians, worst cases, and missing partition outputs.
+  - Removed TB-636 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --config calibration/experiments/tschamut_v0_3/config.yaml --refresh-summary-only`
+- Result/status: implemented_measured
+- Metrics: calibration residual count `18`, mean absolute runout error `24.42720089665323 m`, median `23.22971513458129 m`, max `70.40924878589854 m`, worst runout case `v107`; holdout residual count `18`, mean absolute runout error `18.217756883796667 m`, median `12.860482622919953 m`, max `55.111764172812286 m`, worst runout case `v086`.
+- Boundaries: residual diagnostics are research interpretation only; no acceptance threshold, validation promotion, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim is made.
+- Next task: `TB-637`

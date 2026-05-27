@@ -39,6 +39,11 @@ def main() -> int:
         help="write the executable calibration objective contract and exit without running candidates",
     )
     parser.add_argument(
+        "--refresh-summary-only",
+        action="store_true",
+        help="rewrite selected parameters, summary JSON, and HTML from existing candidate and ensemble outputs",
+    )
+    parser.add_argument(
         "--objective-json-output",
         type=Path,
         default=None,
@@ -57,6 +62,10 @@ def main() -> int:
     prepare_split(config)
     if args.prepare_only:
         print("prepared calibration split")
+        return 0
+    if args.refresh_summary_only:
+        refresh_summaries_from_existing_outputs(config)
+        print("refreshed calibration summaries")
         return 0
     run_experiment(config)
     return 0
@@ -260,6 +269,54 @@ def run_experiment(config: dict[str, Any]) -> None:
     write_selected_parameters(resolve(config["outputs"]["selected_parameters_yaml"]), rows[0], config)
     write_summary(resolve(config["outputs"]["summary_json"]), rows, config)
     write_html_report(resolve(config["outputs"]["report_html"]), rows, config)
+
+
+def refresh_summaries_from_existing_outputs(config: dict[str, Any]) -> None:
+    rows = read_candidate_results(resolve(config["outputs"]["candidate_results_csv"]))
+    if not rows:
+        raise stage_error("summary refresh", "candidate_results_csv produced no candidate rows")
+    rows.sort(key=lambda row: (float(row["calibration_objective"]), float(row["holdout_objective"])))
+    write_selected_parameters(resolve(config["outputs"]["selected_parameters_yaml"]), rows[0], config)
+    write_summary(resolve(config["outputs"]["summary_json"]), rows, config)
+    write_html_report(resolve(config["outputs"]["report_html"]), rows, config)
+
+
+def read_candidate_results(path: Path) -> list[dict[str, Any]]:
+    numeric_fields = {
+        "normal_restitution",
+        "tangential_restitution",
+        "friction_coefficient",
+        "roughness_std_normal",
+        "roughness_std_tangent",
+        "roughness_std_angle",
+        "calibration_objective",
+        "holdout_objective",
+        "calibration_observed_mean_runout_m",
+        "calibration_simulated_mean_runout_m",
+        "calibration_runout_distance_error_m",
+        "calibration_deposition_centroid_error_m",
+        "calibration_deposition_cloud_mean_nearest_error_m",
+        "calibration_lateral_spread_error_m",
+        "calibration_deposition_cloud_overlap_fraction",
+        "holdout_observed_mean_runout_m",
+        "holdout_simulated_mean_runout_m",
+        "holdout_runout_distance_error_m",
+        "holdout_deposition_centroid_error_m",
+        "holdout_deposition_cloud_mean_nearest_error_m",
+        "holdout_lateral_spread_error_m",
+        "holdout_deposition_cloud_overlap_fraction",
+        "calibration_validation_release_count",
+        "calibration_validation_simulated_trajectory_count",
+        "holdout_validation_release_count",
+        "holdout_validation_simulated_trajectory_count",
+    }
+    rows = []
+    for row in read_csv(path):
+        normalized: dict[str, Any] = dict(row)
+        for field in numeric_fields & set(normalized):
+            normalized[field] = float(normalized[field])
+        rows.append(normalized)
+    return rows
 
 
 def write_objective_contract(path: Path, config: dict[str, Any]) -> dict[str, Any]:
@@ -572,8 +629,9 @@ def write_summary(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]
         "best_candidate": best,
         "top_candidates": rows[:5],
         "parameter_sensitivity": summarize_parameter_sensitivity(rows),
+        "residual_diagnostics": build_residual_diagnostics(best["candidate_id"], config),
         "interpretation": (
-            "The selected set minimizes the calibration subset objective in a small explicit grid. "
+            "The selected set minimizes the calibration subset objective in an explicit local grid. "
             "Holdout performance must be interpreted as a research diagnostic, not predictive skill."
         ),
     }
@@ -643,6 +701,145 @@ def summarize_parameter_sensitivity(rows: list[dict[str, Any]]) -> dict[str, Any
 
 def mean_float(rows: list[dict[str, Any]], field: str) -> float:
     return sum(float(row[field]) for row in rows) / max(len(rows), 1)
+
+
+def build_residual_diagnostics(candidate_id: str, config: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": "tschamut_calibration_residual_diagnostics_v1",
+        "candidate_id": candidate_id,
+        "calibration": residual_diagnostics_for_partition(candidate_id, "calibration", config),
+        "holdout": residual_diagnostics_for_partition(candidate_id, "holdout", config),
+        "interpretation": (
+            "Residual diagnostics compare per-trajectory observed deposition/runout rows with "
+            "the selected candidate's ensemble mean endpoint for the same release_id."
+        ),
+    }
+
+
+def residual_diagnostics_for_partition(candidate_id: str, partition: str, config: dict[str, Any]) -> dict[str, Any]:
+    result_dir = resolve(config["outputs"]["generated_results_dir"])
+    ensemble_path = result_dir / "reports" / f"calibration_tschamut_{partition}_{candidate_id}_ensemble_deposition.csv"
+    observed_path = ROOT / "calibration" / "data" / "tschamut" / f"{partition}_observed_deposition.csv"
+    if not ensemble_path.exists():
+        return {
+            "status": "missing_ensemble_deposition_csv",
+            "partition": partition,
+            "candidate_id": candidate_id,
+            "path": str(ensemble_path.relative_to(ROOT)) if ensemble_path.is_relative_to(ROOT) else str(ensemble_path),
+        }
+    if not observed_path.exists():
+        return {
+            "status": "missing_observed_deposition_csv",
+            "partition": partition,
+            "candidate_id": candidate_id,
+            "path": str(observed_path.relative_to(ROOT)) if observed_path.is_relative_to(ROOT) else str(observed_path),
+        }
+    observed_by_id = {row["trajectory_id"]: row for row in read_csv(observed_path)}
+    ensemble_by_release: dict[str, list[dict[str, str]]] = {}
+    for row in read_csv(ensemble_path):
+        ensemble_by_release.setdefault(row["release_id"], []).append(row)
+
+    residual_rows = []
+    missing_observed_ids = []
+    for release_id, ensemble_rows in sorted(ensemble_by_release.items()):
+        observed = observed_by_id.get(release_id)
+        if observed is None:
+            missing_observed_ids.append(release_id)
+            continue
+        mean_x = mean_numeric(ensemble_rows, "x_m")
+        mean_y = mean_numeric(ensemble_rows, "y_m")
+        mean_z = mean_numeric(ensemble_rows, "z_m")
+        simulated_runout = mean_numeric(ensemble_rows, "runout_m")
+        observed_runout = float(observed["observed_runout_m"])
+        runout_residual = simulated_runout - observed_runout
+        endpoint_distance = euclidean_distance(
+            (mean_x, mean_y, mean_z),
+            (float(observed["x_m"]), float(observed["y_m"]), float(observed["z_m"])),
+        )
+        residual_rows.append(
+            {
+                "trajectory_id": release_id,
+                "ensemble_member_count": len(ensemble_rows),
+                "observed_runout_m": observed_runout,
+                "simulated_mean_runout_m": simulated_runout,
+                "runout_residual_m": runout_residual,
+                "runout_abs_error_m": abs(runout_residual),
+                "endpoint_distance_m": endpoint_distance,
+                "simulated_mean_x_m": mean_x,
+                "simulated_mean_y_m": mean_y,
+                "simulated_mean_z_m": mean_z,
+                "observed_x_m": float(observed["x_m"]),
+                "observed_y_m": float(observed["y_m"]),
+                "observed_z_m": float(observed["z_m"]),
+            }
+        )
+
+    if not residual_rows:
+        return {
+            "status": "no_matching_residual_rows",
+            "partition": partition,
+            "candidate_id": candidate_id,
+            "missing_observed_ids": missing_observed_ids,
+        }
+
+    return {
+        "status": "measured",
+        "partition": partition,
+        "candidate_id": candidate_id,
+        "trajectory_count": len(residual_rows),
+        "ensemble_member_count": sum(int(row["ensemble_member_count"]) for row in residual_rows),
+        "missing_observed_ids": missing_observed_ids,
+        "summaries": {
+            "runout_residual_m": summarize_values([float(row["runout_residual_m"]) for row in residual_rows]),
+            "runout_abs_error_m": summarize_values([float(row["runout_abs_error_m"]) for row in residual_rows]),
+            "endpoint_distance_m": summarize_values([float(row["endpoint_distance_m"]) for row in residual_rows]),
+        },
+        "worst_cases": {
+            "runout_abs_error_m": top_residual_cases(residual_rows, "runout_abs_error_m"),
+            "endpoint_distance_m": top_residual_cases(residual_rows, "endpoint_distance_m"),
+        },
+    }
+
+
+def mean_numeric(rows: list[dict[str, str]], field: str) -> float:
+    return sum(float(row[field]) for row in rows) / max(len(rows), 1)
+
+
+def euclidean_distance(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    return sum((left - right) ** 2 for left, right in zip(a, b)) ** 0.5
+
+
+def summarize_values(values: list[float]) -> dict[str, float | int | None]:
+    if not values:
+        return {"count": 0, "mean": None, "median": None, "min": None, "max": None}
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        median = ordered[middle]
+    else:
+        median = (ordered[middle - 1] + ordered[middle]) / 2.0
+    return {
+        "count": len(ordered),
+        "mean": sum(ordered) / len(ordered),
+        "median": median,
+        "min": ordered[0],
+        "max": ordered[-1],
+    }
+
+
+def top_residual_cases(rows: list[dict[str, Any]], field: str, *, limit: int = 5) -> list[dict[str, Any]]:
+    return [
+        {
+            "trajectory_id": row["trajectory_id"],
+            "ensemble_member_count": row["ensemble_member_count"],
+            "observed_runout_m": row["observed_runout_m"],
+            "simulated_mean_runout_m": row["simulated_mean_runout_m"],
+            "runout_residual_m": row["runout_residual_m"],
+            "runout_abs_error_m": row["runout_abs_error_m"],
+            "endpoint_distance_m": row["endpoint_distance_m"],
+        }
+        for row in sorted(rows, key=lambda item: float(item[field]), reverse=True)[:limit]
+    ]
 
 
 def write_html_report(path: Path, rows: list[dict[str, Any]], config: dict[str, Any]) -> None:

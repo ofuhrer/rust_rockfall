@@ -315,6 +315,76 @@ class CalibrationFailureDiagnosticsTest(unittest.TestCase):
         self.assertEqual(summary["strongest_mean_effect_parameter"], "friction_coefficient")
         self.assertGreater(summary["calibration_objective_span"], 0)
 
+    def test_tschamut_residual_diagnostics_report_distribution_and_worst_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_csv(
+                root / "calibration/data/tschamut/calibration_observed_deposition.csv",
+                [
+                    "trajectory_id",
+                    "x_m",
+                    "y_m",
+                    "z_m",
+                    "observed_runout_m",
+                ],
+                [
+                    {"trajectory_id": "a", "x_m": 10.0, "y_m": 0.0, "z_m": 0.0, "observed_runout_m": 10.0},
+                    {"trajectory_id": "b", "x_m": 20.0, "y_m": 0.0, "z_m": 0.0, "observed_runout_m": 20.0},
+                ],
+            )
+            self._write_csv(
+                root
+                / "calibration/results/tschamut_fixture/reports/calibration_tschamut_calibration_candidate_000_ensemble_deposition.csv",
+                ["release_id", "trajectory_id", "x_m", "y_m", "z_m", "runout_m", "final_speed_mps"],
+                [
+                    {
+                        "release_id": "a",
+                        "trajectory_id": "a_member_000",
+                        "x_m": 12.0,
+                        "y_m": 0.0,
+                        "z_m": 0.0,
+                        "runout_m": 12.0,
+                        "final_speed_mps": 1.0,
+                    },
+                    {
+                        "release_id": "a",
+                        "trajectory_id": "a_member_001",
+                        "x_m": 14.0,
+                        "y_m": 0.0,
+                        "z_m": 0.0,
+                        "runout_m": 14.0,
+                        "final_speed_mps": 1.0,
+                    },
+                    {
+                        "release_id": "b",
+                        "trajectory_id": "b_member_000",
+                        "x_m": 18.0,
+                        "y_m": 0.0,
+                        "z_m": 0.0,
+                        "runout_m": 18.0,
+                        "final_speed_mps": 1.0,
+                    },
+                ],
+            )
+            config = {
+                "outputs": {
+                    "generated_results_dir": "calibration/results/tschamut_fixture",
+                },
+            }
+
+            with mock.patch.object(tschamut, "ROOT", root):
+                diagnostics = tschamut.build_residual_diagnostics("candidate_000", config)
+
+        calibration = diagnostics["calibration"]
+        self.assertEqual(calibration["status"], "measured")
+        self.assertEqual(calibration["trajectory_count"], 2)
+        self.assertEqual(calibration["ensemble_member_count"], 3)
+        self.assertEqual(calibration["summaries"]["runout_abs_error_m"]["count"], 2)
+        self.assertAlmostEqual(calibration["summaries"]["runout_residual_m"]["mean"], 0.5)
+        self.assertAlmostEqual(calibration["summaries"]["runout_abs_error_m"]["median"], 2.5)
+        self.assertEqual(calibration["worst_cases"]["runout_abs_error_m"][0]["trajectory_id"], "a")
+        self.assertEqual(diagnostics["holdout"]["status"], "missing_ensemble_deposition_csv")
+
     def test_tschamut_wraps_failed_validation_subprocess(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

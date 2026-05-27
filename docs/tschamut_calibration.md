@@ -73,6 +73,12 @@ To inspect the executable objective without running the candidate grid:
 PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --describe-objective
 ```
 
+To refresh summaries and residual diagnostics from existing candidate and ensemble outputs without rerunning the full grid:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --refresh-summary-only
+```
+
 ## Result
 
 The expanded local run completed with 144 candidates and no calibration/holdout ID overlap. The selected candidate is `candidate_103`:
@@ -109,6 +115,13 @@ The held-out objective remains close to the calibration objective for this split
 
 The measured sensitivity summary in `summary.json` identifies `friction_coefficient` as the strongest mean objective driver across the explicit grid. The calibration-objective span between the best and worst candidates is `1.4124`, so the run confirms that parameter changes produce measurable runout/deposition metric deltas.
 
+Residual diagnostics in `summary.json` compare the selected candidate's ensemble mean endpoint with each observed deposition row:
+
+- calibration partition: 18 trajectories, 72 ensemble members, mean absolute runout error `24.43 m`, median `23.23 m`, max `70.41 m`; worst runout case `v107`;
+- held-out partition: 18 trajectories, 72 ensemble members, mean absolute runout error `18.22 m`, median `12.86 m`, max `55.11 m`; worst runout case `v086`.
+
+These residuals show that the aggregate objective improvement does not remove important per-event errors. They are diagnostics for model development, not an acceptance threshold.
+
 ## Terrain Update Note
 
 After the terrain-focused update, validation includes both `validation_tschamut_proxy_plane` and `validation_tschamut_basic`. The calibration grid above was rerun as a bounded smoke in TB-627 from the explicit objective contract; this preserves the calibration/validation separation because the holdout partition remains excluded from fitting and selected parameters are not promoted into validation cases.
@@ -117,7 +130,7 @@ After the terrain-focused update, validation includes both `validation_tschamut_
 
 This experiment is useful because it exposes parameter sensitivity and model limitations. The active validation case with the bounded IDW residual DEM proxy terrain under-runs the first 10 validation runs. The calibration experiment uses the fitted terrain as an analytic plane to avoid DEM-bound failures during energetic candidate trajectories, and the best grid candidate over-runs the calibration and holdout partitions.
 
-That difference points to terrain representation and contact-mode limitations, not just parameter choice:
+That pattern points to terrain representation, contact-mode limitations, and per-event residual structure, not just scalar parameter choice:
 
 - the proxy terrain is too simple and should not be interpreted as a calibrated DEM;
 - the translational model lacks rolling energy and explicit rolling resistance;
