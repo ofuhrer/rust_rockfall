@@ -64,6 +64,12 @@ class AoiMapQaReviewTests(unittest.TestCase):
                 "PYENV_VERSION=system uv run python scripts/inspect_tschamut_public_context_layers.py --format json",
             )
             self.assertEqual(report["diagnostic_hazard_outputs"]["status"], "present")
+            self.assertEqual(report["operational_qa_checklist"]["schema_version"], "aoi_operational_qa_checklist_v1")
+            self.assertEqual(report["operational_qa_checklist"]["status"], "diagnostic_review_pending")
+            checklist_sections = {item["section"] for item in report["operational_qa_checklist"]["items"]}
+            self.assertIn("Grid alignment", checklist_sections)
+            self.assertIn("Semantic labels", checklist_sections)
+            self.assertFalse(report["operational_qa_checklist"]["accepted_for_operational_use"])
             self.assertEqual(report["primary_artifact_index"]["status"], "present")
             self.assertGreater(report["primary_artifact_index"]["item_count"], len(package_report["raster_outputs"]))
             primary_labels = {item["label"] for item in report["primary_artifact_index"]["items"]}
@@ -81,6 +87,8 @@ class AoiMapQaReviewTests(unittest.TestCase):
             self.assertIn("Diagnostic hazard layers", html)
             self.assertIn("Release and scenario overlays", html)
             self.assertIn("Optional observed evidence", html)
+            self.assertIn("Operational QA checklist", html)
+            self.assertIn("Grid alignment", html)
             self.assertIn("Claim boundaries", html)
             self.assertIn("diagnostic review only", html)
             self.assertIn("single openable bundle", html)
@@ -151,6 +159,7 @@ class AoiMapQaReviewTests(unittest.TestCase):
             self.assertEqual(report["status"], "blocked_missing_map_package")
             self.assertIn("missing map package manifest", "\n".join(report["warnings"]))
             self.assertEqual(report["first_blocker"]["code"], "missing_map_package")
+            self.assertEqual(report["operational_qa_checklist"]["status"], "blocked_missing_map_package")
             self.assertIn("package_aoi_hazard_map.py", report["next_recommended_command"]["command"])
             self.assertTrue((work / "review" / "index.html").exists())
 

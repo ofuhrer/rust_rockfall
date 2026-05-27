@@ -262,6 +262,17 @@ def package_aoi_hazard_map(
         "qgis_style_assets": qgis_style_assets,
         "review_metadata_status": review_metadata["status"],
         "review_ready_layer_order": review_metadata["review_ready_layer_order"],
+        "operational_qa_checklist": build_operational_qa_checklist(
+            map_manifest=map_manifest,
+            pilot_manifest=pilot_manifest,
+            raster_inventory=raster_package["inventory"],
+            vector_overlays=[source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
+            review_metadata=review_metadata,
+            layer_inventory=layer_inventory,
+            evidence_hook=evidence_hook,
+            qgis_style_assets=qgis_style_assets,
+            review_surface_paths={},
+        ),
         "inventory": [
             *raster_package["inventory"],
             source_zone_overlay,
@@ -296,6 +307,17 @@ def package_aoi_hazard_map(
     report["review_surface_paths"] = review_report.get("review_surface_paths") or {}
     report["review_surface_first_blocker"] = review_report.get("first_blocker") or {}
     report["review_surface_next_recommended_command"] = review_report.get("next_recommended_command") or {}
+    report["operational_qa_checklist"] = build_operational_qa_checklist(
+        map_manifest=map_manifest,
+        pilot_manifest=pilot_manifest,
+        raster_inventory=raster_package["inventory"],
+        vector_overlays=[source_zone_overlay, scenario_overlay, *evidence_hook["observed_evidence_overlays"]],
+        review_metadata=review_metadata,
+        layer_inventory=layer_inventory,
+        evidence_hook=evidence_hook,
+        qgis_style_assets=qgis_style_assets,
+        review_surface_paths=report["review_surface_paths"],
+    )
     file_count, byte_count = count_files_and_bytes(output_root)
     report["package_file_count"] = file_count
     report["package_byte_count"] = byte_count
@@ -943,6 +965,138 @@ def claim_boundary(map_manifest: dict[str, Any], pilot_manifest: dict[str, Any])
     }
 
 
+def build_operational_qa_checklist(
+    *,
+    map_manifest: dict[str, Any],
+    pilot_manifest: dict[str, Any],
+    raster_inventory: list[dict[str, Any]],
+    vector_overlays: list[dict[str, Any]],
+    review_metadata: dict[str, Any],
+    layer_inventory: dict[str, Any],
+    evidence_hook: dict[str, Any],
+    qgis_style_assets: dict[str, Any],
+    review_surface_paths: dict[str, Any],
+) -> dict[str, Any]:
+    visual_qa = pilot_manifest.get("visual_qa") if isinstance(pilot_manifest.get("visual_qa"), dict) else {}
+    claim = claim_boundary(map_manifest, pilot_manifest)
+    review_layers = [layer for layer in list(review_metadata.get("review_ready_layer_order") or []) if isinstance(layer, dict)]
+    layer_crs_ready = bool(review_layers) and all(layer.get("crs_authid") for layer in review_layers)
+    vertical_datum_ready = bool(review_layers) and all(layer.get("vertical_datum") for layer in review_layers)
+    style_ready = qgis_style_assets.get("status") == "ready" and review_metadata.get("status") == "ready"
+    visual_status = str(visual_qa.get("status") or "not-run")
+    reviewed_artifacts = list(visual_qa.get("reviewed_artifacts") or [])
+    entrypoint = str(review_surface_paths.get("entrypoint") or "")
+
+    items = [
+        checklist_item(
+            "package_entrypoint",
+            "Review entrypoint",
+            "Open the package HTML entrypoint and confirm the manifest, rasters, overlays, warnings, and next command are visible.",
+            "ready" if entrypoint else "pending",
+            [entrypoint] if entrypoint else [],
+            "Regenerate the package to refresh the review surface." if not entrypoint else "Open the HTML entrypoint for review.",
+        ),
+        checklist_item(
+            "layer_inventory",
+            "Layer inventory",
+            "Confirm declared raster layers match the packaged raster inventory.",
+            "ready" if layer_inventory.get("status") == "parity_match" and raster_inventory else "no_go",
+            [entry.get("path") for entry in raster_inventory],
+            "Resolve missing or extra layer names before relying on the package for review.",
+        ),
+        checklist_item(
+            "crs_vertical_datum",
+            "CRS and vertical datum",
+            "Confirm LV95/EPSG:2056 metadata and LN02 vertical-datum provenance are visible for review layers.",
+            "ready" if layer_crs_ready and vertical_datum_ready else "needs_review",
+            [layer.get("path") for layer in review_layers],
+            "Inspect raster metadata and sidecars before manual GIS review.",
+        ),
+        checklist_item(
+            "grid_alignment",
+            "Grid alignment",
+            "Confirm raster extent, cell size, nodata, row order, and release/scenario overlays align in GIS.",
+            "needs_manual_review",
+            [entry.get("path") for entry in [*raster_inventory, *vector_overlays]],
+            "Load rasters and overlays together in QGIS and record the visual QA result.",
+        ),
+        checklist_item(
+            "qgis_styles",
+            "QGIS styles",
+            "Confirm package styles are present and mapped to raster and overlay layers.",
+            "ready" if style_ready else "needs_review",
+            list(qgis_style_assets.get("copied_paths") or []),
+            "Apply or inspect the bundled QML styles during review.",
+        ),
+        checklist_item(
+            "visual_qa_record",
+            "Manual visual QA record",
+            "Record the reviewer status and reviewed artifacts after GIS/QGIS inspection.",
+            "ready" if visual_status == "pass" and reviewed_artifacts else "pending",
+            reviewed_artifacts,
+            "Update the visual QA note/status after inspection.",
+        ),
+        checklist_item(
+            "observed_evidence_overlays",
+            "Observed evidence overlays",
+            "Confirm optional observed evidence or release-zone provenance overlays are either accepted or explicitly absent.",
+            "ready" if evidence_hook.get("hook_status") == "ready" else "optional_missing",
+            [entry.get("path") for entry in vector_overlays if entry.get("evidence_category") == "observed_evidence_overlay"],
+            "Attach accepted evidence overlays when available; otherwise keep the absence explicit.",
+        ),
+        checklist_item(
+            "semantic_labels",
+            "Semantic labels",
+            "Confirm labels stay conditional/diagnostic and avoid annual-frequency, physical-probability, risk, or operational wording.",
+            "ready"
+            if claim.get("annualized") is False
+            and claim.get("physical_probability") is False
+            and claim.get("risk_or_exposure") is False
+            and claim.get("accepted_for_operational_use") is False
+            else "no_go",
+            [str(map_manifest.get("source_zone_metadata_path") or ""), str(map_manifest.get("scenario_table_path") or "")],
+            "Rename or relabel any product that implies unsupported semantics.",
+        ),
+    ]
+    hard_blockers = [item for item in items if item["status"] == "no_go"]
+    pending = [item for item in items if item["status"] in {"pending", "needs_review", "needs_manual_review"}]
+    if hard_blockers:
+        status = "no_go"
+    elif pending:
+        status = "diagnostic_review_pending"
+    else:
+        status = "diagnostic_review_ready"
+    return {
+        "schema_version": "aoi_operational_qa_checklist_v1",
+        "status": status,
+        "accepted_for_operational_use": False,
+        "claim_boundary": "Checklist for diagnostic package review only; it does not authorize operational use.",
+        "item_count": len(items),
+        "ready_count": sum(1 for item in items if item["status"] == "ready"),
+        "pending_count": len(pending),
+        "hard_blocker_count": len(hard_blockers),
+        "items": items,
+    }
+
+
+def checklist_item(
+    item_id: str,
+    section: str,
+    prompt: str,
+    status: str,
+    evidence_paths: list[Any],
+    next_action: str,
+) -> dict[str, Any]:
+    return {
+        "id": item_id,
+        "section": section,
+        "prompt": prompt,
+        "status": status,
+        "evidence_paths": [str(path) for path in evidence_paths if path not in (None, "")],
+        "next_action": next_action,
+    }
+
+
 def summarize_layer_inventory(source_layer_names: list[str], packaged_layer_names: list[str]) -> dict[str, Any]:
     missing_layer_names = [layer_name for layer_name in source_layer_names if layer_name not in packaged_layer_names]
     extra_layer_names = [layer_name for layer_name in packaged_layer_names if layer_name not in source_layer_names]
@@ -983,6 +1137,7 @@ def write_package_manifest(path: Path, report: dict[str, Any]) -> None:
         "qgis_style_assets": report["qgis_style_assets"],
         "review_metadata_status": report["review_metadata_status"],
         "review_ready_layer_order": report["review_ready_layer_order"],
+        "operational_qa_checklist": report["operational_qa_checklist"],
         "diagnostic_hazard_outputs": report["diagnostic_hazard_outputs"],
         "observed_evidence_overlay_hook": report["observed_evidence_overlay_hook"],
         "observed_evidence_overlays": report["observed_evidence_overlays"],
@@ -1076,6 +1231,7 @@ def write_pilot_gis_package_manifest(
     manifest["qgis_style_assets"] = report.get("qgis_style_assets", {})
     manifest["review_metadata_status"] = report.get("review_metadata_status")
     manifest["review_ready_layer_order"] = list(report.get("review_ready_layer_order") or [])
+    manifest["operational_qa_checklist"] = report.get("operational_qa_checklist", {})
     manifest["package_status"] = report["status"]
     manifest["map_product_id"] = map_manifest.get("map_product_id")
     manifest["map_product_version"] = map_manifest.get("map_product_version")
@@ -1114,6 +1270,9 @@ def write_summary(path: Path, report: dict[str, Any]) -> None:
         f"qgis_style_count\t{(report.get('qgis_style_assets') or {}).get('style_count', 0)}",
         f"review_metadata_status\t{report.get('review_metadata_status')}",
         f"review_ready_layer_count\t{len(report.get('review_ready_layer_order') or [])}",
+        f"operational_qa_checklist_status\t{report.get('operational_qa_checklist', {}).get('status')}",
+        f"operational_qa_checklist_ready_count\t{report.get('operational_qa_checklist', {}).get('ready_count')}",
+        f"operational_qa_checklist_pending_count\t{report.get('operational_qa_checklist', {}).get('pending_count')}",
         f"cog_blockers\t{report['cog_blockers']}",
         f"missing_hazard_outputs\t{report['missing_hazard_outputs']}",
         f"claim_boundary\t{report['claim_boundary']}",

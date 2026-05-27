@@ -193,6 +193,17 @@ def blocked_report(
             "annualized": False,
             "operational_claims_allowed": False,
         },
+        "operational_qa_checklist": {
+            "schema_version": "aoi_operational_qa_checklist_v1",
+            "status": "blocked_missing_map_package",
+            "accepted_for_operational_use": False,
+            "claim_boundary": "Checklist unavailable until the map package manifest is present.",
+            "item_count": 0,
+            "ready_count": 0,
+            "pending_count": 0,
+            "hard_blocker_count": 1,
+            "items": [],
+        },
     }
     return report
 
@@ -369,6 +380,7 @@ def assemble_report(
         "first_blocker": first_blocker,
         "next_recommended_command": next_recommended_command,
         "claim_boundary": claim_boundary(map_manifest, pilot_manifest),
+        "operational_qa_checklist": collect_operational_qa_checklist(map_manifest, pilot_manifest),
         "review_surface_paths": {},
     }
     report["primary_artifact_index"] = build_primary_artifact_index(report)
@@ -454,6 +466,26 @@ def build_primary_artifact_index(report: dict[str, Any]) -> dict[str, Any]:
         "status": "present" if items else "empty",
         "item_count": len(items),
         "items": items,
+    }
+
+
+def collect_operational_qa_checklist(map_manifest: dict[str, Any], pilot_manifest: dict[str, Any]) -> dict[str, Any]:
+    checklist = map_manifest.get("operational_qa_checklist")
+    if isinstance(checklist, dict) and checklist.get("items"):
+        return checklist
+    checklist = pilot_manifest.get("operational_qa_checklist")
+    if isinstance(checklist, dict) and checklist.get("items"):
+        return checklist
+    return {
+        "schema_version": "aoi_operational_qa_checklist_v1",
+        "status": "not_available",
+        "accepted_for_operational_use": False,
+        "claim_boundary": "No package checklist was recorded in the source manifests.",
+        "item_count": 0,
+        "ready_count": 0,
+        "pending_count": 0,
+        "hard_blocker_count": 0,
+        "items": [],
     }
 
 
@@ -801,6 +833,7 @@ def render_html_report(report: dict[str, Any]) -> str:
     vector_overlays = report.get("vector_overlays") or []
     observed_overlays_section = report.get("observed_evidence_overlays") or {"items": [], "blockers": {}}
     observed_overlays = observed_overlays_section.get("items") or []
+    operational_qa_checklist = report.get("operational_qa_checklist") or {"items": []}
     first_blocker = report.get("first_blocker") or {}
     next_recommended_command = report.get("next_recommended_command") or {}
     missing_context_paths = layer_presence.get("context_layers", {}).get("paths") or []
@@ -812,6 +845,7 @@ def render_html_report(report: dict[str, Any]) -> str:
     primary_artifact_rows = "".join(render_primary_artifact_row(item) for item in primary_artifact_index.get("items") or [])
     vector_rows = "".join(render_overlay_row(layer, "overlay") for layer in vector_overlays)
     observed_rows = "".join(render_overlay_row(layer, "evidence") for layer in observed_overlays)
+    checklist_rows = "".join(render_checklist_row(item) for item in operational_qa_checklist.get("items") or [])
     warning_rows = "".join(
         f"<li class='warning-{html.escape(str(item.get('severity') or 'warning'))}'><strong>{html.escape(str(item.get('code') or 'warning'))}</strong>: {html.escape(str(item.get('message') or ''))}</li>"
         for item in warning_items
@@ -949,6 +983,7 @@ def render_html_report(report: dict[str, Any]) -> str:
     <label><input type="checkbox" checked data-toggle-target="diagnostic-panel">Diagnostic hazard layers</label>
     <label><input type="checkbox" checked data-toggle-target="overlay-panel">Release and scenario overlays</label>
     <label><input type="checkbox" checked data-toggle-target="evidence-panel">Optional observed evidence</label>
+    <label><input type="checkbox" checked data-toggle-target="operational-qa-panel">Operational QA checklist</label>
     <label><input type="checkbox" checked data-toggle-target="context-panel">Missing context</label>
     <label><input type="checkbox" checked data-toggle-target="provenance-panel">Provenance and package manifest</label>
     <label><input type="checkbox" checked data-toggle-target="blocker-panel">First blocker</label>
@@ -1043,6 +1078,29 @@ def render_html_report(report: dict[str, Any]) -> str:
       <table>
         <thead><tr><th>Evidence</th><th>Role</th><th>Path</th><th>Claim boundary</th></tr></thead>
         <tbody>{observed_rows or '<tr><td colspan="4">No observed evidence overlays recorded.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details id="operational-qa-panel" open>
+    <summary>Operational QA checklist</summary>
+    <div class="inner">
+      <p class="section-note">Status: <code>{html.escape(str(operational_qa_checklist.get("status") or "unknown"))}</code>. This checklist keeps review actions in the package, but the package remains diagnostic and not accepted for operational use.</p>
+      <div class="grid">
+        <div class="panel">
+          <h3>Checklist counts</h3>
+          <ul>
+            <li>Items: <code>{html.escape(str(operational_qa_checklist.get("item_count", 0)))}</code></li>
+            <li>Ready: <code>{html.escape(str(operational_qa_checklist.get("ready_count", 0)))}</code></li>
+            <li>Pending: <code>{html.escape(str(operational_qa_checklist.get("pending_count", 0)))}</code></li>
+            <li>Hard blockers: <code>{html.escape(str(operational_qa_checklist.get("hard_blocker_count", 0)))}</code></li>
+            <li>Accepted for operational use: <code>{html.escape(str(operational_qa_checklist.get("accepted_for_operational_use", False)))}</code></li>
+          </ul>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Section</th><th>Status</th><th>Review item</th><th>Evidence</th><th>Next action</th></tr></thead>
+        <tbody>{checklist_rows or '<tr><td colspan="5">No operational QA checklist recorded.</td></tr>'}</tbody>
       </table>
     </div>
   </details>
@@ -1166,6 +1224,20 @@ def render_overlay_row(layer: dict[str, Any], role: str) -> str:
         f"<td>{html.escape(str(role_text))}</td>"
         f"<td>{render_path_link(path_text)}</td>"
         f"<td>{html.escape(claim)}</td>"
+        "</tr>"
+    )
+
+
+def render_checklist_row(item: dict[str, Any]) -> str:
+    evidence_paths = list(item.get("evidence_paths") or [])
+    evidence_html = "<br>".join(render_path_link(path) for path in evidence_paths) if evidence_paths else "<em>none</em>"
+    return (
+        f'<tr class="layer-row" data-role="boundary">'
+        f"<td>{render_value(item.get('section'))}</td>"
+        f"<td><code>{html.escape(str(item.get('status') or 'unknown'))}</code></td>"
+        f"<td>{render_value(item.get('prompt'))}</td>"
+        f"<td>{evidence_html}</td>"
+        f"<td>{render_value(item.get('next_action'))}</td>"
         "</tr>"
     )
 

@@ -10386,3 +10386,22 @@ completed history.
 - Metrics: hazard output `63` files / `24,207,052` bytes; total hazard wall time `76.38637483300408` s; output write time `6.32856824999908` s; reducer mode `chunked_local_threads`; reducer workers `3`; reducer chunk manifests `3`; trajectory workers `2`; trajectory chunk manifests `2`; merge order `sorted_chunk_id`; merge-order independent `true`; package status `map_package_ready`; package `41` files / `415,570` bytes; package rasters `24`; vector overlays `2`; reducer chunks wrote `384,014`, `374,655`, and `378,872` rows.
 - Boundaries: local scratch chunk/merge/package evidence only; no distributed execution, no Balfrin job, no Swiss-wide execution, no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-647`
+
+### TB-647: Add Operational QA Checklist To Existing Map Package Output
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: make AOI map packages easier to inspect by embedding the review checklist in the existing package and QA review output.
+- Files changed: `scripts/package_aoi_hazard_map.py`, `scripts/generate_aoi_map_qa_review.py`, `tests/test_aoi_hazard_map_packager.py`, `tests/test_aoi_map_qa_review.py`, `docs/pilot_gis_package.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added an `aoi_operational_qa_checklist_v1` section to package reports, package manifests, copied pilot GIS manifests, package summaries, and the static AOI QA review surface.
+  - The checklist covers the package entrypoint, layer inventory, CRS/vertical datum, grid alignment, QGIS styles, manual visual QA, optional observed evidence overlays, and semantic labels.
+  - Kept `accepted_for_operational_use` false by default and kept pending manual QA as `diagnostic_review_pending` rather than upgrading package status.
+  - Updated focused packager and QA review tests plus the pilot GIS package documentation.
+  - Removed TB-647 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_aoi_hazard_map_packager tests.test_aoi_map_qa_review -v`
+- Result/status: implemented
+- Metrics: focused test count `9`; generated checklist item count `8`; default checklist status `diagnostic_review_pending`; operational acceptance default `false`.
+- Boundaries: package-review surface only; no hazard-value change, no manual GIS/QGIS pass recorded, and no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-648`

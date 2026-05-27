@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-647: Add Operational QA Checklist To Existing Map Package Output
-
-Goal: Make GIS package review more actionable by surfacing visual QA items and provenance fields inside the existing package output.
-
-Capability gap reduced: Operational-readiness preparation without claiming operational use.
-
-Why this outranks alternatives: Packaging is now technically ready, so the next review gap is whether a human can systematically inspect the result.
-
-Inspect first:
-
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/pilot_gis_package.md`
-- `docs/hazard_map_semantics.md`
-
-Deliverables:
-
-- A concise QA section in the generated AOI package/review output covering layer presence, CRS, nodata, style availability, and evidence/claim boundaries.
-
-Definition of done:
-
-- Existing package tests pass, generated package output includes the QA checklist, and accepted-for-operational-use remains false by default.
-
 ### TB-648: Remove Or Merge Remaining Superseded Docs From The Docs Index
 
 Goal: Continue reducing repository documentation weight after the Balfrin diagnostic-doc consolidation.

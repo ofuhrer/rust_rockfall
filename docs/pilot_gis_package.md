@@ -76,6 +76,9 @@ The package manifest records:
 - GeoTIFF raster outputs with checksums and non-COG/non-annual semantics;
 - CSV and ESRI ASCII parity outputs for the same generated layers;
 - hazard metadata and any map-package manifest outputs already generated;
+- an operational QA checklist with package-entrypoint, layer-inventory,
+  CRS/vertical-datum, grid-alignment, style, visual-QA, observed-evidence, and
+  semantic-label review items;
 - optional source-zone context sidecars from
   `pilot_gis_package.source_zone_context_paths`;
 - terrain metadata sidecar identity where `terrain.metadata_path` is available;
@@ -211,6 +214,12 @@ Review checklist:
   risk, official status, or operational validation;
 - record reviewed artifacts, such as PNG, HTML, GIS project screenshots, QGIS
   layer lists, raster metadata dialogs, or explicit manual/GIS inspection notes.
+
+The generated AOI package also writes this checklist into
+`operational_qa_checklist` in the package manifest, the copied pilot GIS
+manifest, and the static QA review HTML. Checklist statuses are review aids
+only: even a complete checklist does not mark the package as accepted for
+operational use.
 
 Use these QA statuses:
 

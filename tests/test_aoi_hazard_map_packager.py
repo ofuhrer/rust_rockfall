@@ -62,6 +62,15 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
             self.assertGreaterEqual(manifest["qgis_style_assets"]["style_count"], 9)
             self.assertEqual(manifest["review_metadata_status"], "ready")
             self.assertEqual(len(manifest["review_ready_layer_order"]), len(manifest["layer_inventory"]))
+            self.assertEqual(manifest["operational_qa_checklist"]["schema_version"], "aoi_operational_qa_checklist_v1")
+            self.assertEqual(manifest["operational_qa_checklist"]["status"], "diagnostic_review_pending")
+            self.assertFalse(manifest["operational_qa_checklist"]["accepted_for_operational_use"])
+            checklist_sections = {item["section"] for item in manifest["operational_qa_checklist"]["items"]}
+            self.assertIn("Review entrypoint", checklist_sections)
+            self.assertIn("Grid alignment", checklist_sections)
+            self.assertIn("Manual visual QA record", checklist_sections)
+            entrypoint_item = next(item for item in manifest["operational_qa_checklist"]["items"] if item["id"] == "package_entrypoint")
+            self.assertEqual(entrypoint_item["status"], "ready")
             self.assertEqual(
                 [entry["review_order"] for entry in manifest["review_ready_layer_order"]],
                 sorted(entry["review_order"] for entry in manifest["review_ready_layer_order"]),
@@ -88,6 +97,7 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
             self.assertEqual(pilot_manifest["qgis_style_assets"]["style_count"], manifest["qgis_style_assets"]["style_count"])
             self.assertEqual(pilot_manifest["review_metadata_status"], "ready")
             self.assertEqual(pilot_manifest["review_ready_layer_order"], manifest["review_ready_layer_order"])
+            self.assertEqual(pilot_manifest["operational_qa_checklist"], manifest["operational_qa_checklist"])
             self.assertEqual(pilot_manifest["probability_claim_boundary"]["annualized"], False)
             self.assertEqual(pilot_manifest["visual_qa"]["status"], "not-run")
             self.assertFalse(pilot_manifest["visual_qa"]["accepted_for_operational_use"])
@@ -105,6 +115,7 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
             self.assertIn("Diagnostic hazard layers", review_html)
             self.assertIn("Release and scenario overlays", review_html)
             self.assertIn("Optional observed evidence", review_html)
+            self.assertIn("Operational QA checklist", review_html)
             self.assertIn("Claim boundaries", review_html)
             self.assertIn("First blocker", review_html)
             self.assertIn("Next recommended command", review_html)
@@ -112,6 +123,7 @@ class AoiHazardMapPackagerTests(unittest.TestCase):
             self.assertIn("map_package_ready", summary)
             self.assertIn("qgis_style_count", summary)
             self.assertIn("review_metadata_status\tready", summary)
+            self.assertIn("operational_qa_checklist_status\tdiagnostic_review_pending", summary)
             self.assertTrue((output_root / "rasters" / "reach_probability.tif").exists())
             self.assertTrue((output_root / "rasters" / "weighted_reach_probability.tif").exists())
             self.assertEqual(manifest["diagnostic_hazard_outputs"]["status"], "present")
