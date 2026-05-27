@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-645: Add A Swiss National Data Inventory Smoke
-
-Goal: Check whether the existing national tiling and data-inventory surfaces can produce a current, small, share-safe planning summary.
-
-Capability gap reduced: Swiss-wide data readiness.
-
-Why this outranks alternatives: Swiss-wide execution is deferred partly because national public-geodata inventory and tiling readiness are not current run evidence.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_national_tiling_inventory_tb607.md`
-- `docs/swiss_national_tile_chunk_mapping_tb608.md`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A refreshed local national data/tiling inventory summary or exact missing-input blocker.
-
-Definition of done:
-
-- The result reports tile count, estimated bytes, chunk count, missing products, and whether the current inventory is sufficient for planning only.
-
 ### TB-646: Exercise A Small Chunked AOI Processing Prototype
 
 Goal: Test whether the current AOI workflow can process multiple chunks and merge reviewable outputs without introducing distributed execution claims.

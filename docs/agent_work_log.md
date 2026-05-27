@@ -10345,3 +10345,23 @@ completed history.
 - Metrics: public docs now expose one routine Balfrin runner for diagnostics; legacy helper path is retained only for historical hazard-package replay and forensic debugging.
 - Boundaries: documentation simplification only; no helper removed, no Balfrin job submitted, and no scientific or operational claim changed.
 - Next task: `TB-645`
+
+### TB-645: Add A Swiss National Data Inventory Smoke
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: refresh the national data and tiling inventory as a small share-safe local smoke.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `docs/swiss_national_tiling_inventory_tb607.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `--national-data-inventory-smoke` to the existing Swiss-wide envelope helper instead of creating a new script.
+  - The smoke reads the existing national tiling inventory and tile-to-chunk mapping JSON files and emits a compact planning summary.
+  - Added test coverage for the smoke summary.
+  - Recorded the current smoke result in the existing national tiling inventory note.
+  - Removed TB-645 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-645 --format json`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --national-data-inventory-smoke --format json --json-output /tmp/tb645_national_inventory_smoke.json`
+- Result/status: implemented_measured
+- Metrics: status `planning_inventory_ready_missing_cache`; tile count `43,500`; chunk count `85`; merge group count `11`; chunk size `512`; last chunk tile count `492`; estimated required input bytes `2,093,100,000,000`; missing products `7`; mapping validation ready `true`; planning-only sufficient `true`; data cache ready `false`; execution ready `false`.
+- Boundaries: share-safe inventory smoke only; no download, no national cache, no Swiss-wide execution, no distributed execution, no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-646`

@@ -84,6 +84,40 @@ checksums, versions, and AOI coverage joins.
 surface, buildings, and geology product selection, coverage, checksums, and
 policy decisions.
 
+## TB-645 Local Inventory Smoke
+
+Command:
+
+```bash
+PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py \
+  --national-data-inventory-smoke \
+  --format json
+```
+
+Result:
+
+- status: `planning_inventory_ready_missing_cache`
+- tile count: `43,500`
+- chunk count: `85`
+- merge group count: `11`
+- chunk size: `512` tiles
+- last chunk tile count: `492`
+- estimated required input bytes for mandatory terrain plus first visual/vector
+  context: `2,093,100,000,000`
+- missing products: `7`
+- missing product IDs: `swissalti3d_2m`, `swissalti3d_0_5m`,
+  `swissimage_10cm_or_25cm`, `swisssurface3d_raster_0_5m`, `swisstlm3d`,
+  `geocover_or_geology_context`, `swissbuildings3d`
+- mapping validation: ready
+- sufficient for planning only: `true`
+- data cache ready: `false`
+- execution ready: `false`
+
+Interpretation: the inventory and chunk mapping are current enough for
+share-safe planning, sizing, and command-shape work. They are not sufficient for
+Swiss-wide execution because no national product cache, checksums, versions, or
+coverage joins are staged.
+
 ## Boundary
 
 This is an inventory only. It does not download data, stage a national cache,

@@ -248,6 +248,21 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         self.assertIn("bounded_probe_recommendation_status: deferred_pending_authorization", text)
         self.assertIn("balfrin_demo_run_root:", text)
 
+    def test_national_data_inventory_smoke_summarizes_current_inventory(self) -> None:
+        report = estimator.build_national_data_inventory_smoke()
+
+        self.assertEqual(report["status"], "planning_inventory_ready_missing_cache")
+        self.assertEqual(report["tile_count"], 43500)
+        self.assertEqual(report["chunk_count"], 85)
+        self.assertEqual(report["merge_group_count"], 11)
+        self.assertEqual(report["terrain_product_tile_count"], 43500)
+        self.assertGreater(report["estimated_required_input_bytes"], 0)
+        self.assertIn("swissalti3d_2m", report["missing_products"])
+        self.assertTrue(report["mapping_validation_ready"])
+        self.assertTrue(report["inventory_sufficient_for_planning_only"])
+        self.assertFalse(report["data_cache_ready"])
+        self.assertFalse(report["execution_ready"])
+
     def test_fixture_loaded_summary_inputs_keep_the_projection_shape(self) -> None:
         with mock.patch.object(
             estimator.RUNTIME_SCALING,

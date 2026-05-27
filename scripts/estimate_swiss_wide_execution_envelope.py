@@ -55,6 +55,8 @@ SWISS_WIDE_PLANNING_ASSUMPTIONS = {
     "release_zones_per_aoi": 10,
     "trajectories_per_release_zone": 6,
 }
+DEFAULT_NATIONAL_TILING_INVENTORY = ROOT / "docs/swiss_national_tiling_inventory_tb607.json"
+DEFAULT_NATIONAL_TILE_CHUNK_MAPPING = ROOT / "docs/swiss_national_tile_chunk_mapping_tb608.json"
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
@@ -261,17 +263,27 @@ def main(argv: list[str] | None = None) -> int:
         default=6,
         help="trajectories per release zone to project",
     )
+    parser.add_argument(
+        "--national-data-inventory-smoke",
+        action="store_true",
+        help="Summarize the current share-safe national data and tile/chunk inventory without building the execution envelope.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    report = build_report_from_available_evidence(
-        ProjectionInputs(
-            aoi_count=args.aoi_count,
-            release_zone_count=args.release_zone_count,
-            trajectory_count=args.trajectory_count,
+    if args.national_data_inventory_smoke:
+        report = build_national_data_inventory_smoke()
+        exit_status = 0
+    else:
+        report = build_report_from_available_evidence(
+            ProjectionInputs(
+                aoi_count=args.aoi_count,
+                release_zone_count=args.release_zone_count,
+                trajectory_count=args.trajectory_count,
+            )
         )
-    )
+        exit_status = 0 if report["projection_status"] == "measured_within_support" else 2
 
     if args.json_output is not None:
         args.json_output.parent.mkdir(parents=True, exist_ok=True)
@@ -279,9 +291,125 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.national_data_inventory_smoke:
+        print(render_national_data_inventory_smoke_text(report))
     else:
         print(render_text_report(report))
-    return 0 if report["projection_status"] == "measured_within_support" else 2
+    return exit_status
+
+
+def _load_json_file(path: Path, label: str) -> dict[str, Any]:
+    if not path.exists():
+        raise SwissWideExecutionEnvelopeError(f"{label} is missing: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SwissWideExecutionEnvelopeError(f"{label} must be a JSON object: {path}")
+    return payload
+
+
+def _int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def build_national_data_inventory_smoke(
+    *,
+    inventory_path: Path = DEFAULT_NATIONAL_TILING_INVENTORY,
+    chunk_mapping_path: Path = DEFAULT_NATIONAL_TILE_CHUNK_MAPPING,
+) -> dict[str, Any]:
+    inventory = _load_json_file(inventory_path, "national tiling inventory")
+    mapping = _load_json_file(chunk_mapping_path, "national tile chunk mapping")
+
+    products = [dict(row) for row in inventory.get("products") or [] if isinstance(row, dict)]
+    required_products = [
+        product
+        for product in products
+        if str(product.get("role") or "").startswith("mandatory")
+        or product.get("product_id") in {"swissalti3d_2m", "swissimage_10cm_or_25cm", "swisstlm3d"}
+    ]
+    missing_products = [
+        str(product.get("product_id"))
+        for product in products
+        if str(product.get("current_cache_status") or "missing") != "ready"
+    ]
+    estimated_required_input_bytes = 0
+    for product in required_products:
+        for key in (
+            "estimated_raw_bytes_national_float32",
+            "estimated_raw_bytes_national_rgb_25cm",
+            "estimated_raw_bytes_national",
+        ):
+            value = _int_or_none(product.get(key))
+            if value is not None:
+                estimated_required_input_bytes += value
+                break
+
+    grid = dict(inventory.get("tiling_grid") or {})
+    chunking = dict(mapping.get("chunking_policy") or {})
+    national_expected_input_bytes = dict(mapping.get("national_expected_input_bytes") or {})
+    chunks = mapping.get("chunks") if isinstance(mapping.get("chunks"), list) else []
+    merge_groups = mapping.get("merge_groups") if isinstance(mapping.get("merge_groups"), list) else []
+    chunk_count = _int_or_none(chunking.get("chunk_count")) or len(chunks)
+    merge_group_count = _int_or_none(chunking.get("merge_group_count")) or len(merge_groups)
+    tile_count = _int_or_none(chunking.get("tile_count")) or _int_or_none(grid.get("national_1km_tile_count_estimate"))
+    validation = dict(mapping.get("validation") or {})
+    validation_ready = bool(validation) and all(bool(value) for value in validation.values())
+    terrain_product = next((product for product in products if product.get("product_id") == "swissalti3d_2m"), {})
+    first_chunk = dict(chunks[0]) if chunks else {}
+    last_chunk = dict(chunks[-1]) if chunks else {}
+
+    planning_only = bool(tile_count and chunk_count and merge_group_count and validation_ready)
+    data_cache_ready = not missing_products
+    inventory_sufficient_for_planning_only = planning_only and not data_cache_ready
+
+    return {
+        "schema_version": "swiss_national_data_inventory_smoke_v1",
+        "status": "planning_inventory_ready_missing_cache" if inventory_sufficient_for_planning_only else "blocked_missing_inventory",
+        "inventory_path": str(inventory_path),
+        "chunk_mapping_path": str(chunk_mapping_path),
+        "inventory_status": inventory.get("inventory_status"),
+        "mapping_status": mapping.get("mapping_status"),
+        "tile_count": tile_count,
+        "chunk_count": chunk_count,
+        "merge_group_count": merge_group_count,
+        "chunk_size_tiles": _int_or_none(chunking.get("chunk_size_tiles")),
+        "last_chunk_tile_count": _int_or_none(last_chunk.get("tile_count")),
+        "terrain_product_tile_count": _int_or_none(dict(terrain_product).get("tile_count_estimate")),
+        "estimated_required_input_bytes": estimated_required_input_bytes,
+        "national_expected_input_bytes": national_expected_input_bytes,
+        "missing_products": missing_products,
+        "missing_product_count": len(missing_products),
+        "mapping_validation": validation,
+        "mapping_validation_ready": validation_ready,
+        "first_chunk_id": first_chunk.get("chunk_id"),
+        "last_chunk_id": last_chunk.get("chunk_id"),
+        "inventory_sufficient_for_planning_only": inventory_sufficient_for_planning_only,
+        "data_cache_ready": data_cache_ready,
+        "execution_ready": False,
+        "claim_boundary": (
+            "share-safe inventory and chunk planning only; no national data cache, Swiss-wide execution, "
+            "distributed execution, operational, annual, physical-probability, risk, exposure, or vulnerability claim"
+        ),
+    }
+
+
+def render_national_data_inventory_smoke_text(report: dict[str, Any]) -> str:
+    return "\n".join(
+        [
+            f"national_data_inventory_smoke: {report.get('status')}",
+            f"tile_count: {report.get('tile_count')}",
+            f"chunk_count: {report.get('chunk_count')}",
+            f"merge_group_count: {report.get('merge_group_count')}",
+            f"estimated_required_input_bytes: {report.get('estimated_required_input_bytes')}",
+            f"missing_product_count: {report.get('missing_product_count')}",
+            f"missing_products: {', '.join(report.get('missing_products') or [])}",
+            f"inventory_sufficient_for_planning_only: {report.get('inventory_sufficient_for_planning_only')}",
+        ]
+    )
 
 
 @lru_cache(maxsize=1)
