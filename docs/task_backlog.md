@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-640: Run The First Real Second-Site Prepared Pilot
-
-Goal: Execute the smallest useful Chant Sura / Flüelapass prepared pilot once public-context inputs are available.
-
-Capability gap reduced: Demonstrates portability beyond Tschamut on a second site.
-
-Why this outranks alternatives: A successful second-site run is stronger evidence than more Tschamut-only refinement.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `docs/aoi_user_manual.md`
-- `docs/public_real_site_geodata_preparation.md`
-
-Deliverables:
-
-- A measured second-site prepared-pilot output root or a concrete execution blocker after input staging.
-
-Definition of done:
-
-- The run completes with hazard/review outputs or stops with a single first blocker; fixture-backed local smoke is not counted as second-site evidence.
-
 ### TB-641: Compare Second-Site Outputs Against Tschamut Output Shape
 
 Goal: Verify whether the second-site run produces comparable layer families, file counts, byte counts, and package readiness.

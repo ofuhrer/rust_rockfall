@@ -10244,3 +10244,21 @@ completed history.
 - Metrics: inventory status `ready_with_deferred_public_context`; prepare status `ready_for_planning`; prepared-pilot compiler classification `blocked_missing_inputs`; missing public context product count `5`; missing categories `swissimage_context`, `swisstlm3d_context`, `swisssurface3d_context`, `swisssurface3d_raster_context`, `swissbuildings3d_context`; next acquisition command `PYENV_VERSION=system uv run python scripts/plan_swisstopo_aoi_acquisition.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format text`.
 - Boundaries: acquisition blocker and interface fix only; no download, staged real public-context root, second-site run, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-640`
+
+### TB-640: Run The First Real Second-Site Prepared Pilot
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: attempt the smallest useful Chant Sura / Flüelapass prepared-pilot path and stop on the first concrete blocker if public context is still absent.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reran `run-prepared-pilot-local` with the prepared-pilot report from TB-639.
+  - Confirmed the command now advances past the prior missing-report interface blocker and stops on a single `prepared_pilot_inputs` blocker.
+  - Confirmed no real second-site pilot output root is produced while the five public-context roots remain absent.
+  - Removed TB-640 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --prepared-pilot-report-path /tmp/tb639_prepared_pilot_report.json --prepared-pilot-output-root /tmp/tb640_prepared_pilot --format json`
+- Result/status: implemented_waiting_report
+- Metrics: status `blocked_local_execution`; prepared-pilot classification `blocked_missing_inputs`; first blocker step `prepared_pilot_inputs`; missing public context root count `5`; acquisition blocker status `blocked_missing_public_context_inputs`.
+- Boundaries: execution blocker only; no fixture-backed local smoke counted as second-site evidence, no real second-site hazard/review output, no download, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-641`
