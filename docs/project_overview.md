@@ -217,10 +217,10 @@ Optional large public-data validation cases skip gracefully until data have been
 Calibration experiments are separate from validation and live under `calibration/`. The controlled Tschamut trajectory-level experiment can be reproduced with:
 
 ```bash
-python3 scripts/run_tschamut_calibration.py
+PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py
 ```
 
-It writes ignored intermediate files under `calibration/results/` and committed summaries under `calibration/experiments/tschamut_v0_3/`. The resulting parameters are research diagnostics only, not project defaults and not operational hazard parameters.
+It writes ignored intermediate files under `calibration/results/` and committed summaries under `calibration/experiments/tschamut_v0_3/`, including `objective_contract.json`. The resulting parameters are research diagnostics only, not project defaults and not operational hazard parameters.
 
 The first impact-level scarring calibration workflow can be reproduced with:
 

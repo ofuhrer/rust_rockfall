@@ -101,6 +101,9 @@ DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST = DEFAULT_OBSERVED_RUNOUT_
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_GEOMETRY = (
     DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "observed_runout_deposition.geojson"
 )
+DEFAULT_TSCHAMUT_CALIBRATION_OBJECTIVE_CONTRACT = (
+    ROOT / "calibration/experiments/tschamut_v0_3/objective_contract.json"
+)
 
 PHYSICAL_PROBABILITY_EVIDENCE_REQUIREMENTS: tuple[dict[str, Any], ...] = (
     {
@@ -277,7 +280,15 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
     source_frequency_intake = load_source_frequency_intake(source_frequency_evidence_path)
     source_frequency = source_frequency_gap(datasets, tschamut_gate, chant_model_selection, source_frequency_intake)
     terrain_context = terrain_context_gap(tschamut_manifest, tschamut_gate, tschamut_target, candidate_portability)
-    calibration = calibration_gap(tschamut_manifest, tschamut_gate, chant_contact, chant_contact_heldout, chant_model_selection)
+    calibration_objective_contract = load_tschamut_calibration_objective_contract()
+    calibration = calibration_gap(
+        tschamut_manifest,
+        tschamut_gate,
+        chant_contact,
+        chant_contact_heldout,
+        chant_model_selection,
+        calibration_objective_contract,
+    )
     transfer = transfer_gap(candidate_manifest, candidate_portability, chant_contact, chant_contact_heldout, balfrin_readiness)
     validation_leakage_guardrails = build_validation_leakage_guardrails(
         holdout_split.build_report(),
@@ -383,6 +394,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
         "source_frequency_intake": source_frequency_intake,
         "block_release_probability_intake": block_release_probability_intake,
         "block_population_intake": block_population_intake,
+        "calibration_objective_contract": calibration_objective_contract,
         "physical_credibility_status": derive_physical_credibility_status(evidence_gap_categories),
         "physical_probability_claims_allowed": False,
         "physical_probability_readiness_check": build_physical_probability_readiness_check(
@@ -390,7 +402,7 @@ def build_report(source_frequency_evidence_path: Path | None = None) -> dict[str
             denominator_audit=denominator_audit,
             traceability_audit=traceability_audit,
         ),
-        "calibration_status": "missing",
+        "calibration_status": calibration["classification"],
         "validation_status": "partial",
         "annual_frequency_claims_allowed": False,
         "operational_claims_allowed": False,
@@ -495,6 +507,8 @@ def next_concrete_scientific_tasks(evidence_gap_categories: list[dict[str, Any]]
     for task_id, category, action, target_artifact in task_specs:
         gap = categories.get(category, {})
         if gap.get("classification") == "present":
+            continue
+        if category == "calibration_evidence" and gap.get("support_role") == "objective_defined_pending_smoke":
             continue
         tasks.append(
             {
@@ -698,6 +712,61 @@ def load_json(path: Path) -> dict[str, Any]:
         return {}
     data = json.loads(path.read_text(encoding="utf-8"))
     return data if isinstance(data, dict) else {}
+
+
+def load_tschamut_calibration_objective_contract(path: Path | None = None) -> dict[str, Any]:
+    contract_path = path or DEFAULT_TSCHAMUT_CALIBRATION_OBJECTIVE_CONTRACT
+    try:
+        contract = load_json(contract_path)
+        validate_tschamut_calibration_objective_contract(contract)
+    except Exception as exc:
+        return {
+            "schema_version": "tschamut_calibration_objective_intake_v1",
+            "objective_status": "missing_or_invalid",
+            "record_path": str(contract_path),
+            "missing_or_invalid_reason": str(exc),
+        }
+    return {
+        "schema_version": "tschamut_calibration_objective_intake_v1",
+        "objective_status": "executable_smoke_ready",
+        "record_path": str(contract_path),
+        "experiment_id": str(contract.get("experiment_id") or ""),
+        "training_trajectory_count": int((contract.get("training_data") or {}).get("trajectory_count") or 0),
+        "excluded_holdout_trajectory_count": int(
+            (contract.get("excluded_holdout_data") or {}).get("trajectory_count") or 0
+        ),
+        "candidate_count": int((contract.get("parameters") or {}).get("candidate_count") or 0),
+        "metrics": [str(item) for item in contract.get("metrics", [])],
+        "expected_output_artifacts": contract.get("expected_output_artifacts") or {},
+        "claim_boundary": contract.get("claim_boundary") or {},
+    }
+
+
+def validate_tschamut_calibration_objective_contract(contract: dict[str, Any]) -> None:
+    require(contract.get("schema_version") == "tschamut_calibration_objective_v1", "calibration objective schema mismatch")
+    require(contract.get("objective_status") == "executable_smoke_ready", "calibration objective is not executable_smoke_ready")
+    training = contract.get("training_data")
+    holdout = contract.get("excluded_holdout_data")
+    require(isinstance(training, dict), "training_data must be a mapping")
+    require(isinstance(holdout, dict), "excluded_holdout_data must be a mapping")
+    require(int(training.get("trajectory_count") or 0) > 0, "training trajectory_count must be positive")
+    require(int(holdout.get("trajectory_count") or 0) > 0, "holdout trajectory_count must be positive")
+    require(holdout.get("use_for_fitting") is False, "excluded holdout data must not be used for fitting")
+    require(isinstance(contract.get("metrics"), list) and contract["metrics"], "metrics must be nonempty")
+    require(int((contract.get("parameters") or {}).get("candidate_count") or 0) > 0, "candidate_count must be positive")
+    outputs = contract.get("expected_output_artifacts")
+    require(isinstance(outputs, dict) and outputs, "expected_output_artifacts must be a mapping")
+    boundary = contract.get("claim_boundary")
+    require(isinstance(boundary, dict), "claim_boundary must be a mapping")
+    for field in (
+        "calibration_claim_supported",
+        "validation_acceptance_claimed",
+        "physical_probability_supported",
+        "annual_frequency_supported",
+        "operational_hazard_map_supported",
+        "selected_parameters_promoted_to_validation",
+    ):
+        require(boundary.get(field) is False, f"calibration objective {field} must be false")
 
 
 def assess_candidate_portability(candidate_manifest: dict[str, Any]) -> dict[str, Any]:
@@ -1067,34 +1136,56 @@ def calibration_gap(
     chant_contact: dict[str, Any],
     chant_contact_heldout: dict[str, Any],
     chant_model_selection: dict[str, Any],
+    calibration_objective_contract: dict[str, Any],
 ) -> dict[str, Any]:
+    objective_ready = calibration_objective_contract.get("objective_status") == "executable_smoke_ready"
     return {
         "category": "calibration_evidence",
-        "classification": "missing",
+        "classification": "partial" if objective_ready else "missing",
         "current_evidence": [
             tschamut_manifest.get("claim_boundary", {}),
             tschamut_gate.get("physics_freeze", {}),
             chant_contact.get("expected", {}).get("metrics", []),
             chant_contact_heldout.get("expected", {}).get("metrics", []),
             chant_model_selection.get("frozen_reference_metrics", {}),
+            calibration_objective_contract,
         ],
         "what_exists": [
             "Current pilot evidence is explicitly non-tuning and non-operational",
             "Chant Sura contact fixtures support model comparison and shape sensitivity only",
+            (
+                "The Tschamut calibration objective names its training partition, excluded holdout partition, "
+                "parameter grid, metrics, and expected artifacts"
+                if objective_ready
+                else "No executable calibration objective contract is staged"
+            ),
         ],
         "what_is_missing": [
-            "A calibration dataset with a documented objective function and parameter bounds",
-            "A holdout split reserved for post-fit validation",
+            (
+                "A completed calibration smoke or fit record from the staged objective"
+                if objective_ready
+                else "A calibration dataset with a documented objective function and parameter bounds"
+            ),
+            (
+                "A post-fit comparison that keeps the excluded holdout partition out of fitting"
+                if objective_ready
+                else "A holdout split reserved for post-fit validation"
+            ),
             "A statement that current Tschamut outputs are calibrated evidence",
         ],
         "minimum_additional_evidence_needed": (
-            "A calibration record that names the calibration dataset, objective function, parameter bounds, fitted "
-            "values, and a separate holdout validation dataset."
+            "Run the staged calibration objective in smoke mode, record candidate sensitivity and fitted values, "
+            "and keep the excluded holdout partition out of fitting."
+            if objective_ready
+            else "A calibration record that names the calibration dataset, objective function, parameter bounds, "
+            "fitted values, and a separate holdout validation dataset."
         ),
-        "support_role": "not_calibrated",
-        "claim_boundary": "calibration_out_of_scope_for_current_pilot",
-        "physical_probability_relevance": "missing",
-        "holdout_validation_relevance": "missing",
+        "support_role": "objective_defined_pending_smoke" if objective_ready else "not_calibrated",
+        "claim_boundary": "calibration_objective_only_not_validation_evidence"
+        if objective_ready
+        else "calibration_out_of_scope_for_current_pilot",
+        "physical_probability_relevance": "partial" if objective_ready else "missing",
+        "holdout_validation_relevance": "partial" if objective_ready else "missing",
     }
 
 
@@ -1200,7 +1291,7 @@ def derive_physical_credibility_status(evidence_gap_categories: list[dict[str, A
     labels = {entry["category"]: entry["classification"] for entry in evidence_gap_categories}
     if labels.get("calibration_evidence") == "present" and labels.get("holdout_and_validation_evidence") == "present":
         return "established"
-    if labels.get("calibration_evidence") == "missing" or labels.get("holdout_and_validation_evidence") in {"missing", "partial"}:
+    if labels.get("calibration_evidence") != "present" or labels.get("holdout_and_validation_evidence") in {"missing", "partial"}:
         return "not_established"
     return "partial"
 

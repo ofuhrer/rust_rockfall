@@ -9945,3 +9945,27 @@ completed history.
 - Metrics: block-population candidate validates with `record_status=accepted_for_design_review`, `block_population_class_count=3`, and `total_count=3`; evidence-gap block-population classification is now `present`; physical-probability first blocker moves to `calibration_evidence`; remaining failing classes are `calibration_evidence`.
 - Boundaries: candidate design-review evidence only; no runtime prototype authorization, annual frequency, physical-probability product, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-626`
+
+### TB-626: Define A Minimal Calibration Objective Using Existing Data
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: turn the Tschamut calibration gap into an executable dry-run objective that names training data, excluded holdout data, parameters, metrics, and outputs.
+- Files changed: `scripts/run_tschamut_calibration.py`, `scripts/assess_validation_calibration_evidence_gaps.py`, `calibration/experiments/tschamut_v0_3/config.yaml`, `calibration/experiments/tschamut_v0_3/objective_contract.json`, `tests/test_calibration_failure_diagnostics.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/tschamut_calibration.md`, `docs/project_overview.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `--describe-objective` to the Tschamut calibration runner so the objective can be emitted without running the candidate grid.
+  - Wrote `objective_contract.json` for the existing Tschamut v0.3 objective, including the calibration partition, excluded holdout partition, parameter grid, metric weights, expected artifacts, and claim boundaries.
+  - Kept holdout data marked `use_for_fitting: false` and left selected parameters unpromoted to validation.
+  - Wired the evidence-gap helper to report the objective as partial calibration evidence while keeping physical credibility not established.
+  - Updated calibration docs to use the repo-standard `PYENV_VERSION=system uv run python` invocation.
+  - Removed TB-626 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --describe-objective --objective-json-output calibration/experiments/tschamut_v0_3/objective_contract.json`
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/run_tschamut_calibration.py scripts/check_calibration_separation_preflight.py scripts/assess_validation_calibration_evidence_gaps.py tests/test_calibration_failure_diagnostics.py tests/test_validation_calibration_evidence_gaps.py tests/test_calibration_separation_preflight.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_calibration_failure_diagnostics tests.test_validation_calibration_evidence_gaps tests.test_calibration_separation_preflight -v`
+- Result/status: implemented_measured
+- Metrics: objective status `executable_smoke_ready`; calibration trajectory count `18`; excluded holdout trajectory count `18`; parameter candidate count `16`; separation preflight `passed`; evidence-gap calibration status `partial`; physical-probability first blocker remains `calibration_evidence`.
+- Boundaries: objective definition and dry-run only; no candidate grid smoke run, no selected-parameter promotion, no validation acceptance, no physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-627`

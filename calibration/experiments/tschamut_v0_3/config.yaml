@@ -52,6 +52,7 @@ outputs:
   selected_parameters_yaml: calibration/experiments/tschamut_v0_3/selected_parameters.yaml
   summary_json: calibration/experiments/tschamut_v0_3/summary.json
   report_html: calibration/experiments/tschamut_v0_3/report.html
+  objective_contract_json: calibration/experiments/tschamut_v0_3/objective_contract.json
 notes:
   - "This is a controlled research calibration, not validation and not operational calibration."
   - "The active validation case validation/cases/tschamut_basic.yaml is not modified by this experiment."

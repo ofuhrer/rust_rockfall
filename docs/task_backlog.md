@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-626: Define A Minimal Calibration Objective Using Existing Data
-
-Goal: Turn the current calibration gap into an executable objective that uses available public/processed evidence while keeping holdout validation separate.
-
-Capability gap reduced: Missing calibration evidence and unclear parameter-fitting target for scientific credibility.
-
-Why this outranks alternatives: Calibration is now one of the few named scientific blockers left after source-frequency and holdout runout intake work.
-
-Inspect first:
-
-- `scripts/run_tschamut_calibration.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/tschamut_calibration.md`
-- `docs/scarring_real_data_calibration.md`
-- `validation/data/processed/observed_runout_deposition_benchmark/manifest.json`
-
-Deliverables:
-
-- An executable calibration objective or dry-run case that names parameters, metrics, training data, excluded holdout data, and expected output artifacts.
-
-Definition of done:
-
-- The separation preflight passes, the calibration command can run in dry-run or smoke mode, and the objective is specific enough for a later fit.
-
 ### TB-627: Run A Calibration Smoke And Report Parameter Sensitivity
 
 Goal: Execute the minimal calibration objective on a small bounded case and measure whether parameter changes affect runout/deposition metrics in the expected direction.

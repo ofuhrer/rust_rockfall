@@ -23,6 +23,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "post_diagnostic_scale_context",
             "source_frequency_intake",
             "block_population_intake",
+            "calibration_objective_contract",
             "evidence_gap_categories",
             "claim_boundary_matrix",
             "validation_leakage_guardrails",
@@ -36,7 +37,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertTrue(expected_keys.issubset(report.keys()))
         self.assertEqual(report["physical_credibility_status"], "not_established")
         self.assertFalse(report["physical_probability_claims_allowed"])
-        self.assertEqual(report["calibration_status"], "missing")
+        self.assertEqual(report["calibration_status"], "partial")
         self.assertEqual(report["validation_status"], "partial")
         self.assertFalse(report["annual_frequency_claims_allowed"])
         self.assertFalse(report["operational_claims_allowed"])
@@ -74,6 +75,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
         self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "present")
         self.assertEqual(report["block_population_intake"]["intake_classification"], "present")
+        self.assertEqual(report["calibration_objective_contract"]["objective_status"], "executable_smoke_ready")
 
     def test_block_population_candidate_validates_as_design_review_evidence(self) -> None:
         summary = assessment.validate_block_population_evidence_record(
@@ -163,7 +165,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             categories["release_zone_evidence"]["first_missing_input"],
             "",
         )
-        self.assertEqual(categories["calibration_evidence"]["classification"], "missing")
+        self.assertEqual(categories["calibration_evidence"]["classification"], "partial")
+        self.assertEqual(categories["calibration_evidence"]["support_role"], "objective_defined_pending_smoke")
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "present")
         self.assertEqual(
@@ -178,7 +181,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             ]
         )
         self.assertTrue(
-            any("calibration dataset" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
+            any("calibration smoke" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
         )
         self.assertTrue(
             any(
@@ -318,8 +321,8 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         tasks = report["next_concrete_scientific_tasks"]
 
-        self.assertEqual(tasks[0]["task_id"], "define_calibration_dataset_and_objective")
-        self.assertEqual(tasks[1]["task_id"], "stage_second_site_public_geodata_inputs")
+        self.assertEqual(tasks[0]["task_id"], "stage_second_site_public_geodata_inputs")
+        self.assertNotIn("define_calibration_dataset_and_objective", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_independent_holdout_deposition_runout_evidence", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_block_population_survey", [task["task_id"] for task in tasks])

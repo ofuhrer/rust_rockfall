@@ -192,6 +192,81 @@ class CalibrationFailureDiagnosticsTest(unittest.TestCase):
                 ):
                     tschamut.run_experiment(config)
 
+    def test_tschamut_objective_contract_names_partitions_metrics_and_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            split_path = root / "calibration/data/tschamut/split.yaml"
+            self._write_yaml(
+                split_path,
+                {
+                    "method": "fixture split",
+                    "seed": 11,
+                    "calibration_ids": ["c1", "c2"],
+                    "holdout_ids": ["h1"],
+                    "leakage_check": {"intersection_size": 0},
+                },
+            )
+            config = {
+                "experiment_id": "tschamut_fixture",
+                "title": "Fixture objective",
+                "model_version": "0.fixture",
+                "dataset": {
+                    "id": "tschamut2014",
+                    "release_points_csv": "data/processed/tschamut2014/release_points.csv",
+                    "deposition_points_csv": "data/processed/tschamut2014/observed_deposition.csv",
+                },
+                "split": {
+                    "path": "calibration/data/tschamut/split.yaml",
+                    "seed": 11,
+                },
+                "fixed_parameters": {
+                    "gravity": 9.81,
+                    "contact_model": "translational_v0",
+                    "roughness_model": "stochastic_contact_v1",
+                },
+                "parameter_grid": {
+                    "normal_restitution": [0.25],
+                    "tangential_restitution": [0.85],
+                    "friction_coefficient": [0.2],
+                    "roughness_profile": [
+                        {
+                            "id": "low",
+                            "roughness_std_normal": 0.04,
+                            "roughness_std_tangent": 0.04,
+                            "roughness_std_angle": 0.04,
+                        }
+                    ],
+                },
+                "objective": {
+                    "description": "fixture objective",
+                    "weights": {
+                        "runout_distance_error_m": 0.7,
+                        "deposition_centroid_error_m": 0.3,
+                    },
+                    "normalization": "observed_mean_runout_m",
+                },
+                "outputs": {
+                    "generated_results_dir": "calibration/results/tschamut_fixture",
+                    "candidate_results_csv": "calibration/experiments/tschamut_fixture/candidate_results.csv",
+                    "selected_parameters_yaml": "calibration/experiments/tschamut_fixture/selected_parameters.yaml",
+                    "summary_json": "calibration/experiments/tschamut_fixture/summary.json",
+                    "report_html": "calibration/experiments/tschamut_fixture/report.html",
+                    "objective_contract_json": "calibration/experiments/tschamut_fixture/objective_contract.json",
+                },
+            }
+
+            with mock.patch.object(tschamut, "ROOT", root):
+                contract = tschamut.build_objective_contract(config)
+
+            self.assertEqual(contract["objective_status"], "executable_smoke_ready")
+            self.assertEqual(contract["training_data"]["trajectory_count"], 2)
+            self.assertEqual(contract["excluded_holdout_data"]["trajectory_count"], 1)
+            self.assertFalse(contract["excluded_holdout_data"]["use_for_fitting"])
+            self.assertEqual(contract["parameters"]["candidate_count"], 1)
+            self.assertEqual(contract["metrics"], ["runout_distance_error_m", "deposition_centroid_error_m"])
+            self.assertIn("selected_parameters_yaml", contract["expected_output_artifacts"])
+            self.assertFalse(contract["claim_boundary"]["selected_parameters_promoted_to_validation"])
+
     def test_tschamut_wraps_failed_validation_subprocess(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

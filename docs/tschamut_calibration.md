@@ -48,7 +48,7 @@ Lower is better. The objective deliberately combines runout and deposition-cloud
 Run:
 
 ```bash
-python3 scripts/run_tschamut_calibration.py
+PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py
 ```
 
 The script:
@@ -64,6 +64,13 @@ Intermediate files under `calibration/results/` are ignored by git. Committed ou
 - `selected_parameters.yaml`
 - `summary.json`
 - `report.html`
+- `objective_contract.json`
+
+To inspect the executable objective without running the candidate grid:
+
+```bash
+PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py --describe-objective
+```
 
 ## Result
 

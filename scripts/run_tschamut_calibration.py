@@ -33,9 +33,27 @@ def main() -> int:
         action="store_true",
         help="write split/subset files without running the parameter grid",
     )
+    parser.add_argument(
+        "--describe-objective",
+        action="store_true",
+        help="write the executable calibration objective contract and exit without running candidates",
+    )
+    parser.add_argument(
+        "--objective-json-output",
+        type=Path,
+        default=None,
+        help="optional objective-contract JSON output path; defaults to the config output path",
+    )
     args = parser.parse_args()
 
     config = load_yaml(resolve(args.config))
+    if args.describe_objective:
+        output_path = args.objective_json_output
+        if output_path is None:
+            output_path = Path(objective_contract_output_path(config))
+        contract = write_objective_contract(resolve(output_path), config)
+        print(json.dumps(contract, indent=2, sort_keys=True))
+        return 0
     prepare_split(config)
     if args.prepare_only:
         print("prepared calibration split")
@@ -213,6 +231,7 @@ def run_experiment(config: dict[str, Any]) -> None:
     candidates = list(parameter_candidates(config))
     if not candidates:
         raise stage_error("parameter grid evaluation", "parameter_grid produced no candidates")
+    write_objective_contract(resolve(objective_contract_output_path(config)), config)
     rows = []
     for index, candidate in enumerate(candidates):
         candidate_id = f"candidate_{index:03}"
@@ -241,6 +260,100 @@ def run_experiment(config: dict[str, Any]) -> None:
     write_selected_parameters(resolve(config["outputs"]["selected_parameters_yaml"]), rows[0], config)
     write_summary(resolve(config["outputs"]["summary_json"]), rows, config)
     write_html_report(resolve(config["outputs"]["report_html"]), rows, config)
+
+
+def write_objective_contract(path: Path, config: dict[str, Any]) -> dict[str, Any]:
+    contract = build_objective_contract(config)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(contract, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return contract
+
+
+def build_objective_contract(config: dict[str, Any]) -> dict[str, Any]:
+    split = load_yaml(resolve(config["split"]["path"]))
+    candidates = parameter_candidates(config)
+    objective = config["objective"]
+    weights = dict(objective["weights"])
+    metric_names = list(weights)
+    outputs = config["outputs"]
+    return {
+        "schema_version": "tschamut_calibration_objective_v1",
+        "objective_status": "executable_smoke_ready",
+        "experiment_id": config["experiment_id"],
+        "title": config["title"],
+        "model_version": config["model_version"],
+        "dataset": config["dataset"],
+        "training_data": {
+            "partition": "calibration",
+            "release_points_csv": "calibration/data/tschamut/calibration_release_points.csv",
+            "observed_deposition_csv": "calibration/data/tschamut/calibration_observed_deposition.csv",
+            "trajectory_ids": split.get("calibration_ids", []),
+            "trajectory_count": len(split.get("calibration_ids", [])),
+        },
+        "excluded_holdout_data": {
+            "partition": "holdout",
+            "release_points_csv": "calibration/data/tschamut/holdout_release_points.csv",
+            "observed_deposition_csv": "calibration/data/tschamut/holdout_observed_deposition.csv",
+            "trajectory_ids": split.get("holdout_ids", []),
+            "trajectory_count": len(split.get("holdout_ids", [])),
+            "use_for_fitting": False,
+        },
+        "split": {
+            "path": config["split"]["path"],
+            "method": split.get("method", ""),
+            "seed": split.get("seed", config["split"]["seed"]),
+            "intersection_size": (split.get("leakage_check") or {}).get("intersection_size"),
+        },
+        "parameters": {
+            "fixed": config["fixed_parameters"],
+            "grid": config["parameter_grid"],
+            "candidate_count": len(candidates),
+        },
+        "objective": {
+            "direction": "lower_is_better",
+            "description": objective.get("description", ""),
+            "normalization_metric": objective["normalization"],
+            "metric_weights": weights,
+            "formula_terms": [
+                {
+                    "metric": metric,
+                    "weight": float(weight),
+                    "normalization_metric": objective["normalization"],
+                }
+                for metric, weight in weights.items()
+            ],
+        },
+        "metrics": metric_names,
+        "expected_output_artifacts": {
+            "candidate_results_csv": outputs["candidate_results_csv"],
+            "selected_parameters_yaml": outputs["selected_parameters_yaml"],
+            "summary_json": outputs["summary_json"],
+            "report_html": outputs["report_html"],
+            "objective_contract_json": objective_contract_output_path(config),
+            "generated_results_dir": outputs["generated_results_dir"],
+        },
+        "dry_run_command": (
+            "PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py "
+            "--describe-objective"
+        ),
+        "smoke_run_command": (
+            "PYENV_VERSION=system uv run python scripts/run_tschamut_calibration.py "
+            "--config calibration/experiments/tschamut_v0_3/config.yaml"
+        ),
+        "claim_boundary": {
+            "calibration_claim_supported": False,
+            "validation_acceptance_claimed": False,
+            "physical_probability_supported": False,
+            "annual_frequency_supported": False,
+            "operational_hazard_map_supported": False,
+            "selected_parameters_promoted_to_validation": False,
+        },
+    }
+
+
+def objective_contract_output_path(config: dict[str, Any]) -> str:
+    outputs = config.get("outputs") or {}
+    return str(outputs.get("objective_contract_json") or "calibration/experiments/tschamut_v0_3/objective_contract.json")
 
 
 def parameter_candidates(config: dict[str, Any]) -> list[dict[str, Any]]:
