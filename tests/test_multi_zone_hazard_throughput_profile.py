@@ -353,6 +353,33 @@ class MultiZoneHazardThroughputProfileTests(unittest.TestCase):
             self.assertEqual(report["profile_status"], "profiled_scratch_root")
             self.assertEqual(report["schema_version"], MODULE.SCHEMA_VERSION)
 
+    def test_cli_materialize_root_accepts_custom_release_zone_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            profile_root = Path(tmpdir) / "profile"
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = MODULE.main(
+                    [
+                        "--materialize-root",
+                        str(profile_root),
+                        "--profile",
+                        MODULE.SMOKE_PROFILE_ID,
+                        "--release-zone-count",
+                        "14",
+                        "--reducer-chunk-count",
+                        "2",
+                        "--format",
+                        "json",
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            report = json.loads(buffer.getvalue())
+            self.assertEqual(report["fixture"]["release_zone_count"], 14)
+            self.assertEqual(report["fixture"]["profile_id"], "smoke_14_zone_custom")
+            self.assertEqual(report["larger_than_four_zone_package_profile"]["release_zone_count"], 14)
+            self.assertTrue(report["larger_than_four_zone_package_profile"]["targets_greater_than_four_zones"])
+
     def test_missing_fixture_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             profile_root = Path(tmpdir) / "profile"

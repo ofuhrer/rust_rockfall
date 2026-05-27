@@ -1083,7 +1083,7 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             "output_file_count": 100,
             "output_bytes": 42188,
             "manifest_bytes": 24426,
-            "comparison_anchor": "diagnostic reducer-pressure only; TB-669 is the latest bounded hazard-throughput support point",
+            "comparison_anchor": "diagnostic reducer-pressure only; TB-680 is the latest bounded hazard-throughput support point",
         },
         "latest_bounded_diagnostic_probe": {
             "task_id": "TB-652",
@@ -1099,7 +1099,7 @@ def build_diagnostic_performance_section() -> dict[str, Any]:
             "output_file_count": 28,
             "output_bytes": 14397,
             "manifest_bytes": 11458,
-            "comparison_anchor": "diagnostic reducer-pressure only; TB-669 is the latest bounded hazard-throughput support point",
+            "comparison_anchor": "diagnostic reducer-pressure only; TB-680 is the latest bounded hazard-throughput support point",
         },
         "latest_diagnostic": {
             "task_id": "TB-612",
@@ -1267,8 +1267,8 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
         "summary": (
             "Swiss-scale feasibility remains bounded: 10-zone is the hazard-planning boundary, 100-zone is measured diagnostic postproc reducer-pressure evidence, "
             "and broader regional plus Swiss-wide workflows remain phase changes. "
-            "TB-669 is the measured 12-zone hazard-throughput support point; TB-652 and TB-665 are diagnostic comparison points, not larger hazard-throughput support points. "
-            "The next blockers are scientific evidence for physical use, larger hazard-throughput scaling, and reducer/replay pressure before larger claims."
+            "TB-680 is the measured 24-zone hazard-throughput support point; TB-652 and TB-665 are diagnostic comparison points, not larger hazard-throughput support points. "
+            "The next blockers are scientific evidence for physical use, manifest pressure, and reducer/replay pressure before larger claims."
         ),
         "projection_classification": {
             "10_zone": "hazard_planning_boundary",
@@ -1311,16 +1311,16 @@ def build_swiss_scale_feasibility_projection_section() -> dict[str, Any]:
             "latest_bounded_diagnostic_reducer_wall_time_seconds": 2.11,
             "latest_bounded_diagnostic_output_file_count": 28,
             "latest_bounded_diagnostic_output_bytes": 14397,
-            "hazard_throughput_latest_job_id": "4378015",
-            "hazard_throughput_latest_task_id": "TB-669",
-            "hazard_throughput_latest_release_zone_count": 12,
-            "hazard_throughput_latest_wall_seconds": 0.288978714030236,
-            "hazard_throughput_latest_memory_peak_mb": 47.016,
+            "hazard_throughput_latest_job_id": "4379134",
+            "hazard_throughput_latest_task_id": "TB-680",
+            "hazard_throughput_latest_release_zone_count": 24,
+            "hazard_throughput_latest_wall_seconds": 0.2727567689726129,
+            "hazard_throughput_latest_memory_peak_mb": 40.9375,
             "hazard_throughput_latest_hazard_output_file_count": 29,
-            "hazard_throughput_latest_hazard_output_bytes": 1148530,
+            "hazard_throughput_latest_hazard_output_bytes": 1169964,
             "hazard_throughput_latest_conditional_curve_rows": 36864,
-            "hazard_throughput_previous_job_id": "4372656",
-            "hazard_throughput_previous_task_id": "TB-619",
+            "hazard_throughput_previous_job_id": "4378015",
+            "hazard_throughput_previous_task_id": "TB-669",
             "regional_split_job_id": "4367244",
             "regional_split_validation_output_file_count": 130,
             "regional_split_hazard_output_file_count": 57,

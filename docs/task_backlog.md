@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-680: Run The Next Bounded Hazard-Throughput Scale-Up On Balfrin
-
-Goal: Move beyond the 12-zone TB-669 hazard-throughput support point with a real measured Balfrin run.
-
-Capability gap reduced: Hazard-throughput scaling evidence between the current bounded 12-zone result and Swiss-scale planning.
-
-Why this outranks alternatives: The 100-zone evidence is diagnostic-only; the next scale proof must exercise the hazard-throughput path itself while Balfrin is empty.
-
-Inspect first:
-
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `archive/task_reports/balfrin_12_zone_hazard_throughput_probe_tb669.md`
-- `docs/balfrin_scale_demonstration_management_package.md`
-
-Deliverables:
-
-- A submitted and monitored Balfrin `postproc` hazard-throughput run above `12` release zones, using `$SCRATCH`, summary-only/replay-critical output, and preserved metrics.
-
-Definition of done:
-
-- The job reaches a terminal scheduler state, runtime/memory/file/byte metrics are collected, focused scale-readiness tests pass, and the result is classified as measured or failed with a concrete blocker.
-
-Scope: No Swiss-wide, distributed, physical-probability, operational, risk, exposure, vulnerability, or non-`postproc` claim changes.
-
 ### TB-681: Repeat The Larger Hazard-Throughput Run For Variability
 
 Goal: Repeat the TB-680 run shape to measure variability and distinguish one-off scheduler noise from stable throughput behavior.

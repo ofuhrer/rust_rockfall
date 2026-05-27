@@ -11078,3 +11078,22 @@ completed history.
 - Metrics: top-level `docs/` reduced from `168` files to `94`; TB-numbered files in top-level `docs/` reduced to `0`; default consistency check measured at about `5.9` seconds; full consistency check with generated command-plan reference audit measured at about `84` seconds.
 - Boundaries: simplification and gate-tiering only; no scientific, operational, Swiss-wide, distributed, physical-probability, annual-frequency, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: `TB-680`
+
+### TB-680: Run The Next Bounded Hazard-Throughput Scale-Up On Balfrin
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: move beyond the 12-zone hazard-throughput support point with a measured Balfrin `postproc` run that preserves scheduler and output metrics.
+- Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_24_zone_hazard_throughput_probe_tb680.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Extended the multi-zone hazard-throughput profiler with explicit release-zone, reducer-worker, reducer-chunk, trajectory-sample, and impact-row overrides so the same workflow can run bounded larger profiles without ad hoc fixture edits.
+  - Submitted and monitored a preserved 24-zone Balfrin `postproc` run under `$SCRATCH`, keeping the profile output in a subdirectory so scheduler logs, `/usr/bin/time`, and byte metrics remained available.
+  - Updated the scale-readiness matrix, management package, and Swiss-scale feasibility projection to use TB-680 as the current bounded hazard-throughput support point while keeping broader Swiss-wide, distributed, operational, physical-probability, and non-`postproc` claims closed.
+  - Documented the first attempted job separately from the preserved support run because the first run used the run root as the materialization target and removed scheduler artifacts.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix tests.test_swiss_wide_execution_envelope tests.test_balfrin_management_demo_package tests.test_multi_zone_hazard_throughput_profile -v`
+- Result/status: implemented_measured
+- Metrics: preserved job `4379134`, partition `postproc`, terminal state `COMPLETED`, exit `0:0`, run root `/scratch/mch/olifu/rust_rockfall/probes/tb680_24_zone_hazard_throughput_preserved_20260527_145422`, release zones `24`, profile wall `0.2727567689726129` s, hazard-layer wall `0.08593320602085441` s, `/usr/bin/time` elapsed `0:00.70`, peak RSS `41920` kB, hazard files `29`, hazard bytes `1,169,964`, run-root files `117`, run-root bytes `2,488,907`, conditional curve rows `36,864`, manifest bytes `63,992`.
+- Decision: use TB-680 as the current bounded hazard-throughput support point; classify the replay-critical output family as complete with a concrete manifest-byte pressure blocker because manifest bytes exceed the current `60,000` byte replay budget.
+- Boundaries: bounded Balfrin `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: `TB-681`

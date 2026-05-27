@@ -149,6 +149,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_PROFILE_ID,
         help="fixture size and measurement depth to materialize and profile",
     )
+    parser.add_argument("--release-zone-count", type=int, default=None, help="Override the selected profile's release-zone count.")
+    parser.add_argument("--reducer-workers", type=int, default=None, help="Override the selected profile's reducer worker count.")
+    parser.add_argument("--reducer-chunk-count", type=int, default=None, help="Override the selected profile's reducer chunk count.")
+    parser.add_argument(
+        "--trajectory-samples-per-zone",
+        type=int,
+        default=None,
+        help="Override trajectory rows per synthetic release zone.",
+    )
+    parser.add_argument(
+        "--impact-rows-per-zone",
+        type=int,
+        default=None,
+        help="Override impact-event rows per synthetic release zone.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--json-output", type=Path, default=None)
     parser.add_argument("--markdown-output", type=Path, default=None)
@@ -157,7 +172,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    profile_spec = PROFILE_SPECS[args.profile]
+    profile_spec = resolve_profile_spec(args)
     try:
         if args.materialize_root is not None:
             fixture = materialize_fixture_root(
@@ -184,6 +199,48 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render_text(report))
     return 0 if report["profile_status"] == "profiled_scratch_root" else 2
+
+
+def resolve_profile_spec(args: argparse.Namespace) -> ProfileSpec:
+    base = PROFILE_SPECS[args.profile]
+    overrides = {
+        "release_zone_count": args.release_zone_count,
+        "reducer_workers": args.reducer_workers,
+        "reducer_chunk_count": args.reducer_chunk_count,
+        "trajectory_samples_per_zone": args.trajectory_samples_per_zone,
+        "impact_rows_per_zone": args.impact_rows_per_zone,
+    }
+    if all(value is None for value in overrides.values()):
+        return base
+    release_zone_count = overrides["release_zone_count"] or base.release_zone_count
+    return ProfileSpec(
+        profile_id=f"{base.profile_id}_{release_zone_count}_zone_custom",
+        release_zone_count=release_zone_count,
+        reducer_workers=overrides["reducer_workers"] or base.reducer_workers,
+        reducer_chunk_count=overrides["reducer_chunk_count"] or base.reducer_chunk_count,
+        trajectory_samples_per_zone=overrides["trajectory_samples_per_zone"] or base.trajectory_samples_per_zone,
+        impact_rows_per_zone=overrides["impact_rows_per_zone"] or base.impact_rows_per_zone,
+        measure_bounds_discovery=base.measure_bounds_discovery,
+        render_report=base.render_report,
+    )
+
+
+def profile_spec_from_fixture_manifest(fixture_manifest: dict[str, Any]) -> ProfileSpec:
+    profile_id = str(fixture_manifest.get("profile_id") or DEFAULT_PROFILE_ID)
+    if profile_id in PROFILE_SPECS:
+        return PROFILE_SPECS[profile_id]
+    return ProfileSpec(
+        profile_id=profile_id,
+        release_zone_count=int(fixture_manifest.get("release_zone_count") or DEFAULT_RELEASE_ZONE_COUNT),
+        reducer_workers=int(fixture_manifest.get("reducer_workers") or DEFAULT_REDUCER_WORKERS),
+        reducer_chunk_count=int(fixture_manifest.get("reducer_chunk_count") or DEFAULT_REDUCER_CHUNK_COUNT),
+        trajectory_samples_per_zone=int(
+            fixture_manifest.get("trajectory_rows_per_zone") or DEFAULT_TRAJECTORY_SAMPLES_PER_ZONE
+        ),
+        impact_rows_per_zone=int(fixture_manifest.get("impact_rows_per_zone") or DEFAULT_IMPACT_ROWS_PER_ZONE),
+        measure_bounds_discovery=bool(fixture_manifest.get("measure_bounds_discovery", True)),
+        render_report=bool(fixture_manifest.get("render_report", False)),
+    )
 
 
 def materialize_fixture_root(
@@ -322,6 +379,8 @@ def materialize_fixture_root(
         "impact_row_count": len(impact_rows),
         "release_zone_ids": [zone["source_zone_id"] for zone in release_zones],
         "scenario_count": len(scenario_rows),
+        "reducer_workers": profile_spec.reducer_workers,
+        "reducer_chunk_count": profile_spec.reducer_chunk_count,
         "trajectory_rows_per_zone": trajectory_rows_per_zone,
         "impact_rows_per_zone": impact_rows_per_zone,
         "measure_bounds_discovery": profile_spec.measure_bounds_discovery,
@@ -378,7 +437,7 @@ def build_report(profile_root: Path) -> dict[str, Any]:
         raise MultiZoneHazardThroughputProfileError("missing fixture inputs: " + ", ".join(missing_paths))
 
     fixture_manifest = load_json(fixture_manifest_path)
-    profile_spec = PROFILE_SPECS.get(str(fixture_manifest.get("profile_id") or DEFAULT_PROFILE_ID), PROFILE_SPECS[DEFAULT_PROFILE_ID])
+    profile_spec = profile_spec_from_fixture_manifest(fixture_manifest)
     case = load_yaml(case_path)
     case["_path"] = str(case_path)
     _ = load_json(diagnostics_path)

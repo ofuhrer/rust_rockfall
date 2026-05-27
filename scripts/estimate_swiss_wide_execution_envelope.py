@@ -480,7 +480,7 @@ def load_measured_coefficients() -> MeasuredCoefficients:
         "job-count capacity is anchored to the measured 10-release-zone by 6-trajectory pilot footprint",
         "multi-zone manifest pressure is anchored to the measured 2/4/8/12-zone full-vs-compact ladder, which recommends compact as the default manifest mode",
         "diagnostic reducer-pressure coefficients are anchored to the latest measured Balfrin diagnostic run record and kept separate from hazard-throughput projections",
-        "hazard-throughput support is anchored to the measured TB-669 12-zone Balfrin postproc profile and kept separate from diagnostic reducer-pressure evidence",
+        "hazard-throughput support is anchored to the measured TB-680 24-zone Balfrin postproc profile and kept separate from diagnostic reducer-pressure evidence",
     )
     measured_release_zone_count = max(
         10,
