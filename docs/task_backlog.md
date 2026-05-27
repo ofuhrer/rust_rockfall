@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-664: Refresh Balfrin Readiness For The Next Scale Run
-
-Goal: Confirm the current Balfrin checkout, `$SCRATCH` root, and `postproc` capacity are ready for a larger measured run.
-
-Capability gap reduced: Fresh operational readiness for taking advantage of an underused Balfrin `postproc` partition.
-
-Why this outranks alternatives: The next scale run should use the current simplified runner and current queue state, not stale capacity notes or an old remote checkout.
-
-Inspect first:
-
-- `scripts/check_balfrin_remote_access_preflight.py`
-- `scripts/run_balfrin_diagnostic.py`
-- `docs/balfrin_tschamut_pilot_runbook.md`
-- `docs/balfrin_postproc_capacity_snapshot_20260526.md`
-
-Deliverables:
-
-- A fresh read-only Balfrin readiness result and an explicit next run shape, including run root under `$SCRATCH`, release-zone count, reducer fan-out, time limit, and whether the remote checkout matches the local commit.
-
-Definition of done:
-
-- The capacity and checkout state are explicit, any mismatch is either fixed or recorded, and the next executable Balfrin command is safe to run under the standing `postproc` clearance.
-
-Scope: Do not submit a job in this task unless the readiness check and run shape are unambiguous.
-
 ### TB-665: Run The Next Larger Balfrin Diagnostic
 
 Goal: Measure the next larger single-node `postproc` diagnostic run from the simplified Balfrin front door.

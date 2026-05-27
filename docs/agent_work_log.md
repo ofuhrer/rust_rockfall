@@ -10740,3 +10740,24 @@ completed history.
 - Metrics: `ci` dry-run suites `lint`, `rust-tests`, `verify`, `python-tests`, `repo-consistency`; `ci` dry-run no longer includes `run_performance_benchmark.py`; `performance` dry-run includes `performance-standard`; focused tests `4` passed.
 - Boundaries: local CI command selection only; no GitHub workflow, coverage list, Python test tier, Rust command, performance benchmark logic, or scientific/runtime behavior changed.
 - Next task: backlog empty
+
+### TB-664: Refresh Balfrin Readiness For The Next Scale Run
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: confirm the current Balfrin checkout, `$SCRATCH` root, and `postproc` capacity before the next larger diagnostic run.
+- Files changed: `docs/balfrin_readiness_next_scale_run_tb664.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the read-only Balfrin access preflight from the desktop checkout.
+  - Confirmed SSH, remote clone, remote checkout hygiene, run-root visibility, and scheduler query reachability.
+  - Planned the next 32-zone diagnostic shape both locally and from the Balfrin checkout.
+  - Recorded the clean-but-stale remote checkout mismatch and the exact next run command.
+  - Removed TB-664 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb664_balfrin_preflight.json`
+  - `PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --partition postproc --time 00:45:00 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527 --format json > /tmp/tb664_32zone_plan.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin "cd /users/olifu/work/rust_rockfall && PYENV_VERSION=system uv run python scripts/run_balfrin_diagnostic.py plan --release-zones 32 --reducer-chunks 4 --reducer-workers 4 --manifest-mode compact --partition postproc --time 00:45:00 --run-root /scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527 --format json" > /tmp/tb664_remote_32zone_plan.json`
+- Result/status: implemented_waiting_report
+- Metrics: preflight status `ready_for_read_only_collection`; ready for pre-submit `true`; remote checkout hygiene `pass`; remote head `4b335c03e02e7d2e65704a3ae74e9662a3f2d42f`; local head `c11917e207e6f6b36fb1d40449f31ee8cb2d8c8b`; scheduler node states `mixed|4|1-00:00:00`, `idle|9|1-00:00:00`; running jobs `180`; pending jobs `1`; current-user jobs `1`; next planned diagnostic `32` release zones, `4` reducer chunks, `4` reducer workers, `00:45:00` time limit, run root `/scratch/mch/olifu/rust_rockfall/diagnostics/tb665_32_zone_20260527`.
+- Boundaries: readiness and plan record only; no job submitted and no operational, physical-probability, annual-frequency, hazard-throughput, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-665`
