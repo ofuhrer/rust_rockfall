@@ -306,6 +306,13 @@ Measured:
   parity, and measured `19.775688750029076` seconds of COG conversion on the
   local machine. This is demonstration packaging evidence only and does not
   authorize operational GIS claims.
+- TB-646 exercised a local chunked AOI-style hazard/package smoke in `/tmp`
+  using the Tschamut target-gate inputs with `2` trajectory workers and `3`
+  reducer workers. The run wrote `63` hazard files / `24,207,052` bytes,
+  completed `3` reducer chunks and `2` trajectory chunks, preserved
+  `sorted_chunk_id` merge order, and packaged `41` review files /
+  `415,570` bytes with `24` rasters and `2` vector overlays. This is local
+  chunk/merge/package evidence only, not distributed execution evidence.
 - `scripts/measure_scenario_storage_output_tier_pressure.py` measures the
   current real-AOI candidate scenario table at 3 rows, the fixture scenario
   table at 3 rows, and an expanded candidate-repeat ladder at 1 / 3 / 8

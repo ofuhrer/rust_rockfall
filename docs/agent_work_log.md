@@ -10365,3 +10365,24 @@ completed history.
 - Metrics: status `planning_inventory_ready_missing_cache`; tile count `43,500`; chunk count `85`; merge group count `11`; chunk size `512`; last chunk tile count `492`; estimated required input bytes `2,093,100,000,000`; missing products `7`; mapping validation ready `true`; planning-only sufficient `true`; data cache ready `false`; execution ready `false`.
 - Boundaries: share-safe inventory smoke only; no download, no national cache, no Swiss-wide execution, no distributed execution, no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
 - Next task: `TB-646`
+
+### TB-646: Exercise A Small Chunked AOI Processing Prototype
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: run a local scratch chunked AOI-style hazard/package smoke without introducing distributed execution claims.
+- Files changed: `docs/swiss_scale_feasibility_projection.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran `scripts/build_hazard_layers.py` into `/tmp/tb646_chunked_aoi` using existing Tschamut target-gate inputs, `--trajectory-workers 2`, and `--reducer-workers 3`.
+  - Kept scalable output controls enabled: `--conditional-curve-export summary-only`, `--grid-csv-export none`, and `--no-plots`.
+  - Packaged the scratch hazard root with `scripts/package_aoi_hazard_map.py` into `/tmp/tb646_chunked_aoi_package`.
+  - Summarized per-chunk reducer rows/bytes and merged package counts in `/tmp/tb646_chunked_aoi_summary.json`.
+  - Recorded the result in the Swiss-scale feasibility projection and removed TB-646 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-646 --format json`
+  - `PYENV_VERSION=system uv run python scripts/build_hazard_layers.py ... --output-dir /tmp/tb646_chunked_aoi --trajectory-workers 2 --reducer-workers 3 --conditional-curve-export summary-only --grid-csv-export none --no-plots`
+  - `PYENV_VERSION=system uv run python scripts/package_aoi_hazard_map.py --input-root /tmp/tb646_chunked_aoi --output-root /tmp/tb646_chunked_aoi_package --overwrite --format json`
+- Result/status: implemented_measured
+- Metrics: hazard output `63` files / `24,207,052` bytes; total hazard wall time `76.38637483300408` s; output write time `6.32856824999908` s; reducer mode `chunked_local_threads`; reducer workers `3`; reducer chunk manifests `3`; trajectory workers `2`; trajectory chunk manifests `2`; merge order `sorted_chunk_id`; merge-order independent `true`; package status `map_package_ready`; package `41` files / `415,570` bytes; package rasters `24`; vector overlays `2`; reducer chunks wrote `384,014`, `374,655`, and `378,872` rows.
+- Boundaries: local scratch chunk/merge/package evidence only; no distributed execution, no Balfrin job, no Swiss-wide execution, no operational, physical-probability, annual-frequency, risk, exposure, or vulnerability claim.
+- Next task: `TB-647`

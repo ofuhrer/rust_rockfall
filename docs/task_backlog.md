@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-646: Exercise A Small Chunked AOI Processing Prototype
-
-Goal: Test whether the current AOI workflow can process multiple chunks and merge reviewable outputs without introducing distributed execution claims.
-
-Capability gap reduced: Path toward regional/Swiss-scale chunking.
-
-Why this outranks alternatives: Distributed execution is deferred, but a local chunk-and-merge prototype can expose merge and packaging issues before scheduler work.
-
-Inspect first:
-
-- `scripts/generate_pilot_command_plan.py`
-- `scripts/build_hazard_layers.py`
-- `scripts/package_aoi_hazard_map.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A local scratch chunked AOI smoke or a concrete blocker for chunked hazard-layer merge/package behavior.
-
-Definition of done:
-
-- The prototype writes scratch outputs only, reports per-chunk and merged file/byte counts, and explicitly remains local non-distributed evidence.
-
 ### TB-647: Add Operational QA Checklist To Existing Map Package Output
 
 Goal: Make GIS package review more actionable by surfacing visual QA items and provenance fields inside the existing package output.
