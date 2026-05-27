@@ -10037,3 +10037,24 @@ completed history.
 - Metrics: second-site prepare status `ready`; ready prepare delegate count `6`; prepared-pilot local execution status `blocked_local_execution`; first blocker step `prepared_pilot_inputs`; missing public-context root count `5`; generic fixture-backed local smoke status `smoke_completed`; generic fixture-backed local smoke output bytes `56465`.
 - Boundaries: no second-site hazard execution completed; the successful local smoke is fixture-backed and not second-site evidence; no public geodata download, Balfrin job, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
 - Next task: `TB-630`
+
+### TB-630: Add A Spatial Holdout Metric For Runout Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: add a quantitative spatial check for the staged held-out runout-axis evidence while keeping calibration/model-selection inputs excluded.
+- Files changed: `scripts/summarize_observed_runout_deposition_intake_contract.py`, `tests/test_observed_runout_deposition_intake_contract.py`, `docs/holdout_runout_deposition_evidence_tb615.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `holdout_spatial_metric` to the observed runout/deposition intake summary.
+  - Computed held-out runout-axis endpoint distance against `observed_trajectories_contact_heldout.csv`.
+  - Reported metric input role, held-out/model-selection trajectory IDs, overlap count, and blocker states for missing geometry/split/trajectory inputs.
+  - Updated the holdout evidence note with the measured spatial result.
+  - Removed TB-630 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/summarize_observed_runout_deposition_intake_contract.py --format json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_observed_runout_deposition_intake_contract.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_observed_runout_deposition_intake_contract -v`
+- Result/status: implemented_measured
+- Metrics: metric status `measured`; line count `6`; held-out trajectory count `6`; mean endpoint distance `0.0 m`; maximum endpoint distance `0.0 m`; coverage within `0.5 m` tolerance `1.0`; model-selection overlap count `0`.
+- Boundaries: held-out runout-axis consistency metric only; no calibration acceptance, deposition polygon, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, or distributed claim.
+- Next task: `TB-631`

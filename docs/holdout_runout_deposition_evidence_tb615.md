@@ -25,6 +25,11 @@ Current result:
 - observed runout/deposition intake status: `ready`
 - observed deposition/runout evidence category: `present`
 - holdout and validation evidence category: `present`
+- held-out runout-axis endpoint spatial metric: `measured`
+- mean endpoint distance: `0.0 m`
+- maximum endpoint distance: `0.0 m`
+- coverage within the staged `0.5 m` geometry tolerance: `1.0`
+- calibration/model-selection overlap in metric inputs: `0`
 - remaining physical-probability blockers: `release_probability_model`,
   `block_population_evidence`, and `calibration_evidence`
 

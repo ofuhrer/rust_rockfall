@@ -75,6 +75,7 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             "candidate_acquisition_report",
             "acquisition_review_report",
             "real_input_intake_report",
+            "holdout_spatial_metric",
             "fixture_acceptance_smoke",
             "intake_acceptance_smoke_summary",
             "dataset_role_classification",
@@ -108,6 +109,25 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["calibration_claims_allowed"])
         self.assertFalse(report["acquisition_review_report"]["claim_boundaries"]["physical_probability_claims_allowed"])
         self.assertEqual(report["real_input_intake_report"]["real_input_intake_status"], "ready")
+        holdout_metric = report["holdout_spatial_metric"]
+        self.assertEqual(holdout_metric["metric_status"], "measured")
+        self.assertEqual(holdout_metric["metric_input_role"], "holdout_validation_only")
+        self.assertEqual(holdout_metric["line_count"], 6)
+        self.assertEqual(holdout_metric["trajectory_count"], 6)
+        self.assertEqual(holdout_metric["mean_endpoint_distance_m"], 0.0)
+        self.assertEqual(holdout_metric["max_endpoint_distance_m"], 0.0)
+        self.assertEqual(holdout_metric["coverage_within_tolerance_fraction"], 1.0)
+        self.assertFalse(
+            holdout_metric["calibration_validation_separation"]["calibration_inputs_used_in_metric"]
+        )
+        self.assertEqual(
+            holdout_metric["calibration_validation_separation"]["model_selection_overlap_count"],
+            0,
+        )
+        self.assertEqual(
+            sorted(holdout_metric["calibration_validation_separation"]["metric_trajectory_ids"]),
+            sorted(holdout_metric["calibration_validation_separation"]["holdout_trajectory_ids"]),
+        )
         self.assertEqual(report["real_input_intake_report"]["blocking_reasons"], [])
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_status"], "fixture_backed")
         self.assertEqual(report["fixture_acceptance_smoke"]["fixture_classification"]["acceptance_status"], "ready")
@@ -410,6 +430,10 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
         self.assertIn("benchmark_intake_manifest:", text)
         self.assertIn("real_input_intake_report:", text)
         self.assertIn("real_input_intake_status: ready", text)
+        self.assertIn("holdout_spatial_metric:", text)
+        self.assertIn("metric_status: measured", text)
+        self.assertIn("coverage_within_tolerance_fraction: 1.0", text)
+        self.assertIn("model_selection_overlap_count: 0", text)
         self.assertIn("acquisition_review_report:", text)
         self.assertIn("review_status: accepted", text)
         self.assertIn("fixture_acceptance_smoke:", text)
@@ -467,6 +491,16 @@ class ObservedRunoutDepositionIntakeContractTests(unittest.TestCase):
             current_state["calibration_missing_inputs"],
             [str(calibration_root)],
         )
+
+    def test_holdout_spatial_metric_reports_concrete_missing_input_blocker(self) -> None:
+        missing_trajectory_path = Path("/tmp/rust_rockfall_missing_heldout_trajectories.csv")
+        with patch.object(helper, "EXPECTED_HOLDOUT_TRAJECTORIES", missing_trajectory_path):
+            report = helper.build_report()
+
+        metric = report["holdout_spatial_metric"]
+        self.assertEqual(metric["metric_status"], "blocked_missing_inputs")
+        self.assertIn(str(missing_trajectory_path), metric["missing_inputs"])
+        self.assertIn("required geometry, split, or trajectory inputs", metric["blocked_reason"])
 
     def test_acquisition_fixture_classifier_accepts_complete_shape(self) -> None:
         fixture = helper.load_yaml_fixture(helper.EXPECTED_ACCEPTED_ACQUISITION_FIXTURE)

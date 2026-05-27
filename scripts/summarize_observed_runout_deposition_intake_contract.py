@@ -13,7 +13,9 @@ claim.
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import math
 import sys
 from copy import deepcopy
 from functools import partial
@@ -53,6 +55,7 @@ EXPECTED_VALIDATION_INPUT_MANIFEST = ROOT / "validation/data/processed/chant_sur
 EXPECTED_VALIDATION_INPUT_CASE = ROOT / "validation/cases/chant_sura_contact.yaml"
 EXPECTED_HOLDOUT_MANIFEST = ROOT / "validation/data/processed/chant_sura_2020/holdout_validation_evidence_manifest.json"
 EXPECTED_HOLDOUT_CASE = ROOT / "validation/cases/chant_sura_contact_heldout.yaml"
+EXPECTED_HOLDOUT_TRAJECTORIES = ROOT / "validation/data/processed/chant_sura_2020/observed_trajectories_contact_heldout.csv"
 EXPECTED_BENCHMARK_INPUTS = (
     EXPECTED_BENCHMARK_MANIFEST,
     EXPECTED_BENCHMARK_GEOMETRY,
@@ -420,6 +423,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
     field_requirement_map = build_field_requirement_map()
     physical_credibility_gap_update = build_physical_credibility_gap_update()
     real_input_intake_report = build_real_input_intake_report()
+    holdout_spatial_metric = build_holdout_spatial_metric()
     acquisition_review_report = build_acquisition_review_report(real_input_intake_report)
     current_state = build_current_state(real_input_intake_report=real_input_intake_report)
     acquisition_blocker_matrix = build_acquisition_blocker_matrix(current_state=current_state)
@@ -463,6 +467,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
                 "fixture_acceptance_smoke": fixture_acceptance_smoke,
                 "intake_acceptance_smoke_summary": intake_acceptance_smoke_summary,
                 "real_input_intake_report": real_input_intake_report,
+                "holdout_spatial_metric": holdout_spatial_metric,
                 "claim_boundaries": claim_boundaries(),
                 "current_state_summary": current_state_summary(
                     current_state, real_input_intake_report=real_input_intake_report
@@ -486,6 +491,7 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
             "fixture_acceptance_smoke": fixture_acceptance_smoke,
             "intake_acceptance_smoke_summary": intake_acceptance_smoke_summary,
             "real_input_intake_report": real_input_intake_report,
+            "holdout_spatial_metric": holdout_spatial_metric,
             "claim_boundaries": claim_boundaries(),
             "blocked_reason": None,
             "missing_inputs": [],
@@ -499,6 +505,213 @@ def build_report(output_root: Path | None = None) -> dict[str, Any]:
         readiness_pack = build_readiness_pack(output_root=output_root, report=report)
         report["readiness_pack"] = readiness_pack
     return report
+
+
+def build_holdout_spatial_metric() -> dict[str, Any]:
+    missing_inputs = shared_missing_repo_paths(
+        {
+            "benchmark_geometry": EXPECTED_BENCHMARK_GEOMETRY,
+            "split_manifest": EXPECTED_VALIDATION_INPUT_MANIFEST,
+            "holdout_manifest": EXPECTED_HOLDOUT_MANIFEST,
+            "heldout_trajectory_csv": EXPECTED_HOLDOUT_TRAJECTORIES,
+        }
+    )
+    if missing_inputs:
+        return blocked_holdout_spatial_metric(
+            "blocked_missing_inputs",
+            "held-out runout spatial metric cannot run because required geometry, split, or trajectory inputs are missing",
+            missing_inputs,
+        )
+
+    geometry_payload = load_json(EXPECTED_BENCHMARK_GEOMETRY)
+    split_manifest = load_json(EXPECTED_VALIDATION_INPUT_MANIFEST)
+    geometry_features = geometry_payload.get("features") if isinstance(geometry_payload.get("features"), list) else []
+    if not geometry_features:
+        return blocked_holdout_spatial_metric(
+            "blocked_geometry",
+            "held-out runout benchmark geometry contains no GeoJSON features",
+            [],
+        )
+
+    feature = geometry_features[0] if isinstance(geometry_features[0], dict) else {}
+    geometry = feature.get("geometry") if isinstance(feature.get("geometry"), dict) else {}
+    lines = geometry.get("coordinates") if geometry.get("type") == "MultiLineString" else None
+    if not isinstance(lines, list) or not lines:
+        return blocked_holdout_spatial_metric(
+            "blocked_geometry",
+            "held-out runout benchmark geometry is not a non-empty MultiLineString",
+            [],
+        )
+
+    properties = feature.get("properties") if isinstance(feature.get("properties"), dict) else {}
+    trajectory_ids = parse_trajectory_ids(properties.get("trajectory_ids"))
+    split_holdout_ids = split_trajectory_ids(split_manifest, "held_out_evaluation_subset")
+    split_model_selection_ids = split_trajectory_ids(split_manifest, "model_selection_subset")
+    metric_ids = trajectory_ids or split_holdout_ids
+    split_overlap = sorted(set(metric_ids) & set(split_model_selection_ids))
+    missing_from_holdout = sorted(set(metric_ids) - set(split_holdout_ids))
+    if split_overlap or missing_from_holdout:
+        return blocked_holdout_spatial_metric(
+            "blocked_split_overlap",
+            "held-out runout spatial metric inputs are not cleanly separated from model-selection inputs",
+            [],
+            calibration_validation_separation={
+                "metric_input_role": "holdout_validation_only",
+                "metric_trajectory_ids": metric_ids,
+                "model_selection_trajectory_ids": split_model_selection_ids,
+                "holdout_trajectory_ids": split_holdout_ids,
+                "model_selection_overlap": split_overlap,
+                "missing_from_holdout_split": missing_from_holdout,
+            },
+        )
+
+    endpoints_by_trajectory = load_trajectory_endpoints(EXPECTED_HOLDOUT_TRAJECTORIES, metric_ids)
+    missing_trajectory_endpoints = [trajectory_id for trajectory_id in metric_ids if trajectory_id not in endpoints_by_trajectory]
+    if missing_trajectory_endpoints:
+        return blocked_holdout_spatial_metric(
+            "blocked_missing_trajectory_samples",
+            "held-out trajectory CSV lacks samples for one or more benchmark trajectory IDs",
+            [],
+            missing_trajectory_endpoints=missing_trajectory_endpoints,
+        )
+    if len(lines) != len(metric_ids):
+        return blocked_holdout_spatial_metric(
+            "blocked_geometry_count_mismatch",
+            "held-out runout benchmark geometry count does not match the held-out trajectory count",
+            [],
+            line_count=len(lines),
+            trajectory_count=len(metric_ids),
+        )
+
+    tolerance_m = extract_geometry_tolerance_m()
+    comparisons: list[dict[str, Any]] = []
+    for trajectory_id, line in zip(metric_ids, lines, strict=False):
+        if not isinstance(line, list) or len(line) < 2:
+            return blocked_holdout_spatial_metric(
+                "blocked_geometry",
+                f"held-out runout benchmark line for {trajectory_id} has fewer than two vertices",
+                [],
+            )
+        observed = endpoints_by_trajectory[trajectory_id]
+        line_start = xy(line[0])
+        line_end = xy(line[-1])
+        start_distance_m = distance_2d(line_start, observed["start_xy"])
+        endpoint_distance_m = distance_2d(line_end, observed["end_xy"])
+        comparisons.append(
+            {
+                "trajectory_id": trajectory_id,
+                "start_distance_m": start_distance_m,
+                "endpoint_distance_m": endpoint_distance_m,
+                "within_tolerance": endpoint_distance_m <= tolerance_m,
+                "line_start_xy": list(line_start),
+                "line_end_xy": list(line_end),
+                "heldout_start_xy": list(observed["start_xy"]),
+                "heldout_end_xy": list(observed["end_xy"]),
+            }
+        )
+
+    endpoint_distances = [comparison["endpoint_distance_m"] for comparison in comparisons]
+    start_distances = [comparison["start_distance_m"] for comparison in comparisons]
+    within_tolerance_count = sum(1 for comparison in comparisons if comparison["within_tolerance"])
+    return {
+        "schema_version": "heldout_runout_spatial_metric_v1",
+        "metric_status": "measured",
+        "metric_name": "heldout_runout_axis_endpoint_distance",
+        "metric_input_role": "holdout_validation_only",
+        "benchmark_geometry_path": str(EXPECTED_BENCHMARK_GEOMETRY),
+        "heldout_trajectory_path": str(EXPECTED_HOLDOUT_TRAJECTORIES),
+        "geometry_tolerance_m": tolerance_m,
+        "line_count": len(lines),
+        "trajectory_count": len(metric_ids),
+        "mean_endpoint_distance_m": mean(endpoint_distances),
+        "max_endpoint_distance_m": max(endpoint_distances),
+        "mean_start_distance_m": mean(start_distances),
+        "max_start_distance_m": max(start_distances),
+        "coverage_within_tolerance_count": within_tolerance_count,
+        "coverage_within_tolerance_fraction": within_tolerance_count / len(comparisons) if comparisons else 0.0,
+        "comparisons": comparisons,
+        "calibration_validation_separation": {
+            "metric_trajectory_ids": metric_ids,
+            "holdout_trajectory_ids": split_holdout_ids,
+            "model_selection_trajectory_ids": split_model_selection_ids,
+            "model_selection_overlap": split_overlap,
+            "model_selection_overlap_count": len(split_overlap),
+            "calibration_input_count": len(split_model_selection_ids),
+            "holdout_input_count": len(split_holdout_ids),
+            "calibration_inputs_used_in_metric": False,
+        },
+        "claim_boundary": "spatial held-out axis consistency metric only; no calibration, deposition polygon, physical-probability, annual-frequency, risk, or operational claim",
+    }
+
+
+def blocked_holdout_spatial_metric(
+    metric_status: str,
+    blocked_reason: str,
+    missing_inputs: list[str],
+    **extra_fields: Any,
+) -> dict[str, Any]:
+    report = {
+        "schema_version": "heldout_runout_spatial_metric_v1",
+        "metric_status": metric_status,
+        "metric_name": "heldout_runout_axis_endpoint_distance",
+        "metric_input_role": "holdout_validation_only",
+        "blocked_reason": blocked_reason,
+        "missing_inputs": missing_inputs,
+        "claim_boundary": "blocked metric report only; no calibration, physical-probability, annual-frequency, risk, or operational claim",
+    }
+    report.update(extra_fields)
+    return report
+
+
+def parse_trajectory_ids(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [item.strip() for item in str(value or "").split(",") if item.strip()]
+
+
+def split_trajectory_ids(split_manifest: dict[str, Any], split_name: str) -> list[str]:
+    split = split_manifest.get(split_name) if isinstance(split_manifest.get(split_name), dict) else {}
+    ids = split.get("trajectory_ids") if isinstance(split.get("trajectory_ids"), list) else []
+    return [str(item).strip() for item in ids if str(item).strip()]
+
+
+def load_trajectory_endpoints(path: Path, trajectory_ids: list[str]) -> dict[str, dict[str, tuple[float, float]]]:
+    wanted = set(trajectory_ids)
+    endpoints: dict[str, dict[str, tuple[float, float]]] = {}
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            trajectory_id = str(row.get("source_trajectory_id") or "").strip()
+            if trajectory_id not in wanted:
+                continue
+            point = (float(row["x_m"]), float(row["y_m"]))
+            if trajectory_id not in endpoints:
+                endpoints[trajectory_id] = {"start_xy": point, "end_xy": point}
+            else:
+                endpoints[trajectory_id]["end_xy"] = point
+    return endpoints
+
+
+def extract_geometry_tolerance_m() -> float:
+    package = load_json(EXPECTED_BENCHMARK_MANIFEST)
+    uncertainty = package.get("uncertainty") if isinstance(package.get("uncertainty"), dict) else {}
+    try:
+        return float(uncertainty.get("geometry_tolerance_m", 0.5))
+    except (TypeError, ValueError):
+        return 0.5
+
+
+def xy(point: Any) -> tuple[float, float]:
+    if not isinstance(point, list | tuple) or len(point) < 2:
+        raise ObservedRunoutDepositionIntakeContractError(f"invalid coordinate point: {point!r}")
+    return (float(point[0]), float(point[1]))
+
+
+def distance_2d(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+def mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
 
 
 def build_readiness_pack(*, output_root: Path, report: dict[str, Any]) -> dict[str, Any]:
@@ -2249,6 +2462,7 @@ def render_text_report(report: dict[str, Any]) -> str:
     contract = report["benchmark_intake_contract"]
     benchmark_manifest = report["benchmark_intake_manifest"]
     real_input_report = report["real_input_intake_report"]
+    holdout_spatial_metric = report["holdout_spatial_metric"]
     acquisition_review_report = report["acquisition_review_report"]
     current_state = report["current_repo_state"]
     candidate_report = report["candidate_acquisition_report"]
@@ -2284,6 +2498,31 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- validation_role.status: {real_input_report['validation_role_classification']['status']}",
         f"- holdout_eligibility.status: {real_input_report['holdout_eligibility_classification']['status']}",
         "",
+        "holdout_spatial_metric:",
+        f"- metric_status: {holdout_spatial_metric['metric_status']}",
+        f"- metric_name: {holdout_spatial_metric['metric_name']}",
+        f"- metric_input_role: {holdout_spatial_metric['metric_input_role']}",
+    ]
+    if holdout_spatial_metric["metric_status"] == "measured":
+        lines.extend(
+            [
+                f"- mean_endpoint_distance_m: {holdout_spatial_metric['mean_endpoint_distance_m']}",
+                f"- max_endpoint_distance_m: {holdout_spatial_metric['max_endpoint_distance_m']}",
+                f"- coverage_within_tolerance_fraction: {holdout_spatial_metric['coverage_within_tolerance_fraction']}",
+                "- model_selection_overlap_count: "
+                f"{holdout_spatial_metric['calibration_validation_separation']['model_selection_overlap_count']}",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                f"- blocked_reason: {holdout_spatial_metric['blocked_reason']}",
+                f"- missing_inputs: {', '.join(holdout_spatial_metric['missing_inputs']) if holdout_spatial_metric['missing_inputs'] else 'none'}",
+            ]
+        )
+    lines.extend(
+        [
+            "",
         "acquisition_review_report:",
         f"- review_status: {acquisition_review_report['review_status']}",
         f"- blocked_reason: {acquisition_review_report['blocked_reason']}",
@@ -2294,6 +2533,10 @@ def render_text_report(report: dict[str, Any]) -> str:
         f"- license.status: {acquisition_review_report['license']['status_classification']}",
         f"- claim_boundary: {acquisition_review_report['claim_boundary']}",
         "",
+        ]
+    )
+    lines.extend(
+        [
         "fixture_acceptance_smoke:",
         f"- fixture_path: {report['fixture_acceptance_smoke']['fixture_path']}",
         f"- fixture_status: {report['fixture_acceptance_smoke']['fixture_status']}",
@@ -2327,6 +2570,7 @@ def render_text_report(report: dict[str, Any]) -> str:
         "",
         "dataset_role_classification:",
     ]
+    )
     for item in report["dataset_role_classification"]:
         lines.append(f"- {item['dataset_role']}: {item['status']}")
     lines.extend(

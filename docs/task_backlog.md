@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-630: Add A Spatial Holdout Metric For Runout Evidence
-
-Goal: Strengthen holdout validation by adding a spatial metric beyond simple presence/intake of observed runout/deposition evidence.
-
-Capability gap reduced: Scientific credibility of validation, especially whether simulated outputs are spatially meaningful against held-out evidence.
-
-Why this outranks alternatives: Holdout evidence is now staged, but credibility needs a quantitative spatial comparison rather than only intake status.
-
-Inspect first:
-
-- `scripts/summarize_observed_runout_deposition_intake_contract.py`
-- `scripts/compare_hazard_map_convergence.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `validation/data/processed/observed_runout_deposition_benchmark/observed_runout_deposition.geojson`
-- `docs/holdout_runout_deposition_evidence_tb615.md`
-
-Deliverables:
-
-- A small spatial-overlap, distance, or coverage metric computed for held-out runout/deposition evidence and wired into the validation summary path.
-
-Definition of done:
-
-- The metric runs on existing data, distinguishes holdout from calibration inputs, and reports a numeric result or a concrete geometry/data blocker.
-
 ### TB-631: Measure GIS/COG Output Packaging At Larger Hazard Size
 
 Goal: Verify that the larger hazard output remains practical to package for GIS review without ballooning file count or conversion time.
