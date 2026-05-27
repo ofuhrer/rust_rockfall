@@ -48,6 +48,47 @@
       "runout_distance_error_m": 0.45
     }
   },
+  "calibration_acceptance_review": {
+    "schema_version": "calibration_acceptance_review_v1",
+    "review_status": "rejected",
+    "decision": "rejected_residual_quality",
+    "threshold_source": "TB-676 residual-quality screen, predeclared before any parameter promotion",
+    "selected_candidate_id": "candidate_103",
+    "criteria": [
+      {
+        "criterion_id": "holdout_runout_abs_error_max_m",
+        "partition": "holdout",
+        "metric": "runout_abs_error_m.max",
+        "operator": "<=",
+        "threshold": 30.0,
+        "observed": 55.111764172812286,
+        "status": "fail"
+      },
+      {
+        "criterion_id": "holdout_runout_abs_error_mean_m",
+        "partition": "holdout",
+        "metric": "runout_abs_error_m.mean",
+        "operator": "<=",
+        "threshold": 15.0,
+        "observed": 18.217756883796667,
+        "status": "fail"
+      },
+      {
+        "criterion_id": "holdout_deposition_cloud_overlap_fraction",
+        "partition": "holdout",
+        "metric": "deposition_cloud_overlap_fraction",
+        "operator": ">=",
+        "threshold": 0.7,
+        "observed": 0.7777777777777778,
+        "status": "pass"
+      }
+    ],
+    "first_failed_criterion": "holdout_runout_abs_error_max_m",
+    "interpretation": "The selected calibration candidate remains a diagnostic fit. It is not accepted for validation, physical-probability, annual-frequency, operational, or default-parameter use.",
+    "selected_parameters_promoted_to_validation": false,
+    "validation_acceptance_claimed": false,
+    "physical_probability_supported": false
+  },
   "parameter_sensitivity": {
     "best_calibration_objective": 0.0464107283231083,
     "best_candidate_id": "candidate_103",

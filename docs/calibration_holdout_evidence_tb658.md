@@ -25,7 +25,7 @@ Chant Sura holdout split audit:
 - shared trajectories: `0`
 - recorded overlap: `0`
 
-Validation/calibration evidence gap:
+Validation/calibration evidence gap before TB-676:
 
 - `calibration_status`: `partial`
 - `holdout_and_validation_evidence`: `present`
@@ -42,3 +42,25 @@ the measured residuals have not been accepted by a predeclared threshold or
 explicit review decision. No validation acceptance, physical-probability map
 label, annual-frequency product, operational map, return-period claim, or risk
 product is enabled by this refresh.
+
+## TB-676 Update
+
+The calibration acceptance review now records an explicit rejection rather than
+a missing threshold:
+
+- `readiness_status`: `rejected_residual_quality`
+- `support_role`: `measured_fit_rejected_by_acceptance_review`
+- `first_blocking_input`: `holdout_runout_abs_error_max_m`
+- `acceptance_threshold`: `present`
+- `residual_quality_review`: `rejected`
+
+The first failed criterion is:
+
+```text
+holdout_runout_abs_error_m.max <= 30.0 m
+observed: 55.111764 m
+```
+
+The selected candidate remains diagnostic only. No validation acceptance,
+physical-probability, annual-frequency, operational, return-period, or risk
+claim is enabled.

@@ -10987,3 +10987,23 @@ completed history.
 - First blocker: `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage`; remaining missing context families `swissimage`, `swisstlm3d`, `swisssurface3d`, `swisssurface3d_raster`, `swissbuildings3d`.
 - Boundaries: no real second-site validation run executed; fixture-backed smoke case remains portability-only; no physical-probability, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide execution claim changed.
 - Next task: `TB-676`
+
+### TB-676: Close The Calibration Acceptance Criterion Gap
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: turn the missing calibration acceptance criterion into an explicit measured review decision.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `calibration/experiments/tschamut_v0_3/summary.json`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/calibration_acceptance_review_tb676.md`, `docs/calibration_holdout_evidence_tb658.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added a `calibration_acceptance_review` record to the Tschamut v0.3 calibration summary.
+  - Classified the selected candidate as `rejected_residual_quality` against predeclared residual thresholds.
+  - Updated the validation/calibration evidence gap assessor to distinguish missing acceptance criteria from explicit residual-quality rejection.
+  - Updated focused tests and documentation, then removed TB-676 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json --json-output /tmp/tb676_gaps_after2.json`
+  - `PYENV_VERSION=system uv run python scripts/check_calibration_separation_preflight.py --format json --json-output /tmp/tb676_sep_after.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_validation_calibration_evidence_gaps -v`
+- Result/status: implemented_measured_rejection
+- Metrics: selected candidate `candidate_103`; calibration readiness `rejected_residual_quality`; support role `measured_fit_rejected_by_acceptance_review`; first failed criterion `holdout_runout_abs_error_max_m`; threshold `<= 30.0` m; observed `55.111764` m; holdout mean runout absolute error threshold `<= 15.0` m; observed `18.217757` m; holdout deposition-cloud overlap threshold `>= 0.7`; observed `0.777778`; calibration separation preflight `passed`; prohibited crossings `0`.
+- Boundaries: selected calibration parameters remain diagnostic only; no validation acceptance, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, non-`postproc`, or Swiss-wide claim changed.
+- Next task: `TB-677`

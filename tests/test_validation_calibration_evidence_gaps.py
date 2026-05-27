@@ -81,11 +81,11 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         }["calibration_evidence"]
         self.assertEqual(
             calibration_category["calibration_readiness_detail"]["readiness_status"],
-            "partial_evidence_missing_acceptance_criteria",
+            "rejected_residual_quality",
         )
         self.assertEqual(
             calibration_category["calibration_readiness_detail"]["first_blocking_input"],
-            "accepted_residual_quality_threshold_or_review_decision",
+            "holdout_runout_abs_error_max_m",
         )
 
     def test_block_population_candidate_validates_as_design_review_evidence(self) -> None:
@@ -179,7 +179,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(categories["calibration_evidence"]["classification"], "partial")
         self.assertEqual(
             categories["calibration_evidence"]["support_role"],
-            "measured_fit_pending_acceptance_threshold",
+            "measured_fit_rejected_by_acceptance_review",
         )
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
         self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "present")
@@ -202,10 +202,14 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         sub_blockers = {item["blocker_id"]: item for item in calibration_detail["sub_blockers"]}
         self.assertEqual(sub_blockers["fitted_parameter_provenance"]["status"], "present")
         self.assertEqual(sub_blockers["holdout_scoring_completeness"]["status"], "present")
-        self.assertEqual(sub_blockers["residual_quality_review"]["status"], "blocking")
-        self.assertEqual(sub_blockers["acceptance_threshold"]["status"], "blocking")
+        self.assertEqual(sub_blockers["residual_quality_review"]["status"], "rejected")
+        self.assertEqual(sub_blockers["acceptance_threshold"]["status"], "present")
+        self.assertEqual(
+            sub_blockers["residual_quality_review"]["evidence"]["failed_criterion"],
+            "holdout_runout_abs_error_max_m",
+        )
         self.assertTrue(
-            any("acceptance" in item.lower() for item in categories["calibration_evidence"]["what_is_missing"])
+            any("holdout_runout_abs_error_max_m" in item for item in categories["calibration_evidence"]["what_is_missing"])
         )
         self.assertTrue(
             any(

@@ -510,6 +510,7 @@ def next_concrete_scientific_tasks(evidence_gap_categories: list[dict[str, Any]]
         if category == "calibration_evidence" and gap.get("support_role") in {
             "objective_defined_pending_smoke",
             "measured_fit_pending_acceptance_threshold",
+            "measured_fit_rejected_by_acceptance_review",
             "measured_fit_ready_for_review",
         }:
             continue
@@ -1175,7 +1176,7 @@ def calibration_gap(
         "what_is_missing": [
             item["missing_input"]
             for item in readiness["sub_blockers"]
-            if item["status"] == "blocking"
+            if item["status"] in {"blocking", "rejected"}
         ],
         "minimum_additional_evidence_needed": (
             readiness["next_action"]
@@ -1217,6 +1218,19 @@ def build_calibration_readiness_detail(
     residuals = summary.get("residual_diagnostics") if isinstance(summary.get("residual_diagnostics"), dict) else {}
     calibration_residuals = residuals.get("calibration") if isinstance(residuals.get("calibration"), dict) else {}
     holdout_residuals = residuals.get("holdout") if isinstance(residuals.get("holdout"), dict) else {}
+    acceptance_review = summary.get("calibration_acceptance_review")
+    if not isinstance(acceptance_review, dict):
+        acceptance_review = summary.get("acceptance_review") if isinstance(summary.get("acceptance_review"), dict) else {}
+    acceptance_decision = str(
+        acceptance_review.get("decision")
+        or acceptance_review.get("review_status")
+        or ""
+    )
+    threshold_source = acceptance_review.get("threshold_source")
+    failed_criterion = acceptance_review.get("first_failed_criterion")
+    review_is_acceptance = acceptance_decision in {"accepted", "accepted_residual_quality"}
+    review_is_rejection = acceptance_decision in {"rejected", "rejected_residual_quality"}
+    threshold_present = bool(threshold_source and (review_is_acceptance or review_is_rejection))
     objective_candidate_count = int(
         (objective_contract.get("parameters") or {}).get("candidate_count")
         or objective_contract.get("candidate_count")
@@ -1249,6 +1263,18 @@ def build_calibration_readiness_detail(
         (holdout_residuals.get("summaries") or {}).get("runout_abs_error_m") or {}
     ).get("max")
 
+    residual_quality_status = "present" if review_is_acceptance else "rejected" if review_is_rejection else "blocking"
+    residual_quality_missing_input = (
+        str(failed_criterion or "holdout_runout_abs_error_exceeds_threshold")
+        if review_is_rejection
+        else "accepted_residual_quality_threshold_or_review_decision"
+    )
+    residual_quality_next_action = (
+        "Do not promote the selected parameters; reduce the measured holdout residual failure with new evidence or model changes before reconsidering acceptance."
+        if review_is_rejection
+        else "Define a residual-quality acceptance rule or explicitly record that residual outliers keep calibration evidence diagnostic only."
+    )
+
     sub_blockers = [
         {
             "blocker_id": "fitted_parameter_provenance",
@@ -1277,37 +1303,50 @@ def build_calibration_readiness_detail(
         },
         {
             "blocker_id": "residual_quality_review",
-            "status": "blocking",
-            "missing_input": "accepted_residual_quality_threshold_or_review_decision",
+            "status": residual_quality_status,
+            "missing_input": residual_quality_missing_input,
             "evidence": {
                 "calibration_residual_status": calibration_residuals.get("status"),
                 "calibration_runout_abs_error_max_m": calibration_runout_max,
                 "holdout_runout_abs_error_max_m": holdout_runout_max,
                 "calibration_residual_present": calibration_residual_present,
+                "acceptance_decision": acceptance_decision,
+                "threshold_source": threshold_source,
+                "failed_criterion": failed_criterion,
+                "acceptance_review": acceptance_review,
             },
-            "next_action": "Define a residual-quality acceptance rule or explicitly record that residual outliers keep calibration evidence diagnostic only.",
+            "next_action": residual_quality_next_action,
         },
         {
             "blocker_id": "acceptance_threshold",
-            "status": "blocking",
+            "status": "present" if threshold_present else "blocking",
             "missing_input": "predeclared_calibration_acceptance_threshold",
             "evidence": {
-                "threshold_source": None,
-                "validation_acceptance_claimed": False,
+                "threshold_source": threshold_source,
+                "validation_acceptance_claimed": review_is_acceptance,
+                "acceptance_decision": acceptance_decision,
             },
             "next_action": "Predeclare calibration and holdout acceptance thresholds before using fitted parameters as physical-probability evidence.",
         },
     ]
-    first_blocker = next((item for item in sub_blockers if item["status"] == "blocking"), None)
+    first_blocker = next((item for item in sub_blockers if item["status"] in {"blocking", "rejected"}), None)
     if not measured_fit_present:
         support_role = "objective_defined_pending_smoke" if objective_candidate_count else "not_calibrated"
+    elif first_blocker and first_blocker["status"] == "rejected":
+        support_role = "measured_fit_rejected_by_acceptance_review"
     elif first_blocker:
         support_role = "measured_fit_pending_acceptance_threshold"
     else:
         support_role = "measured_fit_ready_for_review"
+    if first_blocker and first_blocker["status"] == "rejected":
+        readiness_status = "rejected_residual_quality"
+    elif first_blocker:
+        readiness_status = "partial_evidence_missing_acceptance_criteria"
+    else:
+        readiness_status = "present"
     return {
         "schema_version": "calibration_readiness_detail_v1",
-        "readiness_status": "partial_evidence_missing_acceptance_criteria" if first_blocker else "present",
+        "readiness_status": readiness_status,
         "measured_fit_status": "present" if measured_fit_present else "missing",
         "support_role": support_role,
         "first_blocking_input": first_blocker["missing_input"] if first_blocker else "",

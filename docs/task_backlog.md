@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-676: Close The Calibration Acceptance Criterion Gap
-
-Goal: Turn the current calibration blocker into an executable acceptance criterion or a measured rejection.
-
-Capability gap reduced: Scientific credibility for physical-probability and validation claims.
-
-Why this outranks alternatives: The physical credibility summary already reports calibration evidence as the first remaining blocker.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `scripts/check_calibration_separation_preflight.py`
-- `scripts/run_tschamut_calibration.py`
-- `docs/calibration_holdout_evidence_tb658.md`
-- `tests/test_validation_calibration_evidence_gaps.py`
-
-Deliverables:
-
-- A calibrated residual-quality threshold or review decision encoded in the existing evidence path, with focused tests and an updated physical-credibility summary.
-
-Definition of done:
-
-- Calibration evidence becomes accepted, explicitly rejected, or narrowed to one measured residual-quality failure.
-
-Scope: Do not tune model parameters to pass the criterion unless the task records the before/after residuals and preserves holdout separation.
-
 ### TB-677: Run A Conditional Physical-Probability Prototype For One AOI
 
 Goal: Produce a bounded physical-probability prototype for one AOI using accepted source-frequency, release-probability, block-population, and calibration evidence.
