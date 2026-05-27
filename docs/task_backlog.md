@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-669: Run The First Greater-Than-Four-Zone Hazard-Throughput Probe On Balfrin
-
-Goal: Execute the first true >4-zone hazard-throughput probe on Balfrin `postproc` once the package is locally submit-ready.
-
-Capability gap reduced: Measured hazard-throughput evidence beyond the four-zone TB-619 anchor.
-
-Why this outranks alternatives: Swiss-scale feasibility currently leans too heavily on diagnostic reducer-pressure runs; a larger hazard-throughput support point is the more relevant performance evidence.
-
-Inspect first:
-
-- `scripts/run_balfrin_diagnostic.py`
-- `scripts/submit_balfrin_probe.py`
-- `scripts/collect_balfrin_probe_metrics.py`
-- `scripts/summarize_balfrin_probe_metrics_report.py`
-- `docs/balfrin_hazard_throughput_package_tb618.md`
-
-Deliverables:
-
-- One completed or clearly failed >4-zone Balfrin hazard-throughput probe under `$SCRATCH`, with scheduler state, elapsed time, peak RSS, output footprint, and replay-critical families collected.
-
-Definition of done:
-
-- The run reaches a terminal state and the metrics distinguish hazard-throughput evidence from diagnostic reducer-pressure evidence.
-
-Scope: Keep the run bounded to `postproc`; if the run shape would occupy the partition for more than 6 hours, stop and resize before submission.
-
 ### TB-670: Promote The Larger Hazard-Throughput Metrics Into Swiss-Scale Planning
 
 Goal: Replace stale hazard-throughput anchors with the latest measured >4-zone result in the Swiss-scale feasibility projection.

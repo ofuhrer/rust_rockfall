@@ -10841,3 +10841,24 @@ completed history.
 - Metrics: local pre-submit status `ready_for_submit`; first blocker `none`; release zones `12`; hazard output profile `provenance_audit`; output-profile classification `scalable_default`; file families `geotiff=11`, `esri_ascii_grid=11`, `json=6`, `geojson=1`; output files `29`; output bytes `1,144,485`; manifest bytes `44,221`; replay-critical coverage complete for `trajectory_csv=12/12`, `impact_events_csv=12/12`, `deposition_csv=1/1`, `diagnostics_json=1/1`; focused tests `17` passed.
 - Boundaries: local dry-run/pre-submit proof only; no live Balfrin hazard-throughput measurement, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
 - Next task: `TB-669`
+
+### TB-669: Run The First Greater-Than-Four-Zone Hazard-Throughput Probe On Balfrin
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: execute one true greater-than-four-zone hazard-throughput probe on Balfrin `postproc`.
+- Files changed: `docs/balfrin_12_zone_hazard_throughput_probe_tb669.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Confirmed Balfrin SSH access, a clean remote checkout, and the presence of the multi-zone hazard-throughput profiler.
+  - Submitted a bounded 12-zone `postproc` SLURM job under `$SCRATCH`.
+  - Collected SLURM accounting, `/usr/bin/time`, output footprint, file-family pressure, manifest-family pressure, and replay-critical family coverage.
+  - Removed TB-669 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json > /tmp/tb669_balfrin_preflight.json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin "cd /users/olifu/work/rust_rockfall && git status --short --branch && test -f scripts/summarize_multi_zone_hazard_throughput_profile.py && PYENV_VERSION=system uv run python scripts/summarize_multi_zone_hazard_throughput_profile.py --help | sed -n '1,40p'"`
+  - `sbatch /scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917/tb669_hazard.sbatch`
+  - `sacct -j 4378015 --format=JobID,JobName,Partition,State,ExitCode,Elapsed,MaxRSS -P`
+- Result/status: implemented_measured
+- Metrics: run root `/scratch/mch/olifu/rust_rockfall/probes/tb669_12_zone_hazard_throughput_20260527_123917`; SLURM job id `4378015`; terminal state `COMPLETED`; exit code `0:0`; SLURM elapsed `00:00:03`; `/usr/bin/time` elapsed `02.15`; peak RSS `47.016` MB; release zones `12`; trajectory files `12`; impact-event files `12`; hazard-layer seconds `0.078136`; total profile wall seconds `0.288979`; output files `29`; output bytes `1,148,530`; run-root files `93`; run-root bytes `2,373,626`; file families `geotiff=11`, `esri_ascii_grid=11`, `json=6`, `geojson=1`; replay-critical coverage complete for `trajectory_csv=12/12`, `impact_events_csv=12/12`, `deposition_csv=1/1`, `diagnostics_json=1/1`.
+- Boundaries: measured single-node `postproc` hazard-throughput evidence only; no diagnostic reducer-pressure, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, distributed, Swiss-wide, or non-`postproc` claim changed.
+- Next task: `TB-670`
