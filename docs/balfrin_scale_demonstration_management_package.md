@@ -11,9 +11,10 @@ toward a larger Balfrin demonstration?
 - TB-678 is the current concise decision surface:
   `archive/task_reports/swiss_scale_demonstration_readiness_tb678.md`.
 - Do not submit a Swiss-wide or distributed run yet.
-- The latest measured hazard-throughput support point is TB-680: 24 release
-  zones on Balfrin `postproc`, job `4379134`, `0.272757` s profile wall time,
-  `40.9375` MB peak RSS, `29` hazard files, and `1,169,964` hazard bytes.
+- The latest measured hazard-throughput support is the TB-680/TB-681 repeat
+  pair: 24 release zones on Balfrin `postproc`, jobs `4379134` and `4379224`,
+  `0.272757`-`0.317613` s profile wall time, about `41` MB peak RSS, `29`
+  hazard files, and about `1.17` MB hazard output.
 - TB-671 measured three isolated concurrent 16-zone diagnostic run roots with
   no contention detected.
 - TB-672 reconstructed the TB-669 metrics from a copied `$SCRATCH` run root
@@ -23,9 +24,9 @@ toward a larger Balfrin demonstration?
 - Scientific readiness remains the main blocker: TB-676 explicitly rejected
   the selected calibration candidate on holdout residual quality, and TB-677
   kept the physical-probability prototype fail-closed.
-- The 24-zone TB-680 run is the current hazard-throughput support point under
-  the single-node/postproc evidence base; its first new blocker is manifest
-  byte pressure above the current replay budget.
+- The 24-zone TB-680/TB-681 repeat pair is the current hazard-throughput support
+  point under the single-node/postproc evidence base; its first new blocker is
+  manifest byte pressure above the current replay budget.
 - Diagnostic reducer pressure is measured through 100 release zones on Balfrin
   `postproc`; the consolidated series is in
   `balfrin_diagnostic_series_tb613.md`.
@@ -46,10 +47,10 @@ toward a larger Balfrin demonstration?
   canonical bundle evidence, uncertainty interpretation, GIS scope, claim
   boundaries, TB-312 four-zone postproc/reducer evidence, TB-407 smallest
   multi-zone evidence, current regional split comparison evidence, the
-  diagnostic series through 100 release zones, TB-680 bounded
+  diagnostic series through 100 release zones, TB-680/TB-681 bounded
   hazard-throughput support, and TB-631 larger-output GIS/COG packaging.
 - Projection-only: Swiss-scale feasibility estimates beyond the current
-  24-zone hazard-throughput support point and measured diagnostic support
+  24-zone hazard-throughput support pair and measured diagnostic support
   points.
 - Failed-closed: reviewed live-submit branches that stopped before `sbatch`.
   TB-362 failed closed on the explicit two-zone hazard path, and TB-386 keeps

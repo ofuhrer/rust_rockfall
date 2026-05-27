@@ -11097,3 +11097,22 @@ completed history.
 - Decision: use TB-680 as the current bounded hazard-throughput support point; classify the replay-critical output family as complete with a concrete manifest-byte pressure blocker because manifest bytes exceed the current `60,000` byte replay budget.
 - Boundaries: bounded Balfrin `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: `TB-681`
+
+### TB-681: Repeat The Larger Hazard-Throughput Run For Variability
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: repeat the TB-680 24-zone hazard-throughput shape on Balfrin to measure variability and make the planning coefficient less dependent on one run.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_24_zone_hazard_throughput_repeat_tb681.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Submitted and monitored a second 24-zone hazard-throughput `postproc` job on Balfrin under an isolated `$SCRATCH` run root.
+  - Preserved scheduler state, `/usr/bin/time`, profile JSON, file listing, and byte metrics, then removed the temporary copied helper from the remote checkout.
+  - Added TB-681 as repeatability evidence in the scale-readiness matrix, management package, and Swiss-scale feasibility projection while keeping broader claims closed.
+  - Classified variability as acceptable for the next bounded scale step, with the conservative planning wall time taken from the slower repeat run.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+- Result/status: implemented_measured
+- Metrics: repeat job `4379224`, partition `postproc`, terminal state `COMPLETED`, exit `0:0`, run root `/scratch/mch/olifu/rust_rockfall/probes/tb681_24_zone_hazard_throughput_repeat_20260527_151222`, release zones `24`, profile wall `0.3176133460365236` s, hazard-layer wall `0.08398795907851309` s, `/usr/bin/time` elapsed `0:02.25`, peak RSS `41652` kB, hazard files `29`, hazard bytes `1,169,610`, run-root files `116`, run-root bytes `2,534,753`, conditional curve rows `36,864`, manifest bytes `63,653`.
+- Decision: use TB-680/TB-681 as the current repeat bounded 24-zone hazard-throughput support pair; planning should use `0.3176133460365236` s as the conservative profile wall coefficient until a larger support point exists. The same manifest-byte pressure blocker remains.
+- Boundaries: repeat bounded Balfrin `postproc` hazard-throughput evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: `TB-682`

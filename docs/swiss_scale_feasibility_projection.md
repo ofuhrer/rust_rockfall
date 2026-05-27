@@ -20,8 +20,8 @@ risk, exposure, or vulnerability semantics.
 - Current practical ceiling: 100 release zones have been measured on Balfrin as
   a single-node `postproc` diagnostic reducer-pressure workload. This is the
   current diagnostic ceiling, not a hazard-throughput, operational, or
-  physical-probability ceiling. TB-680 is now the current measured 24-zone
-  hazard-throughput support point.
+  physical-probability ceiling. TB-680/TB-681 is now the current repeat
+  measured 24-zone hazard-throughput support pair.
 - First bottleneck: scientific evidence remains first for physical or
   operational claims. For further scale work, the next practical blocker is no
   longer a larger diagnostic by default; it is hazard-throughput scaling and
@@ -39,18 +39,19 @@ risk, exposure, or vulnerability semantics.
 - 40-zone: measured as Balfrin diagnostic reducer-pressure evidence.
 - 100-zone: measured as Balfrin diagnostic reducer-pressure evidence; this is
   the current diagnostic performance ceiling.
-- Hazard-throughput probe: TB-680 measured a bounded 24-zone hazard-throughput
-  profile on Balfrin `postproc` with runtime, memory, output footprint, and
-  replay-critical family coverage. TB-669 remains the previous comparison
-  anchor. This is the current hazard-throughput support point, not a
-  Swiss-wide, operational, distributed, or physical-probability claim.
+- Hazard-throughput probe: TB-680/TB-681 measured and repeated a bounded
+  24-zone hazard-throughput profile on Balfrin `postproc` with runtime, memory,
+  output footprint, and replay-critical family coverage. TB-669 remains the
+  previous comparison anchor. This is the current hazard-throughput support
+  pair, not a Swiss-wide, operational, distributed, or physical-probability
+  claim.
 - Latest bounded diagnostic comparison: TB-652 completed an 8-zone compact
   `postproc` diagnostic on Balfrin as job `4377075`, with preserved run root
   `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`,
   `0:00.59` elapsed wall time, `34.223` MB peak RSS, `28` output files,
   `14,397` output bytes, `11,458` manifest bytes, and `2.11` reducer wall
   seconds. This strengthens diagnostic reducer-pressure evidence but does not
-  replace TB-680 as the hazard-throughput support point.
+  replace TB-680/TB-681 as the hazard-throughput support pair.
 - Prior hazard-throughput probe: TB-603 measured the bounded hazard workflow on
   Balfrin `postproc` with complete mandatory runtime, memory, output, and
   conditional-curve metrics and remains the baseline for TB-619 comparison.
@@ -99,14 +100,14 @@ The adjacent-candidate branch moved the first blocker away from source-zone
 automation and onto the remaining planning bottlenecks:
 
 1. Missing scientific evidence for physical probability and operational use.
-1. Manifest pressure and hazard-throughput scaling beyond the bounded TB-680
-   support point.
+1. Manifest pressure and hazard-throughput scaling beyond the bounded
+   TB-680/TB-681 support pair.
 1. Reducer pressure and replay/metadata growth for larger hazard-output
    batches.
 1. Output-byte and file-count growth when moving beyond diagnostic postproc.
-1. Scaling beyond the measured TB-680 hazard-throughput run, because the
-   100-zone evidence is diagnostic and TB-680 remains a bounded single-node
-   hazard-throughput support point.
+1. Scaling beyond the repeat measured TB-680/TB-681 hazard-throughput run,
+   because the 100-zone evidence is diagnostic and TB-680/TB-681 remains a
+   bounded single-node hazard-throughput support pair.
 1. Distributed and non-`postproc` execution, which remain explicit phase
    changes.
 
@@ -190,9 +191,20 @@ branches into measured capability:
   files, `1,169,964` hazard output bytes, `117` run-root files, `2,488,907`
   run-root bytes, and complete replay-critical coverage for `24` trajectory
   CSVs, `24` impact-event CSVs, one deposition CSV, and one diagnostics JSON.
-  This supersedes TB-669 as the latest hazard-throughput support point while
-  keeping TB-669 as the comparison baseline. The first new blocker is manifest
-  byte pressure: `63,992` observed bytes versus a `60,000` byte replay budget.
+  This supersedes TB-669 as a hazard-throughput support point while keeping
+  TB-669 as the comparison baseline. The first new blocker is manifest byte
+  pressure: `63,992` observed bytes versus a `60,000` byte replay budget.
+- TB-681 repeated the same bounded 24-zone hazard-throughput shape on Balfrin:
+  job `4379224`, run root
+  `/scratch/mch/olifu/rust_rockfall/probes/tb681_24_zone_hazard_throughput_repeat_20260527_151222`,
+  profile wall time `0.3176133460365236` s, hazard-layer time
+  `0.08398795907851309` s, peak memory `40.6758` MB, `29` hazard output
+  files, `1,169,610` hazard output bytes, `116` run-root files, `2,534,753`
+  run-root bytes, and the same replay-critical family coverage. The repeat
+  preserves output shape and memory behavior; profile wall time increased by
+  about `16%`, so planning should use the repeat maximum until the next larger
+  support point exists. Manifest-byte pressure remains the blocker: `63,653`
+  observed bytes versus the `60,000` byte replay budget.
 - TB-652 measured a smaller 8-zone compact diagnostic run on Balfrin:
   job `4377075`, run root
   `/scratch/mch/olifu/rust_rockfall/diagnostics/tb652_8_zone_20260527`,
@@ -318,7 +330,7 @@ treated as projection bounds, not new measurements.
 | 24-zone | measured repeatable diagnostic postproc | 4.03 reducer wall seconds | 32,904-32,922 output bytes | 76 output files | Queue policy and scientific evidence block broader claims | measured repeatability pair | use as repeatability evidence below the current ceiling |
 | 32-zone | measured diagnostic postproc | 5.39 reducer wall seconds | 42,221 output bytes | 100 output files | Scientific evidence blocks broader claims | measured diagnostic | use as diagnostic performance evidence |
 | 40-zone | measured diagnostic postproc | 6.35 reducer wall seconds | 51,493 output bytes | 124 output files | Scientific evidence blocks broader claims | measured diagnostic | use as diagnostic performance evidence |
-| hazard-throughput probe | measured on Balfrin | 0.273 profile wall seconds | 1,169,964 hazard output bytes | 29 hazard output files | Scientific validation and manifest/reducer/replay pressure block broader claims | summary-only reduced output measured with manifest-byte blocker | use TB-680 as the current bounded hazard-throughput support |
+| hazard-throughput probe | repeat measured on Balfrin | 0.273-0.318 profile wall seconds | 1,169,610-1,169,964 hazard output bytes | 29 hazard output files | Scientific validation and manifest/reducer/replay pressure block broader claims | summary-only reduced output measured twice with manifest-byte blocker | use TB-680/TB-681 as the current bounded hazard-throughput support |
 | 100-zone | measured diagnostic postproc | 13.55 reducer wall seconds | 121,172 output bytes | 304 output files | Hazard-throughput and scientific evidence block broader claims | measured diagnostic | promote series, then measure hazard throughput or validation evidence |
 | regional split probe | measured on Balfrin | 24.0 / 24.0 / 24.0 | 34,565,330 / 34,565,330 / 34,565,330 | 130 / 130 / 130 | Measured regional split run-root evidence is available, but it remains bounded comparison evidence | ready_for_demonstration_evidence | keep as comparison evidence |
 | regional workflows | deferred | projection-only | projection-only | projection-only | Multi-AOI support and queue policy are not yet measured as scale capability | deferred | no promotion without a phase change |
@@ -391,8 +403,8 @@ Extrapolated:
 ## Bottom Line
 
 The current evidence supports a 10-zone hazard-planning boundary, a measured
-100-zone Balfrin diagnostic reducer-pressure ceiling, and a bounded four-zone
-hazard-throughput support point from TB-680. It does not yet support broader
+100-zone Balfrin diagnostic reducer-pressure ceiling, and a bounded 24-zone
+hazard-throughput support pair from TB-680/TB-681. It does not yet support broader
 regional-workflow, Swiss-wide, operational, physical-probability, distributed,
 or non-`postproc` claims. The next useful scale action is a larger bounded
 hazard-throughput run if queue policy allows it; the next useful scientific

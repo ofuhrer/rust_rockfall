@@ -51,7 +51,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertIn("TB-407 smallest multi-zone probe evidence", report["summary"])
         self.assertIn("TB-565 and TB-566 now provide current measured regional split evidence", report["summary"])
-        self.assertIn("TB-680 is the latest measured bounded hazard-throughput evidence", report["summary"])
+        self.assertIn("TB-680 and TB-681 are the latest repeat measured bounded hazard-throughput evidence", report["summary"])
         self.assertIn("TB-652 adds a completed 8-zone compact diagnostic comparison point", report["summary"])
         self.assertIn("TB-665 adds a fresh 32-zone compact diagnostic point", report["summary"])
         self.assertIn("TB-450 now threads the measured regional split", report["summary"])
@@ -153,7 +153,7 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         )
         self.assertEqual(
             report["hazard_throughput_status"]["next_recommended_action"],
-            "use_tb680_hazard_throughput_support_and_reduce_manifest_pressure",
+            "use_tb680_tb681_repeatable_hazard_throughput_support_and_reduce_manifest_pressure",
         )
         self.assertEqual(report["hazard_throughput_status"]["runtime_seconds"], 0.2727567689726129)
         self.assertEqual(report["hazard_throughput_status"]["memory_peak_mb"], 40.9375)
@@ -165,24 +165,39 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         self.assertEqual(report["hazard_throughput_status"]["metrics_contract_status"], "complete_with_manifest_budget_blocker")
         self.assertEqual(report["hazard_throughput_status"]["preservation_status"], "preserved_on_scratch")
         self.assertEqual(report["hazard_throughput_status"]["source_report"], "archive/task_reports/balfrin_24_zone_hazard_throughput_probe_tb680.md")
+        self.assertEqual(
+            report["hazard_throughput_status"]["repeat_source_report"],
+            "archive/task_reports/balfrin_24_zone_hazard_throughput_repeat_tb681.md",
+        )
         self.assertEqual(report["hazard_throughput_status"]["previous_support_source_report"], "archive/task_reports/balfrin_12_zone_hazard_throughput_probe_tb669.md")
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_task_id"], "TB-669")
         self.assertEqual(report["hazard_throughput_status"]["comparison_baseline"]["baseline_job_id"], "4378015")
         self.assertTrue(report["hazard_throughput_status"]["comparison_baseline"]["same_conditional_curve_rows"])
+        repeatability = report["hazard_throughput_status"]["repeatability_comparison"]
+        self.assertEqual(repeatability["baseline_task_id"], "TB-680")
+        self.assertEqual(repeatability["repeat_task_id"], "TB-681")
+        self.assertEqual(repeatability["repeat_job_id"], "4379224")
+        self.assertTrue(repeatability["same_release_zone_count"])
+        self.assertTrue(repeatability["same_hazard_file_count"])
+        self.assertTrue(repeatability["same_conditional_curve_rows"])
+        self.assertEqual(repeatability["planning_runtime_seconds"], 0.3176133460365236)
+        self.assertEqual(repeatability["planning_memory_peak_mb"], 40.9375)
+        self.assertEqual(repeatability["variability_status"], "acceptable_for_next_bounded_scale_step")
+        self.assertEqual(repeatability["remaining_blocker"], "manifest_byte_budget_exceeded_in_both_runs")
         tb652_row = next(row for row in report["tiers"] if row["tier_id"] == "tb652_8_zone_diagnostic_probe")
         self.assertEqual(tb652_row["job_id"], "4377075")
         self.assertEqual(tb652_row["release_zone_count"], 8)
         self.assertEqual(tb652_row["diagnostic_output_file_count"], 28)
         self.assertEqual(tb652_row["diagnostic_output_bytes"], 14397)
         self.assertEqual(tb652_row["runtime_seconds"], 2.11)
-        self.assertIn("TB-680 is latest bounded hazard-throughput support", tb652_row["comparison_anchor"])
+        self.assertIn("TB-680/TB-681 is latest repeat bounded hazard-throughput support", tb652_row["comparison_anchor"])
         tb665_row = next(row for row in report["tiers"] if row["tier_id"] == "tb665_32_zone_diagnostic_probe")
         self.assertEqual(tb665_row["job_id"], "4377419")
         self.assertEqual(tb665_row["release_zone_count"], 32)
         self.assertEqual(tb665_row["diagnostic_output_file_count"], 100)
         self.assertEqual(tb665_row["diagnostic_output_bytes"], 42188)
         self.assertEqual(tb665_row["runtime_seconds"], 5.39)
-        self.assertIn("TB-680 is latest bounded hazard-throughput support", tb665_row["comparison_anchor"])
+        self.assertIn("TB-680/TB-681 is latest repeat bounded hazard-throughput support", tb665_row["comparison_anchor"])
         delta_summary = report["regional_split_projection_delta_summary"]
         self.assertFalse(delta_summary["within_expected_pressure_bands"])
         self.assertEqual(delta_summary["next_probe_class"], "summarize_multi_zone_reducer_pressure")

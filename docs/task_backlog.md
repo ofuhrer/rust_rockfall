@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-681: Repeat The Larger Hazard-Throughput Run For Variability
-
-Goal: Repeat the TB-680 run shape to measure variability and distinguish one-off scheduler noise from stable throughput behavior.
-
-Capability gap reduced: Repeatability evidence for larger hazard-throughput execution on Balfrin.
-
-Why this outranks alternatives: A single larger run improves scale evidence, but repeatability is needed before using it for planning envelopes.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `scripts/summarize_multi_zone_hazard_throughput_profile.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A second Balfrin run with the same release-zone/output profile as TB-680 and a measured comparison of runtime, memory, file count, byte count, and replay-critical artifact coverage.
-
-Definition of done:
-
-- Both runs are represented in the scale surface or a focused metrics artifact, focused tests pass, and the comparison states whether variability is acceptable for the next scale step.
-
-Scope: Keep run roots isolated under `$SCRATCH`; do not overwrite TB-680 artifacts.
-
 ### TB-682: Measure Hazard Reducer And Output Pressure At The Largest Safe Single-Node Size
 
 Goal: Find the largest safe single-node hazard-output footprint that still stays below the six-hour Balfrin limit.

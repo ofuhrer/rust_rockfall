@@ -352,7 +352,7 @@ TB680_HAZARD_THROUGHPUT_METRICS = {
     "run_root_file_count": 117,
     "run_root_bytes": 2_488_907,
     "trajectory_decision_counts": {"executed": 24},
-    "reducer_decision_counts": {"executed": 6},
+    "reducer_decision_counts": {"executed": 2},
     "merge_order": "sorted_chunk_id",
     "merge_order_independent": True,
     "output_mode": "bounded_hazard_throughput_reduced_output",
@@ -360,6 +360,39 @@ TB680_HAZARD_THROUGHPUT_METRICS = {
     "required_run_root_entries_status": "complete",
     "output_family_status": "manifest_budget_exceeded",
     "source_report": "archive/task_reports/balfrin_24_zone_hazard_throughput_probe_tb680.md",
+}
+TB681_HAZARD_THROUGHPUT_REPEAT_METRICS = {
+    "task_id": "TB-681",
+    "job_id": "4379224",
+    "slurm_state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:03",
+    "alloc_cpus": 4,
+    "run_root": "/scratch/mch/olifu/rust_rockfall/probes/tb681_24_zone_hazard_throughput_repeat_20260527_151222",
+    "metrics_contract_status": "complete_with_manifest_budget_blocker",
+    "wall_time_seconds": 0.3176133460365236,
+    "batch_wall_seconds": 2.25,
+    "hazard_stage_seconds": 0.08398795907851309,
+    "memory_peak_mb": 40.67578125,
+    "release_zone_count": 24,
+    "validation_output_file_count": None,
+    "validation_output_bytes": None,
+    "hazard_output_file_count": 29,
+    "hazard_output_bytes": 1_169_610,
+    "hazard_manifest_output_file_count": 5,
+    "hazard_manifest_output_bytes": 63_653,
+    "conditional_curve_rows": 36_864,
+    "run_root_file_count": 116,
+    "run_root_bytes": 2_534_753,
+    "trajectory_decision_counts": {"executed": 24},
+    "reducer_decision_counts": {"executed": 2},
+    "merge_order": "sorted_chunk_id",
+    "merge_order_independent": True,
+    "output_mode": "bounded_hazard_throughput_reduced_output",
+    "preservation_status": "preserved_on_scratch",
+    "required_run_root_entries_status": "complete",
+    "output_family_status": "manifest_budget_exceeded",
+    "source_report": "archive/task_reports/balfrin_24_zone_hazard_throughput_repeat_tb681.md",
 }
 TB652_EIGHT_ZONE_DIAGNOSTIC_PROBE = {
     "task_id": "TB-652",
@@ -1201,6 +1234,7 @@ def _regional_split_measured_row() -> dict[str, Any]:
 
 def _hazard_throughput_measured_row() -> dict[str, Any]:
     metrics = TB680_HAZARD_THROUGHPUT_METRICS
+    repeat = TB681_HAZARD_THROUGHPUT_REPEAT_METRICS
     baseline = TB669_HAZARD_THROUGHPUT_METRICS
     validation_delta = (
         metrics["validation_output_bytes"] - baseline["validation_output_bytes"]
@@ -1225,6 +1259,27 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
             else None
         ),
         "same_conditional_curve_rows": metrics["conditional_curve_rows"] == baseline["conditional_curve_rows"],
+    }
+    repeatability = {
+        "baseline_task_id": metrics["task_id"],
+        "repeat_task_id": repeat["task_id"],
+        "baseline_job_id": metrics["job_id"],
+        "repeat_job_id": repeat["job_id"],
+        "same_release_zone_count": repeat["release_zone_count"] == metrics["release_zone_count"],
+        "same_hazard_file_count": repeat["hazard_output_file_count"] == metrics["hazard_output_file_count"],
+        "same_conditional_curve_rows": repeat["conditional_curve_rows"] == metrics["conditional_curve_rows"],
+        "runtime_delta_seconds": repeat["wall_time_seconds"] - metrics["wall_time_seconds"],
+        "runtime_ratio": repeat["wall_time_seconds"] / metrics["wall_time_seconds"],
+        "hazard_stage_delta_seconds": repeat["hazard_stage_seconds"] - metrics["hazard_stage_seconds"],
+        "memory_delta_mb": repeat["memory_peak_mb"] - metrics["memory_peak_mb"],
+        "hazard_output_byte_delta": repeat["hazard_output_bytes"] - metrics["hazard_output_bytes"],
+        "manifest_byte_delta": repeat["hazard_manifest_output_bytes"] - metrics["hazard_manifest_output_bytes"],
+        "repeat_run_root": repeat["run_root"],
+        "repeat_source_report": repeat["source_report"],
+        "variability_status": "acceptable_for_next_bounded_scale_step",
+        "planning_runtime_seconds": max(metrics["wall_time_seconds"], repeat["wall_time_seconds"]),
+        "planning_memory_peak_mb": max(metrics["memory_peak_mb"], repeat["memory_peak_mb"]),
+        "remaining_blocker": "manifest_byte_budget_exceeded_in_both_runs",
     }
     return {
         "tier_id": "hazard_throughput_probe",
@@ -1255,9 +1310,9 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "replayability_status": "preservation_gate_ready",
         "authorization_status": "standing_postproc_clearance_used",
         "next_evidence_field": "hazard_throughput_evidence",
-        "next_recommended_action": "use_tb680_hazard_throughput_support_and_reduce_manifest_pressure",
+        "next_recommended_action": "use_tb680_tb681_repeatable_hazard_throughput_support_and_reduce_manifest_pressure",
         "next_recommended_action_reason": (
-            "TB-680 supplies measured 24-zone hazard-throughput runtime, memory, output, and replay-critical family evidence; "
+            "TB-680 and TB-681 supply repeat measured 24-zone hazard-throughput runtime, memory, output, and replay-critical family evidence; "
             "the next larger step should reduce manifest pressure before increasing release-zone count again."
         ),
         "next_blocker_category": "scientific_validation_and_distributed_semantics",
@@ -1277,6 +1332,7 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "output_family_status": metrics["output_family_status"],
         "latest_measured_task": metrics["task_id"],
         "comparison_baseline": comparison,
+        "repeatability_comparison": repeatability,
         "previous_support_source_report": baseline["source_report"],
         "job_id": metrics["job_id"],
         "slurm": {
@@ -1289,8 +1345,9 @@ def _hazard_throughput_measured_row() -> dict[str, Any]:
         "run_root": metrics["run_root"],
         "release_zone_count": metrics["release_zone_count"],
         "source_report": metrics["source_report"],
+        "repeat_source_report": repeat["source_report"],
         "summary": (
-            "TB-680 completed a bounded 24-zone hazard-throughput Balfrin postproc run with measured runtime, memory, output footprint, and replay-critical family coverage. TB-669 remains the previous hazard-throughput comparison anchor; TB-680 also exposed manifest-byte pressure above the current replay budget."
+            "TB-680 and TB-681 completed repeat bounded 24-zone hazard-throughput Balfrin postproc runs with measured runtime, memory, output footprint, and replay-critical family coverage. TB-669 remains the previous hazard-throughput comparison anchor; both 24-zone runs expose manifest-byte pressure above the current replay budget."
         ),
         "claim_boundary": "measured bounded hazard-throughput evidence only; no operational, physical-probability, Swiss-wide, distributed, risk, or non-postproc claim",
     }
@@ -1324,7 +1381,7 @@ def _tb652_diagnostic_probe_row() -> dict[str, Any]:
         "replayability_status": "single_run_record_complete",
         "authorization_status": "standing_postproc_clearance_used",
         "latest_measured_task": metrics["task_id"],
-        "comparison_anchor": "TB-680 is latest bounded hazard-throughput support; TB-652 is diagnostic reducer-pressure evidence",
+        "comparison_anchor": "TB-680/TB-681 is latest repeat bounded hazard-throughput support; TB-652 is diagnostic reducer-pressure evidence",
         "next_evidence_field": "scale_surface_comparison",
         "next_recommended_action": "compare_tb652_with_tb619_and_100_zone_diagnostic_series",
         "next_blocker_category": "hazard_throughput_scaling_and_scientific_validation",
@@ -1344,7 +1401,7 @@ def _tb652_diagnostic_probe_row() -> dict[str, Any]:
         "source_report": metrics["source_report"],
         "summary": (
             "TB-652 completed an 8-zone compact postproc diagnostic on Balfrin with a preserved $SCRATCH run root and complete run-record metrics. "
-            "It strengthens the diagnostic reducer-pressure series but does not replace TB-680 as the latest bounded hazard-throughput support point."
+            "It strengthens the diagnostic reducer-pressure series but does not replace TB-680/TB-681 as the latest repeat bounded hazard-throughput support pair."
         ),
         "claim_boundary": metrics["claim_boundary"],
     }
@@ -1380,7 +1437,7 @@ def _tb665_diagnostic_probe_row() -> dict[str, Any]:
         "latest_measured_task": metrics["task_id"],
         "comparison_anchor": (
             "TB-665 repeats the 32-zone diagnostic scale with the simplified runner; "
-            "TB-680 is latest bounded hazard-throughput support"
+            "TB-680/TB-681 is latest repeat bounded hazard-throughput support"
         ),
         "next_evidence_field": "diagnostic_single_node_postproc_ceiling",
         "next_recommended_action": "run_balfrin_diagnostic_40_zone_or_measure_larger_hazard_throughput",
@@ -1988,7 +2045,7 @@ def build_report() -> dict[str, Any]:
             },
             "hazard_throughput": {
                 "class": "measured_hazard_throughput_postproc",
-                "evidence": "TB-680 completed bounded 24-zone hazard-throughput run record; TB-669 remains the previous hazard-throughput comparison point",
+                "evidence": "TB-680 and TB-681 completed repeat bounded 24-zone hazard-throughput run records; TB-669 remains the previous hazard-throughput comparison point",
                 "next_blocker": "manifest_pressure_and_scientific_validation",
             },
             "100_zone": {
@@ -2041,7 +2098,7 @@ def build_report() -> dict[str, Any]:
             "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
-            "TB-680 is the latest measured bounded hazard-throughput evidence with runtime, memory, output, and replay-critical family metrics, TB-669 remains the previous hazard-throughput comparison anchor, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-665 adds a fresh 32-zone compact diagnostic point, "
+            "TB-680 and TB-681 are the latest repeat measured bounded hazard-throughput evidence with runtime, memory, output, and replay-critical family metrics, TB-669 remains the previous hazard-throughput comparison anchor, TB-652 adds a completed 8-zone compact diagnostic comparison point, and TB-665 adds a fresh 32-zone compact diagnostic point, "
             "TB-309 failed closed before sbatch on the reviewed two-zone submit path, "
             "TB-305 contributes synthetic postproc efficiency evidence only, fixture and scratch-local tiers remain non-promotable, "
             "TB-450 now threads the measured regional split through the scenario-cardinality, output-tier, and reducer-pressure projections, the ranked next probe ladder now places reducer-pressure optimization first, then scenario batching and local evidence collection, and the larger AOI projection remains a no-go."
@@ -2154,9 +2211,11 @@ def build_report() -> dict[str, Any]:
             "metrics_contract_status": hazard_throughput_row.get("metrics_contract_status"),
             "preservation_status": hazard_throughput_row.get("preservation_status"),
             "comparison_baseline": hazard_throughput_row.get("comparison_baseline"),
+            "repeatability_comparison": hazard_throughput_row.get("repeatability_comparison"),
             "previous_support_source_report": hazard_throughput_row.get("previous_support_source_report"),
             "next_recommended_action": hazard_throughput_row.get("next_recommended_action"),
             "source_report": hazard_throughput_row.get("source_report"),
+            "repeat_source_report": hazard_throughput_row.get("repeat_source_report"),
             "claim_boundary": hazard_throughput_row.get("claim_boundary"),
         },
         "regional_split_projection_delta_summary": regional_split_projection_delta_summary,
