@@ -1562,11 +1562,18 @@ def build_report() -> dict[str, Any]:
         regional_split_projection_delta_summary.get("measurement_status")
         == "blocked_missing_reducer_pressure_scratch_root"
     )
-    overall_status = "blocked_missing_inputs" if reducer_projection_blocked else "blocked_reducer_budget" if blocked else "measured"
+    next_probe_ranking = decision_gate.build_reducer_first_probe_ranking()
+    current_actionable_blocker = "reducer_pressure_and_replay_metadata_growth"
+    overall_status = (
+        "blocked_missing_inputs"
+        if reducer_projection_blocked
+        else "actionable_reducer_pressure"
+        if blocked or next_probe_ranking
+        else "measured"
+    )
     recommended = dict(decision_report.get("recommended_next_action") or {})
     regional_split_row = next((row for row in rows if row["tier_id"] == "regional_split_probe"), {})
     hazard_throughput_row = next((row for row in rows if row["tier_id"] == "hazard_throughput_probe"), {})
-    next_probe_ranking = decision_gate.build_reducer_first_probe_ranking()
     next_recommended_scaling_task = str(next_probe_ranking[0]["action_id"]) if next_probe_ranking else "second_site_public_context_progress"
     live_recommended_next_action = next_recommended_scaling_task or recommended.get("action_id") or recommended.get("option_id")
     next_backlog_recommendations = [
@@ -1772,7 +1779,7 @@ def build_report() -> dict[str, Any]:
         "summary": (
             "Single-zone evidence, TB-307 target-area metrics-completion evidence, TB-312 four-zone postproc evidence, TB-368 preserved two-zone evidence, and TB-407 smallest multi-zone probe evidence are measured; "
             "TB-314 refreshed the local scratch ladder without changing the scratch-local accumulation boundary after TB-313 rejected the accumulator micro-optimization, "
-            "TB-332 failed closed before sbatch on a stale four-zone authorization checksum, "
+            "TB-332 remains historical failed-closed/no-submit evidence from a stale four-zone authorization checksum, "
             "the management-AOI Balfrin decision failed closed before sbatch on source-zone footprint overlap, "
             "TB-565 and TB-566 now provide current measured regional split evidence from one bounded postproc run root, while TB-432 remains historical failed-closed/no-submit evidence and TB-448 remains superseded measured evidence, "
             "TB-619 is now the latest measured bounded hazard-throughput evidence with complete mandatory runtime, memory, output, and conditional-curve metrics, while TB-603 remains the previous comparison anchor, "
@@ -1838,7 +1845,7 @@ def build_report() -> dict[str, Any]:
             "decision_status": decision_report.get("decision_status"),
             "recommended_next_action": live_recommended_next_action,
             "recommended_next_action_status": recommended.get("status"),
-            "blocked_reason": decision_report.get("blocked_reason"),
+            "blocked_reason": current_actionable_blocker,
         },
         "operational_readiness_check": operational_readiness_check,
         "phase_change_decision_check": phase_change_decision_check,
@@ -1894,11 +1901,7 @@ def build_report() -> dict[str, Any]:
         "regional_split_projection_delta_summary": regional_split_projection_delta_summary,
         "next_evidence_field": "regional_split_projection_delta_summary",
         "next_backlog_recommendations": next_backlog_recommendations,
-        "blocked_reason": (
-            "reducer_pressure_scratch_root_missing"
-            if reducer_projection_blocked
-            else "four_zone_hazard_probe.authorization_record_checksum"
-        ),
+        "blocked_reason": "reducer_pressure_scratch_root_missing" if reducer_projection_blocked else current_actionable_blocker,
         "recovery_commands": regional_split_projection_delta_summary.get("recovery_commands", {}),
         "claim_boundaries": {
             "operational_claims_allowed": False,

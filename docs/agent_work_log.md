@@ -10116,3 +10116,24 @@ completed history.
 - Metrics: readiness report first blocking evidence class `calibration_evidence`; physical-probability readiness `partial_evidence_missing_critical_inputs`; public snapshot now names TB-619/job `4372656` and TB-631 package parity.
 - Boundaries: documentation/status refresh only; no new run, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-634`
+
+### TB-634: Reconcile Scale Matrix With Latest Hazard Evidence
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: stop a historical four-zone checksum failure from driving the current top-level scale readiness interpretation after TB-619.
+- Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Changed the current scale matrix status from `blocked_reducer_budget` to `actionable_reducer_pressure` when current measured evidence exists and the next actionable blocker is reducer/replay metadata pressure.
+  - Set the top-level and live-run authorization blocker to `reducer_pressure_and_replay_metadata_growth`.
+  - Preserved TB-332 as historical blocked pre-submit tier evidence instead of deleting it or promoting it.
+  - Confirmed TB-619/job `4372656` remains the current measured hazard-throughput support point.
+  - Removed TB-634 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_scale_readiness_matrix.py`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_scale_readiness_matrix.py --format json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_scale_readiness_matrix -v`
+- Result/status: implemented_measured
+- Metrics: matrix status `actionable_reducer_pressure`; blocked reason `reducer_pressure_and_replay_metadata_growth`; next recommended scaling task `summarize_multi_zone_reducer_pressure`; latest hazard-throughput job `4372656`.
+- Boundaries: interpretation/reporting fix only; no new Balfrin run, scale-up authorization, physical-probability, annual-frequency, operational, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-635`

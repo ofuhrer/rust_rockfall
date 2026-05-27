@@ -30,28 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-634: Reconcile Scale Matrix With Latest Hazard Evidence
-
-Goal: Make the scale readiness matrix agree with the latest measured hazard-throughput and packaging evidence.
-
-Capability gap reduced: Removes stale `blocked_reducer_budget` or checksum blocker language that conflicts with completed TB-619/TB-631 evidence.
-
-Why this outranks alternatives: The scale report still surfaces an old four-zone checksum blocker while also carrying measured TB-619 results, so the next scaling task is ambiguous.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `tests/test_balfrin_scale_readiness_matrix.py`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A corrected scale-readiness output that keeps broader claims blocked/deferred but reports the current first actionable scale blocker consistently.
-
-Definition of done:
-
-- The matrix reports TB-619 as latest hazard-throughput evidence, no stale four-zone checksum blocker appears as the top current blocker unless still justified by a current test fixture, and focused tests pass.
-
 ### TB-635: Expand Tschamut Calibration Candidate Evidence
 
 Goal: Strengthen the partial calibration evidence with a broader but still local parameter search and holdout-preserving comparison.

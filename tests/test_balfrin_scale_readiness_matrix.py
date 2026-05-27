@@ -24,8 +24,9 @@ class BalfrinScaleReadinessMatrixTests(unittest.TestCase):
         report = MODULE.build_report()
 
         self.assertEqual(report["schema_version"], "balfrin_scale_readiness_matrix_v1")
-        self.assertEqual(report["matrix_status"], "blocked_reducer_budget")
-        self.assertEqual(report["dashboard_status"], "blocked_reducer_budget")
+        self.assertEqual(report["matrix_status"], "actionable_reducer_pressure")
+        self.assertEqual(report["dashboard_status"], "actionable_reducer_pressure")
+        self.assertEqual(report["blocked_reason"], "reducer_pressure_and_replay_metadata_growth")
         self.assertEqual(
             report["operational_readiness_check"]["readiness_status"],
             "diagnostic_only_not_operational",
