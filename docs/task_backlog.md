@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-655: Run The Second-Site Prepared-Pilot Path If Inputs Are Ready
-
-Goal: Exercise the Chant Sura / Fluelapass prepared-pilot path with real staged inputs when available, or fail on a precise missing-input boundary.
-
-Capability gap reduced: Second-site AOI execution and package parity.
-
-Why this outranks alternatives: Once public geodata staging improves, the next proof is whether the same AOI path runs on a second site.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/inventory_second_site_local_blockers.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml`
-
-Deliverables:
-
-- A second-site prepared-pilot scratch run/package, or a precise blocker that names the first missing real input family.
-
-Definition of done:
-
-- The result is clearly labelled as real-input, fixture-backed, or blocked, and no Tschamut-only evidence is counted as second-site validation.
-
 ### TB-656: Strengthen Release-Probability Evidence
 
 Goal: Convert the current release-probability gap into a concrete empirical or design-review evidence summary from existing source-zone and candidate records.

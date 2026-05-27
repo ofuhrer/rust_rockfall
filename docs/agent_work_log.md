@@ -10558,3 +10558,25 @@ completed history.
 - Metrics: preflight status `deferred_public_context_inputs`; cache integrity `partial`; product count `14`; required products `12`; ready required products `1`; missing required products `11`; optional products `2`; fixture-backed required products `0`; unsupported products `0`; stage proposal `blocked_missing`; focused test count `21`.
 - Boundaries: second-site public-geodata cache verification only; no second-site prepared-pilot run and no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
 - Next task: `TB-655`
+
+### TB-655: Run The Second-Site Prepared-Pilot Path If Inputs Are Ready
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: exercise the Chant Sura / Fluelapass prepared-pilot path with real staged inputs when available, or fail on a precise missing-input boundary.
+- Files changed: `docs/chant_sura_prepared_pilot_path_tb655.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the second-site blocker inventory and multisite source/scenario contract audit for the Chant Sura candidate.
+  - Ran the AOI prepare command against the staged candidate config and committed smoke fixture.
+  - Ran the local prepared-pilot execution entrypoint against the prepare report and captured the clean blocked result.
+  - Recorded the result in a short TB-655 evidence note and removed TB-655 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-655 --format json`
+  - `PYENV_VERSION=system uv run python scripts/inventory_second_site_local_blockers.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json --json-output /tmp/tb655_second_site_blockers.json`
+  - `PYENV_VERSION=system uv run python scripts/audit_multisite_source_scenario_contract.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json --json-output /tmp/tb655_multisite_audit.json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py prepare --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --workflow-output-root /tmp/tb655_chant_sura_prepare --smoke-case-path tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml --format json --json-output /tmp/tb655_aoi_prepare.json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py run-prepared-pilot-local --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --repo-root . --prepared-pilot-report-path /tmp/tb655_aoi_prepare.json --prepared-pilot-output-root /tmp/tb655_chant_sura_prepared_pilot_local --smoke-case-path tests/fixtures/hazard/chant_sura_second_site_smoke_case.yaml --format json --json-output /tmp/tb655_prepared_pilot_local.json`
+- Result/status: completed_blocked_missing_real_inputs
+- Metrics: inventory status `ready_with_deferred_public_context`; first blocking group `public_context_inputs`; AOI prepare status `ready_for_planning`; prepared-pilot compiler classification `blocked_missing_inputs`; local prepared-pilot execution status `blocked_local_execution`; missing real input families `swissimage_context`, `swisstlm3d_context`, `swisssurface3d_context`, `swisssurface3d_raster_context`, `swissbuildings3d_context`.
+- Boundaries: blocked second-site prepared-pilot path only; the smoke case remains fixture-backed portability evidence and is not counted as real-input second-site validation; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, Swiss-wide, distributed, or non-`postproc` claim.
+- Next task: `TB-656`
