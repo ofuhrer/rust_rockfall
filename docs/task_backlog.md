@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-661: Exercise A National Inventory Chunk Smoke
-
-Goal: Re-run the Swiss national inventory/chunk planning smoke and make the next data-cache blocker concrete.
-
-Capability gap reduced: Swiss-wide feasibility preparation without claiming Swiss-wide execution.
-
-Why this outranks alternatives: Swiss-scale work is deferred, but national inventory and chunk planning can still expose concrete data/cache gaps.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `docs/swiss_national_tiling_inventory_tb607.md`
-- `docs/swiss_national_tile_chunk_mapping_tb608.md`
-- `docs/swiss_scale_feasibility_projection.md`
-
-Deliverables:
-
-- A fresh national inventory/chunk smoke output with tile count, chunk count, estimated input bytes, missing products, and cache readiness.
-
-Definition of done:
-
-- The Swiss-scale projection or inventory note names the current data-cache blocker while leaving Swiss-wide execution deferred.
-
 ### TB-662: Measure Output Pressure After QA Checklist Packaging
 
 Goal: Quantify whether the new package QA checklist materially changes package file count, byte count, or manifest pressure.

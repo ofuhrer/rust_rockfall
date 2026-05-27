@@ -118,6 +118,21 @@ share-safe planning, sizing, and command-shape work. They are not sufficient for
 Swiss-wide execution because no national product cache, checksums, versions, or
 coverage joins are staged.
 
+## TB-661 Refresh
+
+The 2026-05-27 refresh reproduced the same planning boundary:
+
+- status: `planning_inventory_ready_missing_cache`
+- tile count: `43,500`
+- chunk count: `85`
+- merge group count: `11`
+- estimated required input bytes: `2,093,100,000,000`
+- missing products: `7`
+- data cache ready: `false`
+- execution ready: `false`
+
+Details are in `docs/swiss_national_inventory_chunk_smoke_tb661.md`.
+
 ## Boundary
 
 This is an inventory only. It does not download data, stage a national cache,

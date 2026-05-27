@@ -10684,3 +10684,21 @@ completed history.
 - Metrics: routine Balfrin path remains `run_balfrin_diagnostic.py plan` and `run`; `12` historical Balfrin helper references demoted from user-facing/high-risk lists to compatibility/forensic use.
 - Boundaries: documentation/inventory simplification only; no Balfrin code, run shape, partition policy, submission behavior, physics, output semantics, or claim boundary changed.
 - Next task: `TB-661`
+
+### TB-661: Exercise A National Inventory Chunk Smoke
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: re-run the Swiss national inventory/chunk planning smoke and make the next data-cache blocker concrete.
+- Files changed: `docs/swiss_national_inventory_chunk_smoke_tb661.md`, `docs/swiss_national_tiling_inventory_tb607.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Re-ran the national data inventory smoke through `estimate_swiss_wide_execution_envelope.py`.
+  - Recorded the tile/chunk/merge-group counts, estimated input bytes, and missing product families.
+  - Added a short TB-661 note and linked it from the existing national tiling inventory note.
+  - Removed TB-661 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --national-data-inventory-smoke --format json --json-output /tmp/tb661_inventory_smoke.json`
+- Result/status: implemented_checked_smoke
+- Metrics: status `planning_inventory_ready_missing_cache`; tile count `43,500`; chunk count `85`; merge group count `11`; chunk size `512`; last chunk tile count `492`; estimated required input bytes `2,093,100,000,000`; missing products `7`; mapping validation ready `true`; data cache ready `false`; execution ready `false`.
+- Boundaries: share-safe inventory/chunk smoke only; no national download, cache staging, Swiss-wide execution, distributed execution, operational, annual-frequency, physical-probability, risk/exposure/vulnerability, or non-`postproc` claim.
+- Next task: `TB-662`
