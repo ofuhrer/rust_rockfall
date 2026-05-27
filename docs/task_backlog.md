@@ -30,32 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-675: Run The Second-Site Prepared Pilot When The Cache Is Ready
-
-Goal: Execute the Chant Sura prepared-pilot path with real staged inputs, or fail on the first still-missing real product.
-
-Capability gap reduced: Cross-site scientific portability evidence.
-
-Why this outranks alternatives: The fastest way to improve scientific credibility is to run the existing second-site front door once real inputs are staged.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/audit_multisite_source_scenario_contract.py`
-- `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`
-- `docs/chant_sura_prepared_pilot_path_tb655.md`
-
-Deliverables:
-
-- A second-site prepared-pilot result with real input readiness, generated scenario/source artifacts, local run status, and output footprint, or a single first blocker.
-
-Definition of done:
-
-- The task either produces a real-input second-site smoke result or narrows the second-site blocker below the broad public-context category.
-
-Scope: Keep the result as validation/portability evidence, not an operational or physical-probability claim.
-
 ### TB-676: Close The Calibration Acceptance Criterion Gap
 
 Goal: Turn the current calibration blocker into an executable acceptance criterion or a measured rejection.

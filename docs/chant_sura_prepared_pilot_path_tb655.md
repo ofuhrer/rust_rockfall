@@ -71,3 +71,26 @@ prepared-pilot path is blocked before local execution because the real
 second-site public-context families have not been staged. This result reduces
 the blocker to a concrete acquisition/staging boundary; it does not support
 operational, physical-probability, Swiss-wide, or second-site validation claims.
+
+## TB-675 Update
+
+The prepared-pilot path was re-run after verifying the minimum real terrain
+cache. The prepare phase reaches `ready_for_planning`, but the compiler and
+local runner still stop on missing context inputs.
+
+Current first concrete blocker:
+
+```text
+data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+```
+
+The full missing context set remains:
+
+- `swissimage`
+- `swisstlm3d`
+- `swisssurface3d`
+- `swisssurface3d_raster`
+- `swissbuildings3d`
+
+The multisite source/scenario audit has no missing second-site contract fields,
+but those staged records are not real field-validation evidence.
