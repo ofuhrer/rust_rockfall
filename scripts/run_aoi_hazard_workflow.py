@@ -53,6 +53,7 @@ SUPPORTED_COMMANDS = (
     "run-prepared-pilot-local",
     "submit-balfrin",
     "collect",
+    "preview-cost",
     "package-map",
 )
 PREPARE_SCHEMA_VERSION = "aoi_hazard_prepare_front_door_v1"
@@ -110,6 +111,7 @@ RELEASE_CANDIDATES = _load_module("aoi_hazard_front_door_release_candidates", "p
 COMMAND_PLAN = _load_module("aoi_hazard_front_door_command_plan", "generate_pilot_command_plan.py")
 GIS_COG = _load_module("aoi_hazard_front_door_gis_cog", "audit_gis_cog_package_readiness.py")
 PACKAGE_AOI = _load_module("aoi_hazard_front_door_package_aoi", "package_aoi_hazard_map.py")
+PREVIEW_AOI = _load_module("aoi_hazard_front_door_preview_aoi", "preview_aoi_scenario_cost_estimate.py")
 QA_REVIEW = _load_module("aoi_hazard_front_door_qa_review", "generate_aoi_map_qa_review.py")
 PREPARED_PILOT_COMPILER = _load_module(
     "aoi_hazard_front_door_prepared_pilot_compiler",
@@ -182,6 +184,15 @@ def main(argv: list[str] | None = None) -> int:
             orthophoto_background_root=args.orthophoto_background_root,
         )
         output = json.dumps(report, indent=2, sort_keys=True) if args.format == "json" else render_candidate_review_text_report(report)
+    elif args.command == "preview-cost":
+        report = build_preview_cost_front_door_report(
+            review_package_paths=args.review_package,
+            trajectory_count=args.trajectory_count,
+            selected_zone_counts=args.selected_zone_counts,
+            projection_zone_counts=args.projection_zone_counts,
+            output_root=args.preview_output_root,
+        )
+        output = json.dumps(report, indent=2, sort_keys=True, default=str) if args.format == "json" else render_text_report(report)
     else:
         report = build_report(
             command=args.command,
@@ -233,6 +244,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-review-output-root", type=Path, default=DEFAULT_CANDIDATE_REVIEW_OUTPUT_ROOT)
     parser.add_argument("--orthophoto-background-root", type=Path, default=None)
     parser.add_argument("--package-output-root", type=Path, default=None)
+    parser.add_argument("--review-package", type=Path, action="append", default=None)
+    parser.add_argument("--trajectory-count", type=int, default=None)
+    parser.add_argument("--selected-zone-counts", default="")
+    parser.add_argument("--projection-zone-counts", default="")
+    parser.add_argument("--preview-output-root", type=Path, default=None)
     parser.add_argument("--review-output-root", type=Path, default=None)
     parser.add_argument("--execute-safe-local-steps", action="store_true")
     parser.add_argument("--prepared-pilot-report-path", type=Path, default=None)
@@ -3104,6 +3120,92 @@ def build_package_map_front_door_report(
         "package_file_count": package_report.get("package_file_count", 0),
         "package_byte_count": package_report.get("package_byte_count", 0),
         "package_output_root": str(package_output_root),
+    }
+
+
+def build_preview_cost_front_door_report(
+    *,
+    review_package_paths: list[Path] | None,
+    trajectory_count: int | None,
+    selected_zone_counts: str,
+    projection_zone_counts: str,
+    output_root: Path | None,
+) -> dict[str, Any]:
+    review_packages = review_package_paths or [PREVIEW_AOI.DEFAULT_REVIEW_PACKAGE]
+    if selected_zone_counts and projection_zone_counts:
+        preview_report = {
+            "schema_version": PREVIEW_AOI.SCHEMA_VERSION,
+            "preview_status": "blocked_invalid_input",
+            "blocked_reason": "selected-zone counts and projection-zone counts are mutually exclusive",
+            "blocking_labels": ["blocked_invalid_input"],
+        }
+    else:
+        try:
+            if projection_zone_counts:
+                preview_report = PREVIEW_AOI.build_aoi_cost_projection_report(
+                    review_package_paths=review_packages,
+                    trajectory_count=trajectory_count,
+                    projection_zone_counts=PREVIEW_AOI.parse_selected_zone_counts(projection_zone_counts),
+                    output_profile_policy=PREVIEW_AOI.default_output_profile_policy(),
+                    output_root=output_root,
+                )
+            else:
+                preview_report = PREVIEW_AOI.build_report(
+                    review_package_paths=review_packages,
+                    trajectory_count=trajectory_count,
+                    selected_zone_counts=(
+                        PREVIEW_AOI.parse_selected_zone_counts(selected_zone_counts)
+                        if selected_zone_counts
+                        else None
+                    ),
+                    output_profile_policy=PREVIEW_AOI.default_output_profile_policy(),
+                    output_root=output_root,
+                )
+        except Exception as exc:  # pragma: no cover - defensive fail-closed wrapper.
+            preview_report = {
+                "schema_version": PREVIEW_AOI.SCHEMA_VERSION,
+                "preview_status": "blocked_preview_error",
+                "blocked_reason": str(exc),
+                "blocking_labels": ["blocked_preview_error"],
+            }
+
+    status = str(preview_report.get("preview_status") or preview_report.get("projection_status") or "blocked_missing_inputs")
+    blocked = status != "ready"
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": "preview-cost",
+        "status": status,
+        "next_action": "inspect preview" if not blocked else "preview-cost",
+        "first_blocker": {
+            "step_id": "preview-cost",
+            "label": "Preview AOI scenario cost",
+            "status": status,
+            "blocked_reason": str(preview_report.get("blocked_reason") or ""),
+            "missing_inputs": [],
+        },
+        "expected_paths": {
+            "review_packages": [str(path) for path in review_packages],
+            "preview_output_root": str(output_root or PREVIEW_AOI.DEFAULT_SELECTED_ZONE_OUTPUT_ROOT),
+        },
+        "claim_boundaries": {
+            "annual_frequency_claims_allowed": False,
+            "operational_claims_allowed": False,
+            "physical_probability_claims_allowed": False,
+            "risk_exposure_vulnerability_claims_allowed": False,
+            "scale_up_authorized": False,
+        },
+        "workflow_summary": {
+            "front_door_delegates_to": "scripts/preview_aoi_scenario_cost_estimate.py",
+            "writes_package": False,
+            "read_only": True,
+        },
+        "delegate_statuses": {
+            "aoi_scenario_preview": status,
+        },
+        "delegate_reports": {
+            "aoi_scenario_preview_schema_version": preview_report.get("schema_version", ""),
+        },
+        "preview_report": preview_report,
     }
 
 

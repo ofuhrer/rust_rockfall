@@ -10647,3 +10647,22 @@ completed history.
 - Metrics: calibration separation `passed`; calibration artifacts `3`; validation cases `22`; prohibited crossings `0`; holdout split audit `passed`; model-selection trajectories `5`; held-out trajectories `6`; shared trajectories `0`; physical-probability readiness `partial_evidence_missing_critical_inputs`; passing evidence classes `6/7`; first blocking evidence class `calibration_evidence`; first blocking input `accepted_residual_quality_threshold_or_review_decision`.
 - Boundaries: evidence refresh only; measured calibration remains diagnostic pending acceptance criteria or review, and no validation acceptance, physical-probability map label, annual-frequency, operational, return-period, risk/exposure/vulnerability, Swiss-wide, distributed, or non-`postproc` claim is enabled.
 - Next task: `TB-659`
+
+### TB-659: Collapse One Specialist AOI Command Into The Front Door
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: reduce user-facing complexity by routing one commonly needed specialist AOI helper through `run_aoi_hazard_workflow.py`.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Added `preview-cost` as a front-door subcommand in `run_aoi_hazard_workflow.py`.
+  - Delegated the implementation directly to `scripts/preview_aoi_scenario_cost_estimate.py` without duplicating cost-preview logic.
+  - Added focused coverage for the delegated projection path.
+  - Removed TB-659 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py preview-cost --projection-zone-counts 2,4 --trajectory-count 12 --format json --json-output /tmp/tb659_preview_cost.json`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_run_aoi_hazard_workflow -v`
+- Result/status: implemented_simplification
+- Metrics: `preview-cost` smoke status `ready`; delegated schema `aoi_scenario_cost_projection_v1`; focused AOI tests `33` passed.
+- Boundaries: command-surface simplification only; no scenario defaults, physics, output policy, Balfrin submission, physical-probability, annual-frequency, operational, risk/exposure/vulnerability, Swiss-wide, distributed, or non-`postproc` claim changed.
+- Next task: `TB-660`

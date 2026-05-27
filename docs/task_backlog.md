@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-659: Collapse One Specialist AOI Command Into The Front Door
-
-Goal: Reduce user-facing complexity by routing one commonly needed specialist AOI helper through `run_aoi_hazard_workflow.py`.
-
-Capability gap reduced: Clean user-facing AOI interface.
-
-Why this outranks alternatives: The repository already has many helper scripts; simplifying the command surface directly improves usability.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/preview_aoi_scenario_cost_estimate.py`
-- `scripts/package_aoi_hazard_map.py`
-- `tests/test_run_aoi_hazard_workflow.py`
-
-Deliverables:
-
-- A new or improved front-door subcommand that delegates to an existing helper without duplicating logic, plus focused tests.
-
-Definition of done:
-
-- Users can perform the selected AOI action through `run_aoi_hazard_workflow.py`, and the specialist helper remains internal or compatibility-level.
-
 ### TB-660: Simplify The Balfrin Helper Surface
 
 Goal: Demote or remove stale Balfrin helper references so routine users see `run_balfrin_diagnostic.py` first.

@@ -751,6 +751,41 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
         self.assertEqual(report["expected_paths"]["package_output_root"], str(package_output_root))
         self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
 
+    def test_preview_cost_front_door_delegates_to_preview_helper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            review_package = Path(tmp) / "review_package.yaml"
+            preview_output_root = Path(tmp) / "preview"
+            review_package.write_text("review_package_status: review_applied\n", encoding="utf-8")
+
+            with mock.patch.object(
+                workflow.PREVIEW_AOI,
+                "build_aoi_cost_projection_report",
+                return_value={
+                    "schema_version": "aoi_scenario_cost_projection_v1",
+                    "projection_status": "ready",
+                    "projection_zone_counts": [2, 4],
+                    "scale_up_authorized": False,
+                    "operational_claims_allowed": False,
+                },
+            ) as preview_mock:
+                report = workflow.build_preview_cost_front_door_report(
+                    review_package_paths=[review_package],
+                    trajectory_count=12,
+                    selected_zone_counts="",
+                    projection_zone_counts="2,4",
+                    output_root=preview_output_root,
+                )
+
+        preview_mock.assert_called_once()
+        self.assertEqual(report["command"], "preview-cost")
+        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["next_action"], "inspect preview")
+        self.assertEqual(report["workflow_summary"]["front_door_delegates_to"], "scripts/preview_aoi_scenario_cost_estimate.py")
+        self.assertFalse(report["workflow_summary"]["writes_package"])
+        self.assertEqual(report["delegate_statuses"]["aoi_scenario_preview"], "ready")
+        self.assertEqual(report["expected_paths"]["review_packages"], [str(review_package)])
+        self.assertFalse(report["claim_boundaries"]["operational_claims_allowed"])
+
     def test_clean_checkout_candidate_review_and_workflow_front_doors_fail_closed_without_ignored_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory(dir="/tmp") as smoke_tmp:
             repo_root = Path(tmp)
