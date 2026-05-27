@@ -30,29 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-650: Exercise The AOI Front Door With Regenerated Scenarios
-
-Goal: Prove the current AOI front door can consume the refreshed scenario inputs and produce a reviewable package with the new QA checklist.
-
-Capability gap reduced: Clean user-facing AOI workflow from scenario inputs to package review.
-
-Why this outranks alternatives: The package checklist is now implemented, so the next useful check is whether the user-facing command path exposes it without specialist script hopping.
-
-Inspect first:
-
-- `scripts/run_aoi_hazard_workflow.py`
-- `scripts/package_aoi_hazard_map.py`
-- `scripts/generate_aoi_map_qa_review.py`
-- `docs/aoi_user_manual.md`
-
-Deliverables:
-
-- A local scratch AOI package/review output using the refreshed scenario inputs, or a concrete front-door blocker with the exact command that fails.
-
-Definition of done:
-
-- The package contains `operational_qa_checklist`, review HTML, layer inventory, and accepted-for-operational-use remains false by default.
-
 ### TB-651: Build A Larger Hazard-Throughput Package Profile
 
 Goal: Create or fail closed on a real hazard-throughput package profile beyond the current four-zone TB-619 support point.

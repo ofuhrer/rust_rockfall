@@ -3098,6 +3098,11 @@ def build_package_map_front_door_report(
             "gis_cog_schema_version": readiness_report.get("schema_version", ""),
             "aoi_package_schema_version": package_report.get("schema_version", ""),
         },
+        "operational_qa_checklist": package_report.get("operational_qa_checklist", {}),
+        "review_surface_status": package_report.get("review_surface_status"),
+        "review_surface_paths": package_report.get("review_surface_paths", {}),
+        "package_file_count": package_report.get("package_file_count", 0),
+        "package_byte_count": package_report.get("package_byte_count", 0),
         "package_output_root": str(package_output_root),
     }
 

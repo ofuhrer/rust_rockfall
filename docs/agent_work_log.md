@@ -10445,3 +10445,23 @@ completed history.
 - Metrics: scenario pressure status `ready`; accepted candidate count `1`; scenario rows `3`; scenario-table files `5`; scenario-table CSV bytes `2,282`; manifest bytes `4,626`; total scenario-table bytes `14,996`; storage-tier status `ready`; compact batch cap `3` repeats / `30` candidate records / `300` scenario rows; cap manifest bytes `211,277`; cap total bytes `595,867`; replay recommendation `rebuildable_reduced`; next bottleneck `gis_and_research_full_output_growth`.
 - Boundaries: local scenario-table and storage-pressure refresh only; no hazard run, Balfrin submission, scale-up authorization, operational claim, physical-probability claim, annual-frequency claim, risk, exposure, or vulnerability claim.
 - Next task: `TB-650`
+
+### TB-650: Exercise The AOI Front Door With Regenerated Scenarios
+
+- Date: 2026-05-27
+- Commit: local
+- Objective: prove the AOI front door can produce a reviewable package and surface the new QA checklist after the adjacent-candidate scenario refresh.
+- Files changed: `scripts/run_aoi_hazard_workflow.py`, `tests/test_run_aoi_hazard_workflow.py`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended `run_aoi_hazard_workflow.py package-map --package-output-root ...` so the top-level front-door report exposes the package QA checklist, review-surface status/paths, and package file/byte counts.
+  - Added focused front-door test assertions that the package-map command surfaces `aoi_operational_qa_checklist_v1` and keeps operational acceptance false.
+  - Ran the front-door package-map path into `/tmp/tb650_aoi_review_package` against the current Tschamut target artifact root.
+  - Verified the package manifest, copied pilot package, and QA review manifest all carry the checklist.
+  - Removed TB-650 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-650 --format json`
+  - `PYENV_VERSION=system uv run python scripts/run_aoi_hazard_workflow.py package-map --artifact-root hazard/results/tschamut_public_pilot/target_gate_v1 --package-output-root /tmp/tb650_aoi_review_package --overwrite --format json --json-output /tmp/tb650_package_map_report.json`
+- Result/status: implemented_measured
+- Metrics: package status `map_package_ready`; package files `39`; package bytes `447,853`; raster count `22`; vector overlay count `2`; layer inventory `parity_match`; review surface `review_ready_with_warnings`; checklist status `diagnostic_review_pending`; checklist item count `8`; checklist ready count `5`; accepted for operational use `false`.
+- Boundaries: local package/front-door smoke only; no new simulation, Balfrin job, scale-up authorization, operational claim, physical-probability claim, annual-frequency claim, risk, exposure, or vulnerability claim.
+- Next task: `TB-651`

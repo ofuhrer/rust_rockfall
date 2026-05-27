@@ -1287,6 +1287,13 @@ class RunAoiHazardWorkflowTests(unittest.TestCase):
             self.assertTrue((review_root / "aoi_hazard_map_package_summary.txt").exists())
             self.assertTrue((review_root / "aoi_map_qa_review_manifest.json").exists())
             self.assertTrue((review_root / "index.html").exists())
+            self.assertEqual(package_report["operational_qa_checklist"]["schema_version"], "aoi_operational_qa_checklist_v1")
+            self.assertEqual(package_report["operational_qa_checklist"]["status"], "diagnostic_review_pending")
+            self.assertFalse(package_report["operational_qa_checklist"]["accepted_for_operational_use"])
+            self.assertEqual(package_report["review_surface_status"], "review_ready_with_warnings")
+            self.assertTrue(package_report["review_surface_paths"]["html"].endswith("index.html"))
+            self.assertGreater(package_report["package_file_count"], 0)
+            self.assertGreater(package_report["package_byte_count"], 0)
             self.assertFalse(package_report["claim_boundary"]["annualized"])
 
     def test_user_defined_aoi_bounds_guided_front_door_prepared_pilot_and_review_bundle(self) -> None:
