@@ -11307,3 +11307,26 @@ completed history.
 - Decision: fail closed with a blocked-input report only; no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or scale-up claim is introduced.
 - Boundaries: no public-context download, no second-site ensemble, no distributed execution, and no claim upgrade beyond the explicit blocked-input report.
 - Next task: not inspected per TB-689 hard-stop scope.
+
+### TB-690: Promote Physical-Evidence Intake From Design Review To Measured Records
+
+- Date: 2026-05-31
+- Commit: `0dfd150`
+- Objective: replace the remaining design-review-only physical-probability blockers with explicit no-accepted intake records so the calibration gap report and Balfrin physical-credibility summary fail closed on data absence rather than placeholder candidates.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `docs/source_frequency_evidence_contract.md`, `docs/block_release_probability_evidence_contract.md`, `docs/validation_data_schema.md`, `tests/test_source_frequency_evidence.py`, `tests/test_block_release_probability_evidence.py`, `tests/test_validation_calibration_evidence_gaps.py`, `tests/test_balfrin_physical_credibility_evidence_gaps.py`, `validation/data/processed/tschamut/source_frequency_evidence_tschamut_public_no_accepted_v1.yaml`, `validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_no_accepted_v1.yaml`, `validation/data/processed/tschamut/block_population_evidence_tschamut_public_no_accepted_v1.yaml`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added explicit no-accepted Tschamut intake records for source frequency, block/release probability, and block population, and pointed the default calibration-gap helper at those fail-closed records.
+  - Extended the block-population intake validator to accept the same no-accepted state and report it as a measured absence rather than a design-review candidate.
+  - Refreshed the physical-probability/readiness outputs and Balfrin physical-credibility summary so the first remaining blocker is source-frequency data absence, with no design-review candidate requirements left in the summary.
+  - Updated the contract and schema docs to describe the new fail-closed records and removed TB-690 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_source_frequency_evidence tests.test_block_release_probability_evidence tests.test_validation_calibration_evidence_gaps tests.test_balfrin_physical_credibility_evidence_gaps -v`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_physical_credibility_evidence_gaps.py --format json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no physical-probability claim upgrade, no annual-frequency claim, no operational readiness claim, and no synthetic probabilities from placeholders.
+- Next task: `TB-691`
