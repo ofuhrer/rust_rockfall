@@ -27,6 +27,16 @@ class BlockReleaseProbabilityEvidenceTests(unittest.TestCase):
         self.assertEqual(summary["block_scenario_count"], 0)
         self.assertEqual(summary["release_cell_count"], 0)
 
+    def test_tschamut_no_accepted_record_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_block_release_probability_evidence(
+            ROOT / "validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_no_accepted_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "no_accepted_block_release_probability_evidence")
+        self.assertEqual(summary["block_scenario_count"], 0)
+        self.assertEqual(summary["release_cell_count"], 0)
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_accepts_complete_candidate_for_design_review_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = self.write_record(Path(tmp), self.candidate_record())

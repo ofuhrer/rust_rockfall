@@ -28,6 +28,17 @@ class SourceFrequencyEvidenceTests(unittest.TestCase):
         self.assertEqual(summary["intake_classification"], "missing")
         self.assertFalse(summary["source_event_rate_available"])
 
+    def test_tschamut_no_accepted_record_is_valid_but_not_runtime_authorized(self) -> None:
+        summary = validator.validate_source_frequency_evidence(
+            ROOT / "validation/data/processed/tschamut/source_frequency_evidence_tschamut_public_no_accepted_v1.yaml"
+        )
+
+        self.assertEqual(summary["record_status"], "no_accepted_frequency_evidence")
+        self.assertEqual(summary["non_production_status"], "template_no_evidence")
+        self.assertEqual(summary["intake_classification"], "missing")
+        self.assertFalse(summary["source_event_rate_available"])
+        self.assertFalse(summary["prototype_authorized"])
+
     def test_accepts_complete_candidate_for_design_review_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = self.write_record(Path(tmp), self.candidate_record())

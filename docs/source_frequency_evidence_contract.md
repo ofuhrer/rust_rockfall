@@ -89,3 +89,8 @@ source-frequency evidence schema blocker is partially closed, but the annual or
 physical prototype remains blocked by missing accepted evidence, missing
 overlap-adjusted reducers, missing uncertainty propagation, and missing
 validation/calibration review for frequency products.
+
+The current Tschamut assessment input in this checkout now stages a matching
+`no_accepted_frequency_evidence` record, so the physical-probability report
+reads the source-frequency gap as an explicit data absence rather than a
+design-review placeholder.

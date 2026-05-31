@@ -30,24 +30,17 @@ class BalfrinPhysicalCredibilityEvidenceGapsTests(unittest.TestCase):
             diagnostic,
             [
                 "observed_runout_deposition",
+                "release_zone_evidence",
                 "independent_holdout_validation",
             ],
         )
-        self.assertEqual(design_review, ["release_zone_evidence", "block_size_and_block_population_evidence"])
-        self.assertEqual(
-            report["design_review_candidate_requirements"][0]["validation_gap_support_role"],
-            "design_review_candidate_only",
-        )
-        self.assertEqual(
-            report["design_review_candidate_requirements"][0]["validation_gap_category_status"],
-            "present",
-        )
-        self.assertTrue(report["design_review_candidate_requirements"][0]["design_review_evidence"])
+        self.assertEqual(design_review, [])
         self.assertEqual(
             missing,
             [
                 "calibration_data_and_objective_functions",
                 "multi_site_transfer_evidence",
+                "block_size_and_block_population_evidence",
                 "source_frequency_and_temporal_frequency_evidence",
             ],
         )

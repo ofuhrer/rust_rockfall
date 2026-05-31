@@ -53,7 +53,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         )
         self.assertIn("selected_candidate_status=rejected_residual_quality", text)
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
-        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
+        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "missing")
         self.assertEqual(
             report["calibration_holdout_separation_check"]["separation_status"],
             "separated_holdout_ready",
@@ -70,13 +70,22 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "blocked_missing_required_evidence",
             "partial_evidence_missing_critical_inputs",
         })
-        self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
-        self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
-        self.assertNotIn("block_population_evidence", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "calibration_evidence")
-        self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
-        self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "present")
-        self.assertEqual(report["block_population_intake"]["intake_classification"], "present")
+        self.assertEqual(readiness["first_blocking_evidence_class"], "source_frequency_evidence")
+        self.assertIn("source_frequency_evidence", readiness["failing_evidence_classes"])
+        self.assertIn("release_probability_model", readiness["failing_evidence_classes"])
+        self.assertIn("block_population_evidence", readiness["failing_evidence_classes"])
+        self.assertEqual(report["source_frequency_intake"]["record_status"], "no_accepted_frequency_evidence")
+        self.assertEqual(report["source_frequency_intake"]["intake_classification"], "missing")
+        self.assertEqual(
+            report["block_release_probability_intake"]["record_status"],
+            "no_accepted_block_release_probability_evidence",
+        )
+        self.assertEqual(report["block_release_probability_intake"]["intake_classification"], "missing")
+        self.assertEqual(
+            report["block_population_intake"]["record_status"],
+            "no_accepted_block_population_evidence",
+        )
+        self.assertEqual(report["block_population_intake"]["intake_classification"], "missing")
         self.assertEqual(report["calibration_objective_contract"]["objective_status"], "executable_smoke_ready")
         calibration_category = {
             entry["category"]: entry for entry in report["evidence_gap_categories"]
@@ -90,16 +99,17 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "holdout_runout_abs_error_max_m",
         )
 
-    def test_block_population_candidate_validates_as_design_review_evidence(self) -> None:
+    def test_no_accepted_block_population_record_is_valid_but_fail_closed(self) -> None:
         summary = assessment.validate_block_population_evidence_record(
             assessment.DEFAULT_BLOCK_POPULATION_EVIDENCE_PATH
         )
 
-        self.assertEqual(summary["record_id"], "tschamut_public_block_population_candidate_v1")
-        self.assertEqual(summary["record_status"], "accepted_for_design_review")
+        self.assertEqual(summary["record_id"], "tschamut_public_block_population_no_accepted_v1")
+        self.assertEqual(summary["record_status"], "no_accepted_block_population_evidence")
         self.assertEqual(summary["source_zone_id"], "tschamut_public_lps_release_bbox")
-        self.assertEqual(summary["block_population_class_count"], 3)
-        self.assertEqual(summary["total_count"], 3)
+        self.assertEqual(summary["intake_classification"], "missing")
+        self.assertEqual(summary["block_population_class_count"], 0)
+        self.assertEqual(summary["total_count"], 0)
         self.assertFalse(summary["prototype_authorized"])
 
     def test_layer_claim_boundaries_distinguish_diagnostics_from_credibility(self) -> None:
@@ -173,10 +183,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         categories = {entry["category"]: entry for entry in report["evidence_gap_categories"]}
         self.assertEqual(categories["observed_deposition_runout_evidence"]["classification"], "present")
-        self.assertEqual(categories["release_zone_evidence"]["classification"], "present")
+        self.assertEqual(categories["release_zone_evidence"]["classification"], "partial")
         self.assertEqual(
             categories["release_zone_evidence"]["first_missing_input"],
-            "",
+            "site_specific_release_zone_geometry_package",
         )
         self.assertEqual(categories["calibration_evidence"]["classification"], "partial")
         self.assertEqual(
@@ -184,13 +194,16 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
             "measured_fit_rejected_by_acceptance_review",
         )
         self.assertEqual(categories["holdout_and_validation_evidence"]["classification"], "present")
-        self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "present")
+        self.assertEqual(categories["block_size_and_block_population_evidence"]["classification"], "missing")
         self.assertEqual(
             categories["block_size_and_block_population_evidence"]["first_missing_input"],
-            "",
+            "block_size_survey_or_photogrammetry_census",
         )
-        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["classification"], "present")
-        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"], "")
+        self.assertEqual(categories["source_frequency_and_temporal_frequency_evidence"]["classification"], "missing")
+        self.assertEqual(
+            categories["source_frequency_and_temporal_frequency_evidence"]["first_missing_input"],
+            "historical_rockfall_event_catalogue",
+        )
         self.assertTrue(
             categories["source_frequency_and_temporal_frequency_evidence"][
                 "conditional_sampling_weights_are_not_frequency_evidence"
@@ -352,7 +365,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
 
         self.assertIn("physical_probability_readiness_check:", text)
         self.assertIn("physical_probability_claims_allowed: false", text)
-        self.assertIn("source_frequency_intake: accepted", text)
+        self.assertIn("source_frequency_intake: missing (no_accepted_frequency_evidence)", text)
         self.assertIn("validation_leakage_guardrails:", text)
         self.assertIn("calibration_holdout_separation_check:", text)
         self.assertIn("guardrail_status: passed", text)
@@ -364,13 +377,13 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         report = assessment.build_report()
         tasks = report["next_concrete_scientific_tasks"]
 
-        self.assertEqual(tasks[0]["task_id"], "stage_second_site_public_geodata_inputs")
+        self.assertEqual(tasks[0]["task_id"], "stage_source_frequency_catalogue")
         self.assertNotIn("define_calibration_dataset_and_objective", [task["task_id"] for task in tasks])
         self.assertNotIn("stage_independent_holdout_deposition_runout_evidence", [task["task_id"] for task in tasks])
-        self.assertNotIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
-        self.assertNotIn("stage_block_population_survey", [task["task_id"] for task in tasks])
         self.assertTrue(all("claim" in item["claim_boundary"] for item in tasks))
         self.assertIn("scientific evidence", tasks[0]["why_now"])
+        self.assertIn("stage_source_frequency_catalogue", [task["task_id"] for task in tasks])
+        self.assertIn("stage_block_population_survey", [task["task_id"] for task in tasks])
 
     def test_physical_probability_readiness_fails_for_conditional_only_state(self) -> None:
         check = assessment.build_physical_probability_readiness_check(
@@ -388,6 +401,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(check["readiness_status"], "partial_evidence_missing_critical_inputs")
         self.assertFalse(check["physical_probability_claims_allowed"])
         self.assertEqual(check["first_blocking_evidence_class"], "source_frequency_evidence")
+        self.assertIn("release_probability_model", check["failing_evidence_classes"])
         self.assertIn("block_population_evidence", check["failing_evidence_classes"])
 
     def test_physical_probability_readiness_distinguishes_partially_calibrated_state(self) -> None:
@@ -440,9 +454,10 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
         readiness = report["physical_probability_readiness_check"]
         self.assertNotIn("source_frequency_evidence", readiness["failing_evidence_classes"])
-        self.assertNotIn("release_probability_model", readiness["failing_evidence_classes"])
-        self.assertNotIn("block_population_evidence", readiness["failing_evidence_classes"])
-        self.assertEqual(readiness["first_blocking_evidence_class"], "calibration_evidence")
+        self.assertEqual(readiness["first_blocking_evidence_class"], "release_probability_model")
+        self.assertIn("release_probability_model", readiness["failing_evidence_classes"])
+        self.assertIn("block_population_evidence", readiness["failing_evidence_classes"])
+        self.assertIn("calibration_evidence", readiness["failing_evidence_classes"])
 
 
 if __name__ == "__main__":  # pragma: no cover

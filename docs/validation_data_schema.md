@@ -249,6 +249,12 @@ source-frequency row of `physical_probability_readiness_check`; release
 probability, block-population, calibration, and holdout evidence remain separate
 requirements.
 
+The default calibration-gap helper also accepts explicit
+`no_accepted_block_population_evidence` records for the block-population row so
+the report can fail closed when no census or survey is staged. Those records
+must keep block-population counts, probabilities, and claim boundaries empty
+instead of turning representative scenarios into a population claim.
+
 Calibration and holdout evidence must also pass an explicit separation check
 before stronger scientific conclusions can be considered. The
 `calibration_holdout_separation_check` reports:

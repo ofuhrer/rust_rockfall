@@ -1,0 +1,47 @@
+schema_version: source_frequency_evidence_v1
+record_id: source_frequency_evidence_tschamut_public_no_accepted_v1
+record_status: no_accepted_frequency_evidence
+prototype_authorized: false
+operational_status: research_diagnostic
+non_production_status: template_no_evidence
+frequency_model_id: tschamut_no_accepted_source_event_rate_v1
+frequency_mode: source_event_rate_evidence_only
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class:
+  event_class_id: tschamut_no_accepted_source_event_class_v1
+  description: No accepted Tschamut source-frequency evidence is staged for this source zone.
+  occurrence_denominator: source_zone_event_class
+frequency_unit: events_per_source_zone_per_year
+source_event_rate_per_year: null
+rate_time_window_years: null
+rate_observation_period:
+  start_year: null
+  end_year: null
+rate_evidence_type: none_available
+rate_provenance:
+  source: none_available
+  citation_or_url: none_available
+  license: not_applicable
+rate_uncertainty:
+  type: not_available
+  lower_per_year: null
+  upper_per_year: null
+source_zone_overlap_policy:
+  policy: not_defined
+  overlap_adjustment: required_before_prototype
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - fail-closed no-accepted source-frequency record for the Tschamut public source zone
+  - no source-occurrence catalogue is staged
+  - runtime annual or physical products remain deferred

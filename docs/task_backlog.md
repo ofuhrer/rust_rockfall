@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-690: Promote Physical-Evidence Intake From Design Review To Measured Records
-
-Goal: Replace remaining design-review-only physical-probability blockers with measured or explicitly absent source, release, and block-population records.
-
-Capability gap reduced: Physical-probability evidence readiness.
-
-Why this outranks alternatives: The phase-change matrix ranks physical-probability evidence as the first scientifically useful next action.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_physical_credibility_evidence_gaps.py`
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/source_frequency_evidence_contract.md`
-- `docs/block_release_probability_evidence_contract.md`
-
-Deliverables:
-
-- Measured intake records or fail-closed absence records for release probability and block population, plus refreshed physical-credibility and calibration-gap outputs.
-
-Definition of done:
-
-- Focused physical-credibility tests pass and the first remaining physical-probability blocker moves to a measured data gap rather than a process gap.
-
-Scope: Do not synthesize physical probabilities from placeholders; absence is an acceptable measured result.
-
 ### TB-691: Exercise A Minimal Distributed Chunk Submission Smoke On Balfrin
 
 Goal: Prove the mechanics for multiple chunk jobs, shared filesystem roots, leases, and deterministic collection without claiming Swiss-wide execution.

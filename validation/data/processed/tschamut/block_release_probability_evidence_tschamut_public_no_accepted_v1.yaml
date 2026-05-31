@@ -1,0 +1,43 @@
+schema_version: block_release_probability_evidence_v1
+record_id: tschamut_public_block_release_probability_no_accepted_v1
+record_status: no_accepted_block_release_probability_evidence
+prototype_authorized: false
+operational_status: research_diagnostic
+probability_model_id: tschamut_no_accepted_block_release_probability_v1
+probability_mode: block_release_probability_evidence_only
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+source_event_class_id: tschamut_no_accepted_source_event_class_v1
+block_scenario_distribution:
+  denominator: conditional_probability_given_source_event
+  total_probability: null
+  scenarios: []
+release_cell_distribution:
+  denominator: conditional_probability_given_source_event_and_block_scenario
+  total_probability_by_block_scenario: []
+  release_cells: []
+sampling_weight_boundary:
+  sampling_weights_are_physical_probability: false
+  sampling_weight_column_allowed_as_probability: false
+uncertainty:
+  type: not_available
+  required_before_prototype: true
+  notes: No accepted block-scenario or release-cell probability record is staged.
+evidence_basis:
+  block_distribution: none_available
+  release_cell_distribution: none_available
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - fail-closed no-accepted block/release probability record for the Tschamut public source zone
+  - no release-cell or block-scenario probabilities are staged
+  - runtime annual or physical products remain deferred

@@ -89,12 +89,12 @@ SOURCE_FREQUENCY_FUTURE_GATE_PREREQUISITES: tuple[dict[str, Any], ...] = (
         "summary": "Overlap-adjusted reducers and uncertainty propagation must be accepted before annual or physical products are contemplated.",
     },
 )
-DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/private/source_frequency_evidence_tschamut_design_review_v1.yaml"
+DEFAULT_SOURCE_FREQUENCY_EVIDENCE_PATH = ROOT / "validation/data/processed/tschamut/source_frequency_evidence_tschamut_public_no_accepted_v1.yaml"
 DEFAULT_BLOCK_RELEASE_PROBABILITY_EVIDENCE_PATH = (
-    ROOT / "validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml"
+    ROOT / "validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_no_accepted_v1.yaml"
 )
 DEFAULT_BLOCK_POPULATION_EVIDENCE_PATH = (
-    ROOT / "validation/data/processed/tschamut/block_population_evidence_tschamut_public_candidate_v1.yaml"
+    ROOT / "validation/data/processed/tschamut/block_population_evidence_tschamut_public_no_accepted_v1.yaml"
 )
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT = ROOT / "validation/data/processed/observed_runout_deposition_benchmark"
 DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_MANIFEST = DEFAULT_OBSERVED_RUNOUT_DEPOSITION_BENCHMARK_ROOT / "manifest.json"
@@ -971,7 +971,7 @@ def release_zone_gap(
             "Tschamut source-zone metadata and policy are frozen and deterministic",
             "Release-zone provenance intake bridge labels workflow_generated, field_supported, mixed_provenance, and blocked_missing_provenance records without converting sampling weights into probabilities",
             "The candidate Chant Sura / Flüelapass manifest declares a source-zone contract shape",
-            "A Tschamut public block/release probability candidate is staged for design review from observed release-point inventory counts",
+            "A fail-closed no-accepted block/release probability record is staged instead of a design-review placeholder",
         ],
         "what_is_missing": [] if candidate_present else [
             "A second-site release-zone geometry with staged public geodata and provenance",
@@ -1016,7 +1016,7 @@ def block_population_gap(
             "Tschamut uses conditional sampling only",
             "Chant Sura contact fixtures carry block mass / radius and shape proxies for contact comparisons",
             "Conditional scenario weights remain conditional only and are not frequency evidence",
-            "A Tschamut public block-population candidate is staged for design review from processed block metadata",
+            "A fail-closed no-accepted block-population record is staged instead of a design-review placeholder",
         ],
         "what_is_missing": [] if candidate_present else [
             "A block-size survey or photogrammetry census with survey-frame provenance",
@@ -1059,6 +1059,10 @@ def source_frequency_gap(
         )
     elif classification == "partial":
         what_exists.append("A candidate source-frequency evidence record exists, but it is not accepted.")
+    else:
+        what_exists.append(
+            "A fail-closed no-accepted source-frequency record is staged instead of a design-review placeholder."
+        )
     return {
         "category": "source_frequency_and_temporal_frequency_evidence",
         "classification": classification,
@@ -1760,10 +1764,17 @@ def load_block_population_intake(path: Path | None = None) -> dict[str, Any]:
                 "operational_hazard_map_supported": False,
             },
         }
+    intake_classification = (
+        "present"
+        if summary.get("record_status") == "accepted_for_design_review"
+        else "missing"
+        if summary.get("record_status") == "no_accepted_block_population_evidence"
+        else "partial"
+    )
     return {
         "schema_version": "block_population_intake_summary_v1",
         "record_path": str(record_path),
-        "intake_classification": "present",
+        "intake_classification": intake_classification,
         **summary,
         "claim_boundary": {
             "annual_frequency_supported": False,
@@ -1776,15 +1787,27 @@ def load_block_population_intake(path: Path | None = None) -> dict[str, Any]:
 def validate_block_population_evidence_record(record_path: Path) -> dict[str, Any]:
     record = load_yaml(record_path)
     require(record.get("schema_version") == "block_population_evidence_v1", "block population schema mismatch")
-    require(str(record.get("record_status") or "") == "accepted_for_design_review", "block population candidate must be accepted_for_design_review")
+    status = str(record.get("record_status") or "")
+    require(
+        status in {"accepted_for_design_review", "no_accepted_block_population_evidence"},
+        "block population record_status must be accepted_for_design_review or no_accepted_block_population_evidence",
+    )
     require(record.get("prototype_authorized") is False, "block population prototype_authorized must be false")
     require(record.get("operational_status") == "research_diagnostic", "block population operational_status must be research_diagnostic")
     distribution = record.get("block_population_distribution")
     require(isinstance(distribution, dict), "block_population_distribution must be a mapping")
     classes = distribution.get("classes")
-    require(isinstance(classes, list) and classes, "block population classes must be nonempty")
+    require(isinstance(classes, list), "block population classes must be a list")
     total_count = distribution.get("total_count")
-    require(isinstance(total_count, int | float) and int(total_count) > 0, "block population total_count must be positive")
+    total_probability = distribution.get("total_probability")
+    if status == "no_accepted_block_population_evidence":
+        require(not classes, "no-accepted block population records must leave classes empty")
+        require(total_count is None, "no-accepted block population records must leave total_count empty")
+        require(total_probability is None, "no-accepted block population records must leave total_probability empty")
+    else:
+        require(classes, "block population classes must be nonempty")
+        require(isinstance(total_count, int | float) and int(total_count) > 0, "block population total_count must be positive")
+        require(isinstance(total_probability, int | float) and float(total_probability) > 0, "block population total_probability must be positive")
     probability_sum = 0.0
     counted = 0
     seen: set[str] = set()
@@ -1801,8 +1824,9 @@ def validate_block_population_evidence_record(record_path: Path) -> dict[str, An
         require(isinstance(probability, int | float) and float(probability) > 0, f"{class_id}.probability must be positive")
         probability_sum += float(probability)
         require(str(item.get("evidence_basis") or ""), f"{class_id}.evidence_basis is required")
-    require(counted == int(total_count), "block population class counts must equal total_count")
-    require(abs(probability_sum - 1.0) <= 1e-9, "block population probabilities must sum to 1.0")
+    if status != "no_accepted_block_population_evidence":
+        require(counted == int(total_count), "block population class counts must equal total_count")
+        require(abs(probability_sum - 1.0) <= 1e-9, "block population probabilities must sum to 1.0")
     claim_boundary = record.get("claim_boundary")
     require(isinstance(claim_boundary, dict), "block population claim_boundary must be a mapping")
     for field in (
@@ -1815,10 +1839,11 @@ def validate_block_population_evidence_record(record_path: Path) -> dict[str, An
         require(claim_boundary.get(field) is False, f"block population {field} must be false")
     return {
         "record_id": str(record.get("record_id") or ""),
-        "record_status": str(record.get("record_status") or ""),
+        "record_status": status,
         "source_zone_id": str(record.get("source_zone_id") or ""),
+        "intake_classification": "present" if status == "accepted_for_design_review" else "missing",
         "block_population_class_count": len(classes),
-        "total_count": int(total_count),
+        "total_count": int(total_count) if isinstance(total_count, int | float) else 0,
         "prototype_authorized": False,
     }
 

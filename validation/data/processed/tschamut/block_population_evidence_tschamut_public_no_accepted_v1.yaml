@@ -1,0 +1,36 @@
+schema_version: block_population_evidence_v1
+record_id: tschamut_public_block_population_no_accepted_v1
+record_status: no_accepted_block_population_evidence
+prototype_authorized: false
+operational_status: research_diagnostic
+source_zone_id: tschamut_public_lps_release_bbox
+source_geometry_version: tschamut_public_source_zone_metadata_v1
+source_geometry_hash: sha256:f38651a8d76407ca3edc46af03246380007773bee59aae9f95abffc6f99cae06
+crs_epsg: 2056
+vertical_datum: LN02
+population_basis: none_available
+source_table: none_available
+block_population_distribution:
+  denominator: conditional_block_population_within_processed_inventory
+  total_count: null
+  total_probability: null
+  classes: []
+uncertainty:
+  type: not_available
+  required_before_prototype: true
+  notes: No accepted block-population census is staged for the Tschamut public source zone.
+evidence_basis:
+  block_population: none_available
+  block_size_distribution: none_available
+calibration_dataset_ids: []
+validation_dataset_ids: []
+claim_boundary:
+  annual_frequency_supported: false
+  physical_probability_supported: false
+  return_period_supported: false
+  operational_hazard_map_supported: false
+  risk_or_exposure_supported: false
+limitations:
+  - fail-closed no-accepted block-population record for the Tschamut public source zone
+  - representative scenarios remain separate from population evidence
+  - runtime annual or physical products remain deferred

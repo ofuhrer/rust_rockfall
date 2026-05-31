@@ -96,8 +96,10 @@ level, but the annual or physical prototype remains blocked by missing accepted
 evidence, missing overlap-adjusted reducers, missing uncertainty propagation,
 and missing validation/calibration review for frequency products.
 
-The current Tschamut public candidate record is
-`validation/data/processed/tschamut/block_release_probability_evidence_tschamut_public_candidate_v1.yaml`.
-It is accepted for design review only from the observed public release-point
-inventory. It does not authorize runtime physical products, does not reuse
-scenario sampling weights, and does not provide annual source frequency.
+The current Tschamut assessment input in this checkout now stages a matching
+`no_accepted_block_release_probability_evidence` record, so the release
+probability gap is recorded as an explicit data absence rather than a
+design-review candidate. It does not authorize runtime physical products, does
+not reuse scenario sampling weights, and does not provide annual source
+frequency. It is not accepted evidence for Tschamut or any real Swiss source
+zone.
