@@ -111,7 +111,7 @@ Held-out subset:
 - deposition-cloud mean nearest error: `8.09 m`
 - lateral spread error: `9.50 m`
 
-The held-out objective remains close to the calibration objective for this split. That does not prove predictive skill; it mainly shows that this expanded local grid has not visibly overfit the calibration subset. The selected parameters improve runout and centroid errors substantially compared with the prior 16-candidate smoke, while lateral spread remains weaker on the held-out subset.
+The held-out objective remains measured for this split, but the explicit acceptance review still rejects `candidate_103` because the holdout runout residual maximum is `55.11 m` against a `30.0 m` threshold and the holdout runout residual mean is `18.22 m` against a `15.0 m` threshold. That is a measured limitation, not a missing-review problem. The selected parameters improve runout and centroid errors substantially compared with the prior 16-candidate smoke, while lateral spread remains weaker on the held-out subset.
 
 The measured sensitivity summary in `summary.json` identifies `friction_coefficient` as the strongest mean objective driver across the explicit grid. The calibration-objective span between the best and worst candidates is `1.4124`, so the run confirms that parameter changes produce measurable runout/deposition metric deltas.
 

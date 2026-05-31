@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-688: Rework Calibration Candidate Selection Against Holdout Residuals
-
-Goal: Move from a rejected selected calibration candidate to an accepted candidate or a clearer model/data limitation.
-
-Capability gap reduced: Accepted validation/calibration evidence, currently blocked by holdout residual quality.
-
-Why this outranks alternatives: The scale surfaces rank accepted scientific validation as the first blocker for physical and operational claims.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `calibration/experiments/tschamut_v0_3/summary.json`
-- `archive/task_reports/calibration_acceptance_review_tb676.md`
-- `docs/tschamut_calibration.md`
-
-Deliverables:
-
-- A recalculated calibration review that evaluates available candidates against holdout max/mean residuals and either selects an accepted candidate or records the first physical/model limitation.
-
-Definition of done:
-
-- Focused calibration tests pass, the selected candidate status is explicit, and any failure is tied to a measured residual threshold rather than a missing review.
-
-Scope: Do not tune on holdout labels; preserve calibration/validation separation.
-
 ### TB-689: Run A Cross-Site Conditional Validation Smoke
 
 Goal: Test whether the current calibrated or best available parameters transfer to a second site under conditional-use semantics.

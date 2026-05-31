@@ -1163,7 +1163,8 @@ def calibration_gap(
             "Chant Sura contact fixtures support model comparison and shape sensitivity only",
             (
                 f"The Tschamut calibration run measured {readiness['evidence_summary'].get('candidate_count', 0)} "
-                f"candidates and selected {readiness['evidence_summary'].get('selected_candidate_id', '')}"
+                f"candidates and selected {readiness['evidence_summary'].get('selected_candidate_id', '')} "
+                f"with selected_candidate_status={readiness['evidence_summary'].get('selected_candidate_status', '')}"
                 if measured_fit_ready
                 else (
                     "The Tschamut calibration objective names its training partition, excluded holdout partition, "
@@ -1208,6 +1209,86 @@ def load_tschamut_calibration_summary(path: Path | None = None) -> dict[str, Any
     return summary
 
 
+def recalculate_tschamut_calibration_acceptance_review(summary: dict[str, Any]) -> dict[str, Any]:
+    best = summary.get("best_candidate") if isinstance(summary.get("best_candidate"), dict) else {}
+    residuals = summary.get("residual_diagnostics") if isinstance(summary.get("residual_diagnostics"), dict) else {}
+    holdout_residuals = residuals.get("holdout") if isinstance(residuals.get("holdout"), dict) else {}
+    holdout_summaries = holdout_residuals.get("summaries") if isinstance(holdout_residuals.get("summaries"), dict) else {}
+    holdout_runout = holdout_summaries.get("runout_abs_error_m") if isinstance(holdout_summaries.get("runout_abs_error_m"), dict) else {}
+    holdout_overlap = best.get("holdout_deposition_cloud_overlap_fraction")
+    acceptance_review = summary.get("calibration_acceptance_review")
+    if not isinstance(acceptance_review, dict):
+        acceptance_review = summary.get("acceptance_review") if isinstance(summary.get("acceptance_review"), dict) else {}
+
+    threshold_source = str(
+        acceptance_review.get("threshold_source")
+        or "TB-676 residual-quality screen, predeclared before any parameter promotion"
+    )
+    observed_max = holdout_runout.get("max")
+    observed_mean = holdout_runout.get("mean")
+    observed_overlap = float(holdout_overlap) if holdout_overlap is not None else None
+
+    criteria: list[dict[str, Any]] = []
+    criterion_specs = (
+        ("holdout_runout_abs_error_max_m", "runout_abs_error_m.max", "<=", 30.0, observed_max),
+        ("holdout_runout_abs_error_mean_m", "runout_abs_error_m.mean", "<=", 15.0, observed_mean),
+        (
+            "holdout_deposition_cloud_overlap_fraction",
+            "deposition_cloud_overlap_fraction",
+            ">=",
+            0.7,
+            observed_overlap,
+        ),
+    )
+    first_failed = ""
+    for criterion_id, metric, operator, threshold, observed in criterion_specs:
+        if observed is None:
+            status = "missing"
+        elif operator == "<=":
+            status = "pass" if float(observed) <= threshold else "fail"
+        else:
+            status = "pass" if float(observed) >= threshold else "fail"
+        if status != "pass" and not first_failed:
+            first_failed = criterion_id
+        criteria.append(
+            {
+                "criterion_id": criterion_id,
+                "partition": "holdout",
+                "metric": metric,
+                "operator": operator,
+                "threshold": threshold,
+                "observed": observed,
+                "status": status,
+            }
+        )
+
+    review_is_acceptance = all(item["status"] == "pass" for item in criteria)
+    selected_candidate_status = "accepted_residual_quality" if review_is_acceptance else "rejected_residual_quality"
+    return {
+        "schema_version": "calibration_acceptance_review_v1",
+        "review_status": selected_candidate_status,
+        "decision": selected_candidate_status,
+        "threshold_source": threshold_source,
+        "selected_candidate_id": str(best.get("candidate_id") or ""),
+        "selected_candidate_status": selected_candidate_status,
+        "selected_candidate_accepted_for_validation": review_is_acceptance,
+        "criteria": criteria,
+        "first_failed_criterion": first_failed,
+        "selected_candidate_first_limitation": first_failed if first_failed else "",
+        "selected_parameters_promoted_to_validation": review_is_acceptance,
+        "validation_acceptance_claimed": review_is_acceptance,
+        "physical_probability_supported": review_is_acceptance,
+        "interpretation": (
+            "The selected calibration candidate is accepted for validation use."
+            if review_is_acceptance
+            else (
+                "The selected calibration candidate remains diagnostic only because holdout runout residuals "
+                "exceed the predeclared acceptance thresholds."
+            )
+        ),
+    }
+
+
 def build_calibration_readiness_detail(
     objective_contract: dict[str, Any],
     summary: dict[str, Any],
@@ -1218,9 +1299,7 @@ def build_calibration_readiness_detail(
     residuals = summary.get("residual_diagnostics") if isinstance(summary.get("residual_diagnostics"), dict) else {}
     calibration_residuals = residuals.get("calibration") if isinstance(residuals.get("calibration"), dict) else {}
     holdout_residuals = residuals.get("holdout") if isinstance(residuals.get("holdout"), dict) else {}
-    acceptance_review = summary.get("calibration_acceptance_review")
-    if not isinstance(acceptance_review, dict):
-        acceptance_review = summary.get("acceptance_review") if isinstance(summary.get("acceptance_review"), dict) else {}
+    acceptance_review = recalculate_tschamut_calibration_acceptance_review(summary)
     acceptance_decision = str(
         acceptance_review.get("decision")
         or acceptance_review.get("review_status")
@@ -1313,6 +1392,10 @@ def build_calibration_readiness_detail(
                 "acceptance_decision": acceptance_decision,
                 "threshold_source": threshold_source,
                 "failed_criterion": failed_criterion,
+                "selected_candidate_status": acceptance_review.get("selected_candidate_status", ""),
+                "first_physical_model_limitation": acceptance_review.get(
+                    "selected_candidate_first_limitation", ""
+                ),
                 "acceptance_review": acceptance_review,
             },
             "next_action": residual_quality_next_action,
@@ -1355,6 +1438,11 @@ def build_calibration_readiness_detail(
             "candidate_count": summary_candidate_count,
             "objective_candidate_count": objective_candidate_count,
             "selected_candidate_id": selected_candidate_id,
+            "selected_candidate_status": acceptance_review.get("selected_candidate_status", ""),
+            "selected_candidate_accepted_for_validation": acceptance_review.get(
+                "selected_candidate_accepted_for_validation", False
+            ),
+            "first_physical_model_limitation": acceptance_review.get("selected_candidate_first_limitation", ""),
             "calibration_objective": best.get("calibration_objective"),
             "holdout_objective": best.get("holdout_objective"),
             "calibration_holdout_overlap_count": overlap_count,
@@ -1368,6 +1456,8 @@ def build_calibration_readiness_detail(
             if first_blocker
             else "Review the measured calibration package before changing any validation or default parameters."
         ),
+        "selected_candidate_status": acceptance_review.get("selected_candidate_status", ""),
+        "first_physical_model_limitation": acceptance_review.get("selected_candidate_first_limitation", ""),
         "claim_boundary": {
             "calibration_claim_supported": False,
             "validation_acceptance_claimed": False,

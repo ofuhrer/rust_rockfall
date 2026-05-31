@@ -8,6 +8,7 @@ from scripts import assess_validation_calibration_evidence_gaps as assessment
 class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
     def test_json_shape_and_boundaries(self) -> None:
         report = assessment.build_report()
+        text = assessment.render_text_report(report)
 
         expected_keys = {
             "schema_version",
@@ -50,6 +51,7 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertFalse(
             report["post_diagnostic_scale_context"]["claim_boundaries"]["scientific_validity_upgraded"]
         )
+        self.assertIn("selected_candidate_status=rejected_residual_quality", text)
         self.assertEqual(report["validation_leakage_guardrails"]["guardrail_status"], "passed")
         self.assertEqual(report["source_frequency_intake"]["intake_classification"], "accepted")
         self.assertEqual(
@@ -198,12 +200,25 @@ class ValidationCalibrationEvidenceGapsTest(unittest.TestCase):
         self.assertEqual(calibration_detail["measured_fit_status"], "present")
         self.assertEqual(calibration_detail["evidence_summary"]["candidate_count"], 144)
         self.assertEqual(calibration_detail["evidence_summary"]["selected_candidate_id"], "candidate_103")
+        self.assertEqual(
+            calibration_detail["evidence_summary"]["selected_candidate_status"],
+            "rejected_residual_quality",
+        )
+        self.assertFalse(calibration_detail["evidence_summary"]["selected_candidate_accepted_for_validation"])
+        self.assertEqual(
+            calibration_detail["evidence_summary"]["first_physical_model_limitation"],
+            "holdout_runout_abs_error_max_m",
+        )
         self.assertEqual(calibration_detail["evidence_summary"]["calibration_holdout_overlap_count"], 0)
         sub_blockers = {item["blocker_id"]: item for item in calibration_detail["sub_blockers"]}
         self.assertEqual(sub_blockers["fitted_parameter_provenance"]["status"], "present")
         self.assertEqual(sub_blockers["holdout_scoring_completeness"]["status"], "present")
         self.assertEqual(sub_blockers["residual_quality_review"]["status"], "rejected")
         self.assertEqual(sub_blockers["acceptance_threshold"]["status"], "present")
+        self.assertEqual(
+            sub_blockers["residual_quality_review"]["evidence"]["selected_candidate_status"],
+            "rejected_residual_quality",
+        )
         self.assertEqual(
             sub_blockers["residual_quality_review"]["evidence"]["failed_criterion"],
             "holdout_runout_abs_error_max_m",

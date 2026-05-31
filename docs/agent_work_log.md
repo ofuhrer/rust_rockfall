@@ -11260,3 +11260,27 @@ completed history.
 - Decision: the second-site prepared-pilot slice remains blocked until the swissTLM3D metadata sidecar is staged; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, or scale-up meaning is implied.
 - Boundaries: fail-closed blocked report only; no public-context download, no second-site ensemble, no distributed execution, and no claim upgrade beyond the explicit missing-input report.
 - Next task: not inspected per TB-687 hard-stop scope.
+
+### TB-688: Rework Calibration Candidate Selection Against Holdout Residuals
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: rework the Tschamut v0.3 calibration review so the selected candidate status is explicit and the holdout residual limitation is recorded as a measured threshold failure rather than a missing review.
+- Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Recalculated the calibration acceptance review from the measured Tschamut residual diagnostics inside the assessment helper, exposing `selected_candidate_status` and the first physical/model limitation in the calibration readiness detail.
+  - Kept the failure closed on measured holdout residuals: `candidate_103` remains `rejected_residual_quality` because the holdout runout absolute error max is `55.111764 m` against a `30.0 m` threshold and the holdout runout absolute error mean is `18.217757 m` against a `15.0 m` threshold.
+  - Updated the Tschamut calibration note to state the explicit rejection and removed TB-688 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-688 --format json`
+  - `rg -n "^### TB-688:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python -m pytest tests/test_validation_calibration_evidence_gaps.py -q`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Metrics: selected candidate `candidate_103`; selected candidate status `rejected_residual_quality`; first failed criterion `holdout_runout_abs_error_max_m`; holdout max `55.111764 m` vs `30.0 m`; holdout mean `18.217757 m` vs `15.0 m`; holdout overlap `0.7777777777777778`; calibration/holdout overlap count `0`; calibration separation preflight `passed`; prohibited calibration-to-validation crossings `0`.
+- Decision: no accepted calibration candidate was justified by the measured holdout residual screen, so the correct result is an explicit residual-quality rejection with a named first limitation.
+- Boundaries: calibration/validation separation preserved; no holdout tuning, no validation acceptance, no physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or distributed-execution claim change.
+- Next task: not inspected per TB-688 hard-stop scope.
