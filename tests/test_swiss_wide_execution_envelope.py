@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -252,16 +253,60 @@ class SwissWideExecutionEnvelopeTests(unittest.TestCase):
         report = estimator.build_national_data_inventory_smoke()
 
         self.assertEqual(report["status"], "planning_inventory_ready_missing_cache")
+        self.assertEqual(report["delta_status"], "measured_local_filesystem_inventory_delta_missing_national_cache")
         self.assertEqual(report["tile_count"], 43500)
         self.assertEqual(report["chunk_count"], 85)
         self.assertEqual(report["merge_group_count"], 11)
         self.assertEqual(report["terrain_product_tile_count"], 43500)
         self.assertGreater(report["estimated_required_input_bytes"], 0)
-        self.assertIn("swissalti3d_2m", report["missing_products"])
+        self.assertEqual(report["present_cache_product_count"], 5)
+        self.assertIn("swissalti3d_2m", report["present_cache_products"])
+        self.assertIn("swissimage_10cm_or_25cm", report["present_cache_products"])
+        self.assertIn("swisstlm3d", report["present_cache_products"])
+        self.assertIn("swisssurface3d_raster_0_5m", report["present_cache_products"])
+        self.assertIn("swissbuildings3d", report["present_cache_products"])
+        self.assertEqual(report["missing_national_product_count"], 5)
+        self.assertEqual(report["next_acquisition_command_status"], "blocked_missing_national_staging_helper")
+        self.assertIn("promote the local 2 m swissALTI3D cache", report["first_acquisition_action"])
         self.assertTrue(report["mapping_validation_ready"])
         self.assertTrue(report["inventory_sufficient_for_planning_only"])
         self.assertFalse(report["data_cache_ready"])
         self.assertFalse(report["execution_ready"])
+
+    def test_national_public_geodata_inventory_delta_reports_present_local_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            raw_root = root / "data" / "raw" / "swisstopo"
+            processed_root = root / "data" / "processed" / "swisstopo"
+            (raw_root / "swissimage").mkdir(parents=True)
+            (raw_root / "swisstlm3d").mkdir(parents=True)
+            (raw_root / "swisssurface3d_raster").mkdir(parents=True)
+            (raw_root / "swissbuildings3d").mkdir(parents=True)
+
+            (raw_root / "swissalti3d_2019_2696-1167_2_2056_5728.tif").write_bytes(b"alti")
+            (raw_root / "swissimage" / "swissimage-dop10_2019_2696-1167_2_2056.tif").write_bytes(b"image")
+            (raw_root / "swisstlm3d" / "swisstlm3d_2021-04_2056_5728.shp.zip").write_bytes(b"tlm")
+            (raw_root / "swisssurface3d_raster" / "swisssurface3d-raster_2020_2696-1167_0.5_2056_5728.tif").write_bytes(
+                b"surface"
+            )
+            (raw_root / "swissbuildings3d" / "swissbuildings3d_3_0_2021_1232-12_2056_5728.gdb.zip").write_bytes(b"buildings")
+
+            report = estimator.build_national_public_geodata_inventory_delta(
+                raw_root=raw_root,
+                processed_root=processed_root,
+            )
+
+        self.assertEqual(report["delta_status"], "measured_local_filesystem_inventory_delta_missing_national_cache")
+        self.assertEqual(report["present_cache_product_count"], 5)
+        self.assertEqual(report["missing_national_product_count"], 5)
+        self.assertEqual(report["inventory_delta"][0]["product_id"], "swissalti3d_2m")
+        self.assertEqual(report["inventory_delta"][0]["present_cache_count"], 1)
+        self.assertEqual(report["inventory_delta"][0]["present_cache_bytes"], 4)
+        self.assertEqual(report["inventory_delta"][1]["estimated_national_bytes"]["values"]["10cm"], 12810000000000)
+        self.assertEqual(report["inventory_delta"][1]["estimated_national_bytes"]["reference_label"], "25cm")
+        self.assertEqual(report["inventory_delta"][2]["estimated_national_bytes"]["status"], "unavailable")
+        self.assertIn("choose the national SWISSIMAGE resolution", report["inventory_delta"][1]["first_acquisition_action"])
+        self.assertEqual(report["next_acquisition_command_status"], "blocked_missing_national_staging_helper")
 
     def test_fixture_loaded_summary_inputs_keep_the_projection_shape(self) -> None:
         with mock.patch.object(

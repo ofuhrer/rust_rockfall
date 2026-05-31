@@ -57,6 +57,17 @@ SWISS_WIDE_PLANNING_ASSUMPTIONS = {
 }
 DEFAULT_NATIONAL_TILING_INVENTORY = ROOT / "archive/task_reports/swiss_national_tiling_inventory_tb607.json"
 DEFAULT_NATIONAL_TILE_CHUNK_MAPPING = ROOT / "archive/task_reports/swiss_national_tile_chunk_mapping_tb608.json"
+NATIONAL_PUBLIC_GEODATA_INVENTORY_FOCUS = (
+    "swissalti3d_2m",
+    "swissimage_10cm_or_25cm",
+    "swisstlm3d",
+    "swisssurface3d_raster_0_5m",
+    "swissbuildings3d",
+)
+NATIONAL_PUBLIC_GEODATA_NEXT_ACQUISITION_COMMAND = (
+    "BLOCKED: no national staging helper exists yet; choose the product version/date and "
+    "promote the local cache into the national staging template with source, checksum, and coverage metadata."
+)
 
 MEASURED_SOURCE_COMMANDS = {
     "bounded_reducer_runtime_scaling": "PYENV_VERSION=system uv run python scripts/summarize_bounded_reducer_runtime_scaling.py --format json",
@@ -316,41 +327,174 @@ def _int_or_none(value: Any) -> int | None:
         return None
 
 
-def build_national_data_inventory_smoke(
+def _relative_cache_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _scan_cache_hits(root: Path, pattern: str, *, layer: str) -> list[dict[str, Any]]:
+    if not root.exists():
+        return []
+    hits: list[dict[str, Any]] = []
+    for path in sorted(root.rglob(pattern)):
+        if not path.is_file():
+            continue
+        hits.append(
+            {
+                "cache_layer": layer,
+                "path": _relative_cache_path(path),
+                "bytes": path.stat().st_size,
+            }
+        )
+    return hits
+
+
+def _estimated_national_bytes_row(product: dict[str, Any]) -> dict[str, Any]:
+    product_id = str(product.get("product_id") or "")
+    if product_id == "swissalti3d_2m":
+        value = _int_or_none(product.get("estimated_raw_bytes_national_float32"))
+        return {
+            "status": "estimated",
+            "values": {"2m": value},
+            "reference_label": "2m",
+            "reference_bytes": value,
+            "reason": "",
+        }
+    if product_id == "swissimage_10cm_or_25cm":
+        value_10cm = _int_or_none(product.get("estimated_raw_bytes_national_rgb_10cm"))
+        value_25cm = _int_or_none(product.get("estimated_raw_bytes_national_rgb_25cm"))
+        return {
+            "status": "estimated",
+            "values": {"10cm": value_10cm, "25cm": value_25cm},
+            "reference_label": "25cm",
+            "reference_bytes": value_25cm,
+            "reason": "national byte estimate depends on whether the 10 cm or 25 cm delivery is selected",
+        }
+    if product_id == "swisssurface3d_raster_0_5m":
+        value = _int_or_none(product.get("estimated_raw_bytes_national_float32"))
+        return {
+            "status": "estimated",
+            "values": {"0.5m": value},
+            "reference_label": "0.5m",
+            "reference_bytes": value,
+            "reason": "",
+        }
+    return {
+        "status": "unavailable",
+        "values": {},
+        "reference_label": "",
+        "reference_bytes": None,
+        "reason": "national package/version not selected in the source inventory",
+    }
+
+
+def _first_acquisition_action(product_id: str, present_cache_count: int) -> str:
+    if product_id == "swissalti3d_2m":
+        return (
+            "promote the local 2 m swissALTI3D cache into the deterministic national staging template "
+            "and add version/date, source URL, and raw/processed checksums"
+        )
+    if product_id == "swissimage_10cm_or_25cm":
+        return (
+            "choose the national SWISSIMAGE resolution, then stage the delivery into the matching raw "
+            "cache template and add version/date, source URL, and checksums"
+        )
+    if product_id == "swisstlm3d":
+        return (
+            "choose the national swissTLM3D package/version, then stage the delivery into the versioned "
+            "raw cache template and add checksums plus coverage metadata"
+        )
+    if product_id == "swisssurface3d_raster_0_5m":
+        return (
+            "promote the local 0.5 m swissSURFACE3D Raster cache into the national staging template and "
+            "add version/date, source URL, and checksums"
+        )
+    if product_id == "swissbuildings3d":
+        return (
+            "choose the national swissBUILDINGS3D package/version, then stage the delivery into the raw "
+            "cache template and add checksums plus coverage metadata"
+        )
+    if present_cache_count:
+        return "promote the local cache into the national staging template and add version/date plus checksums"
+    return "acquire the missing national product into the expected raw cache template and record version/date plus checksums"
+
+
+def _build_national_public_geodata_inventory_delta_row(
+    product: dict[str, Any],
+    *,
+    raw_root: Path,
+    processed_root: Path,
+) -> dict[str, Any]:
+    product_id = str(product.get("product_id") or "")
+    present_caches: list[dict[str, Any]] = []
+    if product_id == "swissalti3d_2m":
+        present_caches.extend(_scan_cache_hits(raw_root, "swissalti3d*.tif", layer="raw"))
+        present_caches.extend(_scan_cache_hits(processed_root / "national" / "swissalti3d" / "2m", "*.tif", layer="processed_national"))
+    elif product_id == "swissimage_10cm_or_25cm":
+        present_caches.extend(_scan_cache_hits(raw_root / "swissimage", "*.tif", layer="raw"))
+        present_caches.extend(_scan_cache_hits(processed_root / "national" / "swissimage", "*.tif", layer="processed_national"))
+    elif product_id == "swisstlm3d":
+        present_caches.extend(_scan_cache_hits(raw_root / "swisstlm3d", "swisstlm3d*.zip", layer="raw"))
+        present_caches.extend(_scan_cache_hits(processed_root / "national" / "swisstlm3d", "*.gpkg", layer="processed_national"))
+    elif product_id == "swisssurface3d_raster_0_5m":
+        present_caches.extend(_scan_cache_hits(raw_root / "swisssurface3d_raster", "swisssurface3d-raster*.tif", layer="raw"))
+        present_caches.extend(
+            _scan_cache_hits(processed_root / "national" / "swisssurface3d_raster", "*.tif", layer="processed_national")
+        )
+    elif product_id == "swissbuildings3d":
+        present_caches.extend(_scan_cache_hits(raw_root / "swissbuildings3d", "swissbuildings3d*.zip", layer="raw"))
+        present_caches.extend(_scan_cache_hits(processed_root / "national" / "swissbuildings3d", "*.gpkg", layer="processed_national"))
+
+    present_cache_bytes = sum(int(hit.get("bytes") or 0) for hit in present_caches)
+    estimated_national_bytes = _estimated_national_bytes_row(product)
+    missing_national = not bool(present_caches)
+    if product_id in NATIONAL_PUBLIC_GEODATA_INVENTORY_FOCUS:
+        missing_national = True
+    return {
+        "product_id": product_id,
+        "swisstopo_product": product.get("swisstopo_product"),
+        "role": product.get("role"),
+        "cache_class": product.get("cache_class"),
+        "expected_raw_cache_path_template": product.get("expected_raw_cache_path_template"),
+        "expected_processed_cache_path_template": product.get("expected_processed_cache_path_template"),
+        "present_caches": present_caches,
+        "present_cache_count": len(present_caches),
+        "present_cache_bytes": present_cache_bytes,
+        "local_cache_status": "present_local_cache_missing_national_stage" if present_caches else "missing_local_cache_missing_national_stage",
+        "missing_national_product": missing_national,
+        "estimated_national_bytes": estimated_national_bytes,
+        "first_acquisition_action": _first_acquisition_action(product_id, len(present_caches)),
+        "next_acquisition_command": NATIONAL_PUBLIC_GEODATA_NEXT_ACQUISITION_COMMAND,
+    }
+
+
+def build_national_public_geodata_inventory_delta(
     *,
     inventory_path: Path = DEFAULT_NATIONAL_TILING_INVENTORY,
     chunk_mapping_path: Path = DEFAULT_NATIONAL_TILE_CHUNK_MAPPING,
+    raw_root: Path = ROOT / "data/raw/swisstopo",
+    processed_root: Path = ROOT / "data/processed/swisstopo",
 ) -> dict[str, Any]:
     inventory = _load_json_file(inventory_path, "national tiling inventory")
     mapping = _load_json_file(chunk_mapping_path, "national tile chunk mapping")
-
     products = [dict(row) for row in inventory.get("products") or [] if isinstance(row, dict)]
-    required_products = [
-        product
-        for product in products
-        if str(product.get("role") or "").startswith("mandatory")
-        or product.get("product_id") in {"swissalti3d_2m", "swissimage_10cm_or_25cm", "swisstlm3d"}
-    ]
-    missing_products = [
-        str(product.get("product_id"))
-        for product in products
-        if str(product.get("current_cache_status") or "missing") != "ready"
-    ]
-    estimated_required_input_bytes = 0
-    for product in required_products:
-        for key in (
-            "estimated_raw_bytes_national_float32",
-            "estimated_raw_bytes_national_rgb_25cm",
-            "estimated_raw_bytes_national",
-        ):
-            value = _int_or_none(product.get(key))
-            if value is not None:
-                estimated_required_input_bytes += value
-                break
+    product_rows: list[dict[str, Any]] = []
+    for product_id in NATIONAL_PUBLIC_GEODATA_INVENTORY_FOCUS:
+        product = next((row for row in products if str(row.get("product_id") or "") == product_id), None)
+        if product is None:
+            raise SwissWideExecutionEnvelopeError(f"inventory missing required product row: {product_id}")
+        product_rows.append(
+            _build_national_public_geodata_inventory_delta_row(
+                product,
+                raw_root=raw_root,
+                processed_root=processed_root,
+            )
+        )
 
     grid = dict(inventory.get("tiling_grid") or {})
     chunking = dict(mapping.get("chunking_policy") or {})
-    national_expected_input_bytes = dict(mapping.get("national_expected_input_bytes") or {})
     chunks = mapping.get("chunks") if isinstance(mapping.get("chunks"), list) else []
     merge_groups = mapping.get("merge_groups") if isinstance(mapping.get("merge_groups"), list) else []
     chunk_count = _int_or_none(chunking.get("chunk_count")) or len(chunks)
@@ -358,17 +502,41 @@ def build_national_data_inventory_smoke(
     tile_count = _int_or_none(chunking.get("tile_count")) or _int_or_none(grid.get("national_1km_tile_count_estimate"))
     validation = dict(mapping.get("validation") or {})
     validation_ready = bool(validation) and all(bool(value) for value in validation.values())
-    terrain_product = next((product for product in products if product.get("product_id") == "swissalti3d_2m"), {})
-    first_chunk = dict(chunks[0]) if chunks else {}
-    last_chunk = dict(chunks[-1]) if chunks else {}
+    estimated_required_input_bytes = 0
+    for product in products:
+        if str(product.get("role") or "").startswith("mandatory") or product.get("product_id") in {
+            "swissalti3d_2m",
+            "swissimage_10cm_or_25cm",
+            "swisstlm3d",
+        }:
+            for key in (
+                "estimated_raw_bytes_national_float32",
+                "estimated_raw_bytes_national_rgb_25cm",
+                "estimated_raw_bytes_national_rgb_10cm",
+                "estimated_raw_bytes_national",
+            ):
+                value = _int_or_none(product.get(key))
+                if value is not None:
+                    estimated_required_input_bytes += value
+                    break
 
-    planning_only = bool(tile_count and chunk_count and merge_group_count and validation_ready)
-    data_cache_ready = not missing_products
-    inventory_sufficient_for_planning_only = planning_only and not data_cache_ready
+    present_cache_products = [row["product_id"] for row in product_rows if row["present_cache_count"] > 0]
+    missing_national_products = [row["product_id"] for row in product_rows if row["missing_national_product"]]
+    estimated_national_bytes_reference_total = sum(
+        int(row["estimated_national_bytes"]["reference_bytes"])
+        for row in product_rows
+        if isinstance(row.get("estimated_national_bytes"), dict) and row["estimated_national_bytes"].get("reference_bytes") is not None
+    )
+    estimated_national_bytes_unknown_products = [
+        row["product_id"]
+        for row in product_rows
+        if row["estimated_national_bytes"].get("status") == "unavailable"
+    ]
 
     return {
-        "schema_version": "swiss_national_data_inventory_smoke_v1",
-        "status": "planning_inventory_ready_missing_cache" if inventory_sufficient_for_planning_only else "blocked_missing_inventory",
+        "schema_version": "swiss_national_public_geodata_inventory_delta_v1",
+        "status": "planning_inventory_ready_missing_cache",
+        "delta_status": "measured_local_filesystem_inventory_delta_missing_national_cache",
         "inventory_path": str(inventory_path),
         "chunk_mapping_path": str(chunk_mapping_path),
         "inventory_status": inventory.get("inventory_status"),
@@ -377,36 +545,79 @@ def build_national_data_inventory_smoke(
         "chunk_count": chunk_count,
         "merge_group_count": merge_group_count,
         "chunk_size_tiles": _int_or_none(chunking.get("chunk_size_tiles")),
-        "last_chunk_tile_count": _int_or_none(last_chunk.get("tile_count")),
-        "terrain_product_tile_count": _int_or_none(dict(terrain_product).get("tile_count_estimate")),
+        "last_chunk_tile_count": _int_or_none((chunks[-1] or {}).get("tile_count")) if chunks else None,
+        "terrain_product_tile_count": _int_or_none(next((row for row in products if row.get("product_id") == "swissalti3d_2m"), {}).get("tile_count_estimate")),
         "estimated_required_input_bytes": estimated_required_input_bytes,
-        "national_expected_input_bytes": national_expected_input_bytes,
-        "missing_products": missing_products,
-        "missing_product_count": len(missing_products),
+        "present_cache_products": present_cache_products,
+        "present_cache_product_count": len(present_cache_products),
+        "missing_national_products": missing_national_products,
+        "missing_national_product_count": len(missing_national_products),
+        "estimated_national_bytes_reference_total": estimated_national_bytes_reference_total,
+        "estimated_national_bytes_unknown_products": estimated_national_bytes_unknown_products,
+        "inventory_delta": product_rows,
         "mapping_validation": validation,
         "mapping_validation_ready": validation_ready,
-        "first_chunk_id": first_chunk.get("chunk_id"),
-        "last_chunk_id": last_chunk.get("chunk_id"),
-        "inventory_sufficient_for_planning_only": inventory_sufficient_for_planning_only,
-        "data_cache_ready": data_cache_ready,
+        "inventory_sufficient_for_planning_only": bool(tile_count and chunk_count and merge_group_count and validation_ready),
+        "data_cache_ready": not missing_national_products,
         "execution_ready": False,
+        "first_acquisition_action": product_rows[0]["first_acquisition_action"] if product_rows else "",
+        "next_acquisition_command_status": "blocked_missing_national_staging_helper",
+        "next_acquisition_command": NATIONAL_PUBLIC_GEODATA_NEXT_ACQUISITION_COMMAND,
         "claim_boundary": (
-            "share-safe inventory and chunk planning only; no national data cache, Swiss-wide execution, "
-            "distributed execution, operational, annual, physical-probability, risk, exposure, or vulnerability claim"
+            "share-safe inventory and chunk planning only; local caches may be present, but no national data cache, "
+            "Swiss-wide execution, distributed execution, operational, annual, physical-probability, risk, exposure, or "
+            "vulnerability claim is made"
         ),
     }
+
+
+def build_national_data_inventory_smoke(
+    *,
+    inventory_path: Path = DEFAULT_NATIONAL_TILING_INVENTORY,
+    chunk_mapping_path: Path = DEFAULT_NATIONAL_TILE_CHUNK_MAPPING,
+) -> dict[str, Any]:
+    report = build_national_public_geodata_inventory_delta(
+        inventory_path=inventory_path,
+        chunk_mapping_path=chunk_mapping_path,
+    )
+    # Preserve the original smoke fields for compatibility with older checks.
+    inventory = _load_json_file(inventory_path, "national tiling inventory")
+    mapping = _load_json_file(chunk_mapping_path, "national tile chunk mapping")
+    chunks = mapping.get("chunks") if isinstance(mapping.get("chunks"), list) else []
+    first_chunk = dict(chunks[0]) if chunks else {}
+    report["national_expected_input_bytes"] = dict(mapping.get("national_expected_input_bytes") or {})
+    report["missing_products"] = [
+        str(product.get("product_id"))
+        for product in [dict(row) for row in inventory.get("products") or [] if isinstance(row, dict)]
+        if str(product.get("current_cache_status") or "missing") != "ready"
+    ]
+    report["missing_product_count"] = len(report["missing_products"])
+    report["first_chunk_id"] = first_chunk.get("chunk_id")
+    report["last_chunk_id"] = dict(chunks[-1]).get("chunk_id") if chunks else None
+    report["data_cache_ready"] = False
+    report["execution_ready"] = False
+    report["inventory_sufficient_for_planning_only"] = bool(
+        report.get("tile_count") and report.get("chunk_count") and report.get("merge_group_count") and report.get("mapping_validation_ready")
+    )
+    return report
 
 
 def render_national_data_inventory_smoke_text(report: dict[str, Any]) -> str:
     return "\n".join(
         [
             f"national_data_inventory_smoke: {report.get('status')}",
+            f"national_public_geodata_inventory_delta: {report.get('delta_status')}",
             f"tile_count: {report.get('tile_count')}",
             f"chunk_count: {report.get('chunk_count')}",
             f"merge_group_count: {report.get('merge_group_count')}",
             f"estimated_required_input_bytes: {report.get('estimated_required_input_bytes')}",
-            f"missing_product_count: {report.get('missing_product_count')}",
-            f"missing_products: {', '.join(report.get('missing_products') or [])}",
+            f"present_cache_product_count: {report.get('present_cache_product_count')}",
+            f"present_cache_products: {', '.join(report.get('present_cache_products') or [])}",
+            f"missing_national_product_count: {report.get('missing_national_product_count')}",
+            f"missing_national_products: {', '.join(report.get('missing_national_products') or [])}",
+            f"first_acquisition_action: {report.get('first_acquisition_action')}",
+            f"next_acquisition_command_status: {report.get('next_acquisition_command_status')}",
+            f"next_acquisition_command: {report.get('next_acquisition_command')}",
             f"inventory_sufficient_for_planning_only: {report.get('inventory_sufficient_for_planning_only')}",
         ]
     )

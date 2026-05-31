@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-685: Build A National Public-Geodata Inventory Delta
-
-Goal: Turn the Swiss-wide data blocker into a concrete list of present and missing national DEM/context inputs.
-
-Capability gap reduced: `national_public_geodata_inventory` remains a first data blocker for Swiss-scale execution.
-
-Why this outranks alternatives: Compute scaling is less useful if the national payload inventory is unknown.
-
-Inspect first:
-
-- `scripts/estimate_swiss_wide_execution_envelope.py`
-- `archive/task_reports/swiss_national_tiling_inventory_tb607.json`
-- `archive/task_reports/swiss_national_tile_chunk_mapping_tb608.json`
-- `docs/swisstopo_data_strategy.md`
-
-Deliverables:
-
-- A measured inventory delta for swissALTI3D, SWISSIMAGE, swissTLM3D, swissSURFACE3D, and swissBUILDINGS3D that names present caches, missing products, estimated bytes, and first acquisition action.
-
-Definition of done:
-
-- The inventory delta is generated from local or Balfrin-visible filesystem state, focused tests pass, and the next acquisition/staging command is executable or explicitly blocked.
-
-Scope: Do not download or commit large raw swisstopo products unless an existing helper already stages them into ignored data roots.
-
 ### TB-686: Stage The Next Chant Sura Public Context Product
 
 Goal: Reduce the second-site blocker by staging one real missing Chant Sura context product into the existing public-geodata cache.
