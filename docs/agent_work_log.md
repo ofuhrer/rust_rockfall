@@ -11190,3 +11190,26 @@ completed history.
 - Decision: replay-critical artifacts are sufficient for copied-root inspection and metric regeneration, but the 384-zone run remains blocked as a replay-ready scale support point by hazard-output and manifest-byte budgets.
 - Boundaries: copied-root recovery and replay inspection only; no scheduler job was submitted for TB-684 and no simulation was rerun. No scale-up, distributed, non-`postproc`, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or Swiss-wide claim changed.
 - Next task: not inspected per TB-684 hard-stop scope.
+
+### TB-685: Build A National Public-Geodata Inventory Delta
+
+- Date: 2026-05-31
+- Commit: `d8e0e1e`
+- Objective: turn the Swiss-wide public-geodata blocker into a filesystem-backed inventory delta that distinguishes present local caches from missing national staging for swissALTI3D, SWISSIMAGE, swissTLM3D, swissSURFACE3D Raster, and swissBUILDINGS3D.
+- Files changed: `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_swiss_wide_execution_envelope.py`, `archive/task_reports/swiss_national_public_geodata_inventory_delta_tb685.md`, `docs/task_backlog.md`
+- Implementation summary:
+  - Added a filesystem-backed national public-geodata inventory delta helper and CLI output layer on top of the existing Swiss-wide envelope smoke command.
+  - Measured local cache presence and byte totals for the five requested product families from the repo-visible swisstopo data roots, while keeping the national staging status blocked until a product-specific staging helper exists.
+  - Added focused regressions for the measured delta path and the real-repo smoke output, then archived the snapshot in a compact TB-685 report.
+  - Removed TB-685 from the active backlog and left the Swiss-wide execution and operational boundaries unchanged.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/estimate_swiss_wide_execution_envelope.py tests/test_swiss_wide_execution_envelope.py`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_swiss_wide_execution_envelope.SwissWideExecutionEnvelopeTests.test_national_data_inventory_smoke_summarizes_current_inventory tests.test_swiss_wide_execution_envelope.SwissWideExecutionEnvelopeTests.test_national_public_geodata_inventory_delta_reports_present_local_files -v`
+  - `PYENV_VERSION=system uv run python scripts/estimate_swiss_wide_execution_envelope.py --national-data-inventory-smoke --format text`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Boundaries: filesystem-backed inventory delta only; no national download, no national staging helper, no Swiss-wide execution authorization, no distributed execution, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
+- Next task: `TB-686`
