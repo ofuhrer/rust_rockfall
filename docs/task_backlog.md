@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-691: Exercise A Minimal Distributed Chunk Submission Smoke On Balfrin
-
-Goal: Prove the mechanics for multiple chunk jobs, shared filesystem roots, leases, and deterministic collection without claiming Swiss-wide execution.
-
-Capability gap reduced: Distributed execution mechanics, currently a first compute blocker for Swiss-scale readiness.
-
-Why this outranks alternatives: The Swiss-wide envelope marks distributed authorization/execution as a compute blocker independent of hazard physics.
-
-Inspect first:
-
-- `archive/task_reports/balfrin_distributed_chunk_dry_run_tb605.md`
-- `archive/task_reports/balfrin_national_chunk_execution_smoke_tb673.md`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- A minimal live Balfrin chunk submission/collection smoke with at least two chunk jobs, lease/state files, deterministic merge order, and restart-cost metrics.
-
-Definition of done:
-
-- Jobs reach terminal state, merged outputs are deterministic, focused tests pass, and the result is classified as distributed-mechanics evidence only.
-
-Scope: Keep chunk payload small; do not promote to Swiss-wide execution.
-
 ### TB-692: Saturate The Empty Postproc Partition With Bounded Work
 
 Goal: Measure how far bounded hazard or chunk jobs can fill `postproc` before queue, memory, I/O, or filesystem limits appear.

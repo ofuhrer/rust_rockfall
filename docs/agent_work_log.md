@@ -11330,3 +11330,25 @@ completed history.
 - Result/status: completed
 - Boundaries: no physical-probability claim upgrade, no annual-frequency claim, no operational readiness claim, and no synthetic probabilities from placeholders.
 - Next task: `TB-691`
+
+### TB-691: Exercise A Minimal Distributed Chunk Submission Smoke On Balfrin
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: attempt the smallest live Balfrin `postproc` distributed chunk submission smoke with two chunk jobs, shared scratch state, leases, deterministic collection, and restart-cost metrics.
+- Files changed: `archive/task_reports/balfrin_distributed_chunk_submission_smoke_tb691.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Prepared a scratch-only run root at `/scratch/mch/olifu/rust_rockfall/distributed_chunk_submission_smokes/tb691_20260531_214135` with two chunk workers and one dependent collector, all targeting the authorized `postproc` partition.
+  - Submitted chunk jobs `4408922` and `4408923` plus collector job `4408924` with minimal 1 CPU / 256 MB / 3 minute requests.
+  - Stopped fail-closed when SLURM reported `postproc` as `State=DOWN` and the jobs stayed pending with `Reason=PartitionDown`; cancelled the pending jobs so the submission attempt reached terminal scheduler state.
+  - Removed TB-691 from the active backlog after recording the scheduler availability blocker, while noting that no chunk payload ran, no lease/state files were produced by compute jobs, and no deterministic merge or restart-cost metrics were measured.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-691 --format json`
+  - `rg -n "^### TB-691:" docs/task_backlog.md`
+  - `ssh balfrin 'sinfo -p postproc ...; scontrol show job 4408922 ...; scontrol show partition postproc ...'`
+  - `ssh balfrin 'sacct -j 4408922,4408923,4408924 --format=JobIDRaw,JobName,Partition,State,ExitCode,Elapsed,MaxRSS -P'`
+- Result/status: blocked_unresolved
+- Metrics: run root `/scratch/mch/olifu/rust_rockfall/distributed_chunk_submission_smokes/tb691_20260531_214135`; first missing piece `postproc partition State=DOWN`; terminal submitted job states `CANCELLED by 21028`; chunk payloads executed `0`; deterministic merged outputs `not produced`.
+- Decision: report the scheduler availability blocker rather than fabricating distributed mechanics evidence; a future task should rerun the same minimal two-chunk smoke only when `postproc` is schedulable.
+- Boundaries: submission-attempt report only; no distributed execution, Swiss-wide execution, operational hazard assessment, annual-frequency, physical-probability, risk, exposure, vulnerability, non-`postproc`, MPI/GPU, or scale-up claim.
+- Next task: not inspected per TB-691 hard-stop scope.
