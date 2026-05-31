@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-684: Prove Replay And Recovery For The Largest Hazard Run
-
-Goal: Demonstrate that the largest recent hazard-throughput run can be copied, inspected, and summarized without rerunning simulation.
-
-Capability gap reduced: Restartability and reproducibility for larger hazard outputs.
-
-Why this outranks alternatives: A scale demonstration is not credible if measured run roots cannot be recovered and re-summarized.
-
-Inspect first:
-
-- `scripts/summarize_balfrin_restartability_recovery.py`
-- `archive/task_reports/balfrin_larger_run_root_recovery_tb672.md`
-- `docs/balfrin_restartability_recovery_report.md`
-
-Deliverables:
-
-- A recovery copy under `$SCRATCH`, checksum or manifest comparison, regenerated metrics, and a statement whether replay-critical artifacts are sufficient.
-
-Definition of done:
-
-- Recovery succeeds or fails with a concrete missing artifact, focused restartability tests pass, and the largest recovered run is named by job id and run root.
-
-Scope: Use `$SCRATCH` for large copies and clean up ephemeral helper files.
-
 ### TB-685: Build A National Public-Geodata Inventory Delta
 
 Goal: Turn the Swiss-wide data blocker into a concrete list of present and missing national DEM/context inputs.

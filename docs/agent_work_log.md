@@ -11159,3 +11159,34 @@ completed history.
 - Decision: do not submit TB-683 jobs while `postproc` is down; no concurrent hazard-throughput measurement was made.
 - Boundaries: blocked live scheduler inspection only; no concurrent hazard-throughput, Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: `TB-684`
+
+### TB-684: Prove Replay And Recovery For The Largest Hazard Run
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: demonstrate that the largest recent preserved hazard-output run can be copied, inspected, checksum-compared, and summarized without rerunning simulation.
+- Files changed: `scripts/summarize_balfrin_restartability_recovery.py`, `tests/test_balfrin_restartability_recovery.py`, `docs/balfrin_restartability_recovery_report.md`, `archive/task_reports/balfrin_largest_hazard_run_recovery_tb684.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Extended the existing Balfrin restartability recovery summarizer with a source/recovered run-root comparison mode for larger preserved hazard runs.
+  - Copied the TB-682 384-zone preserved run root under `$SCRATCH`, compared source and recovered payload checksums, and regenerated metrics from preserved `tb682_profile.json`.
+  - Recorded the measured recovery in the canonical restartability report and a compact archived task report.
+  - Removed TB-684 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-684 --format json`
+  - `rg -n "^### TB-684:" docs/task_backlog.md`
+  - `git pull --ff-only origin main`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --format json`
+  - `ssh balfrin 'rsync ... tb682_384_zone_hazard_output_pressure_20260527_153407 ... tb684_tb682_384_recovery_20260531_202648; sha256sum ...'`
+  - Remote `PYENV_VERSION=system uv run python /tmp/tb684_summarize_balfrin_restartability_recovery.py --source-run-root /scratch/mch/olifu/rust_rockfall/probes/tb682_384_zone_hazard_output_pressure_20260527_153407 --recovered-run-root /scratch/mch/olifu/rust_rockfall/restartability/tb684_tb682_384_recovery_20260531_202648 --job-id 4379371 --release-zones 384 --run-id tb684_tb682_384_zone_hazard_run_recovery --format json --json-output /scratch/mch/olifu/rust_rockfall/restartability/tb684_tb682_384_recovery_20260531_202648/tb684_recovery_report.json --text-output /scratch/mch/olifu/rust_rockfall/restartability/tb684_tb682_384_recovery_20260531_202648/tb684_recovery_report.md`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_balfrin_restartability_recovery -v`
+  - `PYENV_VERSION=system uv run python scripts/summarize_balfrin_restartability_recovery.py --format json --json-output /tmp/tb684_default_restartability.json`
+  - `PYENV_VERSION=system uv run python -m py_compile scripts/summarize_balfrin_restartability_recovery.py tests/test_balfrin_restartability_recovery.py`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_measured
+- Metrics: recovered job `4379371`, source run root `/scratch/mch/olifu/rust_rockfall/probes/tb682_384_zone_hazard_output_pressure_20260527_153407`, recovered root `/scratch/mch/olifu/rust_rockfall/restartability/tb684_tb682_384_recovery_20260531_202648`, release zones `384`, source payload files `836`, recovered payload files `836`, source/recovered payload bytes `4,109,133`, checksum match `true`, missing mandatory artifacts `0`, output files `29`, output bytes `1,536,400`, manifest bytes `325,518`, hazard-layer seconds `0.3593194429995492`, total profile wall seconds `0.5879617109894753`.
+- Decision: replay-critical artifacts are sufficient for copied-root inspection and metric regeneration, but the 384-zone run remains blocked as a replay-ready scale support point by hazard-output and manifest-byte budgets.
+- Boundaries: copied-root recovery and replay inspection only; no scheduler job was submitted for TB-684 and no simulation was rerun. No scale-up, distributed, non-`postproc`, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or Swiss-wide claim changed.
+- Next task: not inspected per TB-684 hard-stop scope.

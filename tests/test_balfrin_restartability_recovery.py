@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -112,6 +113,108 @@ class BalfrinRestartabilityRecoveryTests(unittest.TestCase):
             self.assertTrue(json_output.exists())
             self.assertTrue(text_output.exists())
             self.assertIn("Balfrin Restartability Recovery Report", text_output.read_text(encoding="utf-8"))
+
+    def test_largest_hazard_run_recovery_compares_payload_and_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            source = tmp / "source"
+            recovered = tmp / "recovered"
+            for root in (source, recovered):
+                write_largest_run_fixture(root)
+
+            report = recovery.build_largest_hazard_run_recovery_report(
+                source_run_root=source,
+                recovered_run_root=recovered,
+                job_id="4379371",
+                release_zones=384,
+            )
+
+            self.assertEqual(report["schema_version"], "balfrin_largest_hazard_run_recovery_v1")
+            self.assertEqual(report["recovery_status"], "measured")
+            self.assertTrue(report["manifest_comparison"]["checksum_match"])
+            self.assertEqual(report["mandatory_artifacts"]["missing"], [])
+            self.assertEqual(report["regenerated_metrics"]["release_zone_count"], 384)
+            self.assertEqual(report["regenerated_metrics"]["output_bytes"], 1536400)
+            self.assertTrue(
+                report["replay_critical_artifacts"]["sufficient_for_copy_inspection_and_metric_regeneration"]
+            )
+            self.assertEqual(report["support_limit"]["classification"], "output_budget_blocked")
+            self.assertIn("Largest Hazard Run Recovery", recovery.render_report(report))
+
+    def test_largest_hazard_run_recovery_reports_missing_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            source = tmp / "source"
+            recovered = tmp / "recovered"
+            for root in (source, recovered):
+                write_largest_run_fixture(root)
+            (recovered / "tb682_time.txt").unlink()
+
+            report = recovery.build_largest_hazard_run_recovery_report(
+                source_run_root=source,
+                recovered_run_root=recovered,
+                job_id="4379371",
+                release_zones=384,
+            )
+
+            self.assertEqual(report["recovery_status"], "blocked_missing_inputs")
+            self.assertIn("tb682_time.txt", report["mandatory_artifacts"]["missing"])
+            self.assertEqual(
+                report["replay_critical_artifacts"]["first_blocker"],
+                "missing mandatory artifact: tb682_time.txt",
+            )
+
+
+def write_largest_run_fixture(root: Path) -> None:
+    profile_path = root / "tb682_profile.json"
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    profile_path.write_text(
+        json.dumps(
+            {
+                "profile_id": "multi_zone_384_zone_custom",
+                "fixture": {
+                    "release_zone_count": 384,
+                    "trajectory_file_count": 384,
+                    "impact_file_count": 384,
+                },
+                "profile_scale": {
+                    "output_file_count": 29,
+                    "output_bytes": 1536400,
+                    "hazard_layer_seconds": 0.3593194429995492,
+                    "total_wall_seconds": 0.5879617109894753,
+                },
+                "larger_than_four_zone_package_profile": {
+                    "local_pre_submit_proof": {
+                        "manifest_size_bytes": 325518,
+                        "first_blocker": "within_output_byte_budget",
+                        "blockers": [
+                            "within_output_byte_budget",
+                            "within_manifest_byte_budget",
+                        ],
+                        "replay_critical_coverage": {"complete": True},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    for relative in [
+        "tb682_profile.md",
+        "tb682_time.txt",
+        "tb682_pressure.sbatch",
+        "tb682_du_bytes.txt",
+        "tb682_files.txt",
+        "profile/input/multi_zone_hazard_profile_fixture_manifest.json",
+        "profile/output/explicit/hazard/multi_zone_hazard_profile_manifest.json",
+        "profile/output/explicit/hazard/multi_zone_hazard_profile_execution_plan_v1.json",
+        "profile/output/explicit/hazard/multi_zone_hazard_profile_reducer_execution_index_v1.json",
+        "profile/output/explicit/hazard/multi_zone_hazard_profile_reducer_merge_state_v1.json",
+        "slurm-4379371.out",
+        "slurm-4379371.err",
+    ]:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{relative}\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

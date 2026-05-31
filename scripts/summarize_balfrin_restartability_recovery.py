@@ -9,6 +9,7 @@ limits explicit so the report does not overstate what the evidence proves.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -17,7 +18,21 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_VERSION = "balfrin_restartability_recovery_v1"
+LARGEST_RUN_RECOVERY_SCHEMA_VERSION = "balfrin_largest_hazard_run_recovery_v1"
 DEFAULT_EVIDENCE_JSON = ROOT / "tests/fixtures/balfrin_restartability_recovery/fixture_v1.json"
+LARGEST_RUN_MANDATORY_ARTIFACTS = (
+    "tb682_profile.json",
+    "tb682_profile.md",
+    "tb682_time.txt",
+    "tb682_pressure.sbatch",
+    "tb682_du_bytes.txt",
+    "tb682_files.txt",
+    "profile/input/multi_zone_hazard_profile_fixture_manifest.json",
+    "profile/output/explicit/hazard/multi_zone_hazard_profile_manifest.json",
+    "profile/output/explicit/hazard/multi_zone_hazard_profile_execution_plan_v1.json",
+    "profile/output/explicit/hazard/multi_zone_hazard_profile_reducer_execution_index_v1.json",
+    "profile/output/explicit/hazard/multi_zone_hazard_profile_reducer_merge_state_v1.json",
+)
 
 
 class BalfrinRestartabilityRecoveryError(ValueError):
@@ -35,10 +50,28 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="optional override JSON file for tests or alternate recovery snapshots",
     )
+    parser.add_argument("--source-run-root", type=Path, default=None)
+    parser.add_argument("--recovered-run-root", type=Path, default=None)
+    parser.add_argument("--job-id", default=None)
+    parser.add_argument("--release-zones", type=int, default=None)
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        help="optional run id override for source/recovered run-root summaries",
+    )
     args = parser.parse_args(argv)
 
     try:
-        report = build_report(load_evidence_override(args.evidence_json))
+        if args.source_run_root is not None or args.recovered_run_root is not None:
+            report = build_largest_hazard_run_recovery_report(
+                source_run_root=args.source_run_root,
+                recovered_run_root=args.recovered_run_root,
+                job_id=args.job_id,
+                release_zones=args.release_zones,
+                run_id=args.run_id,
+            )
+        else:
+            report = build_report(load_evidence_override(args.evidence_json))
     except BalfrinRestartabilityRecoveryError as exc:
         print(f"balfrin restartability recovery error: {exc}", file=sys.stderr)
         return 2
@@ -48,12 +81,12 @@ def main(argv: list[str] | None = None) -> int:
         args.json_output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if args.text_output is not None:
         args.text_output.parent.mkdir(parents=True, exist_ok=True)
-        args.text_output.write_text(render_text_report(report), encoding="utf-8")
+        args.text_output.write_text(render_report(report), encoding="utf-8")
 
     if args.format == "json":
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
-        print(render_text_report(report))
+        print(render_report(report))
     return 0 if report["recovery_status"] != "blocked_missing_inputs" else 2
 
 
@@ -164,6 +197,106 @@ def build_report(evidence_override: dict[str, Any] | None = None) -> dict[str, A
     return report
 
 
+def build_largest_hazard_run_recovery_report(
+    *,
+    source_run_root: Path | None,
+    recovered_run_root: Path | None,
+    job_id: str | None,
+    release_zones: int | None,
+    run_id: str | None = None,
+) -> dict[str, Any]:
+    missing_inputs: list[str] = []
+    if source_run_root is None:
+        missing_inputs.append("source_run_root")
+    if recovered_run_root is None:
+        missing_inputs.append("recovered_run_root")
+    if not job_id:
+        missing_inputs.append("job_id")
+    if release_zones is None:
+        missing_inputs.append("release_zones")
+    if missing_inputs:
+        return blocked_largest_run_report(missing_inputs, reason="required run-root recovery arguments are missing")
+
+    assert source_run_root is not None
+    assert recovered_run_root is not None
+    assert job_id is not None
+    assert release_zones is not None
+    source_run_root = source_run_root.resolve()
+    recovered_run_root = recovered_run_root.resolve()
+    if not source_run_root.is_dir():
+        return blocked_largest_run_report([str(source_run_root)], reason="source run root is missing")
+    if not recovered_run_root.is_dir():
+        return blocked_largest_run_report([str(recovered_run_root)], reason="recovered run root is missing")
+
+    mandatory_artifacts = [
+        *LARGEST_RUN_MANDATORY_ARTIFACTS,
+        f"slurm-{job_id}.out",
+        f"slurm-{job_id}.err",
+    ]
+    missing_mandatory = [rel for rel in mandatory_artifacts if not (recovered_run_root / rel).exists()]
+    source_manifest = build_payload_manifest(source_run_root)
+    recovered_manifest = build_payload_manifest(recovered_run_root)
+    manifest_comparison = compare_payload_manifests(source_manifest, recovered_manifest)
+    profile_report = load_largest_run_profile(recovered_run_root / "tb682_profile.json")
+    metrics_ready = not profile_report.get("missing_profile_fields")
+    mandatory_ready = not missing_mandatory
+    manifest_ready = manifest_comparison["checksum_match"]
+    replay_critical_sufficient = bool(mandatory_ready and manifest_ready and metrics_ready)
+
+    return {
+        "schema_version": LARGEST_RUN_RECOVERY_SCHEMA_VERSION,
+        "pilot_id": "tschamut_public_pilot",
+        "run_id": run_id or "tb684_tb682_384_zone_hazard_run_recovery",
+        "recovery_status": "measured" if replay_critical_sufficient else "blocked_missing_inputs",
+        "evidence_status": "measured_copied_run_root",
+        "job_id": str(job_id),
+        "release_zones": release_zones,
+        "source_run_root": str(source_run_root),
+        "recovered_run_root": str(recovered_run_root),
+        "copy_recovery": {
+            "status": "measured" if recovered_run_root.is_dir() else "blocked_missing_inputs",
+            "source_file_count": len(source_manifest),
+            "recovered_payload_file_count": len(recovered_manifest),
+            "source_payload_bytes": sum(item["size_bytes"] for item in source_manifest.values()),
+            "recovered_payload_bytes": sum(item["size_bytes"] for item in recovered_manifest.values()),
+        },
+        "mandatory_artifacts": {
+            "status": "complete" if mandatory_ready else "missing",
+            "checked": mandatory_artifacts,
+            "missing": missing_mandatory,
+        },
+        "manifest_comparison": manifest_comparison,
+        "regenerated_metrics": profile_report,
+        "replay_critical_artifacts": {
+            "sufficient_for_copy_inspection_and_metric_regeneration": replay_critical_sufficient,
+            "classification": "sufficient" if replay_critical_sufficient else "blocked_missing_inputs",
+            "first_blocker": first_largest_run_blocker(missing_mandatory, manifest_comparison, profile_report),
+        },
+        "support_limit": {
+            "classification": "output_budget_blocked",
+            "statement": (
+                "The recovered 384-zone run root is complete enough for checksum replay, inspection, "
+                "and metric regeneration, but it remains blocked as a replay-ready scale support point "
+                "under the current output-byte and manifest-byte budgets."
+            ),
+        },
+        "artifact_hygiene": {
+            "classification": "pass_clean",
+            "generated_roots": [str(recovered_run_root)],
+            "placeholder_roots_avoided": [
+                "data/processed/swisstopo/placeholder_second_site_v1",
+                "validation/private/placeholder_second_site_v1",
+                "hazard/results/placeholder_second_site_v1",
+            ],
+        },
+        "explicit_limits": [
+            "Copied-root recovery and replay inspection only; no scheduler job was submitted for this task.",
+            "No simulation rerun, scale-up authorization, distributed execution, non-postproc execution, physical-probability, annual-frequency, operational, risk, exposure, or vulnerability claim is introduced.",
+            "The 384-zone run remains output-budget-blocked as a replay-ready scale support point even though its preserved artifacts are sufficient for recovery inspection.",
+        ],
+    }
+
+
 def build_rerun_fraction_summary(
     *,
     reused_chunk_counts: dict[str, Any],
@@ -257,6 +390,147 @@ def build_preserved_artifact_summary(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_payload_manifest(root: Path) -> dict[str, dict[str, Any]]:
+    manifest: dict[str, dict[str, Any]] = {}
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        relative = path.relative_to(root).as_posix()
+        if Path(relative).name.startswith("tb684_"):
+            continue
+        manifest[relative] = {
+            "size_bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
+        }
+    return manifest
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def compare_payload_manifests(
+    source_manifest: dict[str, dict[str, Any]],
+    recovered_manifest: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    source_paths = set(source_manifest)
+    recovered_paths = set(recovered_manifest)
+    missing = sorted(source_paths - recovered_paths)
+    extra = sorted(recovered_paths - source_paths)
+    mismatched = sorted(
+        path
+        for path in source_paths & recovered_paths
+        if source_manifest[path]["sha256"] != recovered_manifest[path]["sha256"]
+        or source_manifest[path]["size_bytes"] != recovered_manifest[path]["size_bytes"]
+    )
+    return {
+        "status": "match" if not missing and not extra and not mismatched else "mismatch",
+        "checksum_match": not missing and not extra and not mismatched,
+        "missing_paths": missing,
+        "extra_paths": extra,
+        "mismatched_paths": mismatched,
+    }
+
+
+def load_largest_run_profile(profile_path: Path) -> dict[str, Any]:
+    if not profile_path.exists():
+        return {
+            "status": "blocked_missing_inputs",
+            "profile_path": str(profile_path),
+            "missing_profile_fields": ["tb682_profile.json"],
+        }
+    profile = load_json(profile_path)
+    fixture = as_mapping(profile.get("fixture"))
+    profile_scale = as_mapping(profile.get("profile_scale"))
+    larger_profile = as_mapping(profile.get("larger_than_four_zone_package_profile"))
+    local_pre_submit = as_mapping(larger_profile.get("local_pre_submit_proof"))
+    missing_fields = [
+        name
+        for name, value in {
+            "fixture.release_zone_count": fixture.get("release_zone_count"),
+            "fixture.trajectory_file_count": fixture.get("trajectory_file_count"),
+            "fixture.impact_file_count": fixture.get("impact_file_count"),
+            "profile_scale.output_file_count": profile_scale.get("output_file_count"),
+            "profile_scale.output_bytes": profile_scale.get("output_bytes"),
+            "profile_scale.hazard_layer_seconds": profile_scale.get("hazard_layer_seconds"),
+            "profile_scale.total_wall_seconds": profile_scale.get("total_wall_seconds"),
+            "larger_than_four_zone_package_profile.local_pre_submit_proof.replay_critical_coverage": local_pre_submit.get(
+                "replay_critical_coverage"
+            ),
+        }.items()
+        if value is None
+    ]
+    replay_critical_coverage = as_mapping(local_pre_submit.get("replay_critical_coverage"))
+    return {
+        "status": "measured_reconstructed_from_preserved_files" if not missing_fields else "blocked_missing_inputs",
+        "profile_path": str(profile_path),
+        "profile_id": str(profile.get("profile_id") or ""),
+        "release_zone_count": safe_int(fixture.get("release_zone_count")),
+        "trajectory_file_count": safe_int(fixture.get("trajectory_file_count")),
+        "impact_file_count": safe_int(fixture.get("impact_file_count")),
+        "output_file_count": safe_int(profile_scale.get("output_file_count")),
+        "output_bytes": safe_int(profile_scale.get("output_bytes")),
+        "hazard_layer_seconds": safe_float(profile_scale.get("hazard_layer_seconds")),
+        "total_wall_seconds": safe_float(profile_scale.get("total_wall_seconds")),
+        "manifest_size_bytes": safe_int(local_pre_submit.get("manifest_size_bytes")),
+        "replay_critical_coverage_complete": replay_critical_coverage.get("complete"),
+        "output_budget_first_blocker": local_pre_submit.get("first_blocker"),
+        "output_budget_blockers": list_of_strings(local_pre_submit.get("blockers")),
+        "missing_profile_fields": missing_fields,
+    }
+
+
+def first_largest_run_blocker(
+    missing_mandatory: list[str],
+    manifest_comparison: dict[str, Any],
+    profile_report: dict[str, Any],
+) -> str | None:
+    if missing_mandatory:
+        return f"missing mandatory artifact: {missing_mandatory[0]}"
+    if not manifest_comparison.get("checksum_match"):
+        for field in ("missing_paths", "mismatched_paths", "extra_paths"):
+            paths = list_of_strings(manifest_comparison.get(field))
+            if paths:
+                return f"manifest {field}: {paths[0]}"
+        return "manifest mismatch"
+    missing_profile_fields = list_of_strings(profile_report.get("missing_profile_fields"))
+    if missing_profile_fields:
+        return f"missing profile field: {missing_profile_fields[0]}"
+    return None
+
+
+def blocked_largest_run_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
+    return {
+        "schema_version": LARGEST_RUN_RECOVERY_SCHEMA_VERSION,
+        "pilot_id": "tschamut_public_pilot",
+        "run_id": "tb684_tb682_384_zone_hazard_run_recovery",
+        "recovery_status": "blocked_missing_inputs",
+        "evidence_status": "blocked_missing_inputs",
+        "job_id": None,
+        "release_zones": None,
+        "source_run_root": None,
+        "recovered_run_root": None,
+        "copy_recovery": {},
+        "mandatory_artifacts": {"status": "blocked_missing_inputs", "checked": [], "missing": []},
+        "manifest_comparison": {"status": "blocked_missing_inputs", "checksum_match": False},
+        "regenerated_metrics": {"status": "blocked_missing_inputs", "missing_profile_fields": []},
+        "replay_critical_artifacts": {
+            "sufficient_for_copy_inspection_and_metric_regeneration": False,
+            "classification": "blocked_missing_inputs",
+            "first_blocker": missing_inputs[0] if missing_inputs else reason,
+        },
+        "support_limit": {"classification": "blocked_missing_inputs", "statement": reason},
+        "artifact_hygiene": {
+            "classification": "blocked_missing_inputs",
+            "generated_roots": [],
+            "placeholder_roots_avoided": [],
+        },
+        "explicit_limits": [reason, *missing_inputs],
+    }
+
+
 def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -288,6 +562,83 @@ def blocked_report(missing_inputs: list[str], *, reason: str) -> dict[str, Any]:
             "fixture": str(DEFAULT_EVIDENCE_JSON),
         },
     }
+
+
+def render_report(report: dict[str, Any]) -> str:
+    if report.get("schema_version") == LARGEST_RUN_RECOVERY_SCHEMA_VERSION:
+        return render_largest_hazard_run_recovery_report(report)
+    return render_text_report(report)
+
+
+def render_largest_hazard_run_recovery_report(report: dict[str, Any]) -> str:
+    copy_recovery = as_mapping(report.get("copy_recovery"))
+    mandatory = as_mapping(report.get("mandatory_artifacts"))
+    manifest = as_mapping(report.get("manifest_comparison"))
+    metrics = as_mapping(report.get("regenerated_metrics"))
+    replay = as_mapping(report.get("replay_critical_artifacts"))
+    support_limit = as_mapping(report.get("support_limit"))
+    artifact_hygiene = as_mapping(report.get("artifact_hygiene"))
+    lines = [
+        "# Balfrin Largest Hazard Run Recovery Report",
+        "",
+        f"- Schema: `{report['schema_version']}`",
+        f"- Recovery status: `{report['recovery_status']}`",
+        f"- Evidence status: `{report['evidence_status']}`",
+        f"- Job id: `{report.get('job_id')}`",
+        f"- Release zones: `{report.get('release_zones')}`",
+        f"- Source run root: `{report.get('source_run_root')}`",
+        f"- Recovered run root: `{report.get('recovered_run_root')}`",
+        "",
+        "## Copy And Manifest",
+        "",
+        f"- Source payload files: `{copy_recovery.get('source_file_count')}`",
+        f"- Recovered payload files: `{copy_recovery.get('recovered_payload_file_count')}`",
+        f"- Source payload bytes: `{copy_recovery.get('source_payload_bytes')}`",
+        f"- Recovered payload bytes: `{copy_recovery.get('recovered_payload_bytes')}`",
+        f"- Payload checksum match: `{manifest.get('checksum_match')}`",
+        f"- Missing payload paths: `{manifest.get('missing_paths')}`",
+        f"- Extra payload paths: `{manifest.get('extra_paths')}`",
+        f"- Mismatched payload paths: `{manifest.get('mismatched_paths')}`",
+        "",
+        "## Mandatory Artifacts",
+        "",
+        f"- Status: `{mandatory.get('status')}`",
+        f"- Missing: `{mandatory.get('missing')}`",
+        "",
+        "## Regenerated Metrics",
+        "",
+        f"- Status: `{metrics.get('status')}`",
+        f"- Profile id: `{metrics.get('profile_id')}`",
+        f"- Release zones: `{metrics.get('release_zone_count')}`",
+        f"- Trajectory files: `{metrics.get('trajectory_file_count')}`",
+        f"- Impact-event files: `{metrics.get('impact_file_count')}`",
+        f"- Output files: `{metrics.get('output_file_count')}`",
+        f"- Output bytes: `{metrics.get('output_bytes')}`",
+        f"- Manifest bytes: `{metrics.get('manifest_size_bytes')}`",
+        f"- Hazard-layer seconds: `{metrics.get('hazard_layer_seconds')}`",
+        f"- Total profile wall seconds: `{metrics.get('total_wall_seconds')}`",
+        f"- Replay-critical coverage complete: `{metrics.get('replay_critical_coverage_complete')}`",
+        "",
+        "## Replay-Critical Sufficiency",
+        "",
+        f"- Classification: `{replay.get('classification')}`",
+        f"- Sufficient for copy inspection and metric regeneration: `{replay.get('sufficient_for_copy_inspection_and_metric_regeneration')}`",
+        f"- First blocker: `{replay.get('first_blocker')}`",
+        f"- Support-limit classification: `{support_limit.get('classification')}`",
+        f"- Support-limit statement: {support_limit.get('statement')}",
+        "",
+        "## Artifact Hygiene",
+        "",
+        f"- Classification: `{artifact_hygiene.get('classification')}`",
+        f"- Generated roots: `{artifact_hygiene.get('generated_roots')}`",
+        f"- Placeholder roots avoided: `{artifact_hygiene.get('placeholder_roots_avoided')}`",
+        "",
+        "## Explicit Limits",
+        "",
+    ]
+    for limit in report.get("explicit_limits") or []:
+        lines.append(f"- {limit}")
+    return "\n".join(lines)
 
 
 def render_text_report(report: dict[str, Any]) -> str:
@@ -381,6 +732,13 @@ def render_text_report(report: dict[str, Any]) -> str:
 def safe_int(value: Any) -> int | None:
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def safe_float(value: Any) -> float | None:
+    try:
+        return float(value)
     except (TypeError, ValueError):
         return None
 

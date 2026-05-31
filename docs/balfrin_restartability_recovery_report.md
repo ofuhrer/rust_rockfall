@@ -6,6 +6,41 @@
 - Pilot id: `tschamut_public_pilot`
 - Run id: `tschamut_public_balfrin_restartability_recovery_v1`
 
+## Largest Run-Root Recovery Evidence
+
+TB-684 adds copied-root recovery evidence for the largest recent preserved
+single-node hazard-output run:
+`/scratch/mch/olifu/rust_rockfall/probes/tb682_384_zone_hazard_output_pressure_20260527_153407`.
+
+Measured result:
+
+- source job `4379371`: `COMPLETED`
+- recovered root:
+  `/scratch/mch/olifu/rust_rockfall/restartability/tb684_tb682_384_recovery_20260531_202648`
+- source payload files: `836`
+- recovered payload files: `836`
+- source payload bytes: `4,109,133`
+- recovered payload bytes: `4,109,133`
+- payload checksum match: `true`
+- mandatory replay-critical artifacts missing: none
+- regenerated metrics status: `measured_reconstructed_from_preserved_files`
+- release zones: `384`
+- trajectory files: `384`
+- impact-event files: `384`
+- output files: `29`
+- output bytes: `1,536,400`
+- manifest bytes: `325,518`
+- hazard-layer seconds: `0.3593194429995492`
+- total profile wall seconds: `0.5879617109894753`
+
+The recovered 384-zone run root is sufficient for checksum replay, inspection,
+and metric regeneration from preserved artifacts. It remains blocked as a
+replay-ready scale support point under the current hazard-output and manifest
+byte budgets.
+
+Detailed evidence:
+`archive/task_reports/balfrin_largest_hazard_run_recovery_tb684.md`.
+
 ## Latest Chunk Recovery Evidence
 
 TB-606 adds a bounded scheduler-observed chunk recovery run at:
