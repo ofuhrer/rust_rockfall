@@ -30,30 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-683: Exercise Concurrent Hazard-Throughput Jobs On Balfrin
-
-Goal: Use the empty `postproc` partition to test whether multiple bounded hazard-throughput jobs can run concurrently without run-root contention.
-
-Capability gap reduced: Single-job evidence does not prove isolated concurrent throughput or scheduler behavior.
-
-Why this outranks alternatives: Swiss-scale feasibility will require many independent chunks even before distributed execution is promoted.
-
-Inspect first:
-
-- `archive/task_reports/balfrin_concurrent_postproc_diagnostics_tb671.md`
-- `scripts/summarize_balfrin_scale_readiness_matrix.py`
-- `docs/balfrin_skills.md`
-
-Deliverables:
-
-- Two or more concurrent hazard-throughput jobs with distinct `$SCRATCH` roots, collected scheduler states, per-job metrics, and a contention/no-contention result.
-
-Definition of done:
-
-- All jobs are terminal, run-root isolation is verified, focused tests pass, and aggregate runtime/output metrics are recorded.
-
-Scope: Keep the total plan under the six-hour standing clearance; stop if scheduler behavior indicates shared-filesystem stress.
-
 ### TB-684: Prove Replay And Recovery For The Largest Hazard Run
 
 Goal: Demonstrate that the largest recent hazard-throughput run can be copied, inspected, and summarized without rerunning simulation.

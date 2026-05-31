@@ -11138,3 +11138,24 @@ completed history.
 - Decision: keep `192` release zones as the next safe measured size under the current reduced-output byte budget. Do not treat `384` zones as replay-ready support until hazard output bytes and manifest bytes are reduced.
 - Boundaries: single-node Balfrin `postproc` hazard-output pressure evidence only; no Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
 - Next task: `TB-683`
+
+### TB-683: Exercise Concurrent Hazard-Throughput Jobs On Balfrin
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: exercise concurrent bounded hazard-throughput jobs on Balfrin `postproc` with distinct `$SCRATCH` roots and scheduler/run-root contention metrics.
+- Files changed: `archive/task_reports/balfrin_concurrent_hazard_throughput_blocked_tb683.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Ran the required task context and inspected the TB-683 backlog section plus the listed inspect-first files.
+  - Confirmed Balfrin SSH, remote checkout hygiene, existing hazard-throughput run-root visibility, scheduler command availability, and `$SCRATCH` visibility.
+  - Stopped before live submission because `postproc` availability was `down`, with queued jobs pending for `PartitionDown`.
+  - Recorded the smallest task-scoped blocked report instead of submitting into an unavailable scheduler state.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-683 --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_balfrin_remote_access_preflight.py --run-root /scratch/mch/olifu/rust_rockfall/probes/tb680_24_zone_hazard_throughput_preserved_20260527_145422 --format json`
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 balfrin 'sinfo ...; squeue ...; df -hT "$SCRATCH"'`
+- Result/status: implemented_blocked_report
+- Metrics: `postproc` availability `down`; node states `mix` (`8` nodes), `alloc` (`5` nodes), and `idle` (`1` node) all under down partition availability; `22` pending `postproc` jobs; visible pending jobs held for `PartitionDown`; current-user jobs `0`; `$SCRATCH` available `61T` of `800T`, `93%` used.
+- Decision: do not submit TB-683 jobs while `postproc` is down; no concurrent hazard-throughput measurement was made.
+- Boundaries: blocked live scheduler inspection only; no concurrent hazard-throughput, Swiss-wide, distributed, physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or non-`postproc` claim changed.
+- Next task: `TB-684`
