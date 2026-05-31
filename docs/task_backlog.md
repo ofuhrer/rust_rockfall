@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-687: Execute The First Real Chant Sura Prepared-Pilot Slice
-
-Goal: Run the smallest scientifically useful Chant Sura prepared-pilot slice once required public inputs are present.
-
-Capability gap reduced: Multi-site feasibility and validation evidence beyond Tschamut.
-
-Why this outranks alternatives: Scientific credibility needs a second real terrain/context site, not another Tschamut-only report.
-
-Inspect first:
-
-- `scripts/plan_aoi_to_prepared_pilot_dry_run.py`
-- `scripts/generate_pilot_command_plan.py`
-- `docs/aoi_user_manual.md`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-
-Deliverables:
-
-- A real or explicitly blocked Chant Sura prepared-pilot slice with run root, input provenance, output footprint, and residual/scientific interpretation hooks.
-
-Definition of done:
-
-- The run executes or fails at the first concrete missing input, focused tests pass, and the next input or command is explicit.
-
-Scope: Do not label the result operational or physical-probability evidence unless the validation criteria explicitly support it.
-
 ### TB-688: Rework Calibration Candidate Selection Against Holdout Residuals
 
 Goal: Move from a rejected selected calibration candidate to an accepted candidate or a clearer model/data limitation.

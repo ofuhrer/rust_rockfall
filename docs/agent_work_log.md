@@ -11237,3 +11237,26 @@ completed history.
 - Result/status: completed
 - Boundaries: no download, no fixture promotion, no operational or scale-up claim, and no second-site run authorization changed.
 - Next task: `TB-687`
+
+### TB-687: Execute The First Real Chant Sura Prepared-Pilot Slice
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: attempt the smallest scientifically useful Chant Sura prepared-pilot slice and fail closed at the first concrete missing real public input when the required context is not yet present.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Verified the Chant Sura / Flüelapass preflight path against the repository helpers and confirmed the first missing real public input is `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d/metadata.json` for `swisstlm3d_context`.
+  - Confirmed the blocked fallback command is the public-geodata cache dry-run staging replay: `PYENV_VERSION=system uv run python scripts/stage_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --mode dry-run --format json`.
+  - Removed TB-687 from the active backlog after recording the blocked outcome and keeping the prepared-pilot boundary conditional-only.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json`
+  - `PYENV_VERSION=system uv run python -m unittest -v tests.test_second_site_public_geodata_preflight.SecondSitePublicGeodataPreflightTests.test_missing_context_metadata_blocks_preflight tests.test_aoi_to_prepared_pilot_dry_run.AoiToPreparedPilotDryRunTests.test_missing_context_blocks_compiler_with_context_blocker tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepared_pilot_acquisition_blocker_names_missing_public_context_products tests.test_run_aoi_hazard_workflow.RunAoiHazardWorkflowTests.test_prepare_clean_checkout_reports_product_resolution_as_the_first_blocker`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: implemented_blocked_report
+- Metrics: run root `validation/private/chant_sura_fluelapass_portability_example_v1`, hazard root `hazard/results/chant_sura_fluelapass_portability_example_v1`, staged-input provenance `tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml`, output footprint `none` because execution stopped before any prepared-pilot output was created, first missing real input `swisstlm3d_context/metadata.json`.
+- Decision: the second-site prepared-pilot slice remains blocked until the swissTLM3D metadata sidecar is staged; no operational, physical-probability, annual-frequency, risk, exposure, vulnerability, or scale-up meaning is implied.
+- Boundaries: fail-closed blocked report only; no public-context download, no second-site ensemble, no distributed execution, and no claim upgrade beyond the explicit missing-input report.
+- Next task: not inspected per TB-687 hard-stop scope.
