@@ -11058,7 +11058,7 @@ completed history.
 ### TB-679: Land The Simplified Docs And Fast Consistency Gate
 
 - Date: 2026-05-27
-- Commit: local
+- Commit: `fb9d8e4`
 - Objective: finish the repo simplification so workers start from a compact docs surface and a fast default consistency check.
 - Files changed: `scripts/check_repo_consistency.py`, `tests/test_repo_consistency_module_split.py`, `AGENTS.md`, `docs/onboarding.md`, `docs/README.md`, `docs/task_backlog.md`, `archive/task_reports/README.md`, `archive/reference_notes/README.md`, task report archives, reference-note archives, active script/test/doc references
 - Implementation summary:
@@ -11082,7 +11082,7 @@ completed history.
 ### TB-680: Run The Next Bounded Hazard-Throughput Scale-Up On Balfrin
 
 - Date: 2026-05-27
-- Commit: local
+- Commit: `7ef6403`
 - Objective: move beyond the 12-zone hazard-throughput support point with a measured Balfrin `postproc` run that preserves scheduler and output metrics.
 - Files changed: `scripts/summarize_multi_zone_hazard_throughput_profile.py`, `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_multi_zone_hazard_throughput_profile.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_24_zone_hazard_throughput_probe_tb680.md`, `docs/task_backlog.md`
 - Implementation summary:
@@ -11101,7 +11101,7 @@ completed history.
 ### TB-681: Repeat The Larger Hazard-Throughput Run For Variability
 
 - Date: 2026-05-27
-- Commit: local
+- Commit: `21ecc5e`
 - Objective: repeat the TB-680 24-zone hazard-throughput shape on Balfrin to measure variability and make the planning coefficient less dependent on one run.
 - Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_24_zone_hazard_throughput_repeat_tb681.md`, `docs/task_backlog.md`
 - Implementation summary:
@@ -11120,7 +11120,7 @@ completed history.
 ### TB-682: Measure Hazard Reducer And Output Pressure At The Largest Safe Single-Node Size
 
 - Date: 2026-05-27
-- Commit: local
+- Commit: `de57e8f`
 - Objective: measure larger single-node hazard-output pressure on Balfrin and identify the largest currently safe reduced-output size before output-byte pressure blocks.
 - Files changed: `scripts/summarize_balfrin_scale_readiness_matrix.py`, `scripts/summarize_balfrin_management_demo_package.py`, `scripts/estimate_swiss_wide_execution_envelope.py`, `tests/test_balfrin_scale_readiness_matrix.py`, `docs/balfrin_scale_demonstration_management_package.md`, `docs/swiss_scale_feasibility_projection.md`, `archive/task_reports/balfrin_hazard_output_pressure_ladder_tb682.md`, `docs/task_backlog.md`
 - Implementation summary:
@@ -11142,7 +11142,7 @@ completed history.
 ### TB-683: Exercise Concurrent Hazard-Throughput Jobs On Balfrin
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `fa5eb5c`
 - Objective: exercise concurrent bounded hazard-throughput jobs on Balfrin `postproc` with distinct `$SCRATCH` roots and scheduler/run-root contention metrics.
 - Files changed: `archive/task_reports/balfrin_concurrent_hazard_throughput_blocked_tb683.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -11163,7 +11163,7 @@ completed history.
 ### TB-684: Prove Replay And Recovery For The Largest Hazard Run
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `4c812ef`
 - Objective: demonstrate that the largest recent preserved hazard-output run can be copied, inspected, checksum-compared, and summarized without rerunning simulation.
 - Files changed: `scripts/summarize_balfrin_restartability_recovery.py`, `tests/test_balfrin_restartability_recovery.py`, `docs/balfrin_restartability_recovery_report.md`, `archive/task_reports/balfrin_largest_hazard_run_recovery_tb684.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -11241,7 +11241,7 @@ completed history.
 ### TB-687: Execute The First Real Chant Sura Prepared-Pilot Slice
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `1b87bb9`
 - Objective: attempt the smallest scientifically useful Chant Sura prepared-pilot slice and fail closed at the first concrete missing real public input when the required context is not yet present.
 - Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -11264,7 +11264,7 @@ completed history.
 ### TB-688: Rework Calibration Candidate Selection Against Holdout Residuals
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `6623b1e`
 - Objective: rework the Tschamut v0.3 calibration review so the selected candidate status is explicit and the holdout residual limitation is recorded as a measured threshold failure rather than a missing review.
 - Files changed: `scripts/assess_validation_calibration_evidence_gaps.py`, `tests/test_validation_calibration_evidence_gaps.py`, `docs/tschamut_calibration.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -11288,7 +11288,7 @@ completed history.
 ### TB-689: Run A Cross-Site Conditional Validation Smoke
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `065fb3f`
 - Objective: test whether the current calibrated or best available parameters transfer to a second site under conditional-use semantics, while keeping the result fail-closed when Chant Sura public-context inputs are not fully staged.
 - Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
 - Implementation summary:
@@ -11334,7 +11334,7 @@ completed history.
 ### TB-691: Exercise A Minimal Distributed Chunk Submission Smoke On Balfrin
 
 - Date: 2026-05-31
-- Commit: local
+- Commit: `6a590ee`
 - Objective: attempt the smallest live Balfrin `postproc` distributed chunk submission smoke with two chunk jobs, shared scratch state, leases, deterministic collection, and restart-cost metrics.
 - Files changed: `archive/task_reports/balfrin_distributed_chunk_submission_smoke_tb691.md`, `docs/agent_work_log.md`
 - Implementation summary:
