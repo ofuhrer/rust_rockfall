@@ -11213,3 +11213,27 @@ completed history.
 - Result/status: implemented_measured
 - Boundaries: filesystem-backed inventory delta only; no national download, no national staging helper, no Swiss-wide execution authorization, no distributed execution, and no operational, annual-frequency, physical-probability, risk, exposure, or vulnerability claim.
 - Next task: `TB-686`
+
+### TB-686: Stage The Next Chant Sura Public Context Product
+
+- Date: 2026-05-31
+- Commit: `9d4e98e`
+- Objective: stage one real Chant Sura public-context product into the ignored cache root, update the verification manifest and acquisition package, and leave the next missing context product explicit.
+- Files changed: `data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml`, `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`, `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`, `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Staged a real `SWISSIMAGE` bundle and provenance sidecar under the ignored Chant Sura context root, using the existing local swisstopo cache rather than a fixture or download.
+  - Updated the Chant Sura cache manifest so the verifier now recognizes both terrain and `swissimage_context` as `verified`/`real_staged`.
+  - Flipped the acquisition package and decision memo to record `swissimage_context` as staged while keeping `swisstlm3d_context` as the next remaining missing public-context product.
+  - Removed TB-686 from the active backlog before recording this work log entry.
+- Checks run:
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_public_geodata_cache_stager -v`
+  - `PYENV_VERSION=system uv run python -m unittest tests.test_second_site_public_geodata_preflight -v`
+  - `PYENV_VERSION=system uv run python scripts/verify_public_geodata_cache.py --cache-manifest data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml --format json`
+  - `PYENV_VERSION=system uv run python scripts/check_second_site_public_geodata_preflight.py --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json --json-output /tmp/tb686_preflight.json`
+  - `git diff --check`
+  - `PYENV_VERSION=system uv run --with PyYAML python scripts/check_repo_consistency.py`
+  - `scripts/git-hooks/pre-commit`
+  - `find data/processed/swisstopo validation/private hazard/results validation/policies \( -path '*placeholder_second_site_v1*' -o -name '*placeholder*' \) -print`
+- Result/status: completed
+- Boundaries: no download, no fixture promotion, no operational or scale-up claim, and no second-site run authorization changed.
+- Next task: `TB-687`
