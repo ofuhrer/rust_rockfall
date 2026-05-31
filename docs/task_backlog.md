@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-686: Stage The Next Chant Sura Public Context Product
-
-Goal: Reduce the second-site blocker by staging one real missing Chant Sura context product into the existing public-geodata cache.
-
-Capability gap reduced: Second-site public context readiness and multi-site scientific validation preparation.
-
-Why this outranks alternatives: Accepted validation needs a second real site; Chant Sura currently blocks first on missing context.
-
-Inspect first:
-
-- `scripts/stage_public_geodata_cache.py`
-- `scripts/check_second_site_public_geodata_preflight.py`
-- `docs/chant_sura_fluelapass_public_context_acquisition_package.yaml`
-- `archive/task_reports/chant_sura_prepared_pilot_attempt_tb675.md`
-
-Deliverables:
-
-- One newly staged real Chant Sura context product, an updated cache manifest/preflight result, and the next remaining missing context product.
-
-Definition of done:
-
-- The preflight distinguishes the staged product as real, focused tests pass, and no fixture-backed product is promoted as real.
-
-Scope: Keep large staged data in ignored data roots; commit only manifests or small provenance records.
-
 ### TB-687: Execute The First Real Chant Sura Prepared-Pilot Slice
 
 Goal: Run the smallest scientifically useful Chant Sura prepared-pilot slice once required public inputs are present.

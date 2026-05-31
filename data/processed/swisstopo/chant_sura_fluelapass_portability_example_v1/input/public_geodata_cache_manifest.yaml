@@ -32,9 +32,35 @@ products:
   observed_checksum_sha256: 0a9b252ce639f0706244c1f7cb9204ef8b07dad283dc7471672b89b44ce70a24
   observed_metadata_mismatches: []
   downloaded_bytes: 1096566
+- product_id: swissimage_context
+  source_product_id: swissimage
+  source_product_name: SWISSIMAGE
+  source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2019_2696-1167/swissimage-dop10_2019_2696-1167_2_2056.tif
+  product_version_or_date: 2019-01-01
+  tile_id_or_delivery_identifier: 2696-1167
+  checksum_sha256: d1a275236b585569d9efc5f1bffa25d3fa18be5a9596589dc66bf3745901259f
+  crs: EPSG:2056
+  resolution_m: 2.0
+  crop_extent_lv95_m:
+    xmin: 2696376.0
+    ymin: 1167384.0
+    xmax: 2696976.0
+    ymax: 1167992.0
+  license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
+  staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage
+  metadata_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage/metadata.json
+  raw_checksum: 77e91332a637fd9e42f72da30a3b3bc406d17f7d5700ee45b44aa1366c2deab9
+  processed_checksum: d1a275236b585569d9efc5f1bffa25d3fa18be5a9596589dc66bf3745901259f
+  preprocessing_command_and_timestamp: cp data/raw/swisstopo/swissimage/swissimage-dop10_2019_2696-1167_2_2056.tif data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swissimage/swissimage-dop10_2019_2696-1167_2_2056.tif
+  required: true
+  staging_status: verified
+  verification_status: verified
+  provenance_classification: real_staged
+  observed_checksum_sha256: 77e91332a637fd9e42f72da30a3b3bc406d17f7d5700ee45b44aa1366c2deab9
+  observed_metadata_mismatches: []
 staging_status: verified
 cache_manifest_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml
-staged_product_count: 1
+staged_product_count: 2
 optional_missing_product_count: 0
 missing_product_count: 0
 checksum_mismatch_product_count: 0

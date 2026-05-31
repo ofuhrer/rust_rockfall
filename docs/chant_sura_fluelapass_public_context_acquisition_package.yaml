@@ -60,8 +60,8 @@ required_acquisition_items:
       - raw_checksum
       - processed_checksum
       - preprocessing_command_and_timestamp
-    current_status: deferred
-    classification: deferred
+    current_status: real_staged
+    classification: real_staged
   - category: swisstlm3d_context
     kind: swisstopo_product
     product: swissTLM3D
@@ -251,10 +251,10 @@ optional_paths:
     metadata_fields:
       - site-specific QA source if available
 status_summary:
-  real_staged_count: 0
+  real_staged_count: 1
   fixture_backed_count: 5
   missing_count: 7
-  deferred_count: 5
+  deferred_count: 4
   optional_count: 2
 cache_manifest_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/input/public_geodata_cache_manifest.yaml
 expected_cache_paths:
@@ -306,13 +306,13 @@ source_records:
     source_reference: docs/swisstopo_data_strategy.md
     source_product_id: swissimage
     source_product_name: SWISSIMAGE
-    source_url_or_download_record: ""
-    product_version_or_date: ""
-    tile_id_or_delivery_identifier: ""
+    source_url_or_download_record: https://data.geo.admin.ch/ch.swisstopo.swissimage-dop10/swissimage-dop10_2019_2696-1167/swissimage-dop10_2019_2696-1167_2_2056.tif
+    product_version_or_date: 2019-01-01
+    tile_id_or_delivery_identifier: 2696-1167
     license_or_terms_reference: swisstopo open data terms; verify current terms before redistribution
-    operator_choice: defer
-    current_status: deferred
-    classification: deferred
+    operator_choice: local_copy
+    current_status: real_staged
+    classification: real_staged
   - category: swisstlm3d_context
     expected_staged_path: data/processed/swisstopo/chant_sura_fluelapass_portability_example_v1/context/swisstlm3d
     source_reference: docs/swisstopo_data_strategy.md
@@ -457,13 +457,13 @@ verification_output:
     - terrain_crop
     - terrain_metadata
     - aoi_tile_catalog
+    - swissimage_context
     - source_zone_metadata
     - scenario_table
     - source_scenario_policy
   missing_categories:
     - swisstlm3d_metadata
   deferred_categories:
-    - swissimage_context
     - swisstlm3d_context
     - swisssurface3d_context
     - swisssurface3d_raster_context
