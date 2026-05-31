@@ -11284,3 +11284,26 @@ completed history.
 - Decision: no accepted calibration candidate was justified by the measured holdout residual screen, so the correct result is an explicit residual-quality rejection with a named first limitation.
 - Boundaries: calibration/validation separation preserved; no holdout tuning, no validation acceptance, no physical-probability, annual-frequency, operational, return-period, risk/exposure/vulnerability, or distributed-execution claim change.
 - Next task: not inspected per TB-688 hard-stop scope.
+
+### TB-689: Run A Cross-Site Conditional Validation Smoke
+
+- Date: 2026-05-31
+- Commit: local
+- Objective: test whether the current calibrated or best available parameters transfer to a second site under conditional-use semantics, while keeping the result fail-closed when Chant Sura public-context inputs are not fully staged.
+- Files changed: `docs/task_backlog.md`, `docs/agent_work_log.md`
+- Implementation summary:
+  - Reused the existing evidence-gap helper and the Chant Sura / Fluelapass readiness surfaces instead of inventing a new validation path.
+  - Confirmed `scripts/assess_validation_calibration_evidence_gaps.py` still classifies `holdout_and_validation_evidence` as `present` and `multi_site_transfer_evidence` as `partial`.
+  - Preserved the Tschamut holdout residual comparison thresholds in the report surface: `holdout_runout_abs_error_max_m <= 30.0`, `holdout_runout_abs_error_mean_m <= 15.0`, and `holdout_deposition_cloud_overlap_fraction >= 0.7`.
+  - Confirmed the Chant Sura readiness gate remains `blocked_partial_real_inputs`, so the honest deliverable is a blocked-input report rather than a fabricated cross-site smoke result.
+  - Removed TB-689 from the active backlog.
+- Checks run:
+  - `PYENV_VERSION=system uv run python scripts/print_agent_task_context.py --task TB-689 --format json`
+  - `rg -n "^### TB-689:" docs/task_backlog.md`
+  - `PYENV_VERSION=system uv run python scripts/assess_validation_calibration_evidence_gaps.py --format json > /tmp/tb689_validation_gap_report.json`
+  - `PYENV_VERSION=system uv run python -m scripts.check_chant_sura_real_context_readiness_gate --site-config tests/fixtures/second_site_public_geodata_preflight/chant_sura_fluelapass_candidate.yaml --format json > /tmp/tb689_chant_gate.json`
+- Result/status: implemented_blocked_report
+- Metrics: `holdout_and_validation_evidence=present`; `multi_site_transfer_evidence=partial`; `site_reference_evidence[Chant Sura]=partial`; `readiness_status=blocked_partial_real_inputs`; first missing input class is the staged second-site public-geodata package / public-context bundle rather than a measured Chant Sura residual.
+- Decision: fail closed with a blocked-input report only; no operational, annual-frequency, physical-probability, risk, exposure, vulnerability, or scale-up claim is introduced.
+- Boundaries: no public-context download, no second-site ensemble, no distributed execution, and no claim upgrade beyond the explicit blocked-input report.
+- Next task: not inspected per TB-689 hard-stop scope.

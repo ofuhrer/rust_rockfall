@@ -30,31 +30,6 @@ and compare the result.
 
 ## Active Tasks
 
-### TB-689: Run A Cross-Site Conditional Validation Smoke
-
-Goal: Test whether the current calibrated or best available parameters transfer to a second site under conditional-use semantics.
-
-Capability gap reduced: Multi-site holdout validation evidence for scientific credibility.
-
-Why this outranks alternatives: A Swiss-scale claim cannot rest on one AOI even if Balfrin scaling looks good.
-
-Inspect first:
-
-- `scripts/assess_validation_calibration_evidence_gaps.py`
-- `docs/public_benchmark_framework.md`
-- `docs/validation_plan.md`
-- `docs/chant_sura_fluelapass_real_context_acquisition_decision.md`
-
-Deliverables:
-
-- A conditional validation smoke result for Chant Sura or a concrete blocked input report, including residual metrics comparable to the Tschamut holdout thresholds.
-
-Definition of done:
-
-- Focused validation tests pass, metrics are computed or the first missing observed/input artifact is named, and no operational or annual-frequency claim is introduced.
-
-Scope: Treat this as scientific validation evidence only, not a calibrated operational product.
-
 ### TB-690: Promote Physical-Evidence Intake From Design Review To Measured Records
 
 Goal: Replace remaining design-review-only physical-probability blockers with measured or explicitly absent source, release, and block-population records.
